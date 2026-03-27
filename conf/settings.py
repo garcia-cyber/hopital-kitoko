@@ -83,7 +83,7 @@ STATIC_URL = 'static/'
 
 # Dossier source des fichiers statiques
 STATICFILES_DIRS = [
-    BASE_DIR / 'static',
+    BASE_DIR / 'hopital_site' /'static',
 ]
 
 # Dossier où Django rassemble les fichiers pour la production (Render)
