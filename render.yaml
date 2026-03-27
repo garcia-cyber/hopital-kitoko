@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: h-kitoko-site
+    runtime: python
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn conf.wsgi:hopital_site"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.5
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        generateValue: true
