@@ -33,6 +33,19 @@
                                 
                             </ul>
                         </li>
+
+                        {% elif fonction == 'receptionniste' %}
+
+                        <li class="submenu">
+                            <a href="#"><i class="fa fa fa-wheelchair"></i> <span> Patient </span> <span class="menu-arrow"></span></a>
+                            <ul style="display: none;">
+                                <li><a href="{% url 'patientAdd' %}">Ajoute patient</a></li>
+                                <li><a href="{% url 'employeRead'%}">Patient Liste</a></li>
+                               
+                                
+                            </ul>
+                        </li>
+
                         
                         
                        

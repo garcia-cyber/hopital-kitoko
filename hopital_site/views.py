@@ -162,4 +162,14 @@ def profilRead(request):
     return render(request , 'back-end/profil-read-employe.html',context)
 
 
+# 9 
+# ======================================================================
+# ajoute patient 
+# ======================================================================
+@login_required()
+def patientAdd(request):
 
+    profil = Profil.objects.filter(userProfil = request.user).first()
+    fonction = profil.fonction.fonction if profil else None 
+
+    return render(request , 'back-end/add-patient.html' , {'fonction': fonction})
