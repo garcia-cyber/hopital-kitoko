@@ -57,7 +57,14 @@
                     <div class="col-md-8 offset-md-2">
                         <div class="card mb-0">
                             <div class="card-body">
+                                {% if msg %}
+                                    <div class='alert alert-success'>
+                                        {{msg}}
+                                    </div>
+                                {% endif%}
                                 <form method="post">
+                                    {% csrf_token %}
+                                    {{ form.as_p}}
                                     
                                     
                                     <div class="m-t-20 text-center">
