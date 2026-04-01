@@ -167,6 +167,12 @@
                     <li><a href="#presentation">L'Institution</a></li>
                     <li><a href="#biographie">Le Promoteur</a></li>
                     <li><a href="#contact" class="btn-nav-contact">PRENDRE RDV</a></li>
+                    {% if user.is_authenticated %}
+                    <li><a href="{% url 'panel' %}">dashboard</a></li>
+                    <li><a href="{% url 'deconnexion' %}">deconnexion</a></li>
+                    {% else %}
+                    <li><a href="{% url 'login' %}">Login</a></li>
+                    {% endif%}
                 </ul>
             </div>
         </div>

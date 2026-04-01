@@ -99,3 +99,15 @@ if not DEBUG:
     SECURE_SSL_REDIRECT = True
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField' 
+
+# 10 . Redirection du login 
+# redirection apres authentification
+#
+LOGIN_REDIRECT_URL = '/panel/' 
+LOGIN_URL = '/login/'
+LOGOUT_REDIRECT_URL = '/home/' 
+
+# 11 configuration media pour gere les images 
+#
+MEDIA_URL = '/media/'
+MEDIA_ROOT = '/media/'

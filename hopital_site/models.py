@@ -1,3 +1,48 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 # Create your models here.
+
+# =============================================
+#   TYPE DE FONCTION 
+class Fonction(models.Model):
+    fonction = models.CharField(max_length = 30) 
+
+    def __str__(self):
+        return self.fonction
+
+
+# =============================================
+# SERVICE
+#
+class Service(models.Model):
+    nomService = models.CharField(max_length = 40) 
+
+    def __str__(self):
+        return self.nomService  
+
+# =============================================
+# PROFIL 
+# 
+class Profil(models.Model):
+    nomComplet = models.CharField(max_length = 50 , null = True) 
+    CHOIX_SEXE = [
+        ('masculin','Masculin') ,
+        ('feminin', 'Feminin')
+    ]
+    sexe = models.CharField(max_length = 15 , choices = CHOIX_SEXE)
+    phone = models.CharField(max_length = 15)
+    adresse = models.CharField(max_length = 50)
+    fonction = models.ForeignKey(Fonction, on_delete = models.SET_NULL, null = True) 
+    service  = models.ForeignKey(Service , on_delete = models.SET_NULL , null = True) 
+    date_register = models.DateField(auto_now_add = True)
+    userProfil = models.ForeignKey(User , on_delete = models.SET_NULL, null = True)
+
+    def __str__(self):
+
+        return self.nomComplet
+
+    
+
+    
+
