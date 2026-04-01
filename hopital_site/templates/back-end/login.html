@@ -1,87 +1,141 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 {% load static %}
 <head>
-
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
-    <title>Hopital | login</title>
+    <title>Hopital | Login Pro</title>
 
-    <!-- Favicons -->
     <link rel="shortcut icon" type="image/x-icon" href="{% static 'back-end/assets/img/favicon.ico'%}">
     
-    <!-- Font Family -->
     <link href="https://fonts.googleapis.com/css?family=Fira+Sans:400,500,600,700" rel="stylesheet">
 
-    <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css'%}">
 
-    <!-- Fontawesome CSS -->
     <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css'%}" >
-    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/fontawesome.min.css'%}" >
-
-    <!--custom styles-->
     <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css'%}">
 
-    <!--[if lt IE 9]>
-		<script src="assets/js/html5shiv.min.js"></script>
-		<script src="assets/js/respond.min.js"></script>
-	<![endif]-->
-        <style>
-            
-            body{
-                min-height: 100vh;
-                background: linear-gradient(to left , #000 , #0008),url("{% static 'back-end/autres/img3.jpg'%}");
-                background-size: cover;
-                background-repeat: no-repeat;
-                background-position: center;
-            }
-        </style>
+    <style>
+        body {
+            min-height: 100vh;
+            background: linear-gradient(rgba(0, 8, 20, 0.8), rgba(0, 20, 40, 0.8)), 
+                        url("{% static 'back-end/autres/img3.jpg'%}");
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center;
+            display: flex;
+            align-items: center;
+        }
+
+        /* Styliser le conteneur existant dans ton style.css */
+        .account-box {
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border-top: 4px solid #007bff;
+            padding: 35px;
+            background: #ffffff;
+        }
+
+        /* MAGIE POUR LE {{ form.as_p }} */
+        .form-signin p {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .form-signin label {
+            display: block;
+            font-weight: 600;
+            color: #444;
+            margin-bottom: 8px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-signin input {
+            width: 100%;
+            height: 48px;
+            padding: 10px 15px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .form-signin input:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
+            outline: none;
+        }
+
+        .account-btn {
+            background: #007bff;
+            border: none;
+            height: 50px;
+            font-weight: 700;
+            font-size: 16px;
+            letter-spacing: 1px;
+            margin-top: 10px;
+            border-radius: 6px;
+            transition: 0.3s;
+        }
+
+        .account-btn:hover {
+            background: #0056b3;
+            transform: translateY(-1px);
+        }
+
+        .forgot-link {
+            color: #007bff;
+            font-size: 13px;
+            text-decoration: none;
+        }
+
+        .account-logo img {
+            max-width: 150px;
+            margin-bottom: 10px;
+        }
+    </style>
 </head>
 
 <body>
 
-    <!-- Main Wrapper -->
     <div class="main-wrapper account-wrapper">
         <div class="account-page">
-			<div class="account-center">
-				<div class="account-box">
+            <div class="account-center">
+                <div class="account-box">
                     <form method="post" class="form-signin">
+                        {% csrf_token %}
                         
-						<div class="account-logo">
-                            <a href="index.html"><img src="{% static 'back-end/assets/img/logo-dark.png'%}" alt="Preadmin"></a>
+                        <div class="account-logo">
+                            <a href="#"><img src="{% static 'back-end/assets/img/logo-dark.png'%}" alt="Logo Hôpital"></a>
                         </div>
+
+                        <h4 class="text-center mb-4" style="font-weight: 700; color: #2c3e50;">AUTHENTIFICATION</h4>
 
                         {% if msg %}
-                            <div class='alert alert-danger'>
-                                {{msg}}
+                            <div class='alert alert-danger shadow-sm'>
+                                <i class="fas fa-exclamation-circle mr-2"></i> {{msg}}
                             </div>
-                        {% endif%}
+                        {% endif %}
 
-                        {% csrf_token%}
-                        {{ form.as_p}}
+                        {{ form.as_p }}
+
                         <div class="form-group text-right">
-                            <a href="">Forgot your password?</a>
+                            <a href="#" class="forgot-link">Mot de passe oublié ?</a>
                         </div>
+
                         <div class="form-group text-center">
-                            <button type="submit" class="btn btn-primary account-btn">Login</button>
+                            <button type="submit" class="btn btn-primary account-btn w-100">OUVRIR LA SESSION</button>
                         </div>
-                                            </form>
+                    </form>
                 </div>
-                </div>
+            </div>
         </div>
     </div>
-    <!--/ Main Wrapper -->
 
-    <!--scripts-->
-    <!-- jQuery -->
     <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js'%}"></script>
-
-    <!-- Bootstrap Core JS -->
     <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js'%}"></script>
-
-    <!-- Custom JS -->
     <script src="{% static 'back-end/assets/js/app.js'%}"></script> 
 </body>
-
 </html>
