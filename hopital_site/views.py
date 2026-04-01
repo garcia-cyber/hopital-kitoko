@@ -46,6 +46,9 @@ def panel(request):
     # nombre des user 
     use = User.objects.all().count()
 
+    # nombre de patient
+    patient = Patient.objects.all().count
+
     # profil 
     # 
     profil = Profil.objects.filter(userProfil = request.user).first()
@@ -54,6 +57,7 @@ def panel(request):
     context = {
     'nbrU' : use ,
     'fonction': fonction ,
+    'nbrP' : patient , 
     } 
     return render(request , 'back-end/index.html', context)
 
@@ -169,7 +173,19 @@ def profilRead(request):
 @login_required()
 def patientAdd(request):
 
+    msg = None 
+    if request.method == 'POST':
+        form = PatientAddForm(request.POST)
+
+        if form.is_valid():
+            form.save()
+
+            msg = "Patient(e) enregistre"
+            form = PatientAddForm(request.POST)
+    form = PatientAddForm()
+
+
     profil = Profil.objects.filter(userProfil = request.user).first()
     fonction = profil.fonction.fonction if profil else None 
 
-    return render(request , 'back-end/add-patient.html' , {'fonction': fonction})
+    return render(request , 'back-end/add-patient.html' , {'fonction': fonction, 'form':form,'msg':msg})

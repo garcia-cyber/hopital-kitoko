@@ -84,7 +84,7 @@
                                     <span class="dash-widget-bg2"><img src="assets/img/icons/icon-3.png" alt="Icon" width="25"></span>
                                     <div class="dash-widget-info float-left pl-2">
                                         <p>Total patients</p>
-                                       <h4>125</h4>
+                                       <h4>{{nbrP}}</h4>
                                     </div>
                                 </div>
                             </div>
@@ -105,10 +105,20 @@
 
                             <div class="col-md-6 col-sm-6 col-lg-6 col-xl-3 pr-0">
                                 <div class="dash-widget">
-                                    <span class="dash-widget-bg2"><img src="assets/img/icons/icon-3.png" alt="Icon" width="25"></span>
+                                    <span class="dash-widget-bg2"><img src="{% static 'back-end/assets/img/icons/icon-3.png'%}" alt="Icon" width="25"></span>
                                     <div class="dash-widget-info float-left pl-2">
                                         <p>Total Patient</p>
-                                       <h4>125</h4>
+                                       <h4>{{nbrP}}</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            {% elif fonction == 'receptionniste'%}
+                                <div class="col-md-6 col-sm-6 col-lg-6 col-xl-3 pr-0">
+                                <div class="dash-widget">
+                                    <span class="dash-widget-bg2"><img src="{% static 'back-end/assets/img/icons/icon-3.png'%}" alt="Icon" width="25"></span>
+                                    <div class="dash-widget-info float-left pl-2">
+                                        <p>Total Patient</p>
+                                       <h4>{{nbrP}}</h4>
                                     </div>
                                 </div>
                             </div>
@@ -225,51 +235,10 @@
                 <div class="row">
                     <div class="col-lg-4 d-flex Chart">
                         <!--Income-->
-                        <div class="card flex-fill">
-                            <div class="card-header">
-                                <h4 class="admin_title">INCOME</h4>
-                            </div>
-                            <div class="card-body ">
-                                <div class="row">
-                                    <div class="col-12 text-right">
-                                        <div class="this_year">
-                                            <div class="dropdown">
-                                              <button type="button" class="btn p-0 dropdown-toggle" data-toggle="dropdown">
-                                                This year
-                                              </button>
-                                              <div class="dropdown-menu">
-                                                <a class="dropdown-item" href="#">2000</a>
-                                                <a class="dropdown-item" href="#">2001</a>
-                                                <a class="dropdown-item" href="#">2002</a>
-                                              </div>
-                                            </div>
-                                        </div><hr />
-                                    </div>
-                                </div>
-                                <div class="row">
-                                    <div class="col-md-12 text-center">
-                                        <div id="chart"></div>
-                                        <ul class="list-inline-item list-unstyled m-0">
-                                            <li class="list-inline-item expense"><i class="fas fa-circle"></i>&nbsp;&nbsp;Expenses</li>
-                                            <li class="list-inline-item income"><i class="fas fa-circle"></i>&nbsp;&nbsp;Income</li>
-                                        </ul>
-                                    </div>
-                                    <div class="income_expense">
-                                        <div class="income_det pt-5">
-                                            <h1>65%</h1>
-                                            <p>INCOME</p>
-                                        </div>
-                                        <div class="expense_det pt-4">
-                                            <h1>29%</h1>
-                                            <p>EXPENSES</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        
                         <!--/ Income-->
                     </div>
-                    <div class="col-lg-5 calendar_item d-flex">
+                    <div class="col-lg-9 calendar_item d-flex">
                         <!--Calender-->
                         <div class="card flex-fill">
                              <div class="card-header">
@@ -335,76 +304,7 @@
                 <!-- Income section-->            
                 
                 <!-- Latest PAtients-->   
-                <div class="row">
-                    <div class="col-12">
-                        <h4 class="admin_title">LATEST PATIENTS</h4>
-                        <div class="table-responsive">
-                            <table class="table bg-white mb-0">
-                                <thead>
-                                    <tr>
-                                        <th>NO</th>
-                                        <th>DATE</th>
-                                        <th>ID</th>
-                                        <th>NAME</th>
-                                        <th>AGE</th>
-                                        <th>GENDER</th>
-                                        <th>SETTINGS</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>01</td>
-                                        <td>20/05/2021</td>
-                                        <td>0012</td>
-                                        <td>William Zaoo</td>
-                                        <td>27</td>
-                                        <td>Male</td>
-                                        <td>
-                                            <a href="#" class="px-2 edit"><i class="fas fa-pencil-alt"></i></a>
-                                            <a href="#" class="px-2 del"><i class="far fa-trash-alt"></i></a>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>02</td>
-                                        <td>21/05/2021</td>
-                                        <td>0013</td>
-                                        <td>John Deo</td>
-                                        <td>24</td>
-                                        <td>Male</td>
-                                        <td>
-                                            <a href="#" class="px-2 edit"><i class="fas fa-pencil-alt"></i></a>
-                                            <a href="#" class="px-2 del"><i class="far fa-trash-alt"></i></a>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>03</td>
-                                        <td>22/05/2021</td>
-                                        <td>0014</td>
-                                        <td>Hellen</td>
-                                        <td>29</td>
-                                        <td>Female</td>
-                                        <td>
-                                            <a href="#" class="px-2 edit"><i class="fas fa-pencil-alt"></i></a>
-                                            <a href="#" class="px-2 del"><i class="far fa-trash-alt"></i></a>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>04</td>
-                                        <td>23/05/2021</td>
-                                        <td>0015</td>
-                                        <td>Bobby </td>
-                                        <td>23</td>
-                                        <td>Male</td>
-                                        <td>
-                                            <a href="#" class="px-2 edit"><i class="fas fa-pencil-alt"></i></a>
-                                            <a href="#" class="px-2 del"><i class="far fa-trash-alt"></i></a>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
+                
                 <!--/ Latest Patients-->
             </div>
 

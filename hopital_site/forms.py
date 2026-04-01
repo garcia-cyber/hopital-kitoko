@@ -52,3 +52,32 @@ class ProfilAddForm(forms.ModelForm):
             'service' : forms.Select(attrs = {'class':'form-control'})
 
         }
+
+    # evite de voir d'autre service
+    def __init__(self,*args , **kwargs):
+        super(ProfilAddForm , self).__init__(*args,**kwargs)
+        self.fields['service'].queryset = Service.objects.filter(nomService__in = ['secretariat','sous-administration','administration'])
+
+
+# 4
+# ==================================================
+# patient add
+# ==================================================
+class PatientAddForm(forms.ModelForm):
+    class Meta :
+        model = Patient 
+        fields = ['noms','sexeP','ageP','phone_responsable','adresseP','service']
+        widgets = {
+       'noms' : forms.TextInput(attrs = {'class':'form-control'}) , 
+       'sexeP':forms.Select(attrs = {'class':'form-control'}) ,
+       'phone_responsable' : forms.NumberInput(attrs = {'class':'form-control'}) , 
+       'ageP' : forms.NumberInput(attrs = {'class':'form-control'}) ,
+       'adresseP' : forms.TextInput(attrs = {'class':'form-control'}) , 
+       'service' : forms.Select(attrs = {'class':'form-control'}) ,
+       }
+
+
+    def __init__(self , *args , **kwargs):
+        super(PatientAddForm,self).__init__(*args,**kwargs)
+        self.fields['service'].queryset = Service.objects.filter(nomService__in = ['pediatrie','gyneco','medecine interne'])
+
