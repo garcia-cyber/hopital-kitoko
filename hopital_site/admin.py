@@ -29,4 +29,4 @@ class ProfilAdmin(admin.ModelAdmin):
 # patient 
 @admin.register(Patient)
 class PatientAdmin(admin.ModelAdmin):
-	list_display = fields = ['noms','sexeP','ageP','phone_responsable','adresseP','service','date_registerP']
+	list_display = ['noms','sexeP','ageP','phone_responsable','adresseP','service','date_registerP']

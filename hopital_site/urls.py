@@ -25,6 +25,7 @@ urlpatterns = [
     # patient add read 
     #
     path('patientAdd/', patientAdd , name = 'patientAdd') ,
+    path('patientRead/' , patientRead , name = 'patientRead') , 
 
 
 ]

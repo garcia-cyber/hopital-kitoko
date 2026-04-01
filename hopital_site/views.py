@@ -189,3 +189,23 @@ def patientAdd(request):
     fonction = profil.fonction.fonction if profil else None 
 
     return render(request , 'back-end/add-patient.html' , {'fonction': fonction, 'form':form,'msg':msg})
+
+# 10 
+# ==========================================================================
+# liste de patient(e)
+# ==========================================================================
+@login_required()
+def patientRead(request):
+
+    profil = Profil.objects.filter(userProfil = request.user).first()
+    fonction = profil.fonction.fonction if profil else None
+
+    # liste de patient
+    patientListe = Patient.objects.all()
+
+    context = {
+        'fonction' : fonction , 
+        'patientListe' : patientListe
+    }
+
+    return render(request, 'back-end/patient-liste.html',context)

@@ -19,6 +19,16 @@
                             </ul>
                         </li>
 
+                        <li class="submenu">
+                            <a href="#"><i class="fa fa fa-wheelchair"></i> <span> Patient </span> <span class="menu-arrow"></span></a>
+                            <ul style="display: none;">
+                                <!-- <li><a href="{% url 'patientAdd' %}">Ajoute patient</a></li> -->
+                                <li><a href="{% url 'patientRead'%}">Patient Liste</a></li>
+                               
+                                
+                            </ul>
+                        </li>
+
 						<li>
                             <a href="doctors.html"><i class="fa fa-user-md"></i> <span>Doctors</span></a>
                         </li>
@@ -34,13 +44,23 @@
                             </ul>
                         </li>
 
+                        <li class="submenu">
+                            <a href="#"><i class="fa fa fa-wheelchair"></i> <span> Patient </span> <span class="menu-arrow"></span></a>
+                            <ul style="display: none;">
+                                <!-- <li><a href="{% url 'patientAdd' %}">Ajoute patient</a></li> -->
+                                <li><a href="{% url 'patientRead'%}">Patient Liste</a></li>
+                               
+                                
+                            </ul>
+                        </li>
+
                         {% elif fonction == 'receptionniste' %}
 
                         <li class="submenu">
                             <a href="#"><i class="fa fa fa-wheelchair"></i> <span> Patient </span> <span class="menu-arrow"></span></a>
                             <ul style="display: none;">
                                 <li><a href="{% url 'patientAdd' %}">Ajoute patient</a></li>
-                                <li><a href="{% url 'employeRead'%}">Patient Liste</a></li>
+                                <li><a href="{% url 'patientRead'%}">Patient Liste</a></li>
                                
                                 
                             </ul>
