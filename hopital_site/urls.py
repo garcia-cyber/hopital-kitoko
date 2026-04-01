@@ -13,9 +13,13 @@ urlpatterns = [
     path('login/' , login , name = 'login'),  
     path('deconnexion/', deconnexion , name='deconnexion') , 
 
-    # employe add , profil ,read , update 
+    # employe add , profil add ,read , update 
     #
     path('employeAdd/', employeAdd , name ='employeAdd') , 
+    path('employeRead/',employeRead , name = 'employeRead') , 
+    path('profilAdd/<int:user_id>/', profilAdd , name = 'profilAdd'),
+    path('profilRead/', profilRead , name = 'profilRead') , 
+
 
 ]
 

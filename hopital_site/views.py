@@ -90,5 +90,76 @@ def employeAdd(request):
 
     return render(request,'back-end/add-employee.html',{'fonction':fonction, 'form':form, 'msg':msg}) 
 
+# 6
+# ==================================================================================
+# liste des employee
+# ==================================================================================
+@login_required()
+def employeRead(request):
 
-    
+    # liste des user
+    userListe = User.objects.all() 
+
+    profil = Profil.objects.filter(userProfil = request.user).first()
+    fonction = profil.fonction.fonction if profil else None 
+
+    context = {
+        'fonction': fonction , 
+        'userListe' : userListe,
+    }
+
+    return render(request , 'back-end/employees.html' ,context)
+
+# 7
+# ==================================================================================
+# employee profil attribution 
+# ==================================================================================
+@login_required()
+def profilAdd(request, user_id):
+    pro = get_object_or_404(User , id = user_id)
+    prof , created = Profil.objects.get_or_create(userProfil = pro)
+    msg = None 
+
+    if request.method == 'POST':
+        form = ProfilAddForm(request.POST , instance = prof)
+
+        if form.is_valid():
+            p = form.save(commit=False)
+            p.userProfil = pro 
+            p.save()
+
+            return redirect('employeRead')
+
+    form = ProfilAddForm(instance = prof)
+
+    profil = Profil.objects.filter(userProfil = request.user).first()
+    fonction = profil.fonction.fonction if profil else None 
+
+
+    context = {
+        'form': form ,
+        'fonction' : fonction ,
+
+    }
+
+    return render(request,'back-end/profil-add-employe.html',context)
+# 8
+# ======================================================================
+# liste des employes avec leur profil
+# ======================================================================
+@login_required()
+def profilRead(request):
+    profil = Profil.objects.filter(userProfil = request.user).first()
+    fonction = profil.fonction.fonction if profil else None 
+
+    profilRead = Profil.objects.all()
+
+    context = {
+        'fonction' : fonction , 
+        'profilRead' : profilRead
+    }
+
+    return render(request , 'back-end/profil-read-employe.html',context)
+
+
+

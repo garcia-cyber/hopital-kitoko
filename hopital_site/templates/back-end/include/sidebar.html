@@ -13,10 +13,9 @@
                             <a href="#"><i class="fa fa-user"></i> <span> Employees </span> <span class="menu-arrow"></span></a>
                             <ul style="display: none;">
                                 <li><a href="{% url 'employeAdd' %}">Ajoute Employe</a></li>
-                                <li><a href="employees.html">Employees List</a></li>
-                                <!-- <li><a href="leaves.html">Leaves</a></li>
-                                <li><a href="holidays.html">Holidays</a></li>
-                                <li><a href="attendance.html">Attendance</a></li> -->
+                                <li><a href="{% url 'employeRead'%}">Employees Liste</a></li>
+                                <li><a href="{% url 'profilRead'%}">Employees profil</a></li>
+                               
                             </ul>
                         </li>
 
@@ -29,8 +28,9 @@
                             <a href="#"><i class="fa fa-user"></i> <span> Employees </span> <span class="menu-arrow"></span></a>
                             <ul style="display: none;">
                                 <li><a href="{% url 'employeAdd' %}">Ajoute Employe</a></li>
-                                <li><a href="employees.html">Employees List</a></li>
-                                <li><a href="leaves.html">Leaves</a></li>
+                                <li><a href="{% url 'employeRead'%}">Employees Liste</a></li>
+                                <li><a href="{% url 'profilRead'%}">Employees profil</a></li>
+                                
                             </ul>
                         </li>
                         

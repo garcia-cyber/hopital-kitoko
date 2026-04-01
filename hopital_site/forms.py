@@ -34,3 +34,21 @@ class EmployeForm(forms.ModelForm):
             'password': 'mot de passe utilisateur' , 
 
         }  
+
+# 3 
+# ===========================================
+# profil add 
+# ===========================================
+class ProfilAddForm(forms.ModelForm):
+    class Meta :
+        model = Profil
+        fields = ['nomComplet','sexe','phone','adresse','fonction','service']
+        widgets = {
+            'nomComplet' : forms.TextInput(attrs = {'class':'form-control'}),
+            'sexe' : forms.Select(attrs = {'class':'form-control'}) , 
+            'phone' : forms.TextInput(attrs = {'class':'form-control'}),
+            'adresse' : forms.TextInput(attrs = {'class':'form-control'}) , 
+            'fonction' : forms.Select(attrs = {'class':'form-control'}) ,
+            'service' : forms.Select(attrs = {'class':'form-control'})
+
+        }
