@@ -30,3 +30,10 @@ class ProfilAdmin(admin.ModelAdmin):
 @admin.register(Patient)
 class PatientAdmin(admin.ModelAdmin):
 	list_display = ['noms','sexeP','ageP','phone_responsable','adresseP','service','date_registerP']
+
+# 5
+# =====================================
+# ConfigurationHopital 
+@admin.register(ConfigurationHopital) 
+class ConfigurationHopitalAdmin(admin.ModelAdmin):
+	list_display = ['taux_usd_en_cdf','derniere_mise_a_jour']
