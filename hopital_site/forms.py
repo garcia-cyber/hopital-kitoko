@@ -81,3 +81,19 @@ class PatientAddForm(forms.ModelForm):
         super(PatientAddForm,self).__init__(*args,**kwargs)
         self.fields['service'].queryset = Service.objects.filter(nomService__in = ['pediatrie','gyneco','medecine interne'])
 
+# 5 
+# ====================================================
+# paiement fiche
+# ====================================================
+class PaiementFicheForm(forms.ModelForm):
+    class Meta:
+        model = Paiement
+        fields = ['montant_physique', 'devise']
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # On ajoute du style Bootstrap pour que ce soit joli
+        for field in self.fields.values():
+            field.widget.attrs.update({'class': 'form-control'})
+
+            

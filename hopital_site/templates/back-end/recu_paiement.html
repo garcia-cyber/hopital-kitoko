@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Reçu de Paiement - {{ paiement.facture.patient.noms }}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 30px;
+            color: #333;
+            background: #f4f7f6;
+        }
+        .invoice-box {
+            max-width: 700px;
+            margin: auto;
+            border: 1px solid #eee;
+            padding: 30px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            background: #fff;
+        }
+        .header-table {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        .title {
+            font-size: 24px;
+            color: #007bff;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .info-section {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th {
+            background: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+            text-align: left;
+            padding: 10px;
+        }
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+        .payment-status {
+            margin-top: 25px;
+            text-align: right;
+        }
+        .amount-box {
+            background: #e7f3ff;
+            color: #007bff;
+            font-size: 22px;
+            font-weight: bold;
+            padding: 15px;
+            display: inline-block;
+            border-radius: 5px;
+            border: 1px solid #007bff;
+        }
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 12px;
+            color: #777;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+        }
+        @media print {
+            body { background: none; padding: 0; }
+            .invoice-box { box-shadow: none; border: 1px solid #ccc; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="invoice-box">
+        <table class="header-table">
+            <tr>
+                <td style="border:none;" class="title">REÇU DE CAISSE N° {{ paiement.id }}</td>
+                <td style="border:none; text-align: right;">
+                    <strong>Date :</strong> {{ paiement.date_paiement|date:"d/m/Y à H:i" }}
+                </td>
+            </tr>
+        </table>
+
+        <div class="info-section">
+            <div>
+                <strong>CLINIQUE MÉDICALE</strong><br>
+                Service de Caisse<br>
+                <em>Kinshasa, RDC</em>
+            </div>
+            <div style="text-align: right;">
+                <strong>PATIENT :</strong><br>
+                <span style="font-size: 1.1em; font-weight: bold;">{{ paiement.facture.patient.noms }}</span><br>
+                ID : #{{ paiement.facture.patient.id }}
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Désignation de la Prestation</th>
+                    <th style="text-align: right;">Référence Facture</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>{{ paiement.facture.prestation.libelle }}</td>
+                    <td style="text-align: right;">FAC-{{ paiement.facture.id }}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="payment-status">
+            <p style="margin-bottom: 10px; font-weight: 500;">Objet : Paiement partiel / Solde</p>
+            <div class="amount-box">
+                MONTANT PERÇU : {{ paiement.montant_physique }} {{ paiement.devise }}
+            </div>
+        </div>
+
+        <div class="footer">
+            <div style="display: flex; justify-content: space-around; margin-bottom: 20px;">
+                <div>
+                    <p>Signature Patient</p>
+                    <br><br>
+                    _________________
+                </div>
+                <div>
+                    <p>Le Caissier (Cachet)</p>
+                    <br><br>
+                    _________________
+                </div>
+            </div>
+            <p>Document généré le {% now "d/m/Y à H:i" %}</p>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        window.onload = function() {
+            window.print();
+        };
+    </script>
+</body>
+</html>

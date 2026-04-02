@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+    <title>Historique Patient - {{ patient.noms }}</title>
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'back-end/assets/img/favicon.ico'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css'%}">
+</head>
+
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                {% if messages %}
+                    {% for message in messages %}
+                        {% if message.tags == 'success' %}
+                            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+
+                <div class="row">
+                    <div class="col-sm-7 col-7">
+                        <h4 class="page-title">Historique : <strong>{{ patient.noms }}</strong></h4>
+                    </div>
+                    <div class="col-sm-5 col-5 text-right m-b-20">
+                        <a href="{% url 'patientRead' %}" class="btn btn-secondary btn-rounded">
+                            <i class="fa fa-arrow-left"></i> Retour
+                        </a>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="card shadow-sm">
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-striped custom-table">
+                                        <thead>
+                                            <tr class="bg-primary text-white">
+                                                <th>Date</th>
+                                                <th>Prestation</th>
+                                                <th>Prix (CDF)</th>
+                                                <th>Versements (Reçus)</th>
+                                                <th>Reste à Payer</th>
+                                                <th class="text-right">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for f in factures %}
+                                            <tr>
+                                                <td>{{ f.date_emission|date:"d/m/Y" }}</td>
+                                                <td><strong>{{ f.prestation.libelle }}</strong></td>
+                                                <td>{{ f.prestation.prix_cdf }} CDF</td>
+                                                
+                                                <td>
+                                                    <ul class="list-unstyled mb-0">
+                                                        {% for p in f.liste_paiements %}
+                                                        <li class="border-bottom d-flex justify-content-between align-items-center py-1">
+                                                            <span><i class="fa fa-check text-success"></i> {{ p.montant_physique }} {{ p.devise }}</span>
+                                                            <a href="{% url 'imprimerRecu' p.id %}" target="_blank" class="text-primary ml-2">
+                                                                <i class="fa fa-print"></i>
+                                                            </a>
+                                                        </li>
+                                                        {% endfor %}
+                                                    </ul>
+                                                </td>
+
+                                                <td>
+                                                    {% if f.montant_restant > 0 %}
+                                                        <b class="text-danger" style="font-size: 1.1em;">{{ f.montant_restant }} CDF</b>
+                                                        <button class="btn btn-xs btn-warning ml-2" data-toggle="modal" data-target="#paye_{{ f.id }}">
+                                                            <i class="fa fa-plus"></i> Payer
+                                                        </button>
+                                                    {% else %}
+                                                        <span class="badge badge-success">SOLDÉ</span>
+                                                    {% endif %}
+                                                </td>
+
+                                                <td class="text-right">
+                                                    <div class="dropdown dropdown-action">
+                                                        <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown"><i class="fa fa-ellipsis-v"></i></a>
+                                                        <div class="dropdown-menu dropdown-menu-right">
+                                                            <a class="dropdown-item" href="{% url 'imprimerFactureGlobale' f.id %}" target="_blank">
+                                                                <i class="fa fa-print m-r-5"></i> Facture Globale
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+
+                                            {% if f.montant_restant > 0 %}
+                                            <div id="paye_{{ f.id }}" class="modal fade" role="dialog">
+                                                <div class="modal-dialog modal-dialog-centered">
+                                                    <div class="modal-content">
+                                                        <div class="modal-header bg-primary text-white">
+                                                            <h4 class="modal-title">Nouveau Paiement : {{ f.prestation.libelle }}</h4>
+                                                            <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                                                        </div>
+                                                        
+                                                        <form method="POST">
+                                                            {% csrf_token %}
+                                                            <input type="hidden" name="facture_id" value="{{ f.id }}">
+                                                            <div class="modal-body">
+                                                                {% if messages %}
+                                                                    {% for message in messages %}
+                                                                        {% if message.tags == 'error' %}
+                                                                            <div class="alert alert-danger">
+                                                                                <i class="fa fa-exclamation-triangle"></i> {{ message }}
+                                                                            </div>
+                                                                        {% endif %}
+                                                                    {% endfor %}
+                                                                {% endif %}
+
+                                                                <p>Reste : <strong class="text-danger">{{ f.montant_restant }} CDF</strong></p>
+                                                                <div class="form-group">
+                                                                    <label>Montant versé :</label>
+                                                                    <input type="number" name="montant" step="0.01" class="form-control" value="{{ f.montant_restant }}" required>
+                                                                </div>
+                                                                <div class="form-group">
+                                                                    <label>Devise :</label>
+                                                                    <select name="devise" class="form-control">
+                                                                        <option value="CDF">CDF</option>
+                                                                        <option value="USD">USD</option>
+                                                                    </select>
+                                                                </div>
+                                                            </div>
+                                                            <div class="modal-footer">
+                                                                <button type="submit" class="btn btn-primary btn-block">Valider</button>
+                                                            </div>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {% endif %}
+
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/app.js'%}"></script>
+
+    <script>
+        $(document).ready(function() {
+            {% if messages %}
+                {% for message in messages %}
+                    {% if message.tags == 'error' %}
+                        // On cherche le modal qui était ouvert (celui qui contient l'alerte danger)
+                        $('.alert-danger').closest('.modal').modal('show');
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+        });
+    </script>
+</body>
+</html>

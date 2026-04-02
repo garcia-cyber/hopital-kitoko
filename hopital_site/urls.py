@@ -1,5 +1,6 @@
 from django.urls import path
 from .views import *
+from . import views
 
 
 urlpatterns = [
@@ -26,6 +27,20 @@ urlpatterns = [
     #
     path('patientAdd/', patientAdd , name = 'patientAdd') ,
     path('patientRead/' , patientRead , name = 'patientRead') , 
+
+    # ===============================================
+    # paiement fiche historique
+    #
+    path('encaisser-fiche/<int:patient_id>/', views.encaisser_fiche, name='encaisser_fiche'),
+    path('historique_patient/<int:patient_id>' , historique_patient , name ='historique_patient') ,
+    # path('solder-facture/<int:f_id>/', views.solder_facture_view, name='solderFacture'),
+
+    # ================================================
+    # imprimer
+    #
+    path('imprimer-recu/<int:paiement_id>/', views.imprimer_recu, name='imprimerRecu'),
+    path('imprimer-facture-globale/<int:facture_id>/', views.imprimer_facture_globale, name='imprimerFactureGlobale'),
+
 
 
 ]

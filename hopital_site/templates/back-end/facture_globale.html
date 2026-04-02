@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Facture Globale - {{ facture.patient.noms }}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 30px;
+            color: #333;
+        }
+        .invoice-box {
+            max-width: 800px;
+            margin: auto;
+            border: 1px solid #eee;
+            padding: 30px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
+            background: #fff;
+        }
+        .header-table {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        .title {
+            font-size: 28px;
+            color: #007bff;
+            font-weight: bold;
+        }
+        .info-section {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th {
+            background: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+            text-align: left;
+            padding: 12px;
+        }
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+        .total-section {
+            margin-top: 30px;
+            text-align: right;
+        }
+        .total-row {
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
+        .reste {
+            color: #d9534f;
+            font-size: 24px;
+            font-weight: bold;
+            border-top: 2px solid #333;
+            display: inline-block;
+            padding: 10px 0 0 20px;
+            margin-top: 10px;
+        }
+        .footer {
+            margin-top: 60px;
+            text-align: center;
+            font-size: 13px;
+            color: #777;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+        @media print {
+            body { padding: 0; }
+            .invoice-box { box-shadow: none; border: none; }
+            .no-print { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="invoice-box">
+        <table class="header-table">
+            <tr>
+                <td style="border:none;" class="title">FACTURE N° {{ facture.id }}</td>
+                <td style="border:none; text-align: right;">
+                    <strong>Date :</strong> {{ facture.date_emission|date:"d/m/Y" }}
+                </td>
+            </tr>
+        </table>
+
+        <div class="info-section">
+            <div>
+                <strong>CLINIQUE MÉDICALE</strong><br>
+                Service de Facturation et Comptabilité<br>
+                <em>Kinshasa, RDC</em>
+            </div>
+            <div style="text-align: right;">
+                <strong>PATIENT :</strong><br>
+                <span style="font-size: 1.2em; font-weight: bold;">{{ facture.patient.noms }}</span><br>
+                ID Patient : #{{ facture.patient.id }}
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Désignation de l'Acte / Prestation</th>
+                    <th style="text-align: right;">Prix Total (CDF)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>{{ facture.prestation.libelle }}</td>
+                    <td style="text-align: right; font-weight: bold;">{{ facture.prestation.prix_cdf }} CDF</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h4 style="margin-top: 40px; color: #007bff; border-bottom: 1px solid #eee;">Détails des paiements reçus</h4>
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Mode de Paiement</th>
+                    <th style="text-align: right;">Montant Versé</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in facture.paiements.all %}
+                <tr>
+                    <td>{{ p.date_paiement|date:"d/m/Y à H:i" }}</td>
+                    <td>Paiement en {{ p.devise }}</td>
+                    <td style="text-align: right;">{{ p.montant_physique }} {{ p.devise }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" style="text-align: center; color: red;">Aucun versement enregistré pour cette facture.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="total-section">
+            <div class="total-row">Montant de la Prestation : <strong>{{ facture.prestation.prix_cdf }} CDF</strong></div>
+            
+            <div class="total-row" style="color: #28a745;">Total déjà encaissé : <strong>{{ somme_deja_payee }} CDF</strong></div>
+            
+            <div class="reste">
+                RESTE À PERCEVOIR : {{ montant_du_reste }} CDF
+            </div>
+        </div>
+
+        <div class="footer">
+            Document généré officiellement le {% now "d/m/Y à H:i" %}<br><br>
+            <div style="display: flex; justify-content: space-around; margin-top: 20px;">
+                <span>Le Patient (Signature)</span>
+                <span>La Comptabilité (Signature & Cachet)</span>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        window.onload = function() {
+            window.print();
+        };
+    </script>
+</body>
+</html>

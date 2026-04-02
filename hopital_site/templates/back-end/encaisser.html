@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+    <title>Paiement Fiche - {{ patient.noms }}</title>
+
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'back-end/assets/img/favicon.ico'%}">
+
+    <link href="https://fonts.googleapis.com/css?family=Fira+Sans:400,500,600,700" rel="stylesheet">
+
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css'%}">
+
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css'%}" >
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/fontawesome.min.css'%}" >
+
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/select2.min.css'%}">
+
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/datetimepicker/css/tempusdominus-bootstrap-4.min.css'%}">
+
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css'%}">
+
+    </head>
+
+<body>
+    <div class="main-wrapper">
+
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="row">
+                    <div class="col-lg-8 offset-lg-2">
+                        <h4 class="page-title">Encaisser la Fiche</h4>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-lg-8 offset-lg-2">
+                        <div class="card-box shadow-sm">
+                            <h3 class="card-title">Patient : <strong>{{ patient.noms }}</strong></h3>
+                            <hr>
+
+                            {% if error_message %}
+                                <div class="alert alert-danger text-center">
+                                    <i class="fa fa-exclamation-triangle"></i> {{ error_message }}
+                                </div>
+                            {% elif deja_paye %}
+                                <div class="alert alert-warning text-center">
+                                    <i class="fa fa-info-circle"></i> Ce patient a déjà payé les frais de fiche (ADM).
+                                    <br><br>
+                                    <a href="{% url 'patientRead' %}" class="btn btn-primary btn-rounded">Retour à la liste</a>
+                                </div>
+                            {% else %}
+                                <div class="row mb-4">
+                                    <div class="col-6">
+                                        <div class="p-3 border rounded bg-light text-center">
+                                            <small class="text-muted d-block">Prix de la Fiche</small>
+                                            <strong class="text-primary" style="font-size: 1.2rem;">{{ prestation.prix_cdf }} CDF</strong>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="p-3 border rounded bg-light text-center">
+                                            <small class="text-muted d-block">Taux de Change</small>
+                                            <strong class="text-dark">1 USD = {{ taux }} CDF</strong>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <form method="post" autocomplete="off">
+                                    {% csrf_token %}
+                                    
+                                    <div class="payment-form">
+                                        {{ form.as_p }}
+                                    </div>
+
+                                    <div class="m-t-20 text-center">
+                                        <hr>
+                                        <a href="{% url 'patientRead' %}" class="btn btn-secondary btn-rounded">Annuler</a>
+                                        <button type="submit" class="btn btn-primary submit-btn btn-rounded">Valider l'encaissement</button>
+                                    </div>
+                                </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        </div>
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/jquery.slimscroll.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/select2.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/moment.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/plugins/datetimepicker/js/tempusdominus-bootstrap-4.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/app.js'%}"></script>
+
+    <style>
+        /* Ajustements pour le rendu de form.as_p */
+        .payment-form p {
+            margin-bottom: 15px;
+        }
+        .payment-form p label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        /* Tes classes form-control injectées par le __init__ du formulaire feront le reste */
+        .errorlist {
+            color: #f62d51;
+            list-style: none;
+            padding: 0;
+            font-size: 13px;
+            margin-top: 5px;
+        }
+    </style>
+</body>
+</html>
