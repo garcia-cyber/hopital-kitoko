@@ -1,5 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.utils import timezone
+from datetime import timedelta
+from django.core.exceptions import ValidationError
 
 # Create your models here.
 
@@ -64,6 +67,27 @@ class Patient(models.Model):
     def __str__(self):
         return self.noms 
 
+    # --- LOGIQUE DE LA FICHE ANNUELLE ---
+    
+    def a_une_fiche_valide(self):
+        """ Vérifie si le patient a payé une fiche il y a moins de 365 jours """
+        un_an_en_arriere = timezone.now().date() - timedelta(days=365)
+        # On cherche une facture de catégorie 'ADM' (Administratif/Fiche) 
+        # créée pour ce patient depuis moins d'un an.
+        return Facture.objects.filter(
+            patient=self, 
+            prestation__categorie='ADM', 
+            date_emission__date__gte=un_an_en_arriere
+        ).exists()
+
+    def doit_solder_fiche(self):
+        """ Vérifie s'il existe une facture de fiche non payée (Reste > 0) """
+        factures_fiche = Facture.objects.filter(patient=self, prestation__categorie='ADM')
+        for f in factures_fiche:
+            if f.reste_a_payer > 0:
+                return True # Il a une dette sur sa fiche
+        return False
+
 
 # 5
 # ==================================================
@@ -103,29 +127,54 @@ class Prestation(models.Model):
 # Facture 
 #
 class Facture(models.Model):
-    patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
-    prestation = models.ForeignKey(Prestation, on_delete=models.CASCADE)
+    patient = models.ForeignKey('Patient', on_delete=models.CASCADE)
+    prestation = models.ForeignKey('Prestation', on_delete=models.CASCADE)
     date_emission = models.DateTimeField(auto_now_add=True)
     
-    # On enregistre ces valeurs pour l'historique
-    prix_fixe_cdf = models.DecimalField(max_digits=15, decimal_places=2)
-    taux_fixe = models.DecimalField(max_digits=10, decimal_places=2)
+    # Historique figé pour la comptabilité
+    prix_fixe_cdf = models.DecimalField(max_digits=15, decimal_places=2, editable=False)
+    taux_fixe = models.DecimalField(max_digits=10, decimal_places=2, editable=False)
 
     def save(self, *args, **kwargs):
+        # 1. LOGIQUE DE SÉCURITÉ LORS DE LA CRÉATION
         if not self.id:
+            # Si on essaie de facturer autre chose qu'une FICHE (catégorie 'ADM')
+            if self.prestation.categorie != 'ADM':
+                
+                # Vérification A : La fiche existe-t-elle (moins de 365 jours) ?
+                if not self.patient.a_une_fiche_valide():
+                    raise ValidationError(
+                        f"Action refusée : {self.patient.noms} n'a pas de fiche annuelle valide."
+                    )
+
+                # Vérification B : La fiche existante est-elle totalement payée ?
+                if self.patient.doit_solder_fiche():
+                    raise ValidationError(
+                        f"Action refusée : {self.patient.noms} doit d'abord solder sa fiche annuelle."
+                    )
+
+            # 2. ENREGISTREMENT DES VALEURS FIXES
             config = ConfigurationHopital.objects.first()
+            if not config:
+                raise ValidationError("Erreur : Aucun taux de change n'est configuré dans le système.")
+            
             self.taux_fixe = config.taux_usd_en_cdf
             self.prix_fixe_cdf = self.prestation.prix_cdf
+            
         super().save(*args, **kwargs)
 
     @property
     def total_paye(self):
-        # Somme de tous les versements liés à cette facture
-        return sum(p.montant_comptable_cdf for p in self.paiements.all())
+        # Utilise aggregate pour plus de performance sur de gros volumes
+        from django.db.models import Sum
+        return self.paiements.aggregate(Sum('montant_comptable_cdf'))['montant_comptable_cdf__sum'] or 0
 
     @property
     def reste_a_payer(self):
         return self.prix_fixe_cdf - self.total_paye
+
+    def __str__(self):
+        return f"Facture {self.id} - {self.patient.noms} ({self.prestation.libelle})"
 
 # 8 
 # ====================================================
