@@ -215,6 +215,86 @@ class Depense(models.Model):
         else:
             self.valeur_cdf = self.montant
         super().save(*args, **kwargs)
+# 10 
+# =======================================================
+# signe vitaux
+#
+class SignesVitaux(models.Model):
+    # 1. LIENS (RELATIONS)
+    # Relie les signes à un patient précis. Si le patient est supprimé, ses signes le sont aussi.
+    patient = models.ForeignKey(
+        'Patient', 
+        on_delete=models.CASCADE, 
+        related_name='signes_vitaux'
+    )
+    
+    # Relie l'action à l'utilisateur (infirmier) connecté. 
+    # Si le compte de l'infirmier est supprimé, on garde les données (null=True).
+    infirmier = models.ForeignKey(
+        User, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        verbose_name="Infirmier ayant effectué le prélèvement"
+    )
+
+    # 2. HORODATAGE
+    # Enregistre la date et l'heure exactes de la prise des constantes.
+    date_prelevement = models.DateTimeField(auto_now_add=True)
+
+    # 3. CONSTANTES MÉDICALES
+    # Température : ex 37.5 (max 4 chiffres, 1 après la virgule)
+    temperature = models.DecimalField(
+        max_digits=4, 
+        decimal_places=1, 
+        verbose_name="Température (°C)",
+        help_text="Ex: 37.5"
+    )
+    
+    # Tension : stockée en texte car contient souvent un "/" (ex: 12/8)
+    tension_arterielle = models.CharField(
+        max_length=20, 
+        verbose_name="Tension Artérielle",
+        help_text="Ex: 12/8 ou 120/80"
+    )
+    
+    # Poids : ex 75.50 (max 5 chiffres, 2 après la virgule)
+    poids = models.DecimalField(
+        max_digits=5, 
+        decimal_places=2, 
+        verbose_name="Poids (kg)"
+    )
+    
+    # Pouls : Battements par minute (Nombre entier)
+    frequence_cardiaque = models.IntegerField(
+        verbose_name="Fréquence Cardiaque (BPM)"
+    )
+    
+    # Respiration : Cycles par minute (Optionnel)
+    frequence_respiratoire = models.IntegerField(
+        null=True, 
+        blank=True, 
+        verbose_name="Fréquence Respiratoire"
+    )
+    
+    # SPO2 : Saturation en oxygène (Optionnel, en %)
+    saturation_oxygene = models.IntegerField(
+        null=True, 
+        blank=True, 
+        verbose_name="Saturation (SpO2 %)",
+        help_text="Saturation en oxygène"
+    )
+
+    # 4. MÉTA-DONNÉES
+    class Meta:
+        verbose_name = "Signe Vital"
+        verbose_name_plural = "Signes Vitaux"
+        ordering = ['-date_prelevement'] # Les plus récents en premier
+
+    # 5. AFFICHAGE DANS L'ADMIN
+    def __str__(self):
+        infirmier_nom = self.infirmier.username if self.infirmier else "Inconnu"
+        return f"Signes de {self.patient.noms} - {self.date_prelevement.strftime('%d/%m/%Y %H:%M')} (Par: {infirmier_nom})"
     
 
     

@@ -56,7 +56,7 @@ class ProfilAddForm(forms.ModelForm):
     # evite de voir d'autre service
     def __init__(self,*args , **kwargs):
         super(ProfilAddForm , self).__init__(*args,**kwargs)
-        self.fields['service'].queryset = Service.objects.filter(nomService__in = ['secretariat','sous-administration','administration'])
+        self.fields['service'].queryset = Service.objects.filter(nomService__in = ['secretariat','sous-administration','administration','pediatrie','medecine interne','gyneco'])
 
 
 # 4

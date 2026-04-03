@@ -66,7 +66,17 @@
                             </ul>
                         </li>
 
-                        
+                        {% elif fonction == 'infirmier' %}
+
+                        <li class="submenu">
+                            <a href="#"><i class="fa fa fa-wheelchair"></i> <span> Patient  </span> <span class="menu-arrow"></span></a>
+                            <ul style="display: none;">
+                                <li><a href="{% url 'liste_patients_soldes' %}">liste de patient</a></li>
+                                
+                               
+                                
+                            </ul>
+                        </li>
                         
                        
                         {% endif %}

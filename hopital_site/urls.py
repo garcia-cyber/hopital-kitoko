@@ -27,6 +27,7 @@ urlpatterns = [
     #
     path('patientAdd/', patientAdd , name = 'patientAdd') ,
     path('patientRead/' , patientRead , name = 'patientRead') , 
+    path('liste_patients_soldes/' , liste_patients_soldes , name ='liste_patients_soldes') ,
 
     # ===============================================
     # paiement fiche historique
@@ -40,6 +41,7 @@ urlpatterns = [
     #
     path('imprimer-recu/<int:paiement_id>/', views.imprimer_recu, name='imprimerRecu'),
     path('imprimer-facture-globale/<int:facture_id>/', views.imprimer_facture_globale, name='imprimerFactureGlobale'),
+    path('prendre-signes/<int:patient_id>/', views.prendre_signes, name='prendre_signes'),
 
 
 

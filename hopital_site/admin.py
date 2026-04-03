@@ -61,6 +61,7 @@ class PaiementInline(admin.TabularInline):
     model = Paiement
     extra = 1 # Propose une ligne vide pour un nouveau versement
     readonly_fields = ('montant_comptable_cdf',)
+# 8
 
 @admin.register(Facture)
 class FactureAdmin(admin.ModelAdmin):
@@ -69,16 +70,63 @@ class FactureAdmin(admin.ModelAdmin):
     inlines = [PaiementInline]
     list_filter = ('date_emission',)
 
-# 8. PAIEMENTS (Vue séparée pour la comptabilité)
+# 9. PAIEMENTS (Vue séparée pour la comptabilité)
 @admin.register(Paiement)
 class PaiementAdmin(admin.ModelAdmin):
     list_display = ('facture', 'montant_physique', 'devise', 'montant_comptable_cdf', 'date_paiement')
     readonly_fields = ('montant_comptable_cdf',)
     list_filter = ('devise', 'date_paiement')
 
-# 9. DÉPENSES
+# 10. DÉPENSES
 @admin.register(Depense)
 class DepenseAdmin(admin.ModelAdmin):
     list_display = ('motif', 'montant', 'devise', 'valeur_cdf', 'date_depense')
     readonly_fields = ('valeur_cdf',)
     list_filter = ('date_depense', 'devise')
+
+# 11
+@admin.register(SignesVitaux)
+class SignesVitauxAdmin(admin.ModelAdmin):
+    # 1. Les colonnes affichées dans la liste
+    list_display = (
+        'date_prelevement', 
+        'patient', 
+        'temperature', 
+        'tension_arterielle', 
+        'poids', 
+        'frequence_cardiaque', 
+        'infirmier'
+    )
+
+    # 2. Les filtres sur le côté droit
+    # Permet de filtrer par date ou par l'infirmier qui a fait le prélèvement
+    list_filter = ('date_prelevement', 'infirmier', 'temperature')
+
+    # 3. La barre de recherche
+    # Permet de chercher par le nom du patient ou le nom d'utilisateur de l'infirmier
+    search_fields = ('patient__noms', 'infirmier__username', 'tension_arterielle')
+
+    # 4. Organisation du formulaire de modification
+    # On regroupe les constantes pour une lecture plus propre
+    fieldsets = (
+        ('Informations Générales', {
+            'fields': ('patient', 'infirmier')
+        }),
+        ('Constantes Vitales', {
+            'fields': (
+                ('temperature', 'tension_arterielle'),
+                ('poids', 'frequence_cardiaque'),
+                ('frequence_respiratoire', 'saturation_oxygene')
+            )
+        }),
+    )
+
+    # 5. Rendre la date de prélèvement accessible mais non modifiable (lecture seule)
+    readonly_fields = ('date_prelevement',)
+
+    # Optionnel : permettre de modifier l'infirmier seulement si on est superadmin
+    def save_model(self, request, obj, form, change):
+        # Si c'est une nouvelle création et que l'infirmier n'est pas rempli
+        if not obj.pk and not obj.infirmier:
+            obj.infirmier = request.user
+        super().save_model(request, obj, form, change)

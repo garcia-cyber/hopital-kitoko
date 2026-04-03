@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+    <title>Signes Vitaux - Patients En Règle</title>
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'back-end/assets/img/favicon.ico'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css'%}">
+</head>
+
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="row">
+                    <div class="col-sm-12">
+                        <h4 class="page-title">Patients en attente de Signes Vitaux 
+                            <span class="badge badge-pill badge-primary">{{ patients_prets|length }}</span>
+                        </h4>
+                        <p class="text-muted">Seuls les patients ayant totalement soldé leur fiche apparaissent ici.</p>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover custom-table mb-0">
+                                        <thead>
+                                            <tr class="bg-light">
+                                                <th>Date Facture</th>
+                                                <th>Patient</th>
+                                                <th>Prestation</th>
+                                                <th>Statut</th>
+                                                <th class="text-right">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for item in patients_prets %}
+                                            <tr>
+                                                <td>{{ item.date|date:"d/m/Y H:i" }}</td>
+                                                <td>
+                                                    <h2 class="table-avatar">
+                                                        <a href="#">{{ item.patient.noms }} <span>ID: #{{ item.patient.id }}</span></a>
+                                                    </h2>
+                                                </td>
+                                                <td><span class="text-primary font-weight-bold">{{ item.prestation }}</span></td>
+                                                <td>
+                                                    <span class="custom-badge status-green">Paiement Terminé</span>
+                                                </td>
+                                                <td class="text-right">
+                                                    <a href="{% url 'prendre_signes' item.patient.id %}" class="btn btn-outline-primary btn-sm btn-rounded">
+                                                        <i class="fa fa-stethoscope m-r-5"></i> Prélever les signes
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                            {% empty %}
+                                            <tr>
+                                                <td colspan="5" class="text-center py-4">
+                                                    <img src="{% static 'back-end/assets/img/sent.png' %}" alt="" width="50"><br>
+                                                    <p class="mt-2 text-muted">Aucun patient n'est en attente de prélèvement pour le moment.</p>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/app.js'%}"></script>
+</body>
+</html>

@@ -6,6 +6,7 @@ from django.contrib.auth.models import User
 from .models import *
 from decimal import Decimal
 from django.contrib import messages
+from django.db.models import Sum, F
 
 # Create your views here.
 
@@ -351,15 +352,17 @@ def historique_patient(request, patient_id):
         f.montant_restant = Decimal(str(f.prestation.prix_cdf)) - total_verse
         f.liste_paiements = ses_paiements 
 
+    profil = Profil.objects.filter(userProfil = request.user).first()
+    fonction = profil.fonction.fonction if profil else None
+
     return render(request, 'back-end/historique_patient.html', {
-        'patient': patient, 'factures': factures, 'taux': taux_aff
+        'patient': patient, 'factures': factures, 'taux': taux_aff , 'fonction':fonction
     })
 
 # 13
 # =========================================================================
 # imprimer recu
 # =========================================================================
-
 @login_required()
 def imprimer_recu(request, paiement_id):
     paiement = get_object_or_404(Paiement, id=paiement_id)
@@ -373,7 +376,7 @@ def imprimer_facture_globale(request, facture_id):
     facture = get_object_or_404(Facture, id=facture_id)
     
     config = ConfigurationHopital.objects.first()
-    taux = config.taux_usd_en_cdf if config else 2500
+    taux = config.taux_usd_en_cdf if config else 2250
     
     total_verse = 0
     for p in facture.paiements.all():
@@ -392,3 +395,53 @@ def imprimer_facture_globale(request, facture_id):
         'montant_du_reste': montant_du_reste,
         'taux': taux
     })
+
+# 15 
+# =================================================================================
+# listes de patient qui on solde la fiche 
+# =================================================================================
+@login_required()
+def liste_patients_soldes(request):
+    # On récupère toutes les factures
+    toutes_factures = Facture.objects.select_related('patient', 'prestation').all()
+    config = ConfigurationHopital.objects.first()
+    taux = Decimal(str(config.taux_usd_en_cdf)) if config else Decimal("2250.0")
+    
+    patients_prets = []
+
+    for f in toutes_factures:
+        # Calcul du total payé pour CETTE facture
+        total_paye = Decimal("0.0")
+        for p in f.paiements.all():
+            m_p = Decimal(str(p.montant_physique))
+            if p.devise == 'USD':
+                total_paye += (m_p * taux)
+            else:
+                total_paye += m_p
+        
+        # Si le reste est 0 (ou très proche de 0), on l'ajoute à la liste
+        prix_total = Decimal(str(f.prestation.prix_cdf))
+        if total_paye >= prix_total:
+            patients_prets.append({
+                'patient': f.patient,
+                'prestation': f.prestation.libelle,
+                'date': f.date_emission,
+                'facture_id': f.id
+            })
+    profil = Profil.objects.filter(userProfil = request.user).first()
+    fonction = profil.fonction.fonction if profil else None
+
+    return render(request, 'back-end/infirmier_signes.html', {
+        'patients_prets': patients_prets , 
+        'fonction' : fonction 
+    })
+
+# 16 
+# =================================================================================
+# prendre le signe vitaux
+# =================================================================================
+@login_required()
+def prendre_signes(request, patient_id):
+    patient = get_object_or_404(Patient, id=patient_id)
+    # Pour l'instant, on affiche juste une page simple ou on redirige
+    return render(request, 'back-end/formulaire_signes.html', {'patient': patient})
