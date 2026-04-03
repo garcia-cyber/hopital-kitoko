@@ -443,5 +443,63 @@ def liste_patients_soldes(request):
 @login_required()
 def prendre_signes(request, patient_id):
     patient = get_object_or_404(Patient, id=patient_id)
-    # Pour l'instant, on affiche juste une page simple ou on redirige
-    return render(request, 'back-end/formulaire_signes.html', {'patient': patient})
+    aujourdhui = timezone.now().date()
+    
+    # On cherche s'il existe déjà un enregistrement pour ce patient aujourd'hui
+    instance_existante = SignesVitaux.objects.filter(
+        patient=patient, 
+        date_prelevement__date=aujourdhui
+    ).first()
+
+    if request.method == "POST":
+        # Si instance_existante existe, Django va MODIFIER au lieu de CRÉER
+        form = SignesVitauxForm(request.POST, instance=instance_existante)
+        
+        if form.is_valid():
+            signes = form.save(commit=False)
+            signes.patient = patient
+            signes.infirmier = request.user
+            signes.save()
+            
+            if instance_existante:
+                messages.success(request, f"Les signes de {patient.noms} ont été mis à jour.")
+            else:
+                messages.success(request, f"Les signes de {patient.noms} ont été enregistrés.")
+                
+            return redirect('liste_soldes')
+    else:
+        # Au chargement de la page (GET) :
+        # Si une instance existe, le formulaire sera pré-rempli avec les anciennes valeurs
+        form = SignesVitauxForm(instance=instance_existante)
+
+    profil = Profil.objects.filter(userProfil = request.user).first()
+    fonction = profil.fonction.fonction if profil else None
+
+    return render(request, 'back-end/formulaire_signes.html', {
+        'form': form,
+        'patient': patient,
+        'est_modification': instance_existante is not None ,
+        'fonction' : fonction
+    })
+
+# 17 
+# =========================================================================================================
+# historique de signe vitaux par les infirmier
+# =========================================================================================================
+@login_required()
+def historique_signes_vitaux(request):
+    query = request.GET.get('search')
+    historique = SignesVitaux.objects.all().select_related('patient', 'infirmier').order_by('-date_prelevement')
+
+    if query:
+        # On filtre par nom du patient OU par nom d'utilisateur de l'infirmier
+        historique = historique.filter(
+            models.Q(patient__noms__icontains=query) | 
+            models.Q(infirmier__username__icontains=query)
+        )
+
+    profil = Profil.objects.filter(userProfil = request.user).first()
+    fonction = profil.fonction.fonction if profil else None
+    
+    return render(request, 'back-end/historique_signes.html', {'historique': historique , 'fonction' : fonction})
+

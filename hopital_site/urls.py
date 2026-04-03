@@ -27,7 +27,7 @@ urlpatterns = [
     #
     path('patientAdd/', patientAdd , name = 'patientAdd') ,
     path('patientRead/' , patientRead , name = 'patientRead') , 
-    path('liste_patients_soldes/' , liste_patients_soldes , name ='liste_patients_soldes') ,
+    path('liste_patients_soldes/' , liste_patients_soldes , name ='liste_soldes') ,
 
     # ===============================================
     # paiement fiche historique
@@ -37,11 +37,14 @@ urlpatterns = [
     # path('solder-facture/<int:f_id>/', views.solder_facture_view, name='solderFacture'),
 
     # ================================================
-    # imprimer
+    # infimier
     #
     path('imprimer-recu/<int:paiement_id>/', views.imprimer_recu, name='imprimerRecu'),
     path('imprimer-facture-globale/<int:facture_id>/', views.imprimer_facture_globale, name='imprimerFactureGlobale'),
     path('prendre-signes/<int:patient_id>/', views.prendre_signes, name='prendre_signes'),
+    path('historique-signes/', views.historique_signes_vitaux, name='historique_signes'),
+
+
 
 
 

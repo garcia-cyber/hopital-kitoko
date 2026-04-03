@@ -96,4 +96,25 @@ class PaiementFicheForm(forms.ModelForm):
         for field in self.fields.values():
             field.widget.attrs.update({'class': 'form-control'})
 
-            
+# 6
+# ========================================================
+# signe vitaux
+# ========================================================
+class SignesVitauxForm(forms.ModelForm):
+    class Meta:
+        model = SignesVitaux
+        # On exclut 'patient', 'infirmier' et 'date_prelevement' car on les gère en coulisse
+        fields = [
+            'temperature', 'tension_arterielle', 'poids', 
+            'frequence_cardiaque', 'frequence_respiratoire', 'saturation_oxygene'
+        ]
+        # Ajout de classes Bootstrap pour le design
+        widgets = {
+            'temperature': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.1', 'placeholder': 'Ex: 37.5'}),
+            'tension_arterielle': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: 12/8'}),
+            'poids': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': 'En kg'}),
+            'frequence_cardiaque': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'BPM'}),
+            'frequence_respiratoire': forms.NumberInput(attrs={'class': 'form-control'}),
+            'saturation_oxygene': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '%'}),
+        }
+                 

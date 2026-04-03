@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+    <title>Historique des Signes Vitaux</title>
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css'%}">
+</head>
+
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="row">
+                    <div class="col-sm-8 col-5">
+                        <h4 class="page-title">Historique des Prélèvements</h4>
+                    </div>
+                </div>
+
+                <div class="row filter-row">
+                    <div class="col-sm-6 col-md-9">
+                        <form method="GET" action="">
+                            <div class="form-group form-focus">
+                                <label class="focus-label">Nom du patient ou Infirmier</label>
+                                <input type="text" name="search" class="form-control floating" value="{{ request.GET.search }}">
+                            </div>
+                    </div>
+                    <div class="col-sm-6 col-md-3">
+                        <button type="submit" class="btn btn-success btn-block"> Rechercher </button>
+                        </form>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="table-responsive">
+                            <table class="table table-striped custom-table datatable">
+                                <thead>
+                                    <tr>
+                                        <th>Date & Heure</th>
+                                        <th>Patient</th>
+                                        <th>Tension</th>
+                                        <th>Temp. (°C)</th>
+                                        <th>Poids (kg)</th>
+                                        <th>Pouls (BPM)</th>
+                                        <th>Infirmier</th>
+                                        <th class="text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for signe in historique %}
+                                    <tr>
+                                        <td>{{ signe.date_prelevement|date:"d/m/Y H:i" }}</td>
+                                        <td>
+                                            <h2><a href="#">{{ signe.patient.noms }}</a></h2>
+                                        </td>
+                                        <td><span class="custom-badge status-blue">{{ signe.tension_arterielle }}</span></td>
+                                        <td>{{ signe.temperature }}°C</td>
+                                        <td>{{ signe.poids }} kg</td>
+                                        <td>{{ signe.frequence_cardiaque }}</td>
+                                        <td><i class="fa fa-user-md text-primary"></i> {{ signe.infirmier.username }}</td>
+                                        <td class="text-right">
+                                            <a href="{% url 'prendre_signes' signe.patient.id %}" class="btn btn-outline-primary btn-sm">
+                                                <i class="fa fa-edit"></i> Modifier
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="8" class="text-center">Aucun historique disponible.</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/app.js'%}"></script>
+</body>
+</html>
