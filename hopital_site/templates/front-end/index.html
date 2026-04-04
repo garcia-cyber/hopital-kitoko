@@ -5,7 +5,7 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=Edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Hopital  |KITOKO </title>
+    <title>Hopital | KITOKO </title>
     
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700&family=Montserrat:wght@800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
@@ -83,7 +83,7 @@
 
         .btn-nav-contact:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0, 210, 211, 0.4); }
 
-        /* --- HERO AVEC TON GRADIENT NOIR --- */
+        /* --- HERO --- */
         #home { 
             height: 90vh; 
             position: relative; 
@@ -100,7 +100,7 @@
             width: 100%; 
             height: 100%; 
             object-fit: cover; 
-            opacity: 0.5; /* Opacité augmentée pour voir l'image grâce au gradient */
+            opacity: 0.5; 
             z-index: 0;
         }
 
@@ -108,7 +108,6 @@
             position: absolute;
             width: 100%;
             height: 100%;
-            /* Ton Gradient : Noir pur en bas, noir 50% en haut */
             background: linear-gradient(to top, #000 0%, #0008 100%);
             z-index: 1;
         }
@@ -127,6 +126,33 @@
         .glass-card:hover { background: rgba(255, 255, 255, 0.05); border-color: var(--accent); }
         .accent-bar { width: 60px; height: 4px; background: var(--accent); margin-bottom: 30px; border-radius: 2px; }
 
+        /* --- BIOGRAPHIE PHOTO STYLE --- */
+        .bio-img-container {
+            position: relative;
+            padding: 10px;
+        }
+        .bio-img-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 2px solid var(--accent);
+            border-radius: 20px;
+            transform: translate(-15px, 15px);
+            z-index: 0;
+        }
+        .bio-img {
+            border-radius: 20px;
+            position: relative;
+            z-index: 1;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            width: 100%;
+            height: auto;
+            object-fit: cover;
+        }
+
         /* --- FORM --- */
         .form-control { 
             background: rgba(255, 255, 255, 0.05); border: 1px solid var(--card-border); 
@@ -142,6 +168,7 @@
         @media (max-width: 768px) {
             #home { text-align: center; height: auto; padding: 160px 0 80px; }
             .btn-nav-contact { margin: 15px 0; display: inline-block; }
+            .bio-img-container { margin-bottom: 50px; }
         }
     </style>
 </head>
@@ -230,9 +257,16 @@
                     <h2>LE PROMOTEUR LAWRENCE KITOKO</h2>
                     <div class="accent-bar" style="margin: 0 auto 50px;"></div>
                 </div>
-                <div class="col-md-10 col-md-offset-1">
+            </div>
+            <div class="row" style="display: flex; align-items: center; flex-wrap: wrap;">
+                <div class="col-md-4 wow fadeInLeft">
+                    <div class="bio-img-container">
+                        <img src="{% static 'front-end/hopital/kitoko.jpg' %}" class="bio-img" alt="Lawrence Kitoko">
+                    </div>
+                </div>
+                <div class="col-md-8">
                     <div class="glass-card wow fadeInUp">
-                        <p style="text-align: justify;">
+                        <p style="text-align: justify; font-size: 17px;">
                             Originaire de la Province de Tshopo et né à Kinshasa, Lawrence Kitoko vit entre le Congo et la France. Diplômé en kinésithérapie (Bruxelles), ostéopathie (Louvain) et santé publique (UCL), il a œuvré comme coordonnateur médical des <strong>SIMBAS-EUROPE</strong>. 
                         </p>
                         <p style="text-align: justify; color: var(--text-muted); margin-top: 15px;">
