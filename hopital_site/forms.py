@@ -117,4 +117,23 @@ class SignesVitauxForm(forms.ModelForm):
             'frequence_respiratoire': forms.NumberInput(attrs={'class': 'form-control'}),
             'saturation_oxygene': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '%'}),
         }
-                 
+# 7
+# ===========================================================
+# 
+# ===========================================================
+
+class ConsultationForm(forms.ModelForm):
+    # On ajoute un champ spécial pour les examens (Catégorie LABO uniquement)
+    examens_labo = forms.ModelMultipleChoiceField(
+        queryset=Prestation.objects.filter(categorie='LABO'),
+        widget=forms.CheckboxSelectMultiple(),
+        required=False
+    )
+
+    class Meta:
+        model = Consultation
+        fields = ['motif', 'diagnostic']
+        widgets = {
+            'motif': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'diagnostic': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }

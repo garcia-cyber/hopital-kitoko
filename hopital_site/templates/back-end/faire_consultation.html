@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+    <title>Consultation Médicale - {{ patient.noms }}</title>
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'back-end/assets/img/favicon.ico'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css'%}">
+    <style>
+        .vital-card { border-left: 4px solid #007bff; background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .vital-title { font-size: 12px; text-transform: uppercase; color: #777; font-weight: bold; margin-bottom: 5px; }
+        .vital-data { font-size: 18px; color: #333; font-weight: 700; }
+        .scroll-labo { max-height: 400px; overflow-y: auto; border: 1px solid #eee; border-radius: 5px; padding: 10px; background: #fff; }
+        .table-examens thead th { position: sticky; top: 0; background: #fdfdfd; z-index: 1; border-top: 0; }
+        .selected-row { background-color: #eef6ff !important; }
+    </style>
+</head>
+
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="row">
+                    <div class="col-sm-12">
+                        <h4 class="page-title">Consultation : <span class="text-primary">{{ patient.noms }}</span></h4>
+                    </div>
+                </div>
+
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <form method="POST" action=".">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-lg-4 col-md-5">
+                            <div class="card shadow-sm border-0">
+                                <div class="card-header bg-white border-bottom">
+                                    <h5 class="card-title mb-0"><i class="fas fa-heartbeat text-danger"></i> Signes Vitaux Actuels</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="vital-card">
+                                        <div class="vital-title">Température</div>
+                                        <div class="vital-data">{{ signes.temperature }} °C</div>
+                                    </div>
+                                    <div class="vital-card">
+                                        <div class="vital-title">Tension Artérielle</div>
+                                        <div class="vital-data">{{ signes.tension_arterielle }} mmHg</div>
+                                    </div>
+                                    <div class="vital-card">
+                                        <div class="vital-title">Poids</div>
+                                        <div class="vital-data">{{ signes.poids }} Kg</div>
+                                    </div>
+                                    <div class="vital-card">
+                                        <div class="vital-title">Fréquence Cardiaque</div>
+                                        <div class="vital-data">{{ signes.frequence_cardiaque }} bpm</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-8 col-md-7">
+                            <div class="card shadow-sm border-0">
+                                <div class="card-body">
+                                    <div class="form-group">
+                                        <label class="font-weight-bold">Motif / Plaintes du patient <span class="text-danger">*</span></label>
+                                        <textarea name="motif" class="form-control {% if form.motif.errors %}is-invalid{% endif %}" rows="3" required placeholder="Saisissez les plaintes...">{{ form.motif.value|default:'' }}</textarea>
+                                        {% for error in form.motif.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="font-weight-bold">Diagnostic Présomptif</label>
+                                        <textarea name="diagnostic" class="form-control" rows="3" placeholder="Saisissez votre diagnostic...">{{ form.diagnostic.value|default:'' }}</textarea>
+                                    </div>
+
+                                    <hr class="my-4">
+
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h5 class="text-primary mb-0"><i class="fas fa-flask"></i> Prescription Laboratoire</h5>
+                                        <div class="search-box" style="width: 250px;">
+                                            <input type="text" id="searchExamen" class="form-control form-control-sm" placeholder="Chercher un examen...">
+                                        </div>
+                                    </div>
+
+                                    <div class="scroll-labo">
+                                        <table class="table table-hover table-sm table-examens">
+                                            <thead>
+                                                <tr class="text-muted">
+                                                    <th width="50" class="text-center">Select</th>
+                                                    <th>Libellé Examen</th>
+                                                    <th width="100">Quantité</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="examenTableBody">
+                                                {% for p in prestations %}
+                                                <tr class="examen-row">
+                                                    <td class="text-center">
+                                                        <input type="checkbox" name="examens_choisis" value="{{ p.id }}" class="examen-check">
+                                                    </td>
+                                                    <td class="examen-name">{{ p.libelle }}</td>
+                                                    <td>
+                                                        <input type="number" name="qty_{{ p.id }}" value="1" min="1" class="form-control form-control-sm">
+                                                    </td>
+                                                </tr>
+                                                {% empty %}
+                                                <tr><td colspan="3" class="text-center text-muted">Aucun examen de laboratoire disponible.</td></tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <div class="mt-4">
+                                        <button type="submit" class="btn btn-primary btn-lg btn-block shadow">
+                                            <i class="fas fa-check-circle"></i> ENREGISTRER ET ENVOYER AU LABO
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/app.js'%}"></script>
+
+    <script>
+        $(document).ready(function(){
+            // Recherche instantanée
+            $("#searchExamen").on("keyup", function() {
+                var value = $(this).val().toLowerCase();
+                $("#examenTableBody .examen-row").filter(function() {
+                    $(this).toggle($(this).find(".examen-name").text().toLowerCase().indexOf(value) > -1)
+                });
+            });
+
+            // Sélection visuelle des lignes
+            $(document).on('change', '.examen-check', function() {
+                if(this.checked) {
+                    $(this).closest('tr').addClass('selected-row');
+                } else {
+                    $(this).closest('tr').removeClass('selected-row');
+                }
+            });
+        });
+    </script>
+</body>
+</html><!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+    <title>Consultation Médicale - {{ patient.noms }}</title>
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'back-end/assets/img/favicon.ico'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css'%}">
+    <style>
+        .vital-card { border-left: 4px solid #007bff; background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .vital-title { font-size: 12px; text-transform: uppercase; color: #777; font-weight: bold; margin-bottom: 5px; }
+        .vital-data { font-size: 18px; color: #333; font-weight: 700; }
+        .scroll-labo { max-height: 400px; overflow-y: auto; border: 1px solid #eee; border-radius: 5px; padding: 10px; background: #fff; }
+        .table-examens thead th { position: sticky; top: 0; background: #fdfdfd; z-index: 1; border-top: 0; }
+        .selected-row { background-color: #eef6ff !important; }
+    </style>
+</head>
+
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="row">
+                    <div class="col-sm-12">
+                        <h4 class="page-title">Consultation : <span class="text-primary">{{ patient.noms }}</span></h4>
+                    </div>
+                </div>
+
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <form method="POST" action=".">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-lg-4 col-md-5">
+                            <div class="card shadow-sm border-0">
+                                <div class="card-header bg-white border-bottom">
+                                    <h5 class="card-title mb-0"><i class="fas fa-heartbeat text-danger"></i> Signes Vitaux Actuels</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="vital-card">
+                                        <div class="vital-title">Température</div>
+                                        <div class="vital-data">{{ signes.temperature }} °C</div>
+                                    </div>
+                                    <div class="vital-card">
+                                        <div class="vital-title">Tension Artérielle</div>
+                                        <div class="vital-data">{{ signes.tension_arterielle }} mmHg</div>
+                                    </div>
+                                    <div class="vital-card">
+                                        <div class="vital-title">Poids</div>
+                                        <div class="vital-data">{{ signes.poids }} Kg</div>
+                                    </div>
+                                    <div class="vital-card">
+                                        <div class="vital-title">Fréquence Cardiaque</div>
+                                        <div class="vital-data">{{ signes.frequence_cardiaque }} bpm</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-8 col-md-7">
+                            <div class="card shadow-sm border-0">
+                                <div class="card-body">
+                                    <div class="form-group">
+                                        <label class="font-weight-bold">Motif / Plaintes du patient <span class="text-danger">*</span></label>
+                                        <textarea name="motif" class="form-control {% if form.motif.errors %}is-invalid{% endif %}" rows="3" required placeholder="Saisissez les plaintes...">{{ form.motif.value|default:'' }}</textarea>
+                                        {% for error in form.motif.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="font-weight-bold">Diagnostic Présomptif</label>
+                                        <textarea name="diagnostic" class="form-control" rows="3" placeholder="Saisissez votre diagnostic...">{{ form.diagnostic.value|default:'' }}</textarea>
+                                    </div>
+
+                                    <hr class="my-4">
+
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h5 class="text-primary mb-0"><i class="fas fa-flask"></i> Prescription Laboratoire</h5>
+                                        <div class="search-box" style="width: 250px;">
+                                            <input type="text" id="searchExamen" class="form-control form-control-sm" placeholder="Chercher un examen...">
+                                        </div>
+                                    </div>
+
+                                    <div class="scroll-labo">
+                                        <table class="table table-hover table-sm table-examens">
+                                            <thead>
+                                                <tr class="text-muted">
+                                                    <th width="50" class="text-center">Select</th>
+                                                    <th>Libellé Examen</th>
+                                                    <th width="100">Quantité</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="examenTableBody">
+                                                {% for p in prestations %}
+                                                <tr class="examen-row">
+                                                    <td class="text-center">
+                                                        <input type="checkbox" name="examens_choisis" value="{{ p.id }}" class="examen-check">
+                                                    </td>
+                                                    <td class="examen-name">{{ p.libelle }}</td>
+                                                    <td>
+                                                        <input type="number" name="qty_{{ p.id }}" value="1" min="1" class="form-control form-control-sm">
+                                                    </td>
+                                                </tr>
+                                                {% empty %}
+                                                <tr><td colspan="3" class="text-center text-muted">Aucun examen de laboratoire disponible.</td></tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <div class="mt-4">
+                                        <button type="submit" class="btn btn-primary btn-lg btn-block shadow">
+                                            <i class="fas fa-check-circle"></i> ENREGISTRER ET ENVOYER AU LABO
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/app.js'%}"></script>
+
+    <script>
+        $(document).ready(function(){
+            // Recherche instantanée
+            $("#searchExamen").on("keyup", function() {
+                var value = $(this).val().toLowerCase();
+                $("#examenTableBody .examen-row").filter(function() {
+                    $(this).toggle($(this).find(".examen-name").text().toLowerCase().indexOf(value) > -1)
+                });
+            });
+
+            // Sélection visuelle des lignes
+            $(document).on('change', '.examen-check', function() {
+                if(this.checked) {
+                    $(this).closest('tr').addClass('selected-row');
+                } else {
+                    $(this).closest('tr').removeClass('selected-row');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

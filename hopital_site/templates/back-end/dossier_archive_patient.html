@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+    <title>Archives Patient - {{ patient.noms }}</title>
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'back-end/assets/img/favicon.ico'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css'%}">
+    <style>
+        .archive-card { border-radius: 10px; border: none; margin-bottom: 25px; transition: 0.3s; }
+        .archive-card:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .medical-header { border-left: 5px solid #007bff; background: #fdfdfd; padding: 15px; }
+        .doctor-badge { background: #e3f2fd; color: #007bff; font-weight: 600; padding: 5px 12px; border-radius: 20px; font-size: 13px; }
+        .status-paid { color: #28a745; font-weight: bold; }
+        .status-unpaid { color: #dc3545; font-weight: bold; }
+        .table-history { background: #fff; border-radius: 8px; }
+    </style>
+</head>
+
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="row">
+                    <div class="col-sm-12">
+                        <h4 class="page-title">Dossier d'Archives : <span class="text-primary">{{ patient.noms }}</span></h4>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        {% for consultation in consultations %}
+                        <div class="card archive-card shadow-sm">
+                            <div class="card-header bg-white d-flex justify-content-between align-items-center medical-header">
+                                <div>
+                                    <h5 class="mb-0 text-dark">
+                                        <i class="fas fa-calendar-check text-primary mr-2"></i>
+                                        Consultation du {{ consultation.date_consultation|date:"d/m/Y" }} à {{ consultation.date_consultation|time:"H:i" }}
+                                    </h5>
+                                </div>
+                                <div class="doctor-badge">
+                                    <i class="fas fa-user-md mr-1"></i> Dr. {{ consultation.medecin.get_full_name|default:consultation.medecin.username }}
+                                </div>
+                            </div>
+                            
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-lg-5 col-md-12 border-right">
+                                        <div class="mb-3">
+                                            <label class="text-muted small font-weight-bold text-uppercase">Motif de consultation</label>
+                                            <p class="text-dark">{{ consultation.motif }}</p>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="text-muted small font-weight-bold text-uppercase">Diagnostic</label>
+                                            <p class="text-secondary">{{ consultation.diagnostic|default:"Aucun diagnostic saisi" }}</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-lg-7 col-md-12">
+                                        <label class="text-muted small font-weight-bold text-uppercase mb-2 d-block">Examens Prescrits & Statut Financier</label>
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-history">
+                                                <thead class="thead-light">
+                                                    <tr>
+                                                        <th>Examen</th>
+                                                        <th class="text-center">Quantité</th>
+                                                        <th class="text-right">Prix Total</th>
+                                                        <th class="text-center">Paiement</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for ep in consultation.examens_prescrits.all %}
+                                                    <tr>
+                                                        <td>{{ ep.prestation.libelle }}</td>
+                                                        <td class="text-center">{{ ep.quantite }}</td>
+                                                        <td class="text-right font-weight-bold">{{ ep.prix_total }} CDF</td>
+                                                        <td class="text-center">
+                                                            {% if ep.paye %}
+                                                                <span class="badge badge-success"><i class="fas fa-check"></i> Payé</span>
+                                                            {% else %}
+                                                                <span class="badge badge-danger"><i class="fas fa-clock"></i> Non payé</span>
+                                                            {% endif %}
+                                                        </td>
+                                                    </tr>
+                                                    {% empty %}
+                                                    <tr><td colspan="4" class="text-center text-muted">Aucun examen de laboratoire pour cette visite.</td></tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        
+                                        <div class="d-flex justify-content-end mt-2">
+                                            <div class="p-2 bg-light rounded">
+                                                <span class="text-muted mr-2">Total à payer :</span>
+                                                <span class="h6 mb-0 text-primary font-weight-bold">
+                                                    {% if consultation.get_total_facture %}
+                                                        {{ consultation.get_total_facture }}
+                                                    {% else %}
+                                                        0 CDF
+                                                    {% endif %}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="card shadow-sm">
+                            <div class="card-body text-center py-5">
+                                <i class="fas fa-folder-open fa-4x text-light mb-3"></i>
+                                <h5 class="text-muted">Aucune archive médicale trouvée pour ce patient.</h5>
+                                <p class="text-muted">Les consultations apparaîtront ici dès qu'elles seront enregistrées.</p>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="row mt-3">
+                    <div class="col-sm-12">
+                        <a href="javascript:history.back()" class="btn btn-secondary shadow-sm">
+                            <i class="fas fa-arrow-left"></i> Retour
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/app.js'%}"></script>
+</body>
+</html>

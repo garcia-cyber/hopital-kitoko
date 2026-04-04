@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+    <title>Patients Consultés</title>
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'back-end/assets/img/favicon.ico' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css' %}">
+    <style>
+        .search-container { 
+            background: #ffffff; 
+            padding: 20px; 
+            border-radius: 10px; 
+            margin-bottom: 25px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
+            border: 1px solid #e3e3e3;
+        }
+        .page-title { font-weight: 600; color: #333; }
+    </style>
+</head>
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="row align-items-center mb-4">
+                    <div class="col-sm-12">
+                        <h4 class="page-title"><i class="fas fa-check-circle text-success mr-2"></i> Patients déjà consultés</h4>
+                    </div>
+                </div>
+
+                <div class="search-container">
+                    <form method="GET" action="{% url 'liste_patients_consultes' %}">
+                        <div class="row align-items-center">
+                            <div class="col-md-10 col-sm-9">
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-white border-right-0">
+                                            <i class="fas fa-search text-muted"></i>
+                                        </span>
+                                    </div>
+                                    <input type="text" name="search" class="form-control border-left-0" 
+                                           placeholder="Rechercher par nom du patient..." 
+                                           value="{{ request.GET.search|default:'' }}">
+                                </div>
+                            </div>
+                            <div class="col-md-2 col-sm-3">
+                                <button class="btn btn-primary btn-block shadow-sm" type="submit">Rechercher</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-striped custom-table mb-0">
+                                        <thead>
+                                            <tr class="bg-primary text-white">
+                                                <th>Date & Heure</th>
+                                                <th>Patient</th>
+                                                <th>Médecin</th>
+                                                <th>Diagnostic</th>
+                                                <th class="text-right">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for c in consultations %}
+                                            <tr>
+                                                <td>{{ c.date_consultation|date:"d/m/Y H:i" }}</td>
+                                                <td>
+                                                    <span class="font-weight-bold text-dark">{{ c.patient.noms|upper }} {{ c.patient.prenom }}</span>
+                                                    <br><small class="text-muted">ID: {{ c.patient.id }}</small>
+                                                </td>
+                                                <td>
+                                                    <span class="custom-badge status-blue">Dr. {{ c.medecin.username }}</span>
+                                                </td>
+                                                <td>
+                                                    <span class="text-muted small">
+                                                        {% if c.diagnostic %}
+                                                            {{ c.diagnostic|truncatechars:50 }}
+                                                        {% else %}
+                                                            <i class="text-light">Non spécifié</i>
+                                                        {% endif %}
+                                                    </span>
+                                                </td>
+                                                <td class="text-right">
+                                                    <a href="{% url 'dossier_archive_patient' c.patient.id %}" class="btn btn-info btn-sm btn-rounded px-3">
+                                                        <i class="fas fa-eye mr-1"></i> Voir Dossier & Examens
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                            {% empty %}
+                                            <tr>
+                                                <td colspan="5" class="text-center py-5">
+                                                    <i class="fas fa-user-slash fa-3x text-muted mb-3"></i>
+                                                    <h5 class="text-muted">Aucune consultation trouvée.</h5>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js' %}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js' %}"></script>
+    <script src="{% static 'back-end/assets/js/app.js' %}"></script>
+</body>
+</html>

@@ -28,6 +28,7 @@ urlpatterns = [
     path('patientAdd/', patientAdd , name = 'patientAdd') ,
     path('patientRead/' , patientRead , name = 'patientRead') , 
     path('liste_patients_soldes/' , liste_patients_soldes , name ='liste_soldes') ,
+    path('patient/<int:patient_id>/archives/', views.dossier_archive_patient, name='dossier_archive_patient'),
 
     # ===============================================
     # paiement fiche historique
@@ -43,6 +44,14 @@ urlpatterns = [
     path('imprimer-facture-globale/<int:facture_id>/', views.imprimer_facture_globale, name='imprimerFactureGlobale'),
     path('prendre-signes/<int:patient_id>/', views.prendre_signes, name='prendre_signes'),
     path('historique-signes/', views.historique_signes_vitaux, name='historique_signes'),
+
+    # =================================================
+    # medecin 
+    #
+   
+    path('medecin/liste-attente/', views.liste_attente_medecin, name='liste_attente_medecin'),
+    path('medecin/consulter/<int:sv_id>/', views.effectuer_consultation, name='effectuer_consultation'),
+    path('medecin/patients-consultes/', views.liste_patients_consultes, name='liste_patients_consultes'),
 
 
 

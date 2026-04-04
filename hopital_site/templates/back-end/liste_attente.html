@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+    <title>Consultations - Liste d'attente</title>
+    
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'back-end/assets/img/favicon.ico' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css' %}">
+    
+    <style>
+        .badge-vital { font-size: 13px; padding: 5px 10px; font-weight: 500; margin-right: 5px; }
+        .patient-img-table { width: 35px; height: 35px; border-radius: 50%; margin-right: 12px; border: 1px solid #ddd; }
+        .search-container { 
+            background: #ffffff; 
+            padding: 20px; 
+            border-radius: 10px; 
+            margin-bottom: 25px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
+            border: 1px solid #e3e3e3;
+        }
+        .page-title { font-weight: 600; color: #333; }
+        .table thead th { border-top: none; text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px; }
+    </style>
+</head>
+
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                
+                <div class="row align-items-center mb-4">
+                    <div class="col-sm-12">
+                        <h4 class="page-title"><i class="fas fa-user-clock mr-2"></i> File d'attente : Consultations</h4>
+                    </div>
+                </div>
+
+                <div class="search-container">
+                    <form method="GET" action="{% url 'liste_attente_medecin' %}">
+                        <div class="row align-items-center">
+                            <div class="col-md-10 col-sm-9">
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-white border-right-0">
+                                            <i class="fas fa-search text-muted"></i>
+                                        </span>
+                                    </div>
+                                    <input type="text" name="search" class="form-control border-left-0" 
+                                           placeholder="Rechercher par Nom, Prénom ou ID..." 
+                                           value="{{ request.GET.search|default:'' }}">
+                                </div>
+                            </div>
+                            <div class="col-md-2 col-sm-3">
+                                <button class="btn btn-primary btn-block shadow-sm" type="submit">Filtrer</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show">
+                            {{ message }}
+                            <button type="button" class="close" data-dismiss="alert">&times;</button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-striped custom-table mb-0">
+                                        <thead>
+                                            <tr class="bg-primary text-white">
+                                                <th style="min-width: 200px;">Patient</th>
+                                                <th>Sexe</th>
+                                                <th>Signes Vitaux</th>
+                                                <th>Arrivée</th>
+                                                <th>Infirmier</th>
+                                                <th class="text-right">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for sv in patients_en_attente %}
+                                            <tr>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <img src="{% static 'back-end/assets/img/user.jpg' %}" class="patient-img-table">
+                                                        <div>
+                                                            <span class="d-block font-weight-bold text-dark">
+                                                                {# Utilisation de .noms (avec un s) pour correspondre à ton modèle Patient #}
+                                                                {% if sv.patient.noms %}
+                                                                    {{ sv.patient.noms|upper }} {{ sv.patient.prenom }}
+                                                                {% elif sv.patient.nom %}
+                                                                    {{ sv.patient.nom|upper }} {{ sv.patient.prenom }}
+                                                                {% else %}
+                                                                    Patient #{{ sv.patient.id }}
+                                                                {% endif %}
+                                                            </span>
+                                                            <small class="text-muted">Code: {{ sv.patient.id }}</small>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    {% if sv.patient.sexe == 'M' or sv.patient.sexe == 'Masculin' %}
+                                                        <span class="badge badge-light border text-primary"><i class="fas fa-mars"></i> M</span>
+                                                    {% else %}
+                                                        <span class="badge badge-light border text-danger"><i class="fas fa-venus"></i> F</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    <span class="badge badge-danger badge-vital" title="Température">{{ sv.temperature }}°C</span>
+                                                    <span class="badge badge-info badge-vital" title="Tension">{{ sv.tension_arterielle }}</span>
+                                                </td>
+                                                <td><strong>{{ sv.date_prelevement|date:"H:i" }}</strong></td>
+                                                <td><span class="custom-badge status-purple">{{ sv.infirmier.username }}</span></td>
+                                                <td class="text-right">
+                                                    <a href="{% url 'effectuer_consultation' sv.id %}" class="btn btn-outline-primary btn-sm btn-rounded px-3">
+                                                        <i class="fa fa-stethoscope mr-1"></i> Consulter
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                            {% empty %}
+                                            <tr>
+                                                <td colspan="6" class="text-center py-5">
+                                                    <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
+                                                    <h5 class="text-muted">Aucun patient en attente</h5>
+                                                    <p class="small text-secondary">Tous les prélèvements ont été traités ou aucun n'a été effectué.</p>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div> 
+        </div> 
+    </div> 
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js' %}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js' %}"></script>
+    <script src="{% static 'back-end/assets/js/app.js' %}"></script>
+</body>
+</html>

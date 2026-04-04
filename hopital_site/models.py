@@ -298,4 +298,44 @@ class SignesVitaux(models.Model):
     
 
     
+# 11  
+# =============================================================
+# 
 
+
+class Consultation(models.Model):
+    # Liens vers le patient et les signes vitaux déjà pris
+    patient = models.ForeignKey('Patient', on_delete=models.CASCADE)
+    signes_vitaux = models.OneToOneField('SignesVitaux', on_delete=models.CASCADE, related_name='consultation')
+    medecin = models.ForeignKey(User, on_delete=models.CASCADE)
+    
+    # Contenu de la consultation
+    motif = models.TextField(verbose_name="Motif de consultation")
+    diagnostic = models.TextField(null=True, blank=True)
+    date_consultation = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Consultation de {self.patient.noms} le {self.date_consultation}"
+
+class ExamenPrescrit(models.Model):
+    consultation = models.ForeignKey('Consultation', on_delete=models.CASCADE, related_name='examens_prescrits')
+    prestation = models.ForeignKey('Prestation', on_delete=models.CASCADE)
+    quantite = models.PositiveIntegerField(default=1)
+    
+    # AJOUTE CE CHAMP POUR LE LABO (Erreur E116)
+    termine = models.BooleanField(default=False) 
+    
+    # AJOUTE CE CHAMP POUR LA CAISSE (Somme à payer)
+    prix_total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    
+    paye = models.BooleanField(default=False)
+    date_prescription = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.prestation.libelle} (x{self.quantite})"
+
+    def save(self, *args, **kwargs):
+        # Calcul automatique du prix pour la caisse
+        if self.prestation:
+            self.prix_total = self.prestation.prix_cdf * self.quantite
+        super().save(*args, **kwargs)

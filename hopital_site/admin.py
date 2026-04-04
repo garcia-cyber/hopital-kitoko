@@ -130,3 +130,53 @@ class SignesVitauxAdmin(admin.ModelAdmin):
         if not obj.pk and not obj.infirmier:
             obj.infirmier = request.user
         super().save_model(request, obj, form, change)
+
+# 12 et 13 
+
+# 1. Permet d'ajouter/voir les examens directement dans la page Consultation
+# class ExamenPrescritInline(admin.TabularInline):
+#     model = ExamenPrescrit
+#     extra = 1  # Nombre de lignes vides affichées par défaut
+#     fields = ('prestation', 'quantite', 'prix_total', 'paye', 'termine', 'resultat')
+#     readonly_fields = ('prix_total',) # On ne peut pas modifier le prix total à la main (calcul auto
+
+class ExamenPrescritInline(admin.TabularInline):
+    model = ExamenPrescrit
+    readonly_fields = ['prix_total']
+    extra = 0
+    fields = ['prestation', 'quantite', 'prix_total', 'paye', 'termine']
+
+
+
+
+
+
+@admin.register(Consultation)
+class ConsultationAdmin(admin.ModelAdmin):
+    # Remplacement de date_creation par date_consultation (nom exact de ton modèle)
+    list_display = ('id', 'patient', 'medecin', 'date_consultation', 'get_total_facture')
+    
+    # Remplacement ici aussi pour le filtre
+    list_filter = ('date_consultation', 'medecin')
+    
+    search_fields = ('patient__noms', 'medecin__username')
+    
+    # L'inline doit être défini au-dessus de cette classe dans ton fichier
+    inlines = [ExamenPrescritInline]
+
+    def get_total_facture(self, obj):
+        # Cette fonction calcule le total des examens liés (ex: Sida + Goutte)
+        from django.db.models import Sum
+        total = obj.examens_prescrits.aggregate(total=Sum('prix_total'))['total']
+        return f"{total or 0} CDF"
+    
+    get_total_facture.short_description = 'Total à Payer'
+
+@admin.register(ExamenPrescrit)
+class ExamenPrescritAdmin(admin.ModelAdmin):
+    # Correction E116 : 'termine' doit exister dans ton models.py
+    list_display = ('prestation', 'consultation', 'prix_total', 'paye', 'termine')
+    list_filter = ('paye', 'termine', 'date_prescription')
+    readonly_fields = ['prix_total']
+
+

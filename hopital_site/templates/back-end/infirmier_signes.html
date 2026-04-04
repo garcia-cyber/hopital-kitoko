@@ -27,6 +27,16 @@
                     </div>
                 </div>
 
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <div class="form-group form-focus">
+                            <label class="focus-label">Rechercher un patient (Nom ou ID)</label>
+                            <input type="text" id="searchPatient" class="form-control floating shadow-sm">
+                            <span class="fa fa-search form-control-feedback" style="right: 15px; top: 12px; position: absolute; color: #ccc;"></span>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="row">
                     <div class="col-md-12">
                         <div class="card shadow-sm border-0">
@@ -42,13 +52,13 @@
                                                 <th class="text-right">Action</th>
                                             </tr>
                                         </thead>
-                                        <tbody>
+                                        <tbody id="patientTableBody">
                                             {% for item in patients_prets %}
-                                            <tr>
+                                            <tr class="patient-row">
                                                 <td>{{ item.date|date:"d/m/Y H:i" }}</td>
                                                 <td>
                                                     <h2 class="table-avatar">
-                                                        <a href="#">{{ item.patient.noms }} <span>ID: #{{ item.patient.id }}</span></a>
+                                                        <a href="#" class="patient-name">{{ item.patient.noms }} <span>ID: #{{ item.patient.id }}</span></a>
                                                     </h2>
                                                 </td>
                                                 <td><span class="text-primary font-weight-bold">{{ item.prestation }}</span></td>
@@ -83,5 +93,16 @@
     <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js'%}"></script>
     <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js'%}"></script>
     <script src="{% static 'back-end/assets/js/app.js'%}"></script>
+
+    <script>
+        $(document).ready(function(){
+            $("#searchPatient").on("keyup", function() {
+                var value = $(this).val().toLowerCase();
+                $("#patientTableBody .patient-row").filter(function() {
+                    $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+                });
+            });
+        });
+    </script>
 </body>
 </html>

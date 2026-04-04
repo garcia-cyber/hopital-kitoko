@@ -6,7 +6,9 @@ from django.contrib.auth.models import User
 from .models import *
 from decimal import Decimal
 from django.contrib import messages
-from django.db.models import Sum, F
+from django.db.models import Sum, F , Q
+from django.forms import inlineformset_factory
+from django.db import transaction  # <--- AJOUTE CETTE LIGNE
 
 # Create your views here.
 
@@ -503,3 +505,129 @@ def historique_signes_vitaux(request):
     
     return render(request, 'back-end/historique_signes.html', {'historique': historique , 'fonction' : fonction})
 
+# 18 
+# ==============================================================================================================
+# liste d'attente LA LISTE D'ATTENTE (Ce que le médecin voit en premier)
+# ==============================================================================================================
+@login_required()
+def liste_attente_medecin(request):
+    # On récupère les signes vitaux sans consultation
+    patients_en_attente = SignesVitaux.objects.select_related('patient', 'infirmier').filter(
+        consultation__isnull=True
+    ).order_by('-date_prelevement')
+
+    query = request.GET.get('search')
+    if query:
+        # Utilisation de 'noms' (avec un s) comme dans ton historique
+        patients_en_attente = patients_en_attente.filter(
+            Q(patient__noms__icontains=query) | 
+            Q(patient__prenom__icontains=query)
+        )
+
+    # Récupération du profil pour le menu/sidebar
+    profil = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil.fonction.fonction if profil else None
+    
+    return render(request, 'back-end/liste_attente.html', {
+        'patients_en_attente': patients_en_attente, 
+        'fonction': fonction
+    })
+
+
+# 19 
+# =============================================================================================================
+# preparation du consultaion par le medecin tout en recuperant le signe vitaux
+# =============================================================================================================
+@login_required()
+def effectuer_consultation(request, sv_id):
+    signes = get_object_or_404(SignesVitaux, id=sv_id)
+    patient = signes.patient
+    
+    prestations_labo = Prestation.objects.filter(
+        Q(categorie__iexact='LABO') | Q(categorie__iexact='Laboratoire')
+    )
+
+    if request.method == 'POST':
+        form = ConsultationForm(request.POST)
+        
+        if form.is_valid():
+            try:
+                # Maintenant que 'transaction' est importé, ceci va marcher :
+                with transaction.atomic():
+                    consultation = form.save(commit=False)
+                    consultation.patient = patient
+                    consultation.signes_vitaux = signes
+                    consultation.medecin = request.user
+                    consultation.save()
+
+                    examens_ids = request.POST.getlist('examens_choisis')
+                    for e_id in examens_ids:
+                        prestation = Prestation.objects.get(id=e_id)
+                        qty = request.POST.get(f'qty_{e_id}', 1)
+                        
+                        ExamenPrescrit.objects.create(
+                            consultation=consultation,
+                            prestation=prestation,
+                            quantite=int(qty)
+                        )
+                
+                messages.success(request, "Consultation et examens enregistrés !")
+                return redirect('liste_attente_medecin')
+
+            except Exception as e:
+                messages.error(request, f"Erreur technique : {e}")
+        else:
+            messages.error(request, "Le formulaire est invalide. Vérifiez les champs.")
+    else:
+        form = ConsultationForm()
+
+    profil = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil.fonction.fonction if profil else None
+
+    return render(request, 'back-end/faire_consultation.html', {
+        'form': form,
+        'signes': signes,
+        'patient': patient,
+        'prestations': prestations_labo ,
+        'fonction' : fonction 
+    })
+
+# 20 
+# ==============================================================================================
+# dossier du patient pour voir toutes ces consultations
+# ==============================================================================================
+@login_required()
+def dossier_archive_patient(request, patient_id):
+    # Récupération du patient
+    patient = get_object_or_404(Patient, id=patient_id)
+    
+    # Récupération de toutes les consultations liées à ce patient
+    # On utilise prefetch_related pour optimiser la base de données
+    consultations = Consultation.objects.filter(patient=patient).order_by('-date_consultation').prefetch_related('examens_prescrits__prestation')
+
+    profil = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil.fonction.fonction if profil else None
+
+    return render(request, 'back-end/dossier_archive_patient.html', {
+        'patient': patient,
+        'consultations': consultations,
+        'fonction':fonction 
+    })
+
+# 21 
+# ==============================================================================================
+# liste de patient consulte
+# ==============================================================================================
+@login_required()
+def liste_patients_consultes(request):
+    # On récupère toutes les consultations, classées par la plus récente
+    consultations = Consultation.objects.all().order_by('-date_consultation').select_related('patient', 'medecin')
+    
+    # Optionnel : Ajouter une recherche par nom
+    query = request.GET.get('search')
+    if query:
+        consultations = consultations.filter(patient__noms__icontains=query)
+
+    return render(request, 'back-end/liste_patients_consultes.html', {
+        'consultations': consultations
+    })
