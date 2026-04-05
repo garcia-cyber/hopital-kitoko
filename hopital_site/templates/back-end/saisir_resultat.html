@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+    <title>Saisie Résultats - {{ examen.prestation.libelle }}</title>
+
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'back-end/assets/img/favicon.ico'%}">
+    <link href="https://fonts.googleapis.com/css?family=Fira+Sans:400,500,600,700" rel="stylesheet">
+
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css'%}" >
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/fontawesome.min.css'%}" >
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css'%}">
+</head>
+
+<body>
+    <div class="main-wrapper">
+
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="row">
+                    <div class="col-lg-8 offset-lg-2">
+                        <h4 class="page-title">
+                            <a href="{% url 'liste_examens_labo' %}" class="btn btn-sm btn-white mr-2"><i class="fa fa-arrow-left"></i></a>
+                            Saisie des Résultats d'Analyse
+                        </h4>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-lg-8 offset-lg-2">
+                        <div class="card-box profile-header shadow-sm border-top border-info">
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <h3 class="user-name m-t-0 mb-0 text-primary">{{ examen.consultation.patient.noms }}</h3>
+                                    <div class="staff-id">Examen : <strong>{{ examen.prestation.libelle }}</strong></div>
+                                    <div class="small text-muted">Prescrit par le Dr. {{ examen.consultation.medecin.get_full_name }}</div>
+                                    <hr>
+                                </div>
+                            </div>
+
+                            <form method="post">
+                                {% csrf_token %}
+                                <div class="form-group">
+                                    <label class="font-weight-bold text-dark">Observations et Conclusions <span class="text-danger">*</span></label>
+                                    <textarea 
+                                        name="resultat_labo" 
+                                        id="resultat_labo" 
+                                        rows="8" 
+                                        class="form-control border-info" 
+                                        placeholder="Exemple : Taux d'hémoglobine à 12g/dL. Présence de trophozoïtes de P. falciparum..." 
+                                        required 
+                                        autofocus>{{ examen.resultat_labo|default_if_none:'' }}</textarea>
+                                    <small class="form-text text-muted">Soyez précis dans vos conclusions pour aider le médecin à établir l'ordonnance.</small>
+                                </div>
+
+                                <div class="m-t-30 text-center">
+                                    <button type="submit" class="btn btn-success submit-btn btn-rounded shadow">
+                                        <i class="fa fa-paper-plane mr-2"></i> Valider et Envoyer au Médecin
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="card shadow-sm border-0 bg-light">
+                            <div class="card-body">
+                                <h5 class="card-title text-muted small text-uppercase">Informations cliniques (Signes Vitaux)</h5>
+                                <div class="row">
+                                    <div class="col-4">
+                                        <small class="d-block text-muted">Température</small>
+                                        <strong>{{ examen.consultation.signes_vitaux.temperature }} °C</strong>
+                                    </div>
+                                    <div class="col-4">
+                                        <small class="d-block text-muted">Poids</small>
+                                        <strong>{{ examen.consultation.signes_vitaux.poids }} Kg</strong>
+                                    </div>
+                                    <div class="col-4">
+                                        <small class="d-block text-muted">Tension</small>
+                                        <strong>{{ examen.consultation.signes_vitaux.tension_arterielle }}</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/jquery.slimscroll.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/app.js'%}"></script>
+
+    <style>
+        .card-box { 
+            background: #fff; 
+            padding: 30px; 
+            margin-bottom: 20px; 
+            border-radius: 12px; 
+        }
+        .submit-btn { 
+            min-width: 300px; 
+            padding: 14px 20px; 
+            font-size: 1.1rem;
+            font-weight: 600; 
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .btn-rounded { border-radius: 50px; }
+        textarea.form-control {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            resize: none;
+            background-color: #fdfdfd;
+        }
+        textarea.form-control:focus {
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 123, 255, 0.1);
+        }
+    </style>
+</body>
+</html>

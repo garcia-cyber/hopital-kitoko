@@ -752,3 +752,55 @@ def payer_examen(request, patient_id):
         'profil': profil,
         'fonction': fonction,
     })
+
+# 23 
+# =============================================================================================
+# liste des examens a faire cote  labo
+# =============================================================================================
+@login_required
+def liste_examens_labo(request):
+    """Affiche uniquement les examens payés qui attendent une analyse"""
+    # On filtre : paye=True ET termine=False
+    examens_a_faire = ExamenPrescrit.objects.filter(
+        paye=True, 
+        termine=False
+    ).select_related('consultation__patient', 'prestation').order_by('-date_prescription')
+    
+
+    profil = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil.fonction.fonction if profil else None
+
+    return render(request, 'back-end/labo_liste.html', {
+        'examens': examens_a_faire , 
+        'fonction' : fonction 
+    })
+
+# 24 
+# ============================================================================================
+#  """Permet au laborantin de saisir ses conclusions et valider l'examen"""
+# ============================================================================================
+@login_required
+def saisir_resultat_labo(request, examen_id):
+    
+    examen = get_object_or_404(ExamenPrescrit, id=examen_id)
+    
+    if request.method == 'POST':
+        resultat = request.POST.get('resultat_labo')
+        
+        if resultat:
+            # On met à jour l'objet ExamenPrescrit
+            examen.resultat_labo = resultat
+            examen.termine = True
+            examen.date_analyse = timezone.now()
+            examen.laborantin = request.user
+            examen.save()
+            
+            messages.success(request, f"Résultats enregistrés pour {examen.prestation.libelle}.")
+            return redirect('liste_examens_labo')
+        else:
+            messages.error(request, "Le champ résultat ne peut pas être vide.")
+
+    profil = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil.fonction.fonction if profil else None
+
+    return render(request, 'back-end/saisir_resultat.html', {'examen': examen , 'fonction': fonction})

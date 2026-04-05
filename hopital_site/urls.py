@@ -60,6 +60,14 @@ urlpatterns = [
          views.payer_examen, 
          name='payer_examen'),
 
+    # ===============================================
+    # laboratoire
+    # 1. La liste des examens payés en attente d'analyse
+    path('labo/liste/', views.liste_examens_labo, name='liste_examens_labo'),
+    path('labo/saisir-resultat/<int:examen_id>/', views.saisir_resultat_labo, name='saisir_resultat_labo'),
+
+
+
     
 
 

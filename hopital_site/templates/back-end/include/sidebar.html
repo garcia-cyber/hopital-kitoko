@@ -81,6 +81,10 @@
                         <li><a href="{% url 'liste_patients_consultes' %}"> Patients consultés</a></li>
                     </ul>
                 </li>
+                {% elif fonction == 'laborantin' %}
+                <li>
+                    <a href="{% url 'liste_examens_labo' %}"><i class="fas fa-cogs"></i> <span>examen labo</span></a>
+                </li>
                 {% endif %}
 
                 <!-- <li class="menu-title">Comptabilité</li>

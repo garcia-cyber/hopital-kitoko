@@ -127,37 +127,31 @@ class Prestation(models.Model):
 # ======================================================
 # Facture 
 #
+# ====================================================
+# Facturation & Paiement (Ton code original préservé)
+# ====================================================
+
 class Facture(models.Model):
     patient = models.ForeignKey('Patient', on_delete=models.CASCADE)
     prestation = models.ForeignKey('Prestation', on_delete=models.CASCADE)
     date_emission = models.DateTimeField(auto_now_add=True)
     
-    # Historique figé pour la comptabilité
     prix_fixe_cdf = models.DecimalField(max_digits=15, decimal_places=2, editable=False)
     taux_fixe = models.DecimalField(max_digits=10, decimal_places=2, editable=False)
 
     def save(self, *args, **kwargs):
-        # 1. LOGIQUE DE SÉCURITÉ LORS DE LA CRÉATION
         if not self.id:
-            # Si on essaie de facturer autre chose qu'une FICHE (catégorie 'ADM')
+            # Sécurité Fiche Annuelle
             if self.prestation.categorie != 'ADM':
-                
-                # Vérification A : La fiche existe-t-elle (moins de 365 jours) ?
                 if not self.patient.a_une_fiche_valide():
-                    raise ValidationError(
-                        f"Action refusée : {self.patient.noms} n'a pas de fiche annuelle valide."
-                    )
-
-                # Vérification B : La fiche existante est-elle totalement payée ?
+                    raise ValidationError(f"Action refusée : {self.patient.noms} n'a pas de fiche valide.")
                 if self.patient.doit_solder_fiche():
-                    raise ValidationError(
-                        f"Action refusée : {self.patient.noms} doit d'abord solder sa fiche annuelle."
-                    )
+                    raise ValidationError(f"Action refusée : {self.patient.noms} doit solder sa fiche.")
 
-            # 2. ENREGISTREMENT DES VALEURS FIXES
+            # Figement des valeurs
             config = ConfigurationHopital.objects.first()
             if not config:
-                raise ValidationError("Erreur : Aucun taux de change n'est configuré dans le système.")
+                raise ValidationError("Erreur : Aucun taux de change configuré.")
             
             self.taux_fixe = config.taux_usd_en_cdf
             self.prix_fixe_cdf = self.prestation.prix_cdf
@@ -166,8 +160,8 @@ class Facture(models.Model):
 
     @property
     def total_paye(self):
-        # Utilise aggregate pour plus de performance sur de gros volumes
         from django.db.models import Sum
+        # On utilise le montant comptable calculé lors du paiement
         return self.paiements.aggregate(Sum('montant_comptable_cdf'))['montant_comptable_cdf__sum'] or 0
 
     @property
@@ -175,24 +169,20 @@ class Facture(models.Model):
         return self.prix_fixe_cdf - self.total_paye
 
     def __str__(self):
-        return f"Facture {self.id} - {self.patient.noms} ({self.prestation.libelle})"
+        return f"Facture {self.id} - {self.patient.noms}"
 
-# 8 
-# ====================================================
-# Paiement 
-#
+# 8
+# ======================================================================
 class Paiement(models.Model):
     facture = models.ForeignKey(Facture, on_delete=models.CASCADE, related_name='paiements')
     montant_physique = models.DecimalField(max_digits=15, decimal_places=2)
     devise = models.CharField(max_length=3, choices=[('CDF', 'CDF'), ('USD', 'USD')])
     date_paiement = models.DateTimeField(auto_now_add=True)
-    
-    # Montant final qui entre en caisse après calcul
     montant_comptable_cdf = models.DecimalField(max_digits=15, decimal_places=2, editable=False)
 
     def save(self, *args, **kwargs):
         if self.devise == 'USD':
-            # On utilise le taux qui a été figé sur la facture
+            # Utilisation du taux figé sur la facture au moment de l'émission
             self.montant_comptable_cdf = self.montant_physique * self.facture.taux_fixe
         else:
             self.montant_comptable_cdf = self.montant_physique
@@ -304,13 +294,14 @@ class SignesVitaux(models.Model):
 # 
 
 
+# ====================================================
+# Consultation & Examens (Flux Médical)
+# ====================================================
+
 class Consultation(models.Model):
-    # Liens vers le patient et les signes vitaux déjà pris
     patient = models.ForeignKey('Patient', on_delete=models.CASCADE)
     signes_vitaux = models.OneToOneField('SignesVitaux', on_delete=models.CASCADE, related_name='consultation')
     medecin = models.ForeignKey(User, on_delete=models.CASCADE)
-    
-    # Contenu de la consultation
     motif = models.TextField(verbose_name="Motif de consultation")
     diagnostic = models.TextField(null=True, blank=True)
     date_consultation = models.DateTimeField(auto_now_add=True)
@@ -324,22 +315,23 @@ class ExamenPrescrit(models.Model):
     quantite = models.PositiveIntegerField(default=1)
     
     # --- LOGIQUE FLUX DE TRAVAIL ---
-    # 1. La Caisse valide ceci
     paye = models.BooleanField(default=False, verbose_name="Est payé (Caisse)")
-    
-    # 2. Le Labo valide ceci après analyse
     termine = models.BooleanField(default=False, verbose_name="Analyse terminée (Labo)") 
+
+    # --- AJOUTS POUR LE LABORATOIRE (Résultats) ---
+    resultat_labo = models.TextField(null=True, blank=True, verbose_name="Résultats / Conclusions")
+    date_analyse = models.DateTimeField(null=True, blank=True)
+    laborantin = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='analyses_faites')
     
     # --- LOGIQUE FINANCIÈRE ---
     prix_total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     date_prescription = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        etat = "PAYÉ" if self.paye else "EN ATTENTE PAIEMENT"
+        etat = "TERMINÉ" if self.termine else ("PAYÉ" if self.paye else "EN ATTENTE")
         return f"{self.prestation.libelle} - {self.consultation.patient.noms} ({etat})"
 
     def save(self, *args, **kwargs):
-        # Calcul automatique basé sur le prix de la prestation au moment de l'enregistrement
         if self.prestation:
             self.prix_total = Decimal(str(self.prestation.prix_cdf)) * self.quantite
         super().save(*args, **kwargs)

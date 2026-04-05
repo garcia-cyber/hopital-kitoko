@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+    <title>Laboratoire - Liste des analyses</title>
+
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'back-end/assets/img/favicon.ico'%}">
+    <link href="https://fonts.googleapis.com/css?family=Fira+Sans:400,500,600,700" rel="stylesheet">
+
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css'%}" >
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/fontawesome.min.css'%}" >
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/select2.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css'%}">
+</head>
+
+<body>
+    <div class="main-wrapper">
+
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="row">
+                    <div class="col-sm-8">
+                        <h4 class="page-title"><i class="fa fa-flask text-primary"></i> Examens en attente d'analyse</h4>
+                        <p class="text-muted">Seuls les examens dont le paiement a été validé apparaissent ici.</p>
+                    </div>
+                    <div class="col-sm-4 text-right m-b-20">
+                        <div class="form-group form-focus">
+                            <label class="focus-label">Rechercher un patient ou un examen...</label>
+                            <input type="text" id="searchLabo" class="form-control floating shadow-sm" style="border-radius: 20px; border: 1px solid #007bff;">
+                        </div>
+                    </div>
+                </div>
+
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                            {{ message }}
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="card shadow-sm border-0" style="border-radius: 15px;">
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover custom-table mb-0" id="tableLabo">
+                                        <thead class="thead-light">
+                                            <tr>
+                                                <th>Date Prescription</th>
+                                                <th>Patient</th>
+                                                <th>Examen à réaliser</th>
+                                                <th class="text-center">Quantité</th>
+                                                <th class="text-center">Paiement</th>
+                                                <th class="text-right">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="contentLabo">
+                                            {% for ex in examens %}
+                                            <tr>
+                                                <td>
+                                                    <span class="text-dark">{{ ex.date_prescription|date:"d/m/Y" }}</span><br>
+                                                    <small class="text-muted">{{ ex.date_prescription|date:"H:i" }}</small>
+                                                </td>
+                                                <td class="patient-name">
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="avatar-circle bg-primary-light text-primary mr-2">
+                                                            {{ ex.consultation.patient.noms|slice:":1" }}
+                                                        </div>
+                                                        <span class="font-weight-bold">{{ ex.consultation.patient.noms }}</span>
+                                                    </div>
+                                                </td>
+                                                <td class="examen-type">
+                                                    <span class="badge badge-outline-info p-2">{{ ex.prestation.libelle }}</span>
+                                                </td>
+                                                <td class="text-center">{{ ex.quantite }}</td>
+                                                <td class="text-center">
+                                                    <span class="badge badge-success px-3 py-2">
+                                                        <i class="fa fa-check"></i> PAYÉ
+                                                    </span>
+                                                </td>
+                                                <td class="text-right">
+                                                    <a href="{% url 'saisir_resultat_labo' ex.id %}" class="btn btn-primary btn-rounded shadow-sm">
+                                                        <i class="fa fa-vial"></i> Faire l'Analyse
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                            {% empty %}
+                                            <tr>
+                                                <td colspan="6" class="text-center py-5 text-muted">
+                                                    <i class="fa fa-info-circle fa-2x mb-3 d-block"></i>
+                                                    Aucune analyse en attente de traitement.
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/jquery.slimscroll.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/app.js'%}"></script>
+
+    <script>
+        $(document).ready(function(){
+            $("#searchLabo").on("keyup", function() {
+                var value = $(this).val().toLowerCase();
+                $("#contentLabo tr").filter(function() {
+                    $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+                });
+            });
+        });
+    </script>
+
+    <style>
+        .custom-table thead tr { background-color: #f8f9fa; }
+        .avatar-circle {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            background-color: #e7f3ff;
+        }
+        .badge-outline-info {
+            color: #17a2b8;
+            border: 1px solid #17a2b8;
+            background: transparent;
+        }
+        .btn-rounded { border-radius: 50px; }
+        .table td { vertical-align: middle; }
+        
+        /* Style pour la barre de recherche */
+        .form-focus .focus-label {
+            font-weight: 500;
+            color: #007bff;
+        }
+    </style>
+</body>
+</html>
