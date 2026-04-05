@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 from datetime import timedelta
 from django.core.exceptions import ValidationError
+from decimal import Decimal
 
 # Create your models here.
 
@@ -322,20 +323,23 @@ class ExamenPrescrit(models.Model):
     prestation = models.ForeignKey('Prestation', on_delete=models.CASCADE)
     quantite = models.PositiveIntegerField(default=1)
     
-    # AJOUTE CE CHAMP POUR LE LABO (Erreur E116)
-    termine = models.BooleanField(default=False) 
+    # --- LOGIQUE FLUX DE TRAVAIL ---
+    # 1. La Caisse valide ceci
+    paye = models.BooleanField(default=False, verbose_name="Est payé (Caisse)")
     
-    # AJOUTE CE CHAMP POUR LA CAISSE (Somme à payer)
+    # 2. Le Labo valide ceci après analyse
+    termine = models.BooleanField(default=False, verbose_name="Analyse terminée (Labo)") 
+    
+    # --- LOGIQUE FINANCIÈRE ---
     prix_total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    
-    paye = models.BooleanField(default=False)
     date_prescription = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.prestation.libelle} (x{self.quantite})"
+        etat = "PAYÉ" if self.paye else "EN ATTENTE PAIEMENT"
+        return f"{self.prestation.libelle} - {self.consultation.patient.noms} ({etat})"
 
     def save(self, *args, **kwargs):
-        # Calcul automatique du prix pour la caisse
+        # Calcul automatique basé sur le prix de la prestation au moment de l'enregistrement
         if self.prestation:
-            self.prix_total = self.prestation.prix_cdf * self.quantite
+            self.prix_total = Decimal(str(self.prestation.prix_cdf)) * self.quantite
         super().save(*args, **kwargs)

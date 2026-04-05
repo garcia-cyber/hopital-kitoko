@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+    <title>Paiement Examens - {{ patient.noms }}</title>
+
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'back-end/assets/img/favicon.ico'%}">
+    <link href="https://fonts.googleapis.com/css?family=Fira+Sans:400,500,600,700" rel="stylesheet">
+
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css'%}" >
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/fontawesome.min.css'%}" >
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/select2.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css'%}">
+</head>
+
+<body>
+    <div class="main-wrapper">
+
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="row">
+                    <div class="col-lg-8 offset-lg-2">
+                        <h4 class="page-title"><i class="fa fa-money-bill-wave"></i> Encaisser les Examens Labo</h4>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-lg-8 offset-lg-2">
+                        <div class="card-box shadow-sm border-top border-primary">
+                            <h3 class="card-title">Patient : <strong>{{ patient.noms }}</strong></h3>
+                            <p class="text-muted small">L'argent sera distribué automatiquement pour couvrir les examens (Paiement partiel autorisé).</p>
+                            <hr>
+
+                            <div class="table-responsive mb-4">
+                                <table class="table table-hover table-bordered">
+                                    <thead class="thead-light">
+                                        <tr>
+                                            <th>Désignation de l'examen</th>
+                                            <th class="text-center">Quantité</th>
+                                            <th class="text-right">Prix Total (CDF)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for examen in examens %}
+                                        <tr>
+                                            <td>
+                                                <span class="font-weight-bold text-dark">{{ examen.prestation.libelle }}</span><br>
+                                                <small class="text-muted text-uppercase" style="font-size: 0.7rem;">Réf: {{ examen.id }}</small>
+                                            </td>
+                                            <td class="text-center">{{ examen.quantite }}</td>
+                                            <td class="text-right fw-bold text-primary">{{ examen.prix_total }} FC</td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="3" class="text-center text-muted">Aucun examen en attente de paiement.</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                    <tfoot>
+                                        <tr class="bg-light">
+                                            <td colspan="2" class="text-right font-weight-bold text-uppercase">Total Global restant :</td>
+                                            <td class="text-right font-weight-bold text-danger" style="font-size: 1.3rem;">
+                                                <span id="totalDu">{{ total_cdf }}</span> FC
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <div class="p-3 border rounded bg-light text-center">
+                                        <small class="text-muted d-block text-uppercase">Taux de Change</small>
+                                        <strong class="text-dark">1 USD = <span id="valTaux">{{ taux }}</span> CDF</strong>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="p-3 border rounded bg-info-light text-center" style="background-color: #e7f3ff;">
+                                        <small class="text-muted d-block text-uppercase">Montant Converti</small>
+                                        <strong id="displayCalcul" class="text-info">0 FC</strong>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {% if messages %}
+                                {% for message in messages %}
+                                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                                        {{ message }}
+                                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
+                                {% endfor %}
+                            {% endif %}
+
+                            <form method="post" autocomplete="off">
+                                {% csrf_token %}
+                                <div class="payment-form bg-light p-4 rounded border">
+                                    <div class="row">
+                                        <div class="col-md-7">
+                                            <div class="form-group">
+                                                <label class="font-weight-bold">Montant reçu <span class="text-danger">*</span></label>
+                                                <input type="number" id="montant_physique" name="montant_physique" step="0.01" class="form-control form-control-lg border-primary text-primary font-weight-bold" placeholder="0.00" required autofocus>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-5">
+                                            <div class="form-group">
+                                                <label class="font-weight-bold">Devise <span class="text-danger">*</span></label>
+                                                <select name="devise" id="devise" class="form-control select border-primary" required>
+                                                    <option value="CDF" selected>Franc Congolais (CDF)</option>
+                                                    <option value="USD">Dollar Américain (USD)</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="m-t-30 text-center">
+                                    <hr>
+                                    <a href="{% url 'patientRead' %}" class="btn btn-secondary btn-rounded shadow-sm">Retour</a>
+                                    <button type="submit" id="btnConfirmer" class="btn btn-success submit-btn btn-rounded shadow-sm">
+                                        <i class="fa fa-check-circle"></i> Valider l'encaissement
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/jquery.slimscroll.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/select2.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/app.js'%}"></script>
+
+    <script>
+        $(document).ready(function() {
+            function verifierPaiement() {
+                // Nettoyage des valeurs reçues de Django
+                var rawTaux = "{{ taux }}".replace(',', '.');
+                var rawTotal = "{{ total_cdf }}".replace(',', '.');
+                
+                var montant = parseFloat($('#montant_physique').val()) || 0;
+                var devise = $('#devise').val();
+                var taux = parseFloat(rawTaux);
+                var totalDu = parseFloat(rawTotal);
+                
+                // Calcul de la conversion
+                var montantEnCDF = (devise === 'USD') ? (montant * taux) : montant;
+                
+                // Affichage dynamique du montant converti
+                $('#displayCalcul').text(montantEnCDF.toLocaleString() + " FC");
+
+                if(montant > 0) {
+                    if (montantEnCDF > (totalDu + 0.1)) { // Petite marge pour les arrondis
+                        $('#displayCalcul').addClass('text-danger').removeClass('text-info text-warning');
+                        $('#displayCalcul').append(" <br><small>(TROP ÉLEVÉ)</small>");
+                        $('#btnConfirmer').prop('disabled', true);
+                    } else if (montantEnCDF < totalDu) {
+                        $('#displayCalcul').addClass('text-warning').removeClass('text-info text-danger');
+                        $('#displayCalcul').append(" <br><small>(PAIEMENT PARTIEL)</small>");
+                        $('#btnConfirmer').prop('disabled', false);
+                    } else {
+                        $('#displayCalcul').addClass('text-success').removeClass('text-info text-warning text-danger');
+                        $('#displayCalcul').append(" <br><small>(MONTANT EXACT)</small>");
+                        $('#btnConfirmer').prop('disabled', false);
+                    }
+                } else {
+                    $('#displayCalcul').text("0 FC").addClass('text-info').removeClass('text-danger text-warning text-success');
+                    $('#btnConfirmer').prop('disabled', true);
+                }
+            }
+
+            $('#montant_physique, #devise').on('input change', verifierPaiement);
+        });
+    </script>
+
+    <style>
+        .card-box { background: #fff; padding: 30px; margin-bottom: 30px; border-radius: 10px; }
+        .submit-btn { min-width: 280px; padding: 12px 20px; font-weight: 600; }
+        .bg-info-light { background-color: #e7f3ff !important; }
+        .page-title i { color: #007bff; margin-right: 10px; }
+    </style>
+</body>
+</html>

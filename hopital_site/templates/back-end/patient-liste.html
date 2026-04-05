@@ -1,57 +1,37 @@
 <!DOCTYPE html>
 {% load static %}
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
     <title>listes patients</title>
 
-    <!-- Favicons -->
     <link rel="shortcut icon" type="image/x-icon" href="{% static 'back-end/assets/img/favicon.ico'%}">
     
-    <!-- Font Family -->
     <link href="https://fonts.googleapis.com/css?family=Fira+Sans:400,500,600,700" rel="stylesheet">
 
-    <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css'%}">
 
-    <!-- Fontawesome CSS -->
     <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css'%}" >
     <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/fontawesome.min.css'%}" >
 
-     <!-- Datatable-->
-    <link rel="stylesheet" href="{% static 'back-end/assets/css/dataTables.bootstrap4.min.css'%}">
+     <link rel="stylesheet" href="{% static 'back-end/assets/css/dataTables.bootstrap4.min.css'%}">
 
-    <!-- Select 2-->
     <link rel="stylesheet" href="{% static 'back-end/assets/css/select2.min.css'%}">
 
-    <!-- Datetime Picker-->
     <link rel="stylesheet" href="{% static 'back-end/assets/plugins/datetimepicker/css/tempusdominus-bootstrap-4.min.css'%}">
 
-    <!--custom styles-->
     <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css'%}">
 
-    <!--[if lt IE 9]>
-        <script src="assets/js/html5shiv.min.js"></script>
-        <script src="assets/js/respond.min.js"></script>
-    <![endif]-->
-</head>
+    </head>
 
 <body>
 
-    <!-- Main Wrapper -->
     <div class="main-wrapper">
 
-        <!-- Header start -->
         {% include 'back-end/include/header.html'%}
-        
-        <!-- /Header -->
-
-        <!--sidebar-->
         {% include 'back-end/include/sidebar.html'%}
-        <!--/sidebar-->
-
-        <!--content-->
         <div class="page-wrapper">
             <div class="content">
                 <div class="row">
@@ -91,19 +71,17 @@
                         <div class="row">
                             <div class="col-md-12">
                                 <div class="table-responsive">
-                                    <table id="example" class="table table-striped table-bordered dt-responsive nowrap w-100  datatable">
+                                    <table id="example" class="table table-striped table-bordered dt-responsive nowrap w-100 datatable">
                                         <thead>
                                             <tr>
                                                 <th>ID</th>
-                                                <th >noms</th>
+                                                <th>noms</th>
                                                 <th>sexe</th>
                                                 <th>age</th>
                                                 <th>phone </th>
                                                 <th>adresse</th>
                                                 <th>service</th>
                                                 <th>date d'enregistrement </th>
-
-                                                
                                                 <th class="text-right">Action</th>
                                             </tr>
                                         </thead>
@@ -116,7 +94,6 @@
                                                     <td>{{patientListes.sexeP}}</td>
                                                     <td>{{patientListes.ageP}}</td>
                                                     <td>{{patientListes.phone_responsable}}</td>
-                                                    
                                                     <td>{{patientListes.adresseP}}</td>
                                                     <td>{{patientListes.service}}</td>
                                                     <td>{{patientListes.date_registerP}}</td>
@@ -125,8 +102,11 @@
                                                         <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
                                                         <div class="dropdown-menu dropdown-menu-right">
                                                             
-                                                            <a class="dropdown-item" href="{% url 'encaisser_fiche' patientListes.id %}"><i class="fas fa-pen m-r-5"></i>encaisser</a>
-                                                            <a class="dropdown-item" href="{% url 'historique_patient' patientListes.id %}"><i class="fas fa-pen m-r-5"></i>historique</a>
+                                                            <a class="dropdown-item" href="{% url 'encaisser_fiche' patientListes.id %}"><i class="fas fa-file-invoice m-r-5"></i>encaisser fiche</a>
+                                                            
+                                                            <a class="dropdown-item" href="{% url 'payer_examen' patientListes.id %}" style="color: #007bff;"><i class="fas fa-credit-card m-r-5"></i> Payer Examen</a>
+                                                            
+                                                            <a class="dropdown-item" href="{% url 'historique_patient' patientListes.id %}"><i class="fas fa-history m-r-5"></i>historique</a>
 
                                                             <a class="dropdown-item" href=""><i class="fas fa-pen m-r-5"></i> Edit</a>
                                                             <a class="dropdown-item" href="#" data-toggle="modal" data-target="#delete_employee"><i class="far fa-trash-alt m-r-5"></i> Delete</a>
@@ -136,10 +116,9 @@
 
                                                 </tr>
                                             {%empty%}
-                                            <p>pas d'enregistrement</p>
+                                            <tr><td colspan="9" class="text-center">pas d'enregistrement</td></tr>
                                             {% endfor %}
                                         </tbody>
-                                        
                                     </table>
                                 </div>
                             </div>
@@ -147,224 +126,12 @@
                     </div>
                 </div>
             </div>
-            <div class="notification-box">
-                <div class="msg-sidebar notifications msg-noti">
-                    <div class="topnav-dropdown-header">
-                        <span>Messages</span>
-                    </div>
-                    <div class="drop-scroll msg-list-scroll">
-                        <ul class="list-box">
-                            <li>
-                                <a href="chat.html">
-                                    <div class="list-item">
-                                        <div class="list-left">
-                                            <span class="avatar">R</span>
-                                        </div>
-                                        <div class="list-body">
-                                            <span class="message-author">Richard Miles </span>
-                                            <span class="message-time">12:28 AM</span>
-                                            <div class="clearfix"></div>
-                                            <span class="message-content">Lorem ipsum dolor sit amet, consectetur adipiscing</span>
-                                        </div>
-                                    </div>
-                                </a>
-                            </li>
-                            <li>
-                                <a href="chat.html">
-                                    <div class="list-item new-message">
-                                        <div class="list-left">
-                                            <span class="avatar">J</span>
-                                        </div>
-                                        <div class="list-body">
-                                            <span class="message-author">John Doe</span>
-                                            <span class="message-time">1 Aug</span>
-                                            <div class="clearfix"></div>
-                                            <span class="message-content">Lorem ipsum dolor sit amet, consectetur adipiscing</span>
-                                        </div>
-                                    </div>
-                                </a>
-                            </li>
-                            <li>
-                                <a href="chat.html">
-                                    <div class="list-item">
-                                        <div class="list-left">
-                                            <span class="avatar">T</span>
-                                        </div>
-                                        <div class="list-body">
-                                            <span class="message-author"> Tarah Shropshire </span>
-                                            <span class="message-time">12:28 AM</span>
-                                            <div class="clearfix"></div>
-                                            <span class="message-content">Lorem ipsum dolor sit amet, consectetur adipiscing</span>
-                                        </div>
-                                    </div>
-                                </a>
-                            </li>
-                            <li>
-                                <a href="chat.html">
-                                    <div class="list-item">
-                                        <div class="list-left">
-                                            <span class="avatar">M</span>
-                                        </div>
-                                        <div class="list-body">
-                                            <span class="message-author">Mike Litorus</span>
-                                            <span class="message-time">12:28 AM</span>
-                                            <div class="clearfix"></div>
-                                            <span class="message-content">Lorem ipsum dolor sit amet, consectetur adipiscing</span>
-                                        </div>
-                                    </div>
-                                </a>
-                            </li>
-                            <li>
-                                <a href="chat.html">
-                                    <div class="list-item">
-                                        <div class="list-left">
-                                            <span class="avatar">C</span>
-                                        </div>
-                                        <div class="list-body">
-                                            <span class="message-author"> Catherine Manseau </span>
-                                            <span class="message-time">12:28 AM</span>
-                                            <div class="clearfix"></div>
-                                            <span class="message-content">Lorem ipsum dolor sit amet, consectetur adipiscing</span>
-                                        </div>
-                                    </div>
-                                </a>
-                            </li>
-                            <li>
-                                <a href="chat.html">
-                                    <div class="list-item">
-                                        <div class="list-left">
-                                            <span class="avatar">D</span>
-                                        </div>
-                                        <div class="list-body">
-                                            <span class="message-author"> Domenic Houston </span>
-                                            <span class="message-time">12:28 AM</span>
-                                            <div class="clearfix"></div>
-                                            <span class="message-content">Lorem ipsum dolor sit amet, consectetur adipiscing</span>
-                                        </div>
-                                    </div>
-                                </a>
-                            </li>
-                            <li>
-                                <a href="chat.html">
-                                    <div class="list-item">
-                                        <div class="list-left">
-                                            <span class="avatar">B</span>
-                                        </div>
-                                        <div class="list-body">
-                                            <span class="message-author"> Buster Wigton </span>
-                                            <span class="message-time">12:28 AM</span>
-                                            <div class="clearfix"></div>
-                                            <span class="message-content">Lorem ipsum dolor sit amet, consectetur adipiscing</span>
-                                        </div>
-                                    </div>
-                                </a>
-                            </li>
-                            <li>
-                                <a href="chat.html">
-                                    <div class="list-item">
-                                        <div class="list-left">
-                                            <span class="avatar">R</span>
-                                        </div>
-                                        <div class="list-body">
-                                            <span class="message-author"> Rolland Webber </span>
-                                            <span class="message-time">12:28 AM</span>
-                                            <div class="clearfix"></div>
-                                            <span class="message-content">Lorem ipsum dolor sit amet, consectetur adipiscing</span>
-                                        </div>
-                                    </div>
-                                </a>
-                            </li>
-                            <li>
-                                <a href="chat.html">
-                                    <div class="list-item">
-                                        <div class="list-left">
-                                            <span class="avatar">C</span>
-                                        </div>
-                                        <div class="list-body">
-                                            <span class="message-author"> Claire Mapes </span>
-                                            <span class="message-time">12:28 AM</span>
-                                            <div class="clearfix"></div>
-                                            <span class="message-content">Lorem ipsum dolor sit amet, consectetur adipiscing</span>
-                                        </div>
-                                    </div>
-                                </a>
-                            </li>
-                            <li>
-                                <a href="chat.html">
-                                    <div class="list-item">
-                                        <div class="list-left">
-                                            <span class="avatar">M</span>
-                                        </div>
-                                        <div class="list-body">
-                                            <span class="message-author">Melita Faucher</span>
-                                            <span class="message-time">12:28 AM</span>
-                                            <div class="clearfix"></div>
-                                            <span class="message-content">Lorem ipsum dolor sit amet, consectetur adipiscing</span>
-                                        </div>
-                                    </div>
-                                </a>
-                            </li>
-                            <li>
-                                <a href="chat.html">
-                                    <div class="list-item">
-                                        <div class="list-left">
-                                            <span class="avatar">J</span>
-                                        </div>
-                                        <div class="list-body">
-                                            <span class="message-author">Jeffery Lalor</span>
-                                            <span class="message-time">12:28 AM</span>
-                                            <div class="clearfix"></div>
-                                            <span class="message-content">Lorem ipsum dolor sit amet, consectetur adipiscing</span>
-                                        </div>
-                                    </div>
-                                </a>
-                            </li>
-                            <li>
-                                <a href="chat.html">
-                                    <div class="list-item">
-                                        <div class="list-left">
-                                            <span class="avatar">L</span>
-                                        </div>
-                                        <div class="list-body">
-                                            <span class="message-author">Loren Gatlin</span>
-                                            <span class="message-time">12:28 AM</span>
-                                            <div class="clearfix"></div>
-                                            <span class="message-content">Lorem ipsum dolor sit amet, consectetur adipiscing</span>
-                                        </div>
-                                    </div>
-                                </a>
-                            </li>
-                            <li>
-                                <a href="chat.html">
-                                    <div class="list-item">
-                                        <div class="list-left">
-                                            <span class="avatar">T</span>
-                                        </div>
-                                        <div class="list-body">
-                                            <span class="message-author">Tarah Shropshire</span>
-                                            <span class="message-time">12:28 AM</span>
-                                            <div class="clearfix"></div>
-                                            <span class="message-content">Lorem ipsum dolor sit amet, consectetur adipiscing</span>
-                                        </div>
-                                    </div>
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
-                    <div class="topnav-dropdown-footer">
-                        <a href="chat.html">See all messages</a>
-                    </div>
-                </div>
-            </div>
         </div>
-        <!--/ content-->
-
-        <!--Delete employee modal-->
         <div id="delete_employee" class="modal fade delete-modal" role="dialog">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-body text-center">
-                        <img src="assets/img/sent.png" alt="" width="50" height="46">
+                        <img src="{% static 'back-end/assets/img/sent.png' %}" alt="" width="50" height="46">
                         <h3>Are you sure want to delete this Employee?</h3>
                         <div class="m-t-20"> <a href="#" class="btn btn-white" data-dismiss="modal">Close</a>
                             <button type="submit" class="btn btn-danger">Delete</button>
@@ -373,32 +140,16 @@
                 </div>
             </div>
         </div>
-        <!--/ Delete employee modal-->
     </div>
-    <!--/ Main Wrapper -->
 
-    <!--scripts-->
-    <!-- jQuery -->
     <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js'%}"></script>
-
-    <!-- Bootstrap Core JS -->
     <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js'%}"></script>
-
-    <!-- Slimscroll JS -->
     <script src="{% static 'back-end/assets/js/jquery.slimscroll.js'%}"></script>
-
-    <!-- Select2 JS -->
     <script src="{% static 'back-end/assets/js/select2.min.js'%}"></script>
     <script src="{% static 'back-end/assets/js/moment.min.js'%}"></script>
-
-    <!-- Data table JS -->
     <script src="{% static 'back-end/assets/js/jquery.dataTables.min.js'%}"></script>
     <script src="{% static 'back-end/assets/js/dataTables.bootstrap4.min.js'%}"></script>
-
-    <!-- Datetime picker JS -->
     <script src="{% static 'back-end/assets/plugins/datetimepicker/js/tempusdominus-bootstrap-4.min.js'%}"></script>
-
-    <!-- Custom JS -->
     <script src="{% static 'back-end/assets/js/app.js'%}"></script>
 </body>
 

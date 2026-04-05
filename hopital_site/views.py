@@ -290,75 +290,92 @@ def encaisser_fiche(request, patient_id):
 @login_required()
 def historique_patient(request, patient_id):
     patient = get_object_or_404(Patient, id=patient_id)
+    config = ConfigurationHopital.objects.first()
+    taux = Decimal(str(config.taux_usd_en_cdf)) if config else Decimal("2500.0")
     
+    # --- PARTIE TRAITEMENT DES PAIEMENTS (POST) ---
     if request.method == "POST":
         facture_id = request.POST.get('facture_id')
         montant_saisi = request.POST.get('montant')
         devise = request.POST.get('devise')
         
         if facture_id and montant_saisi:
-            f_obj = Facture.objects.get(id=facture_id)
-            config = ConfigurationHopital.objects.first()
-            
-            # --- CORRECTION CRUCIALE : On force tout en Decimal ---
-            # On transforme le taux en Decimal
-            taux = Decimal(str(config.taux_usd_en_cdf)) if config else Decimal("2250.0")
-            
-            deja_paye = Decimal("0.0")
-            for p in f_obj.paiements.all():
-                # On force le montant du paiement en Decimal
-                m_p = Decimal(str(p.montant_physique))
-                if p.devise == 'USD':
-                    deja_paye += (m_p * taux) # Decimal * Decimal = OK
-                else:
-                    deja_paye += m_p
-            
-            # On force le prix de la prestation en Decimal
-            prix_prest = Decimal(str(f_obj.prestation.prix_cdf))
-            reste_actuel = prix_prest - deja_paye
-            
-            # On force le nouveau montant saisi en Decimal
-            nouveau_val = Decimal(str(montant_saisi))
-            nouveau_en_cdf = (nouveau_val * taux) if devise == 'USD' else nouveau_val
+            try:
+                with transaction.atomic():
+                    f_obj = Facture.objects.select_related('prestation').get(id=facture_id)
+                    
+                    # 1. Calcul du déjà payé sur CETTE facture
+                    total_deja_verse = Decimal("0.0")
+                    for p in f_obj.paiements.all():
+                        m_p = Decimal(str(p.montant_physique))
+                        total_deja_verse += (m_p * taux) if p.devise == 'USD' else m_p
+                    
+                    # 2. Reste réel avant le nouveau paiement
+                    prix_total_facture = Decimal(str(f_obj.prestation.prix_cdf))
+                    reste_a_solder = prix_total_facture - total_deja_verse
+                    
+                    # 3. Conversion du nouveau montant
+                    nouveau_val = Decimal(str(montant_saisi))
+                    nouveau_en_cdf = (nouveau_val * taux) if devise == 'USD' else nouveau_val
 
-            # Vérification du dépassement
-            if nouveau_en_cdf > (reste_actuel + Decimal("0.1")):
-                messages.error(request, f"Montant trop élevé ! Reste : {reste_actuel} CDF")
-                return redirect('historique_patient', patient_id=patient.id)
+                    # 4. SÉCURITÉ : Ne pas payer plus que le reste
+                    if nouveau_en_cdf > (reste_a_solder + Decimal("0.1")):
+                        messages.error(request, f"Montant trop élevé ! Il ne reste que {int(reste_a_solder)} FC à payer.")
+                    elif nouveau_en_cdf <= 0:
+                        messages.error(request, "Veuillez saisir un montant valide.")
+                    else:
+                        # 5. Création du paiement
+                        Paiement.objects.create(
+                            facture=f_obj,
+                            montant_physique=nouveau_val,
+                            devise=devise
+                        )
+                        
+                        # 6. LOGIQUE DE LIBÉRATION AU LABO (Examen par examen)
+                        # On recalcule le total payé pour CETTE prestation spécifique
+                        nouveau_total_paye = total_deja_verse + nouveau_en_cdf
+                        
+                        # Si le montant couvre le prix de l'examen, on le libère
+                        if nouveau_total_paye >= (prix_total_facture - Decimal("0.1")):
+                            ExamenPrescrit.objects.filter(
+                                consultation__patient=patient, 
+                                prestation=f_obj.prestation, 
+                                paye=False
+                            ).update(paye=True)
+                            messages.success(request, f"Paiement validé. L'examen '{f_obj.prestation.libelle}' est envoyé au labo !")
+                        else:
+                            reste_final = prix_total_facture - nouveau_total_paye
+                            messages.info(request, f"Acompte enregistré. Reste à payer pour cet examen : {int(reste_final)} FC.")
+
+            except Exception as e:
+                messages.error(request, f"Erreur système : {str(e)}")
             
-            # Enregistrement
-            Paiement.objects.create(
-                facture=f_obj,
-                montant_physique=nouveau_val,
-                devise=devise
-            )
-            messages.success(request, "Paiement validé !")
             return redirect('historique_patient', patient_id=patient.id)
 
     # --- PARTIE AFFICHAGE (GET) ---
-    factures = Facture.objects.filter(patient=patient).select_related('prestation').order_by('-id')
-    config = ConfigurationHopital.objects.first()
-    taux_aff = Decimal(str(config.taux_usd_en_cdf)) if config else Decimal("2250.0")
-
+    factures = Facture.objects.filter(patient=patient).select_related('prestation').prefetch_related('paiements').order_by('-id')
+    
     for f in factures:
-        ses_paiements = f.paiements.all() 
-        total_verse = Decimal("0.0")
-        for p in ses_paiements:
+        total_verse_f = Decimal("0.0")
+        for p in f.paiements.all():
             m_p_aff = Decimal(str(p.montant_physique))
-            if p.devise == 'USD':
-                total_verse += (m_p_aff * taux_aff)
-            else:
-                total_verse += m_p_aff
+            total_verse_f += (m_p_aff * taux) if p.devise == 'USD' else m_p_aff
         
-        f.somme_payee = total_verse 
-        f.montant_restant = Decimal(str(f.prestation.prix_cdf)) - total_verse
-        f.liste_paiements = ses_paiements 
+        # Attributs pour le template HTML
+        f.somme_payee = total_verse_f 
+        f.montant_restant = Decimal(str(f.prestation.prix_cdf)) - total_verse_f
+        f.est_soldee = f.montant_restant <= Decimal("0.1")
 
-    profil = Profil.objects.filter(userProfil = request.user).first()
+    # Gestion du profil pour le header/sidebar
+    profil = Profil.objects.filter(userProfil=request.user).first()
     fonction = profil.fonction.fonction if profil else None
 
     return render(request, 'back-end/historique_patient.html', {
-        'patient': patient, 'factures': factures, 'taux': taux_aff , 'fonction':fonction
+        'patient': patient, 
+        'factures': factures, 
+        'taux': taux, 
+        'profil': profil,
+        'fonction': fonction
     })
 
 # 13
@@ -628,6 +645,110 @@ def liste_patients_consultes(request):
     if query:
         consultations = consultations.filter(patient__noms__icontains=query)
 
+    profil = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil.fonction.fonction if profil else None
+
     return render(request, 'back-end/liste_patients_consultes.html', {
-        'consultations': consultations
+        'consultations': consultations ,
+        'fonction' : fonction 
+    })
+
+# 22
+# ===============================================================================================
+# paiement d'examen du patient 
+# ===============================================================================================
+@login_required()
+@transaction.atomic
+def payer_examen(request, patient_id):
+    # 1. Contexte et Sécurité
+    patient = get_object_or_404(Patient, id=patient_id)
+    profil = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil.fonction.fonction if profil else None
+    
+    # 2. On récupère les examens non encore TOTALEMENT payés
+    # On trie par ID pour payer les plus anciens en premier
+    examens_prescrits = ExamenPrescrit.objects.filter(
+        consultation__patient=patient, 
+        paye=False
+    ).select_related('prestation').order_by('id')
+    
+    # 3. Calcul du total restant à payer sur tous ces examens
+    total_du_cdf = sum(Decimal(str(ex.prix_total)) for ex in examens_prescrits)
+
+    # 4. Gestion du Taux
+    config = ConfigurationHopital.objects.first()
+    taux_actuel = Decimal(str(config.taux_usd_en_cdf)) if config else Decimal("2500.0")
+
+    if request.method == 'POST':
+        montant_saisi = request.POST.get('montant_physique')
+        devise = request.POST.get('devise')
+
+        if montant_saisi:
+            try:
+                montant_decimal = Decimal(str(montant_saisi))
+                # Conversion en CDF pour la logique de calcul
+                argent_disponible_cdf = (montant_decimal * taux_actuel) if devise == 'USD' else montant_decimal
+
+                # --- VALIDATIONS ---
+                if argent_disponible_cdf > total_du_cdf:
+                    messages.error(request, f"Erreur : Le montant ({int(argent_disponible_cdf)} FC) dépasse la dette totale ({int(total_du_cdf)} FC).")
+                elif argent_disponible_cdf <= 0:
+                    messages.error(request, "Veuillez saisir un montant valide.")
+                else:
+                    # --- LOGIQUE DE DISTRIBUTION (L'argent coule d'examen en examen) ---
+                    reste_a_distribuer = argent_disponible_cdf
+                    examens_soldes = 0
+
+                    for examen in examens_prescrits:
+                        if reste_a_distribuer <= 0:
+                            break
+
+                        # On récupère ou crée la facture liée à cet examen précis
+                        facture, created = Facture.objects.get_or_create(
+                            patient=patient,
+                            prestation=examen.prestation,
+                            # Ajoute ici un champ date ou consultation si nécessaire pour l'unicité
+                        )
+
+                        # Calcul de ce qu'il reste à payer sur CET examen précis
+                        # (On déduit ce qui a déjà été payé avant sur cette facture)
+                        deja_paye = sum(p.montant_physique * (taux_actuel if p.devise == 'USD' else 1) for p in facture.paiements.all())
+                        du_sur_cet_examen = Decimal(str(examen.prix_total)) - deja_paye
+
+                        # On prend le minimum entre ce qu'on a et ce qu'on doit
+                        versement_pour_cet_ex_cdf = min(reste_a_distribuer, du_sur_cet_examen)
+
+                        if versement_pour_cet_ex_cdf > 0:
+                            # Calcul de la part physique selon la devise de saisie
+                            part_physique = versement_pour_cet_ex_cdf / taux_actuel if devise == 'USD' else versement_pour_cet_ex_cdf
+
+                            # Enregistrement du paiement
+                            Paiement.objects.create(
+                                facture=facture,
+                                montant_physique=part_physique,
+                                devise=devise
+                            )
+
+                            # Si l'examen est maintenant totalement payé
+                            if (deja_paye + versement_pour_cet_ex_cdf) >= Decimal(str(examen.prix_total)):
+                                examen.paye = True
+                                examen.save()
+                                examens_soldes += 1
+
+                            # On soustrait ce qu'on vient de donner
+                            reste_a_distribuer -= versement_pour_cet_ex_cdf
+
+                    messages.success(request, f"Paiement de {int(argent_disponible_cdf)} FC enregistré. {examens_soldes} examen(s) soldé(s).")
+                    return redirect('patientRead')
+
+            except Exception as e:
+                messages.error(request, f"Erreur technique : {str(e)}")
+
+    return render(request, 'back-end/encaisser_examen.html', {
+        'patient': patient,
+        'examens': examens_prescrits,
+        'total_cdf': total_du_cdf,
+        'taux': taux_actuel,
+        'profil': profil,
+        'fonction': fonction,
     })

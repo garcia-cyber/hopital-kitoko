@@ -22,7 +22,7 @@
                     {% for message in messages %}
                         {% if message.tags == 'success' %}
                             <div class="alert alert-success alert-dismissible fade show" role="alert">
-                                {{ message }}
+                                <i class="fa fa-check-circle"></i> {{ message }}
                                 <button type="button" class="close" data-dismiss="alert">&times;</button>
                             </div>
                         {% endif %}
@@ -34,7 +34,7 @@
                         <h4 class="page-title">Historique : <strong>{{ patient.noms }}</strong></h4>
                     </div>
                     <div class="col-sm-5 col-5 text-right m-b-20">
-                        <a href="{% url 'patientRead' %}" class="btn btn-secondary btn-rounded">
+                        <a href="{% url 'patientRead' %}" class="btn btn-secondary btn-rounded shadow-sm">
                             <i class="fa fa-arrow-left"></i> Retour
                         </a>
                     </div>
@@ -42,7 +42,7 @@
 
                 <div class="row">
                     <div class="col-md-12">
-                        <div class="card shadow-sm">
+                        <div class="card shadow-sm border-0">
                             <div class="card-body">
                                 <div class="table-responsive">
                                     <table class="table table-bordered table-striped custom-table">
@@ -65,25 +65,27 @@
                                                 
                                                 <td>
                                                     <ul class="list-unstyled mb-0">
-                                                        {% for p in f.liste_paiements %}
+                                                        {% for p in f.paiements.all %}
                                                         <li class="border-bottom d-flex justify-content-between align-items-center py-1">
                                                             <span><i class="fa fa-check text-success"></i> {{ p.montant_physique }} {{ p.devise }}</span>
                                                             <a href="{% url 'imprimerRecu' p.id %}" target="_blank" class="text-primary ml-2">
                                                                 <i class="fa fa-print"></i>
                                                             </a>
                                                         </li>
+                                                        {% empty %}
+                                                        <li class="text-muted small">Aucun versement</li>
                                                         {% endfor %}
                                                     </ul>
                                                 </td>
 
                                                 <td>
-                                                    {% if f.montant_restant > 0 %}
-                                                        <b class="text-danger" style="font-size: 1.1em;">{{ f.montant_restant }} CDF</b>
+                                                    {% if not f.est_soldee %}
+                                                        <b class="text-danger" style="font-size: 1.1em;">{{ f.montant_restant|floatformat:0 }} CDF</b>
                                                         <button class="btn btn-xs btn-warning ml-2" data-toggle="modal" data-target="#paye_{{ f.id }}">
                                                             <i class="fa fa-plus"></i> Payer
                                                         </button>
                                                     {% else %}
-                                                        <span class="badge badge-success">SOLDÉ</span>
+                                                        <span class="badge badge-success px-3 py-2"><i class="fa fa-check"></i> SOLDÉ</span>
                                                     {% endif %}
                                                 </td>
 
@@ -92,17 +94,17 @@
                                                         <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown"><i class="fa fa-ellipsis-v"></i></a>
                                                         <div class="dropdown-menu dropdown-menu-right">
                                                             <a class="dropdown-item" href="{% url 'imprimerFactureGlobale' f.id %}" target="_blank">
-                                                                <i class="fa fa-print m-r-5"></i> Facture Globale
+                                                                <i class="fa fa-file-pdf m-r-5 text-danger"></i> Facture Globale
                                                             </a>
                                                         </div>
                                                     </div>
                                                 </td>
                                             </tr>
 
-                                            {% if f.montant_restant > 0 %}
+                                            {% if not f.est_soldee %}
                                             <div id="paye_{{ f.id }}" class="modal fade" role="dialog">
                                                 <div class="modal-dialog modal-dialog-centered">
-                                                    <div class="modal-content">
+                                                    <div class="modal-content border-0 shadow">
                                                         <div class="modal-header bg-primary text-white">
                                                             <h4 class="modal-title">Nouveau Paiement : {{ f.prestation.libelle }}</h4>
                                                             <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
@@ -112,31 +114,25 @@
                                                             {% csrf_token %}
                                                             <input type="hidden" name="facture_id" value="{{ f.id }}">
                                                             <div class="modal-body">
-                                                                {% if messages %}
-                                                                    {% for message in messages %}
-                                                                        {% if message.tags == 'error' %}
-                                                                            <div class="alert alert-danger">
-                                                                                <i class="fa fa-exclamation-triangle"></i> {{ message }}
-                                                                            </div>
-                                                                        {% endif %}
-                                                                    {% endfor %}
-                                                                {% endif %}
+                                                                <div class="alert alert-info py-2">
+                                                                    Reste à solder : <strong>{{ f.montant_restant|floatformat:0 }} CDF</strong>
+                                                                </div>
 
-                                                                <p>Reste : <strong class="text-danger">{{ f.montant_restant }} CDF</strong></p>
                                                                 <div class="form-group">
-                                                                    <label>Montant versé :</label>
-                                                                    <input type="number" name="montant" step="0.01" class="form-control" value="{{ f.montant_restant }}" required>
+                                                                    <label class="font-weight-bold">Montant versé :</label>
+                                                                    <input type="number" name="montant" step="0.01" class="form-control form-control-lg border-primary" value="{{ f.montant_restant|stringformat:'.2f' }}" required>
                                                                 </div>
                                                                 <div class="form-group">
-                                                                    <label>Devise :</label>
-                                                                    <select name="devise" class="form-control">
-                                                                        <option value="CDF">CDF</option>
-                                                                        <option value="USD">USD</option>
+                                                                    <label class="font-weight-bold">Devise :</label>
+                                                                    <select name="devise" class="form-control select border-primary">
+                                                                        <option value="CDF" selected>Franc Congolais (CDF)</option>
+                                                                        <option value="USD">Dollar (USD)</option>
                                                                     </select>
                                                                 </div>
                                                             </div>
-                                                            <div class="modal-footer">
-                                                                <button type="submit" class="btn btn-primary btn-block">Valider</button>
+                                                            <div class="modal-footer bg-light">
+                                                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Fermer</button>
+                                                                <button type="submit" class="btn btn-primary px-4">Valider le paiement</button>
                                                             </div>
                                                         </form>
                                                     </div>
@@ -162,11 +158,11 @@
 
     <script>
         $(document).ready(function() {
+            // Auto-ouverture du modal en cas d'erreur de saisie
             {% if messages %}
                 {% for message in messages %}
                     {% if message.tags == 'error' %}
-                        // On cherche le modal qui était ouvert (celui qui contient l'alerte danger)
-                        $('.alert-danger').closest('.modal').modal('show');
+                        $('.modal').has('form').modal('show');
                     {% endif %}
                 {% endfor %}
             {% endif %}

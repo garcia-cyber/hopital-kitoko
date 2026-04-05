@@ -53,6 +53,15 @@ urlpatterns = [
     path('medecin/consulter/<int:sv_id>/', views.effectuer_consultation, name='effectuer_consultation'),
     path('medecin/patients-consultes/', views.liste_patients_consultes, name='liste_patients_consultes'),
 
+    # ===============================================
+    # reception 
+    # 
+    path('patient/<int:patient_id>/payer_examen/', 
+         views.payer_examen, 
+         name='payer_examen'),
+
+    
+
 
 
 
