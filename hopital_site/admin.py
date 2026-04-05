@@ -180,3 +180,40 @@ class ExamenPrescritAdmin(admin.ModelAdmin):
     readonly_fields = ['prix_total']
 
 
+@admin.register(Chambre)
+class ChambreAdmin(admin.ModelAdmin):
+    list_display = ('numero', 'type_chambre', 'get_prix_cdf')
+    list_filter = ('type_chambre',)
+    search_fields = ('numero',)
+
+    def get_prix_cdf(self, obj):
+        return f"{obj.prix_journalier:,.2f} CDF"
+    get_prix_cdf.short_description = "Prix Journalier"
+
+@admin.register(Lit)
+class LitAdmin(admin.ModelAdmin):
+    list_display = ('nom_lit', 'chambre', 'est_occupe')
+    list_filter = ('est_occupe', 'chambre__type_chambre')
+    search_fields = ('nom_lit', 'chambre__numero')
+    list_editable = ('est_occupe',) # Permet de libérer un lit rapidement depuis la liste
+
+@admin.register(OccupationLit)
+class OccupationLitAdmin(admin.ModelAdmin):
+    list_display = ('patient', 'lit', 'date_admission', 'date_sortie', 'get_jours', 'get_total_cdf', 'est_paye')
+    list_filter = ('est_paye', 'date_admission', 'lit__chambre')
+    search_fields = ('patient__nom', 'lit__nom_lit', 'lit__chambre__numero') # Assure-toi que le modèle Patient a un champ 'nom'
+    date_hierarchy = 'date_admission'
+    
+    # Configuration des champs calculés pour l'affichage
+    def get_jours(self, obj):
+        return f"{obj.nombre_jours} j"
+    get_jours.short_description = "Durée"
+
+    def get_total_cdf(self, obj):
+        return f"{obj.total_facture_cdf:,.2f} CDF"
+    get_total_cdf.short_description = "Total à payer"
+
+    # Optionnel : Rendre certains champs en lecture seule pour éviter les erreurs de calcul manuel
+    readonly_fields = ('date_admission',)
+
+

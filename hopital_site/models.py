@@ -308,6 +308,10 @@ class Consultation(models.Model):
 
     def __str__(self):
         return f"Consultation de {self.patient.noms} le {self.date_consultation}"
+# 12
+# =====================================================
+# examen prescrit
+#
 
 class ExamenPrescrit(models.Model):
     consultation = models.ForeignKey('Consultation', on_delete=models.CASCADE, related_name='examens_prescrits')
@@ -335,3 +339,58 @@ class ExamenPrescrit(models.Model):
         if self.prestation:
             self.prix_total = Decimal(str(self.prestation.prix_cdf)) * self.quantite
         super().save(*args, **kwargs)
+
+# 13 
+# =========================================================================
+#
+
+class Chambre(models.Model):
+    TYPES = [
+        ('VIP', 'Privée VIP'),
+        ('STANDARD', 'Standard'),
+        ('COMMUNE', 'Salle Commune'),
+        ('REANIMATION', 'Réanimation'),
+    ]
+    
+    numero = models.CharField("N° de Chambre", max_length=10, unique=True)
+    type_chambre = models.CharField(max_length=50, choices=TYPES, default='STANDARD')
+    prix_journalier = models.DecimalField(max_digits=12, decimal_places=2, help_text="Prix par jour en CDF")
+
+    def __str__(self):
+        return f"Chambre {self.numero} ({self.type_chambre})"
+
+class Lit(models.Model):
+    chambre = models.ForeignKey(Chambre, on_delete=models.CASCADE, related_name="lits")
+    nom_lit = models.CharField("Nom du Lit", max_length=10) # ex: L1, L2
+    est_occupe = models.BooleanField("Est occupé ?", default=False)
+
+    def __str__(self):
+        status = "Occupé" if self.est_occupe else "Libre"
+        return f"{self.chambre.numero} - {self.nom_lit} ({status})"
+
+class OccupationLit(models.Model):
+    patient = models.ForeignKey('Patient', on_delete=models.CASCADE)
+    lit = models.ForeignKey(Lit, on_delete=models.CASCADE)
+    date_admission = models.DateTimeField(default=timezone.now)
+    date_sortie = models.DateTimeField(null=True, blank=True)
+    est_paye = models.BooleanField(default=False)
+
+    @property
+    def nombre_jours(self):
+        if not self.date_sortie:
+            fin = timezone.now()
+        else:
+            fin = self.date_sortie
+        
+        diff = fin - self.date_admission
+        # Si le patient reste moins d'un jour, on facture 1 jour par défaut
+        jours = diff.days if diff.days > 0 else 1
+        return jours
+
+    @property
+    def total_facture_cdf(self):
+        """Calcul du total en Francs Congolais"""
+        return self.nombre_jours * self.lit.chambre.prix_journalier
+
+    def __str__(self):
+        return f"Occupation: {self.patient} sur {self.lit}"
