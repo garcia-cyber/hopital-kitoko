@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+    <title>Journal de Caisse - Traçabilité</title>
+    
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'back-end/assets/img/favicon.ico'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css'%}" >
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.5/css/dataTables.bootstrap4.min.css">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css'%}">
+
+    <style>
+        :root {
+            --primary-success: #28a745;
+            --soft-bg: #f4f7f6;
+        }
+
+        /* Modernisation de la zone de recherche */
+        .search-container {
+            position: relative;
+            max-width: 500px;
+            margin: 20px auto;
+        }
+
+        .search-container input {
+            height: 45px;
+            border-radius: 30px;
+            padding-left: 50px;
+            border: 2px solid #e1e1e1;
+            transition: all 0.3s ease;
+            font-size: 15px;
+        }
+
+        .search-container input:focus {
+            border-color: var(--primary-success);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.1);
+            outline: none;
+        }
+
+        .search-container i {
+            position: absolute;
+            left: 20px;
+            top: 15px;
+            color: #aaa;
+            transition: all 0.3s ease;
+        }
+
+        .search-container input:focus + i {
+            color: var(--primary-success);
+        }
+
+        /* Style du Tableau */
+        .custom-card {
+            border: none;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            overflow: hidden;
+        }
+
+        .table thead th {
+            background-color: #fafbfc;
+            border-bottom: 2px solid #f1f1f1;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 1px;
+            color: #777;
+            padding: 20px;
+        }
+
+        .table tbody tr {
+            transition: all 0.2s ease;
+        }
+
+        .table tbody tr:hover {
+            background-color: #f8fff9 !important;
+            transform: scale(1.005);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+        }
+
+        .table td {
+            padding: 18px 20px;
+            vertical-align: middle;
+            border-top: 1px solid #f9f9f9;
+        }
+
+        /* Badges Modernes */
+        .badge-modern {
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 12px;
+        }
+
+        .price-tag {
+            font-size: 16px;
+            color: #2c3e50;
+            font-weight: 700;
+        }
+
+        /* Masquer la barre de recherche par défaut de DataTables pour utiliser la nôtre */
+        .dataTables_filter { display: none; }
+        
+        .dataTables_paginate .paginate_button.current {
+            background: var(--primary-success) !important;
+            border-color: var(--primary-success) !important;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="text-center m-b-30">
+                    <h3 class="page-title text-success font-weight-bold">Journal des Flux de Caisse</h3>
+                    <p class="text-muted text-uppercase small" style="letter-spacing: 2px;">Traçabilité financière en temps réel</p>
+                </div>
+
+                <div class="search-container">
+                    <input type="text" id="customSearch" placeholder="Rechercher un patient, une prestation ou une facture #...">
+                    <i class="fa fa-search"></i>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="card custom-card">
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table mb-0" id="journalTable">
+                                        <thead>
+                                            <tr>
+                                                <th>Date & Heure</th>
+                                                <th>Identité Patient</th>
+                                                <th>Type de Service</th>
+                                                <th>Versement</th>
+                                                <th>Devise</th>
+                                                <th>Contre-valeur</th>
+                                                <th class="text-right">Réf. Facture</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for p in paiements %}
+                                            <tr>
+                                                <td>
+                                                    <span class="d-none">{{ p.date_paiement|date:"YmdHi" }}</span>
+                                                    <div class="font-weight-600 text-dark">{{ p.date_paiement|date:"d M Y" }}</div>
+                                                    <div class="small text-muted">{{ p.date_paiement|date:"H:i" }}</div>
+                                                </td>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="avatar-sm bg-soft-success text-success rounded-circle mr-2 d-flex justify-content-center align-items-center" style="width:35px; height:35px; background: #e8f5e9;">
+                                                            {{ p.facture.patient.noms|slice:":1" }}
+                                                        </div>
+                                                        <span class="font-weight-bold">{{ p.facture.patient.noms }}</span>
+                                                    </div>
+                                                </td>
+                                                <td><span class="badge-modern border bg-light text-secondary">{{ p.facture.prestation.libelle }}</span></td>
+                                                <td><span class="text-success price-tag">+ {{ p.montant_physique }}</span></td>
+                                                <td><span class="badge badge-info badge-modern">{{ p.devise }}</span></td>
+                                                <td><span class="text-dark font-weight-bold">{{ p.montant_comptable_cdf|floatformat:0 }} FC</span></td>
+                                                <td class="text-right"><span class="text-muted small">#{{ p.facture.id }}</span></td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js'%}"></script>
+    <script src="https://cdn.datatables.net/1.13.5/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.5/js/dataTables.bootstrap4.min.js"></script>
+
+    <script>
+        $(document).ready(function() {
+            var table = $('#journalTable').DataTable({
+                "language": { "url": "//cdn.datatables.net/plug-ins/1.13.5/i18n/fr-FR.json" },
+                "order": [[ 0, "desc" ]],
+                "pageLength": 10,
+                "dom": 'rt<"row p-3"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>', // On retire le 'f' (filtre) car on utilise le nôtre
+            });
+
+            // Liaison de notre barre de recherche personnalisée à DataTables
+            $('#customSearch').keyup(function(){
+                table.search($(this).val()).draw();
+            });
+        });
+    </script>
+</body>
+</html>

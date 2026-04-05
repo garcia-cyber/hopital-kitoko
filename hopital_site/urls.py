@@ -59,6 +59,8 @@ urlpatterns = [
     path('patient/<int:patient_id>/payer_examen/', 
          views.payer_examen, 
          name='payer_examen'),
+    
+    path('compta/journal/', views.historique_paiements, name='historique_paiements'),
 
     # ===============================================
     # laboratoire

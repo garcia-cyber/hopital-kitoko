@@ -28,9 +28,13 @@
                 </li>
 
                 <li>
-                    <a href="doctors.html"><i class="fas fa-user-md"></i> <span>Doctors</span></a>
+                    <a href="{% url 'historique_paiements' %}"><i class="fas fa-cogs"></i> <span>historique paiements</span></a>
                 </li>
 
+                <!-- <li>
+                    <a href="doctors.html"><i class="fas fa-user-md"></i> <span>Doctors</span></a>
+                </li>
+ -->
                 {% elif fonction == 'sous-admin' %}
 
                 <li class="submenu">
@@ -49,6 +53,9 @@
                         <li><a href="{% url 'liste_patients_consultes' %}">liste de consulter</a></li>
                     </ul>
                 </li>
+                <li>
+                    <a href="{% url 'historique_paiements' %}"><i class="fas fa-cogs"></i> <span>historique paiements</span></a>
+                </li>
 
                 {% elif fonction == 'receptionniste' %}
 
@@ -59,6 +66,10 @@
                         <li><a href="{% url 'patientRead'%}">Patient Liste</a></li>
                         <li><a href="{% url 'liste_patients_consultes' %}"> Patients  consultés</a></li>
                     </ul>
+                </li>
+
+                <li>
+                    <a href="{% url 'historique_paiements' %}"><i class="fas fa-cogs"></i> <span>historique paiements</span></a>
                 </li>
 
                 {% elif fonction == 'infirmier' %}

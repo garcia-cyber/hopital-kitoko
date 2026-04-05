@@ -804,3 +804,24 @@ def saisir_resultat_labo(request, examen_id):
     fonction = profil.fonction.fonction if profil else None
 
     return render(request, 'back-end/saisir_resultat.html', {'examen': examen , 'fonction': fonction})
+
+# 25 
+# ======================================================================================================
+# une traçabilité totale
+# =======================================================================================================
+@login_required
+def historique_paiements(request):
+    # On récupère tous les paiements avec les infos de la facture et du patient
+    # pour éviter de ralentir la base de données (select_related)
+    tous_les_paiements = Paiement.objects.all().select_related(
+        'facture__patient', 
+        'facture__prestation'
+    ).order_by('-date_paiement')
+
+    profil = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil.fonction.fonction if profil else None
+
+    return render(request, 'back-end/compta_paiements.html', {
+        'paiements': tous_les_paiements ,
+        'fonction': fonction
+    })
