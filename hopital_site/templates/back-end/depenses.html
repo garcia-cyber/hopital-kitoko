@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+    <title>Gestion des Dépenses | Hôpital</title>
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css'%}" >
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css'%}">
+    <style>
+        .card { border: none; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .search-bar { border-radius: 20px; padding-left: 40px; border: 1px solid #ddd; }
+        .search-icon { position: absolute; left: 25px; top: 10px; color: #aaa; }
+        .modal-content { border-radius: 20px; border: none; }
+        .btn-rounded { border-radius: 50px; padding: 8px 25px; }
+        .badge-solde { font-size: 0.9rem; padding: 10px 20px; border-radius: 30px; }
+    </style>
+</head>
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}success{% endif %} alert-dismissible fade show shadow-sm" role="alert">
+                            <i class="fa {% if message.tags == 'error' %}fa-exclamation-triangle{% else %}fa-check-circle{% endif %} mr-2"></i>
+                            {{ message }}
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <div class="row align-items-center mb-4">
+                    <div class="col-md-5">
+                        <h4 class="page-title font-weight-bold text-dark">Gestion des Dépenses</h4>
+                        <p class="text-muted small">Caisse actuelle : 
+                            <span class="badge badge-success-light badge-solde">{{ solde_disponible|floatformat:0 }} FC</span>
+                        </p>
+                    </div>
+                    <div class="col-md-7 text-right">
+                        <button class="btn btn-primary btn-rounded shadow-sm" data-toggle="modal" data-target="#add_depense">
+                            <i class="fa fa-plus-circle mr-1"></i> Nouvelle Dépense
+                        </button>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-12 position-relative">
+                        <i class="fa fa-search search-icon"></i>
+                        <input type="text" id="depenseSearch" class="form-control search-bar" placeholder="Rechercher par motif (ex: Carburant, Loyer, Maintenance...)">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0" id="depenseTable">
+                                        <thead class="bg-light text-uppercase small font-weight-bold">
+                                            <tr>
+                                                <th class="py-3">Date & Heure</th>
+                                                <th class="py-3">Motif / Libellé</th>
+                                                <th class="py-3 text-center">Montant Original</th>
+                                                <th class="py-3 text-right">Valeur (CDF)</th>
+                                                <th class="py-3 text-center">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="depenseBody">
+                                            {% for depense in depenses %}
+                                            <tr>
+                                                <td class="text-muted small">{{ depense.date_depense|date:"d/m/Y H:i" }}</td>
+                                                <td><span class="font-weight-bold text-dark">{{ depense.motif }}</span></td>
+                                                <td class="text-center">
+                                                    {% if depense.devise == 'USD' %}
+                                                        <span class="badge badge-pill badge-info px-3">{{ depense.montant }} $</span>
+                                                    {% else %}
+                                                        <span class="badge badge-pill badge-secondary px-3">{{ depense.montant }} FC</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td class="text-right font-weight-bold text-danger">
+                                                    - {{ depense.valeur_cdf|floatformat:0 }} <small>FC</small>
+                                                </td>
+                                                <td class="text-center">
+                                                    <button class="btn btn-sm btn-outline-danger border-0"><i class="fa fa-trash"></i></button>
+                                                </td>
+                                            </tr>
+                                            {% empty %}
+                                            <tr>
+                                                <td colspan="5" class="text-center py-5 text-muted">
+                                                    <i class="fa fa-folder-open fa-3x mb-3 d-block opacity-25"></i>
+                                                    Aucune dépense enregistrée.
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="add_depense" class="modal fade" role="dialog">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white border-0">
+                    <h5 class="modal-title font-weight-bold"><i class="fa fa-money-bill-wave mr-2"></i> Sortie de Caisse</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body p-4">
+                    <form method="POST" action="{% url 'gestion_depenses' %}">
+                        {% csrf_token %}
+                        
+                        <div class="form-group">
+                            <label class="font-weight-bold">Motif de la dépense</label>
+                            <input type="text" name="motif" class="form-control" placeholder="Ex: Achat fournitures bureau" required>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-7">
+                                <div class="form-group">
+                                    <label class="font-weight-bold">Montant</label>
+                                    <input type="number" step="0.01" name="montant" class="form-control" placeholder="0.00" required>
+                                </div>
+                            </div>
+                            <div class="col-md-5">
+                                <div class="form-group">
+                                    <label class="font-weight-bold">Devise</label>
+                                    <select name="devise" class="form-control">
+                                        <option value="CDF">CDF (Francs)</option>
+                                        <option value="USD">USD (Dollars)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info small border-0 shadow-none">
+                            <i class="fa fa-info-circle mr-1"></i> 
+                            Le montant sera automatiquement converti au taux actuel si vous choisissez USD.
+                        </div>
+
+                        <div class="mt-4">
+                            <button type="submit" class="btn btn-primary btn-block btn-rounded shadow font-weight-bold">
+                                Confirmer la sortie d'argent
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/app.js'%}"></script>
+
+    <script>
+        $(document).ready(function(){
+            // Recherche instantanée
+            $("#depenseSearch").on("keyup", function() {
+                var value = $(this).val().toLowerCase();
+                $("#depenseBody tr").filter(function() {
+                    $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+                });
+            });
+
+            // Fermeture automatique des alertes après 5 secondes
+            setTimeout(function() {
+                $(".alert").fadeOut('slow');
+            }, 5000);
+        });
+    </script>
+</body>
+</html>

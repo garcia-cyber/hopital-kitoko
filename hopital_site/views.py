@@ -887,3 +887,49 @@ def tableau_bord_finance(request):
         'fonction': fonction,
     }
     return render(request, 'back-end/finance_dashboard.html', context)
+
+# 27 
+# =========================================================================================
+# geston de depense
+# =========================================================================================
+@login_required()
+def gestion_depenses(request):
+    # 1. Calcul du solde actuel (Entrées - Sorties) en CDF
+    total_entrees = Paiement.objects.aggregate(total=Sum('montant_comptable_cdf'))['total'] or 0
+    total_sorties = Depense.objects.aggregate(total=Sum('valeur_cdf'))['total'] or 0
+    solde_disponible = total_entrees - total_sorties
+
+    if request.method == 'POST':
+        form = DepenseForm(request.POST)
+        if form.is_valid():
+            # On ne sauvegarde pas encore, on récupère l'objet pour tester son montant
+            instance = form.save(commit=False)
+            
+            # Récupération du taux pour la conversion temporaire si c'est du USD
+            montant_a_depenser_cdf = instance.montant
+            if instance.devise == 'USD':
+                config = ConfigurationHopital.objects.first()
+                taux = config.taux_usd_en_cdf if config else 2500 # Valeur de secours
+                montant_a_depenser_cdf = instance.montant * taux
+
+            # --- VÉRIFICATION DU SOLDE ---
+            if montant_a_depenser_cdf > solde_disponible:
+                messages.error(request, f"Opération refusée : Solde insuffisant. (Disponible: {solde_disponible:.0f} FC)")
+            else:
+                instance.save()
+                messages.success(request, "Dépense enregistrée avec succès.")
+                return redirect('gestion_depenses')
+    else:
+        form = DepenseForm()
+
+    # Reste de ta logique
+    depenses = Depense.objects.all().order_by('-date_depense')
+    profil = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil.fonction.fonction if profil and profil.fonction else None
+
+    return render(request, 'back-end/depenses.html', {
+        'depenses': depenses,
+        'form': form,
+        'fonction': fonction,
+        'solde_disponible': solde_disponible  # On l'envoie au template pour l'afficher
+    })

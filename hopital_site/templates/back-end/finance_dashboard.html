@@ -16,8 +16,20 @@
         .bg-info-light { background: #e3f2fd; color: #1565c0; }
         .border-left-primary { border-left: 5px solid #007bff; }
         .border-left-success { border-left: 5px solid #28a745; }
-        .stats-box { padding: 15px; text-align: center; border-radius: 12px; margin-bottom: 20px; border: 1px solid #eee; }
+        .stats-box { padding: 15px; text-align: center; border-radius: 12px; margin-bottom: 20px; border: 1px solid #eee; transition: all 0.3s ease; }
+        .stats-box:hover { transform: translateY(-5px); border-color: #007bff; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
         .progress { height: 8px; border-radius: 10px; background-color: #f0f0f0; }
+        
+        /* --- STYLE DE LA BARRE DE RECHERCHE --- */
+        .search-container { position: relative; }
+        .search-bar { 
+            border-radius: 20px; 
+            padding-left: 40px; 
+            border: 1px solid #ced4da;
+            transition: all 0.3s;
+        }
+        .search-bar:focus { border-color: #007bff; box-shadow: 0 0 5px rgba(0,123,255,0.25); }
+        .search-icon { position: absolute; left: 15px; top: 10px; color: #6c757d; }
     </style>
 </head>
 <body>
@@ -27,13 +39,16 @@
 
         <div class="page-wrapper">
             <div class="content">
+                
                 <div class="row align-items-center mb-4">
-                    <div class="col">
-                        <h4 class="page-title font-weight-bold text-dark">Analyse Financière & Solde</h4>
-                        <p class="text-muted">Situation réelle de la caisse (Entrées - Dépenses cumulées)</p>
+                    <div class="col-md-6">
+                        <h4 class="page-title font-weight-bold text-dark">Tableau de Bord Financier</h4>
+                        <p class="text-muted">Analyse des flux et rentabilité des services</p>
                     </div>
-                    <div class="col-auto">
-                        <span class="badge badge-pill badge-primary p-2">{{ fonction|default:"Personnel" }}</span>
+                    <div class="col-md-6 text-right">
+                        <button onclick="window.location.reload();" class="btn btn-white btn-sm rounded-pill shadow-sm border px-3">
+                            <i class="fa fa-sync-alt text-primary mr-1"></i> Actualiser les données
+                        </button>
                     </div>
                 </div>
 
@@ -42,7 +57,7 @@
                         <div class="card p-3 border-left-success">
                             <div class="dash-widget-header">
                                 <div>
-                                    <small class="text-muted font-weight-bold text-uppercase">Solde USD Net</small>
+                                    <small class="text-muted font-weight-bold text-uppercase">Caisse USD</small>
                                     <h3 class="font-weight-bold text-success mt-1">{{ solde_usd|floatformat:2 }} $</h3>
                                 </div>
                                 <div class="dash-widget-icon bg-success-light"><i class="fa fa-wallet"></i></div>
@@ -53,7 +68,7 @@
                         <div class="card p-3 border-left-primary">
                             <div class="dash-widget-header">
                                 <div>
-                                    <small class="text-muted font-weight-bold text-uppercase">Solde CDF Net</small>
+                                    <small class="text-muted font-weight-bold text-uppercase">Caisse CDF</small>
                                     <h3 class="font-weight-bold text-primary mt-1">{{ solde_cdf|floatformat:0 }} FC</h3>
                                 </div>
                                 <div class="dash-widget-icon bg-info-light"><i class="fa fa-coins"></i></div>
@@ -61,113 +76,94 @@
                         </div>
                     </div>
                     <div class="col-md-4">
-                        <div class="card p-3 bg-dark text-white">
+                        <div class="card p-3 bg-dark text-white shadow-lg">
                             <div class="dash-widget-header">
                                 <div>
-                                    <small class="text-white-50 font-weight-bold text-uppercase">Valeur Totale (CDF)</small>
+                                    <small class="text-white-50 font-weight-bold text-uppercase">Total Général (CDF)</small>
                                     <h3 class="font-weight-bold text-white mt-1">{{ solde_general_cdf|floatformat:0 }} FC</h3>
                                 </div>
-                                <div class="dash-widget-icon bg-secondary text-white"><i class="fa fa-chart-line"></i></div>
+                                <div class="dash-widget-icon bg-secondary text-white"><i class="fa fa-university"></i></div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="row">
-                    <div class="col-md-3">
-                        <div class="card stats-box">
-                            <small class="text-muted text-uppercase">Aujourd'hui</small>
-                            <h4 class="font-weight-bold text-success mt-2">{{ entree_jour|floatformat:0 }} <small>FC</small></h4>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card stats-box">
-                            <small class="text-muted text-uppercase">Cette Semaine</small>
-                            <h4 class="font-weight-bold text-primary mt-2">{{ entree_semaine|floatformat:0 }} <small>FC</small></h4>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card stats-box">
-                            <small class="text-muted text-uppercase">Ce Mois</small>
-                            <h4 class="font-weight-bold text-warning mt-2">{{ entree_mois|floatformat:0 }} <small>FC</small></h4>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card stats-box">
-                            <small class="text-muted text-uppercase">Cette Année</small>
-                            <h4 class="font-weight-bold text-danger mt-2">{{ entree_annee|floatformat:0 }} <small>FC</small></h4>
-                        </div>
-                    </div>
+                <div class="row mb-4">
+                    <div class="col-md-3"><div class="card stats-box"><small class="text-muted">AUJOURD'HUI</small><h4 class="font-weight-bold text-success mt-2">{{ entree_jour|floatformat:0 }} FC</h4></div></div>
+                    <div class="col-md-3"><div class="card stats-box"><small class="text-muted">CETTE SEMAINE</small><h4 class="font-weight-bold text-primary mt-2">{{ entree_semaine|floatformat:0 }} FC</h4></div></div>
+                    <div class="col-md-3"><div class="card stats-box"><small class="text-muted">CE MOIS</small><h4 class="font-weight-bold text-warning mt-2">{{ entree_mois|floatformat:0 }} FC</h4></div></div>
+                    <div class="col-md-3"><div class="card stats-box"><small class="text-muted">CETTE ANNÉE</small><h4 class="font-weight-bold text-danger mt-2">{{ entree_annee|floatformat:0 }} FC</h4></div></div>
                 </div>
 
                 <div class="row">
                     <div class="col-md-4">
-                        <div class="card h-100">
+                        <div class="card h-100 shadow-sm border-0">
                             <div class="card-body">
-                                <h5 class="card-title font-weight-bold mb-4">Flux de Trésorerie</h5>
+                                <h5 class="card-title font-weight-bold mb-4">Mouvements de Fonds</h5>
                                 <div class="mb-4">
                                     <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <span class="text-muted">Total Encaissé</span>
+                                        <span class="text-muted">Entrées (Paiements)</span>
                                         <span class="text-success font-weight-bold">+ {{ total_entrees|floatformat:0 }} FC</span>
                                     </div>
                                     <div class="progress"><div class="progress-bar bg-success" style="width: 100%"></div></div>
                                 </div>
                                 <div class="mb-4">
                                     <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <span class="text-muted">Total Dépenses</span>
+                                        <span class="text-muted">Sorties (Dépenses)</span>
                                         <span class="text-danger font-weight-bold">- {{ total_sorties|floatformat:0 }} FC</span>
                                     </div>
-                                    <div class="progress"><div class="progress-bar bg-danger" style="width: 50%"></div></div>
+                                    <div class="progress"><div class="progress-bar bg-danger" style="width: 40%"></div></div>
                                 </div>
-                                <div class="mt-5 p-3 bg-light rounded text-center">
-                                    <i class="fa fa-info-circle text-info mb-2"></i>
-                                    <p class="small text-muted mb-0">Le solde net affiché en haut tient compte de toutes les dépenses enregistrées par l'administration.</p>
+                                <div class="mt-5 p-3 bg-light rounded text-center small text-muted">
+                                    <i class="fa fa-lock mr-1"></i> Données sécurisées et synchronisées avec la caisse centrale.
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <div class="col-md-8">
-                        <div class="card shadow-sm border-0 h-100">
-                            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                                <h5 class="card-title mb-0 font-weight-bold"><i class="fa fa-stethoscope text-primary mr-2"></i> Rentabilité des Services</h5>
-                                <span class="badge badge-info">Top Prestations</span>
+                        <div class="card h-100 shadow-sm border-0">
+                            <div class="card-header bg-white py-3">
+                                <div class="row align-items-center">
+                                    <div class="col-md-6">
+                                        <h5 class="card-title mb-0 font-weight-bold text-dark">
+                                            <i class="fa fa-list-ul text-primary mr-2"></i> Rentabilité des Services
+                                        </h5>
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <div class="search-container">
+                                            <i class="fa fa-search search-icon"></i>
+                                            <input type="text" id="filterInput" class="form-control search-bar" placeholder="Filtrer un service (ex: Labo, Echo...)">
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="card-body">
+                            <div class="card-body p-0">
                                 <div class="table-responsive">
-                                    <table class="table table-hover mb-0">
-                                        <thead class="thead-light">
+                                    <table class="table table-hover mb-0" id="tableServices">
+                                        <thead class="bg-light">
                                             <tr>
-                                                <th>Service / Prestation</th>
-                                                <th class="text-center">Actes</th>
-                                                <th class="text-right">Revenu (CDF)</th>
-                                                <th class="text-center">Tendance</th>
+                                                <th class="border-0">Désignation du Service</th>
+                                                <th class="border-0 text-center">Nbre d'Actes</th>
+                                                <th class="border-0 text-right">Recette Totale</th>
                                             </tr>
                                         </thead>
-                                        <tbody>
+                                        <tbody id="tableBody">
                                             {% for stat in stats_prestations %}
                                             <tr>
-                                                <td>
-                                                    <span class="font-weight-bold text-dark">
-                                                        {{ stat.facture__prestation__libelle|default:"Service Inconnu" }}
-                                                    </span>
+                                                <td class="font-weight-bold text-dark">
+                                                    {{ stat.facture__prestation__libelle|default:"Autre" }}
                                                 </td>
                                                 <td class="text-center">
-                                                    <span class="badge badge-pill badge-light border px-3">{{ stat.nombre_actes }}</span>
+                                                    <span class="badge badge-pill badge-primary-light px-3">{{ stat.nombre_actes }}</span>
                                                 </td>
                                                 <td class="text-right text-success font-weight-bold">
-                                                    {{ stat.total_genere|floatformat:0 }} FC
-                                                </td>
-                                                <td>
-                                                    <div class="progress mt-2">
-                                                        <div class="progress-bar bg-primary" style="width: 75%"></div>
-                                                    </div>
+                                                    {{ stat.total_genere|floatformat:0 }} <small>FC</small>
                                                 </td>
                                             </tr>
                                             {% empty %}
-                                            <tr>
-                                                <td colspan="4" class="text-center py-4 text-muted">Aucune transaction enregistrée pour le moment.</td>
-                                            </tr>
+                                            <tr><td colspan="3" class="text-center py-4 text-muted">Aucune donnée trouvée</td></tr>
                                             {% endfor %}
                                         </tbody>
                                     </table>
@@ -182,6 +178,16 @@
 
     <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js'%}"></script>
     <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js'%}"></script>
-    <script src="{% static 'back-end/assets/js/app.js'%}"></script>
+
+    <script>
+        $(document).ready(function(){
+            $("#filterInput").on("keyup", function() {
+                var value = $(this).val().toLowerCase();
+                $("#tableBody tr").filter(function() {
+                    $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+                });
+            });
+        });
+    </script>
 </body>
 </html>

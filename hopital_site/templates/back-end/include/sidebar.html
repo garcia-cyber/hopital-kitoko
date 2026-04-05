@@ -28,19 +28,17 @@
                 </li>
 
                 <li>
-                    <a href="{% url 'historique_paiements' %}"><i class="fas fa-cogs"></i> <span>historique paiements</span></a>
+                    <a href="{% url 'historique_paiements' %}"><i class="fas fa-history"></i> <span>historique paiements</span></a>
                 </li>
 
                 <li>
-                    <a href="{% url 'tableau_bord_finance' %}"><i class="fas fa-cogs"></i> <span>historique finance</span></a>
+                    <a href="{% url 'tableau_bord_finance' %}"><i class="fas fa-chart-line"></i> <span>historique finance</span></a>
                 </li>
 
-                
-
-                <!-- <li>
-                    <a href="doctors.html"><i class="fas fa-user-md"></i> <span>Doctors</span></a>
+                <li>
+                    <a href="{% url 'gestion_depenses' %}"><i class="fas fa-money-bill-wave"></i> <span>depense</span></a>
                 </li>
- -->
+
                 {% elif fonction == 'sous-admin' %}
 
                 <li class="submenu">
@@ -60,11 +58,15 @@
                     </ul>
                 </li>
                 <li>
-                    <a href="{% url 'historique_paiements' %}"><i class="fas fa-cogs"></i> <span>historique paiements</span></a>
+                    <a href="{% url 'historique_paiements' %}"><i class="fas fa-history"></i> <span>historique paiements</span></a>
                 </li>
 
                 <li>
-                    <a href="{% url 'tableau_bord_finance' %}"><i class="fas fa-cogs"></i> <span>historique finance</span></a>
+                    <a href="{% url 'tableau_bord_finance' %}"><i class="fas fa-chart-line"></i> <span>historique finance</span></a>
+                </li>
+
+                <li>
+                    <a href="{% url 'gestion_depenses' %}"><i class="fas fa-money-bill-wave"></i> <span>depense</span></a>
                 </li>
 
                 {% elif fonction == 'receptionniste' %}
@@ -79,11 +81,15 @@
                 </li>
 
                 <li>
-                    <a href="{% url 'historique_paiements' %}"><i class="fas fa-cogs"></i> <span>historique paiements</span></a>
+                    <a href="{% url 'historique_paiements' %}"><i class="fas fa-history"></i> <span>historique paiements</span></a>
                 </li>
 
                 <li>
-                    <a href="{% url 'tableau_bord_finance' %}"><i class="fas fa-cogs"></i> <span>historique finance</span></a>
+                    <a href="{% url 'tableau_bord_finance' %}"><i class="fas fa-chart-line"></i> <span>historique finance</span></a>
+                </li>
+
+                <li>
+                    <a href="{% url 'gestion_depenses' %}"><i class="fas fa-money-bill-wave"></i> <span>depense</span></a>
                 </li>
 
                 {% elif fonction == 'infirmier' %}
@@ -108,22 +114,9 @@
                 </li>
                 {% elif fonction == 'laborantin' %}
                 <li>
-                    <a href="{% url 'liste_examens_labo' %}"><i class="fas fa-cogs"></i> <span>examen labo</span></a>
+                    <a href="{% url 'liste_examens_labo' %}"><i class="fas fa-microscope"></i> <span>examen labo</span></a>
                 </li>
                 {% endif %}
-
-                <!-- <li class="menu-title">Comptabilité</li>
-                <li class="submenu">
-                    <a href="#"><i class="fas fa-file-invoice-dollar"></i> <span> Accounts </span> <span class="menu-arrow"></span></a>
-                    <ul style="display: none;">
-                        <li><a href="invoices.html">Invoices</a></li>
-                        <li><a href="payments.html">Payments</a></li>
-                    </ul>
-                </li>
-                
-                <li>
-                    <a href="settings.html"><i class="fas fa-cogs"></i> <span>Settings</span></a>
-                </li> -->
             </ul>
         </div>
     </div>

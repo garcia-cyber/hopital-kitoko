@@ -119,7 +119,7 @@ class SignesVitauxForm(forms.ModelForm):
         }
 # 7
 # ===========================================================
-# 
+#  consultation formulaire
 # ===========================================================
 
 class ConsultationForm(forms.ModelForm):
@@ -136,4 +136,19 @@ class ConsultationForm(forms.ModelForm):
         widgets = {
             'motif': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'diagnostic': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+
+
+# 8 
+# =========================================================
+# gestion de depense 
+# =========================================================
+class DepenseForm(forms.ModelForm):
+    class Meta:
+        model = Depense
+        fields = ['motif', 'montant', 'devise']
+        widgets = {
+            'motif': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Achat carburant groupe'}),
+            'montant': forms.NumberInput(attrs={'class': 'form-control'}),
+            'devise': forms.Select(attrs={'class': 'form-control'}),
         }
