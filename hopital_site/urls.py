@@ -61,6 +61,7 @@ urlpatterns = [
          name='payer_examen'),
     
     path('compta/journal/', views.historique_paiements, name='historique_paiements'),
+    path('finance/dashboard/', views.tableau_bord_finance, name='tableau_bord_finance'),
 
     # ===============================================
     # laboratoire

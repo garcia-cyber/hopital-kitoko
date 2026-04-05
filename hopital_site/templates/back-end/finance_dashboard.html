@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+    <title>Finance Dashboard | Gestion Hôpital</title>
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css'%}" >
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css'%}">
+    <style>
+        .card { border: none; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 30px; }
+        .dash-widget-header { display: flex; align-items: center; justify-content: space-between; }
+        .dash-widget-icon { width: 50px; height: 50px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+        .bg-success-light { background: #e8f5e9; color: #2e7d32; }
+        .bg-info-light { background: #e3f2fd; color: #1565c0; }
+        .border-left-primary { border-left: 5px solid #007bff; }
+        .border-left-success { border-left: 5px solid #28a745; }
+        .stats-box { padding: 15px; text-align: center; border-radius: 12px; margin-bottom: 20px; border: 1px solid #eee; }
+        .progress { height: 8px; border-radius: 10px; background-color: #f0f0f0; }
+    </style>
+</head>
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="row align-items-center mb-4">
+                    <div class="col">
+                        <h4 class="page-title font-weight-bold text-dark">Analyse Financière & Solde</h4>
+                        <p class="text-muted">Situation réelle de la caisse (Entrées - Dépenses cumulées)</p>
+                    </div>
+                    <div class="col-auto">
+                        <span class="badge badge-pill badge-primary p-2">{{ fonction|default:"Personnel" }}</span>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card p-3 border-left-success">
+                            <div class="dash-widget-header">
+                                <div>
+                                    <small class="text-muted font-weight-bold text-uppercase">Solde USD Net</small>
+                                    <h3 class="font-weight-bold text-success mt-1">{{ solde_usd|floatformat:2 }} $</h3>
+                                </div>
+                                <div class="dash-widget-icon bg-success-light"><i class="fa fa-wallet"></i></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card p-3 border-left-primary">
+                            <div class="dash-widget-header">
+                                <div>
+                                    <small class="text-muted font-weight-bold text-uppercase">Solde CDF Net</small>
+                                    <h3 class="font-weight-bold text-primary mt-1">{{ solde_cdf|floatformat:0 }} FC</h3>
+                                </div>
+                                <div class="dash-widget-icon bg-info-light"><i class="fa fa-coins"></i></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card p-3 bg-dark text-white">
+                            <div class="dash-widget-header">
+                                <div>
+                                    <small class="text-white-50 font-weight-bold text-uppercase">Valeur Totale (CDF)</small>
+                                    <h3 class="font-weight-bold text-white mt-1">{{ solde_general_cdf|floatformat:0 }} FC</h3>
+                                </div>
+                                <div class="dash-widget-icon bg-secondary text-white"><i class="fa fa-chart-line"></i></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="card stats-box">
+                            <small class="text-muted text-uppercase">Aujourd'hui</small>
+                            <h4 class="font-weight-bold text-success mt-2">{{ entree_jour|floatformat:0 }} <small>FC</small></h4>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stats-box">
+                            <small class="text-muted text-uppercase">Cette Semaine</small>
+                            <h4 class="font-weight-bold text-primary mt-2">{{ entree_semaine|floatformat:0 }} <small>FC</small></h4>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stats-box">
+                            <small class="text-muted text-uppercase">Ce Mois</small>
+                            <h4 class="font-weight-bold text-warning mt-2">{{ entree_mois|floatformat:0 }} <small>FC</small></h4>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stats-box">
+                            <small class="text-muted text-uppercase">Cette Année</small>
+                            <h4 class="font-weight-bold text-danger mt-2">{{ entree_annee|floatformat:0 }} <small>FC</small></h4>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title font-weight-bold mb-4">Flux de Trésorerie</h5>
+                                <div class="mb-4">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="text-muted">Total Encaissé</span>
+                                        <span class="text-success font-weight-bold">+ {{ total_entrees|floatformat:0 }} FC</span>
+                                    </div>
+                                    <div class="progress"><div class="progress-bar bg-success" style="width: 100%"></div></div>
+                                </div>
+                                <div class="mb-4">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="text-muted">Total Dépenses</span>
+                                        <span class="text-danger font-weight-bold">- {{ total_sorties|floatformat:0 }} FC</span>
+                                    </div>
+                                    <div class="progress"><div class="progress-bar bg-danger" style="width: 50%"></div></div>
+                                </div>
+                                <div class="mt-5 p-3 bg-light rounded text-center">
+                                    <i class="fa fa-info-circle text-info mb-2"></i>
+                                    <p class="small text-muted mb-0">Le solde net affiché en haut tient compte de toutes les dépenses enregistrées par l'administration.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-8">
+                        <div class="card shadow-sm border-0 h-100">
+                            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                                <h5 class="card-title mb-0 font-weight-bold"><i class="fa fa-stethoscope text-primary mr-2"></i> Rentabilité des Services</h5>
+                                <span class="badge badge-info">Top Prestations</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0">
+                                        <thead class="thead-light">
+                                            <tr>
+                                                <th>Service / Prestation</th>
+                                                <th class="text-center">Actes</th>
+                                                <th class="text-right">Revenu (CDF)</th>
+                                                <th class="text-center">Tendance</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for stat in stats_prestations %}
+                                            <tr>
+                                                <td>
+                                                    <span class="font-weight-bold text-dark">
+                                                        {{ stat.facture__prestation__libelle|default:"Service Inconnu" }}
+                                                    </span>
+                                                </td>
+                                                <td class="text-center">
+                                                    <span class="badge badge-pill badge-light border px-3">{{ stat.nombre_actes }}</span>
+                                                </td>
+                                                <td class="text-right text-success font-weight-bold">
+                                                    {{ stat.total_genere|floatformat:0 }} FC
+                                                </td>
+                                                <td>
+                                                    <div class="progress mt-2">
+                                                        <div class="progress-bar bg-primary" style="width: 75%"></div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {% empty %}
+                                            <tr>
+                                                <td colspan="4" class="text-center py-4 text-muted">Aucune transaction enregistrée pour le moment.</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/app.js'%}"></script>
+</body>
+</html>

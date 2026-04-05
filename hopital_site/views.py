@@ -6,9 +6,11 @@ from django.contrib.auth.models import User
 from .models import *
 from decimal import Decimal
 from django.contrib import messages
-from django.db.models import Sum, F , Q
+from django.db.models import Sum, F , Q , Count
 from django.forms import inlineformset_factory
 from django.db import transaction  # <--- AJOUTE CETTE LIGNE
+from datetime import timedelta
+from django.utils import timezone
 
 # Create your views here.
 
@@ -825,3 +827,63 @@ def historique_paiements(request):
         'paiements': tous_les_paiements ,
         'fonction': fonction
     })
+
+# 26
+# ========================================================================================================= 
+# partie finance 
+# =========================================================================================================
+@login_required
+def tableau_bord_finance(request):
+    aujourdhui = timezone.now()
+    
+    # --- ENTRÉES (Paiements patients) ---
+    entrees_usd = Paiement.objects.filter(devise='USD').aggregate(total=Sum('montant_physique'))['total'] or 0
+    entrees_cdf = Paiement.objects.filter(devise='CDF').aggregate(total=Sum('montant_physique'))['total'] or 0
+    total_entrees_en_cdf = Paiement.objects.aggregate(total=Sum('montant_comptable_cdf'))['total'] or 0
+
+    # --- DÉPENSES (Sorties d'argent) ---
+    sorties_usd = Depense.objects.filter(devise='USD').aggregate(total=Sum('montant'))['total'] or 0
+    sorties_cdf = Depense.objects.filter(devise='CDF').aggregate(total=Sum('montant'))['total'] or 0
+    total_sorties_en_cdf = Depense.objects.aggregate(total=Sum('valeur_cdf'))['total'] or 0
+
+    # --- SOLDE NET (Réel en caisse) ---
+    solde_usd = entrees_usd - sorties_usd
+    solde_cdf = entrees_cdf - sorties_cdf
+    solde_general_cdf = total_entrees_en_cdf - total_sorties_en_cdf
+
+    # --- STATS PAR PÉRIODES ---
+    entree_jour = Paiement.objects.filter(date_paiement__date=aujourdhui.date()).aggregate(total=Sum('montant_comptable_cdf'))['total'] or 0
+    
+    debut_semaine = aujourdhui.date() - timedelta(days=aujourdhui.weekday())
+    entree_semaine = Paiement.objects.filter(date_paiement__date__gte=debut_semaine).aggregate(total=Sum('montant_comptable_cdf'))['total'] or 0
+    
+    entree_mois = Paiement.objects.filter(date_paiement__month=aujourdhui.month, date_paiement__year=aujourdhui.year).aggregate(total=Sum('montant_comptable_cdf'))['total'] or 0
+    entree_annee = Paiement.objects.filter(date_paiement__year=aujourdhui.year).aggregate(total=Sum('montant_comptable_cdf'))['total'] or 0
+
+    # --- TOP PRESTATIONS (Correction définitive de la jointure) ---
+    # On groupe par le libellé de la prestation à travers la facture liée au paiement
+    stats_prestations = Paiement.objects.values(
+        'facture__prestation__libelle'
+    ).annotate(
+        total_genere=Sum('montant_comptable_cdf'),
+        nombre_actes=Count('id')
+    ).filter(total_genere__gt=0).order_by('-total_genere')
+
+    # --- GESTION DU PROFIL ---
+    profil = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil.fonction.fonction if profil and profil.fonction else None
+
+    context = {
+        'solde_usd': solde_usd,
+        'solde_cdf': solde_cdf,
+        'solde_general_cdf': solde_general_cdf,
+        'total_entrees': total_entrees_en_cdf,
+        'total_sorties': total_sorties_en_cdf,
+        'entree_jour': entree_jour,
+        'entree_semaine': entree_semaine,
+        'entree_mois': entree_mois,
+        'entree_annee': entree_annee,
+        'stats_prestations': stats_prestations,
+        'fonction': fonction,
+    }
+    return render(request, 'back-end/finance_dashboard.html', context)
