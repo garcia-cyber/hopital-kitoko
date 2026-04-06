@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="fr">
+{% load static %}
+<head>
+    <meta charset="utf-8">
+    <title>Hôpital | Liste des Chambres</title>
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css' %}">
+</head>
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="row">
+                    <div class="col-sm-8">
+                        <h4 class="page-title">Chambres Enregistrées</h4>
+                    </div>
+                    <div class="col-sm-4 text-right m-b-30">
+                        <a href="{% url 'ajouter_chambre' %}" class="btn btn-primary btn-rounded"><i class="fa fa-plus"></i> Ajouter une Chambre</a>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="card shadow-sm">
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th># Numéro</th>
+                                                <th>Catégorie</th>
+                                                <th>Prix Journalier</th>
+                                                <th class="text-right">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for chambre in chambres %}
+                                            <tr>
+                                                <td><strong>Chambre {{ chambre.numero }}</strong></td>
+                                                <td><span class="badge badge-info">{{ chambre.get_type_chambre_display }}</span></td>
+                                                <td>{{ chambre.prix_journalier|floatformat:0 }} CDF</td>
+                                                <td class="text-right">
+                                                    <a href="{% url 'ajouter_lit' %}?chambre_id={{ chambre.id }}" class="btn btn-outline-success btn-sm">
+                                                        <i class="fa fa-bed"></i> Ajouter un Lit
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                            {% empty %}
+                                            <tr>
+                                                <td colspan="4" class="text-center text-muted">Aucune chambre enregistrée pour le moment.</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js' %}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js' %}"></script>
+    <script src="{% static 'back-end/assets/js/app.js' %}"></script>
+</body>
+</html>

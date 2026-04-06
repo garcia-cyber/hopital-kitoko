@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="fr">
+{% load static %}
+<head>
+    <meta charset="utf-8">
+    <title>Hôpital | Enregistrer Chambre</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css' %}">
+
+    <style>
+        .admin_title { font-weight: 700; text-transform: uppercase; color: #333; }
+        .card-box { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        .btn-register { border-radius: 50px; padding: 12px 50px; font-weight: bold; font-size: 16px; }
+    </style>
+</head>
+
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="row">
+                    <div class="col-lg-8 offset-lg-2">
+                        <h4 class="page-title admin_title">Nouvelle Chambre</h4>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-lg-8 offset-lg-2">
+                        <div class="card-box">
+                            <form method="POST" action="." id="formAjoutChambre">
+                                {% csrf_token %}
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Numéro de la Chambre <span class="text-danger">*</span></label>
+                                            <input type="text" name="numero" class="form-control" placeholder="ex: CH-101" required>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Type de Catégorie</label>
+                                            <select class="form-control" name="type_chambre">
+                                                <option value="STANDARD">Standard</option>
+                                                <option value="VIP">Privée VIP</option>
+                                                <option value="COMMUNE">Salle Commune</option>
+                                                <option value="REANIMATION">Réanimation</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-12">
+                                        <div class="form-group">
+                                            <label>Prix Journalier (CDF) <span class="text-danger">*</span></label>
+                                            <div class="input-group">
+                                                <input type="number" name="prix" class="form-control" placeholder="Montant" required>
+                                                <div class="input-group-append">
+                                                    <span class="input-group-text">CDF</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="text-center m-t-20">
+                                    <button type="submit" class="btn btn-primary btn-register">
+                                        <i class="fas fa-save mr-2"></i> Enregistrer la Chambre
+                                    </button>
+                                    <br><br>
+                                    <a href="{% url 'gestion_chambres' %}" class="text-muted">Annuler et retourner</a>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js' %}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js' %}"></script>
+    <script src="{% static 'back-end/assets/js/jquery.slimscroll.js' %}"></script>
+    <script src="{% static 'back-end/assets/js/app.js' %}"></script>
+
+    <script>
+        $(document).ready(function() {
+            $('#formAjoutChambre').on('submit', function(e) {
+                console.log("Tentative d'envoi du formulaire...");
+                // Si ce message s'affiche dans la console (F12), le bouton fonctionne.
+            });
+        });
+    </script>
+</body>
+</html>

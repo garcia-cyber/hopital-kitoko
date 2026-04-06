@@ -87,9 +87,21 @@
                 <li>
                     <a href="{% url 'tableau_bord_finance' %}"><i class="fas fa-chart-line"></i> <span>historique finance</span></a>
                 </li>
-
+                
                 <li>
                     <a href="{% url 'gestion_depenses' %}"><i class="fas fa-money-bill-wave"></i> <span>depense</span></a>
+                </li>
+
+                <li>
+                    <a href="{% url 'ajouter_chambre' %}"><i class="fas fa-door-open"></i> <span>ajouter chambre</span></a>
+                </li>
+
+                <li>
+                    <a href="{% url 'ajouter_lit' %}"><i class="fas fa-bed"></i> <span>ajouter lit</span></a>
+                </li>
+
+                <li>
+                    <a href="{% url 'liste_chambres' %}"><i class="fas fa-hospital"></i> <span>liste des chambres</span></a>
                 </li>
 
                 {% elif fonction == 'infirmier' %}

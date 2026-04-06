@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+{% load static %}
+<head>
+    <meta charset="utf-8">
+    <title>Hôpital | Gestion des Chambres</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'back-end/assets/img/favicon.ico'%}">
+    <link href="https://fonts.googleapis.com/css?family=Fira+Sans:400,500,600,700" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/select2.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css'%}">
+
+    <style>
+        .admin_title { font-weight: 700; text-transform: uppercase; color: #333; }
+        .card-hospital { border: none; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.05); }
+        .text-cdf { color: #007bff; font-weight: bold; }
+        .badge-room { padding: 7px 12px; border: 1px solid #dc3545; color: #dc3545; background: transparent; border-radius: 4px; }
+    </style>
+</head>
+
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html'%}
+        {% include 'back-end/include/sidebar.html'%}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="row align-items-center mb-4">
+                    <div class="col-8">
+                        <h4 class="admin_title m-0">Suivi des Hospitalisations</h4>
+                    </div>
+                    <div class="col-4 text-right">
+                        <a href="#" class="btn btn-primary btn-rounded">
+                            <i class="fa fa-plus"></i> Admettre un Patient
+                        </a>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 col-xl-4">
+                        <div class="dash-widget">
+                            <span class="dash-widget-bg1"><i class="fa fa-procedures"></i></span>
+                            <div class="dash-widget-info pl-2">
+                                <h4>{{ occupations_actives.count }}</h4>
+                                <p>Lits occupés</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-xl-4">
+                        <div class="dash-widget">
+                            <span class="dash-widget-bg2"><i class="fa fa-bed"></i></span>
+                            <div class="dash-widget-info pl-2">
+                                <h4>{{ lits.count }}</h4>
+                                <p>Capacité Totale</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <div class="card card-hospital">
+                            <div class="card-header bg-white border-bottom">
+                                <h5 class="m-0"><i class="fas fa-list mr-2"></i>Liste des Patients en Chambre</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Emplacement</th>
+                                                <th>Patient</th>
+                                                <th>Entrée</th>
+                                                <th>Durée (J)</th>
+                                                <th>Prix/Jour</th>
+                                                <th>Total (CDF)</th>
+                                                <th class="text-right">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for occ in occupations_actives %}
+                                            <tr>
+                                                <td>
+                                                    <span class="badge-room">
+                                                        CH {{ occ.lit.chambre.numero }} - {{ occ.lit.nom_lit }}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <strong>{{ occ.patient.nom }}</strong><br>
+                                                    <small class="text-muted">Type: {{ occ.lit.chambre.get_type_chambre_display }}</small>
+                                                </td>
+                                                <td>{{ occ.date_admission|date:"d/m/Y H:i" }}</td>
+                                                <td><span class="badge badge-pill badge-info">{{ occ.nombre_jours }} jours</span></td>
+                                                <td>{{ occ.lit.chambre.prix_journalier|floatformat:0 }} CDF</td>
+                                                <td class="text-cdf">{{ occ.total_facture_cdf|floatformat:0 }} CDF</td>
+                                                <td class="text-right">
+                                                    <form method="POST" action="{% url 'liberer_patient' occ.id %}" style="display:inline;">
+                                                        {% csrf_token %}
+                                                        <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Confirmer la sortie du patient et la libération du lit ?');">
+                                                            <i class="fas fa-sign-out-alt"></i> Libérer
+                                                        </button>
+                                                    </form>
+                                                </td>
+                                            </tr>
+                                            {% empty %}
+                                            <tr>
+                                                <td colspan="7" class="text-center py-5">
+                                                    <p class="text-muted m-0">Aucune hospitalisation active en ce moment.</p>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/jquery.slimscroll.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/app.js'%}"></script>
+</body>
+</html>

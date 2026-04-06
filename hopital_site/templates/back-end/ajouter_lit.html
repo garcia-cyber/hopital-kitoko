@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+{% load static %}
+<head>
+    <meta charset="utf-8">
+    <title>Hôpital | Ajouter Lit</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'back-end/assets/img/favicon.ico'%}">
+    <link href="https://fonts.googleapis.com/css?family=Fira+Sans:400,500,600,700" rel="stylesheet">
+    
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/select2.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css'%}">
+
+    <style>
+        .admin_title { font-weight: 700; text-transform: uppercase; color: #333; }
+        .submit-btn { border-radius: 50px; padding: 10px 30px; font-weight: 600; }
+        .card-box { background-color: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    </style>
+</head>
+
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html'%}
+        {% include 'back-end/include/sidebar.html'%}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="row">
+                    <div class="col-lg-8 offset-lg-2">
+                        <h4 class="page-title admin_title">Ajouter un Lit</h4>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-lg-8 offset-lg-2">
+                        <div class="card-box">
+                            <form method="POST">
+                                {% csrf_token %}
+                                <div class="row">
+                                    <div class="col-sm-12">
+                                        <div class="form-group">
+                                            <label>Chambre de destination <span class="text-danger">*</span></label>
+                                            <select class="form-control select" name="chambre" required>
+                                                <option value="">-- Sélectionner la chambre --</option>
+                                                {% for chambre in chambres %}
+                                                    <option value="{{ chambre.id }}">
+                                                        Chambre {{ chambre.numero }} ({{ chambre.get_type_chambre_display }} - {{ chambre.prix_journalier|floatformat:0 }} CDF/J)
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+                                            <small class="form-text text-muted">Choisissez la chambre où se trouve le lit.</small>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-sm-12">
+                                        <div class="form-group">
+                                            <label>Nom ou Numéro du Lit <span class="text-danger">*</span></label>
+                                            <input class="form-control" type="text" name="nom_lit" placeholder="ex: Lit A, L1, ou Fenêtre" required>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-sm-12">
+                                        <div class="alert alert-info">
+                                            <i class="fa fa-info-circle"></i> Par défaut, le lit sera enregistré comme <strong>Libre</strong>.
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="m-t-20 text-center">
+                                    <button class="btn btn-primary submit-btn" type="submit">Enregistrer le Lit</button>
+                                    <a href="{% url 'gestion_chambres' %}" class="btn btn-secondary submit-btn ml-2">Annuler</a>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/select2.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/jquery.slimscroll.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/app.js'%}"></script>
+    
+    <script>
+        $(document).ready(function() {
+            if($('.select').length > 0) {
+                $('.select').select2({
+                    minimumResultsForSearch: -1,
+                    width: '100%'
+                });
+            }
+        });
+    </script>
+</body>
+</html>

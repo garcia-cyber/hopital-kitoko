@@ -924,6 +924,7 @@ def gestion_depenses(request):
 
     # Reste de ta logique
     depenses = Depense.objects.all().order_by('-date_depense')
+
     profil = Profil.objects.filter(userProfil=request.user).first()
     fonction = profil.fonction.fonction if profil and profil.fonction else None
 
@@ -931,5 +932,112 @@ def gestion_depenses(request):
         'depenses': depenses,
         'form': form,
         'fonction': fonction,
-        'solde_disponible': solde_disponible  # On l'envoie au template pour l'afficher
+        'solde_disponible': solde_disponible ,
+
     })
+
+# 28 
+# =======================================================================================
+# gestion de chambre 
+# =======================================================================================
+@login_required
+def ajouter_chambre(request):
+    if request.method == "POST":
+        numero = request.POST.get('numero')
+        type_chambre = request.POST.get('type_chambre')
+        prix = request.POST.get('prix')
+
+        # Vérification si le numéro de chambre existe déjà
+        if Chambre.objects.filter(numero=numero).exists():
+            messages.error(request, f"Erreur : La chambre {numero} existe déjà dans le système.")
+            return render(request, 'back-end/ajouter_chambre.html')
+
+        try:
+            Chambre.objects.create(
+                numero=numero,
+                type_chambre=type_chambre,
+                prix_journalier=prix
+            )
+            messages.success(request, f"La Chambre {numero} a été enregistrée avec succès.")
+            return redirect('gestion_chambres')
+        except Exception as e:
+            messages.error(request, f"Une erreur est survenue : {e}")
+
+    profil = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil.fonction.fonction if profil and profil.fonction else None
+            
+    return render(request, 'back-end/ajouter_chambre.html', {'fonction':fonction})
+
+# 29
+# ======================================================================================
+# ajoute lit
+# =======================================================================================
+@login_required
+def ajouter_lit(request):
+    chambres = Chambre.objects.all()
+    
+    if request.method == "POST":
+        chambre_id = request.POST.get('chambre')
+        nom_lit = request.POST.get('nom_lit')
+        
+        chambre = Chambre.objects.get(id=chambre_id)
+        
+        # Création du lit
+        Lit.objects.create(
+            chambre=chambre,
+            nom_lit=nom_lit
+        )
+        messages.success(request, f"Le lit {nom_lit} a été ajouté à la chambre {chambre.numero}.")
+        return redirect('gestion_chambres')
+
+    profil = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil.fonction.fonction if profil and profil.fonction else None
+
+    return render(request, 'back-end/ajouter_lit.html', {'chambres': chambres , 'fonction':fonction})
+
+# 30 
+# =================================================================================================
+# gestion de chambre 
+# ==================================================================================================
+@login_required
+def gestion_chambres(request):
+    """ Cette vue manquait ! Elle affiche l'état des chambres et des lits """
+    # On récupère tous les lits pour les stats
+    lits = Lit.objects.all()
+    
+    # On récupère uniquement les occupations en cours (pour le tableau)
+    occupations_actives = OccupationLit.objects.filter(
+        date_sortie__isnull=True
+    ).select_related('patient', 'lit__chambre')
+
+    profil = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil.fonction.fonction if profil and profil.fonction else None
+
+    context = {
+        'lits': lits,
+        'occupations_actives': occupations_actives,
+        'fonction' : fonction , 
+    }
+    
+
+    return render(request, 'back-end/gestion_chambres.html', context)
+
+# 31 
+# ===================================================================================================
+# liste de chambre 
+# ===================================================================================================
+@login_required
+def liste_chambres(request):
+    # On récupère les chambres ET leurs lits en une seule requête optimisée
+    chambres = Chambre.objects.prefetch_related('lits').all().order_by('-id')
+
+    # Récupération du profil avec sa fonction
+    profil = Profil.objects.select_related('fonction').filter(userProfil=request.user).first()
+    fonction = profil.fonction.fonction if profil and profil.fonction else None
+    
+    context = {
+        'chambres': chambres, 
+        'fonction': fonction
+    }
+    
+    return render(request, 'back-end/liste_chambres.html', context)
