@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="fr">
+{% load static %}
+<head>
+    <meta charset="utf-8">
+    <title>Hôpital | Liste des Lits</title>
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/dataTables.bootstrap4.min.css' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css' %}">
+</head>
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="row">
+                    <div class="col-sm-8">
+                        <h4 class="page-title">Disponibilité des Lits</h4>
+                    </div>
+                    <div class="col-sm-4 text-right m-b-30">
+                        <a href="{% url 'ajouter_lit' %}" class="btn btn-primary btn-rounded"><i class="fa fa-plus"></i> Ajouter un Lit</a>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="card shadow-sm">
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-striped custom-table" id="table-lits">
+                                        <thead>
+                                            <tr>
+                                                <th>Lit</th>
+                                                <th>Chambre</th>
+                                                <th>Type</th>
+                                                <th>Prix/Jour</th>
+                                                <th>Statut</th>
+                                                <th class="text-right">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for lit in lits %}
+                                            <tr>
+                                                <td><i class="fas fa-bed text-primary mr-2"></i> <strong>{{ lit.nom_lit }}</strong></td>
+                                                <td>Chambre {{ lit.chambre.numero }}</td>
+                                                <td>{{ lit.chambre.get_type_chambre_display }}</td>
+                                                <td>{{ lit.chambre.prix_journalier|floatformat:0 }} CDF</td>
+                                                <td>
+                                                    {% if lit.est_occupe %}
+                                                        <span class="badge badge-danger">Occupé</span>
+                                                    {% else %}
+                                                        <span class="badge badge-success">Libre / Disponible</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td class="text-right">
+                                                    {% if not lit.est_occupe %}
+                                                        <a href="#" class="btn btn-sm btn-outline-primary">Hospitaliser</a>
+                                                    {% else %}
+                                                        <a href="#" class="btn btn-sm btn-outline-info">Voir Patient</a>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js' %}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js' %}"></script>
+    <script src="{% static 'back-end/assets/js/jquery.slimscroll.js' %}"></script>
+    
+    <script src="{% static 'back-end/assets/js/jquery.dataTables.min.js' %}"></script>
+    <script src="{% static 'back-end/assets/js/dataTables.bootstrap4.min.js' %}"></script>
+    
+    <script src="{% static 'back-end/assets/js/app.js' %}"></script>
+
+    <script>
+        $(document).ready(function() {
+            if($('#table-lits').length > 0) {
+                $('#table-lits').DataTable({
+                    "language": {
+                        "url": "//cdn.datatables.net/plug-ins/9dcbecd42ad/i18n/French.json"
+                    },
+                    "bFilter": true, // Active la barre de recherche
+                    "order": [[ 1, "asc" ]], // Trie par chambre par défaut
+                    "pageLength": 10 // Nombre de lits par page
+                });
+            }
+        });
+    </script>
+</body>
+</html>

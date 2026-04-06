@@ -1041,3 +1041,20 @@ def liste_chambres(request):
     }
     
     return render(request, 'back-end/liste_chambres.html', context)
+
+# 31 
+# ======================================================================================================
+# liste des lits
+# ======================================================================================================
+@login_required
+def liste_lits(request):
+    # Récupérer tous les lits et leurs chambres associées
+    lits = Lit.objects.select_related('chambre').all().order_by('chambre__numero', 'nom_lit')
+    
+    profil = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil.fonction.fonction if profil and profil.fonction else None
+
+    return render(request, 'back-end/liste_lits.html', {
+        'lits': lits,
+        'fonction': fonction
+    })

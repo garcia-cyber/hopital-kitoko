@@ -67,6 +67,7 @@ urlpatterns = [
     path('lit/ajouter/', views.ajouter_lit, name='ajouter_lit'),
     path('gestion-chambres/', views.gestion_chambres, name='gestion_chambres'),
     path('chambres/liste/', views.liste_chambres, name='liste_chambres'),
+    path('lits/liste/', views.liste_lits, name='liste_lits'),
 
     # ===============================================
     # laboratoire

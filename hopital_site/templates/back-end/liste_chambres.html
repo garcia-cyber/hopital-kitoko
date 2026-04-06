@@ -34,7 +34,7 @@
                                             <tr>
                                                 <th># Numéro</th>
                                                 <th>Catégorie</th>
-                                                <th>Prix Journalier</th>
+                                                <th>Lits</th> <th>Prix Journalier</th>
                                                 <th class="text-right">Actions</th>
                                             </tr>
                                         </thead>
@@ -43,6 +43,11 @@
                                             <tr>
                                                 <td><strong>Chambre {{ chambre.numero }}</strong></td>
                                                 <td><span class="badge badge-info">{{ chambre.get_type_chambre_display }}</span></td>
+                                                <td>
+                                                    <span class="badge badge-pill badge-warning">
+                                                        {{ chambre.lits.count }} Lit(s)
+                                                    </span>
+                                                </td>
                                                 <td>{{ chambre.prix_journalier|floatformat:0 }} CDF</td>
                                                 <td class="text-right">
                                                     <a href="{% url 'ajouter_lit' %}?chambre_id={{ chambre.id }}" class="btn btn-outline-success btn-sm">
@@ -52,7 +57,7 @@
                                             </tr>
                                             {% empty %}
                                             <tr>
-                                                <td colspan="4" class="text-center text-muted">Aucune chambre enregistrée pour le moment.</td>
+                                                <td colspan="5" class="text-center text-muted">Aucune chambre enregistrée pour le moment.</td>
                                             </tr>
                                             {% endfor %}
                                         </tbody>
