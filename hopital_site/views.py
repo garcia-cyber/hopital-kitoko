@@ -1063,3 +1063,68 @@ def liste_lits(request):
         'lits': lits,
         'fonction': fonction
     })
+
+# 32
+# =====================================================================================================
+# resultat du labo 
+# ======================================================================================================
+@login_required()
+def examens_termines_medecin(request):
+    # 1. On cherche les CONSULTATIONS du médecin connecté 
+    # qui ont au moins un examen terminé (termine=True)
+    # .distinct() évite d'avoir la même consultation 3 fois si elle a 3 examens.
+    consultations_avec_resultats = Consultation.objects.filter(
+        medecin=request.user,
+        examens_prescrits__termine=True
+    ).prefetch_related('examens_prescrits', 'patient').distinct().order_by('-date_consultation')
+
+    # 2. Récupération du profil pour la sidebar
+    profil_connecte = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil_connecte.fonction.fonction if profil_connecte and profil_connecte.fonction else None
+
+    return render(request, 'back-end/medecin_resultats_labo.html', {
+        'consultations': consultations_avec_resultats,
+        'fonction': fonction,
+        'profil_connecte': profil_connecte
+    })
+# 33
+# =======================================================================================================
+# ordonnance 
+# =======================================================================================================
+@login_required()
+def rediger_ordonnance(request, consultation_id):
+    # 1. On récupère la consultation parente
+    # Note : j'utilise consultation_id car c'est plus logique pour grouper les examens
+    consultation = get_object_or_404(Consultation, id=consultation_id)
+    patient = consultation.patient
+    
+    # 2. On récupère tous les examens de cette consultation qui sont terminés
+    examens_faits = ExamenPrescrit.objects.filter(consultation=consultation, termine=True)
+
+    if request.method == "POST":
+        prescription_texte = request.POST.get('prescription')
+
+        if prescription_texte:
+            # 3. Création de l'ordonnance dans la base de données
+            Ordonnance.objects.create(
+                consultation=consultation,
+                medecin=request.user,
+                prescription=prescription_texte
+            )
+            
+            messages.success(request, f"L'ordonnance pour {patient.noms} a été enregistrée.")
+            return redirect('resultats_labo_medecin')
+        else:
+            messages.error(request, "L'ordonnance ne peut pas être vide.")
+
+    # Pour la sidebar et l'en-tête
+    profil_connecte = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil_connecte.fonction.fonction if profil_connecte and profil_connecte.fonction else None
+
+    return render(request, 'back-end/medecin_formulaire_ordonnance.html', {
+        'consultation': consultation,
+        'patient': patient,
+        'examens': examens_faits,
+        'profil_connecte': profil_connecte,
+        'fonction': fonction
+    })

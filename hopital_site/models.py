@@ -394,3 +394,38 @@ class OccupationLit(models.Model):
 
     def __str__(self):
         return f"Occupation: {self.patient} sur {self.lit}"
+
+# 14 
+# ==============================================================
+# ordonnance
+
+class Ordonnance(models.Model):
+    # Lien avec la consultation parente
+    consultation = models.ForeignKey(
+        'Consultation', 
+        on_delete=models.CASCADE, 
+        related_name='ordonnances'
+    )
+    
+    # Le médecin qui prescrit
+    medecin = models.ForeignKey(
+        User, 
+        on_delete=models.CASCADE, 
+        related_name='ordonnances_prescrites'
+    )
+    
+    # Détails de la prescription
+    # On utilise TextField pour permettre une liste longue de médicaments
+    contenu_prescription = models.TextField(verbose_name="Liste des Médicaments")
+    instructions_posologie = models.TextField(verbose_name="Posologie et Durée", null=True, blank=True)
+    
+    # Metadata
+    date_creation = models.DateTimeField(auto_now_add=True)
+    est_delivré = models.BooleanField(default=False, verbose_name="Délivré par la pharmacie")
+
+    class Meta:
+        verbose_name = "Ordonnance"
+        ordering = ['-date_creation']
+
+    def __str__(self):
+        return f"Ordonnance #{self.id} - Patient: {self.consultation.patient.noms}"

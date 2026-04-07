@@ -52,6 +52,8 @@ urlpatterns = [
     path('medecin/liste-attente/', views.liste_attente_medecin, name='liste_attente_medecin'),
     path('medecin/consulter/<int:sv_id>/', views.effectuer_consultation, name='effectuer_consultation'),
     path('medecin/patients-consultes/', views.liste_patients_consultes, name='liste_patients_consultes'),
+    path('medecin/resultats-labo/', views.examens_termines_medecin, name='resultats_labo_medecin'),
+    path('medecin/prescrire/<int:examen_id>/', views.rediger_ordonnance, name='rediger_ordonnance'),
 
     # ===============================================
     # reception 

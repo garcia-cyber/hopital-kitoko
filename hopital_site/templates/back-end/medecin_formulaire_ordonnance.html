@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+    <title>Rédaction Ordonnance - Hospital ERP</title>
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'back-end/assets/img/favicon.ico' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css' %}">
+    <style>
+        .result-card { border-left: 4px solid #009efb; margin-bottom: 15px; background: #f8f9fa; }
+        .patient-info-box { background: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #bbdefb; }
+        .prescription-area { border: 2px solid #eee; border-radius: 8px; padding: 15px; font-size: 16px; line-height: 1.6; }
+        .prescription-area:focus { border-color: #009efb; box-shadow: none; }
+    </style>
+</head>
+
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="row">
+                    <div class="col-sm-7 col-6">
+                        <h4 class="page-title">Nouvelle Ordonnance</h4>
+                    </div>
+                    <div class="col-sm-5 col-6 text-right m-b-30">
+                        <a href="{% url 'resultats_labo_medecin' %}" class="btn btn-secondary btn-rounded">
+                            <i class="fa fa-arrow-left"></i> Retour aux résultats
+                        </a>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="patient-info-box">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <strong>Patient :</strong> {{ patient.noms }}
+                                </div>
+                                <div class="col-md-4">
+                                    <strong>ID :</strong> #{{ patient.id }}
+                                </div>
+                                <div class="col-md-4 text-md-right">
+                                    <strong>Date :</strong> {% now "d/m/Y" %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-lg-5">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white border-bottom">
+                                <h5 class="card-title mb-0"><i class="fa fa-microscope text-primary"></i> Résultats du Laboratoire</h5>
+                            </div>
+                            <div class="card-body" style="max-height: 600px; overflow-y: auto;">
+                                {% if examens %}
+                                    {% for ex in examens %}
+                                    <div class="card result-card shadow-none">
+                                        <div class="card-body p-3">
+                                            <h6 class="font-weight-bold text-dark">{{ ex.prestation.libelle }}</h6>
+                                            <div class="text-muted small mb-2 italic">Analysé le {{ ex.date_analyse|date:"d/m/Y à H:i" }}</div>
+                                            <div class="bg-white p-2 border rounded">
+                                                <strong>Conclusion :</strong><br>
+                                                {{ ex.resultat_labo|linebreaksbr }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <p class="text-center text-muted">Aucun résultat d'examen trouvé.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-7">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white border-bottom">
+                                <h5 class="card-title mb-0"><i class="fa fa-pen-nib text-success"></i> Prescription Médicale</h5>
+                            </div>
+                            <div class="card-body">
+                                <form method="POST">
+                                    {% csrf_token %}
+                                    
+                                    <div class="form-group">
+                                        <label class="font-weight-bold">Détails de l'ordonnance (Médicaments, doses, durée) <span class="text-danger">*</span></label>
+                                        <textarea 
+                                            name="prescription" 
+                                            class="form-control prescription-area" 
+                                            rows="12" 
+                                            required
+                                            placeholder="Exemple :&#10;1. QUINIMAX 500mg : 1 comprimé 3 fois par jour pendant 7 jours.&#10;2. PARACETAMOL 500mg : 1 comprimé en cas de fièvre."></textarea>
+                                    </div>
+
+                                    <div class="alert alert-info small">
+                                        <i class="fa fa-info-circle"></i> Cette ordonnance sera enregistrée et pourra être consultée par la pharmacie pour la délivrance des médicaments.
+                                    </div>
+
+                                    <div class="m-t-20 text-center">
+                                        <button type="submit" class="btn btn-primary btn-lg submit-btn shadow">
+                                            <i class="fa fa-save"></i> Enregistrer et Terminer
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js' %}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js' %}"></script>
+    <script src="{% static 'back-end/assets/js/app.js' %}"></script>
+</body>
+</html>
