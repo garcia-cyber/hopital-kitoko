@@ -423,15 +423,21 @@ def imprimer_facture_globale(request, facture_id):
 # =================================================================================
 @login_required()
 def liste_patients_soldes(request):
-    # On récupère toutes les factures
-    toutes_factures = Facture.objects.select_related('patient', 'prestation').all()
+    # Optimisation : on charge les paiements et la prestation pour éviter les requêtes répétitives
+    toutes_factures = Facture.objects.select_related('patient', 'prestation').prefetch_related('paiements').all()
+    
     config = ConfigurationHopital.objects.first()
     taux = Decimal(str(config.taux_usd_en_cdf)) if config else Decimal("2250.0")
     
     patients_prets = []
 
     for f in toutes_factures:
-        # Calcul du total payé pour CETTE facture
+        # --- FILTRE : On ne traite QUE si la prestation est une "Fiche" ---
+        # .upper() permet d'éviter les erreurs de casse (Fiche vs fiche)
+        if "FICHE" not in f.prestation.libelle.upper():
+            continue  # On passe à la facture suivante si ce n'est pas une fiche
+
+        # Calcul du total payé
         total_paye = Decimal("0.0")
         for p in f.paiements.all():
             m_p = Decimal(str(p.montant_physique))
@@ -440,7 +446,7 @@ def liste_patients_soldes(request):
             else:
                 total_paye += m_p
         
-        # Si le reste est 0 (ou très proche de 0), on l'ajoute à la liste
+        # Vérification si la facture est soldée
         prix_total = Decimal(str(f.prestation.prix_cdf))
         if total_paye >= prix_total:
             patients_prets.append({
@@ -449,12 +455,14 @@ def liste_patients_soldes(request):
                 'date': f.date_emission,
                 'facture_id': f.id
             })
-    profil = Profil.objects.filter(userProfil = request.user).first()
-    fonction = profil.fonction.fonction if profil else None
+
+    # Récupération du profil
+    profil = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil.fonction.fonction if profil and profil.fonction else None
 
     return render(request, 'back-end/infirmier_signes.html', {
-        'patients_prets': patients_prets , 
-        'fonction' : fonction 
+        'patients_prets': patients_prets, 
+        'fonction': fonction 
     })
 
 # 16 
@@ -466,16 +474,13 @@ def prendre_signes(request, patient_id):
     patient = get_object_or_404(Patient, id=patient_id)
     aujourdhui = timezone.now().date()
     
-    # On cherche s'il existe déjà un enregistrement pour ce patient aujourd'hui
     instance_existante = SignesVitaux.objects.filter(
         patient=patient, 
         date_prelevement__date=aujourdhui
     ).first()
 
     if request.method == "POST":
-        # Si instance_existante existe, Django va MODIFIER au lieu de CRÉER
         form = SignesVitauxForm(request.POST, instance=instance_existante)
-        
         if form.is_valid():
             signes = form.save(commit=False)
             signes.patient = patient
@@ -483,24 +488,24 @@ def prendre_signes(request, patient_id):
             signes.save()
             
             if instance_existante:
-                messages.success(request, f"Les signes de {patient.noms} ont été mis à jour.")
+                messages.info(request, f"Les constantes de {patient.noms} ont été mises à jour.")
             else:
-                messages.success(request, f"Les signes de {patient.noms} ont été enregistrés.")
+                messages.success(request, f"Les constantes de {patient.noms} ont été enregistrées.")
                 
-            return redirect('liste_soldes')
+            # CORRECTION ICI : Le nom doit correspondre au 'name' dans urls.py
+            return redirect('liste_soldes') 
+            
     else:
-        # Au chargement de la page (GET) :
-        # Si une instance existe, le formulaire sera pré-rempli avec les anciennes valeurs
         form = SignesVitauxForm(instance=instance_existante)
 
-    profil = Profil.objects.filter(userProfil = request.user).first()
+    profil = Profil.objects.filter(userProfil=request.user).first()
     fonction = profil.fonction.fonction if profil else None
 
     return render(request, 'back-end/formulaire_signes.html', {
         'form': form,
         'patient': patient,
-        'est_modification': instance_existante is not None ,
-        'fonction' : fonction
+        'est_modification': instance_existante is not None,
+        'fonction': fonction
     })
 
 # 17 
