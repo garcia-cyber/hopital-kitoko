@@ -1091,44 +1091,50 @@ def examens_termines_medecin(request):
 # =======================================================================================================
 # ordonnance 
 # =======================================================================================================
-@login_required()
+@login_required
 def rediger_ordonnance(request, consultation_id):
-    # 1. Récupération de la consultation parente
     consultation = get_object_or_404(Consultation, id=consultation_id)
     patient = consultation.patient
     
-    # 2. Récupération des examens terminés pour affichage à gauche
-    # Assurez-vous que le nom du champ est bien 'consultation' dans ExamenPrescrit
-    examens_faits = ExamenPrescrit.objects.filter(consultation=consultation, termine=True)
+    # Sécurité anti-doublon
+    if Ordonnance.objects.filter(consultation=consultation).exists():
+        messages.warning(request, f"Une ordonnance existe déjà pour {patient.noms}.")
+        return redirect('resultats_labo_medecin')
+
+    examens_faits = ExamenPrescrit.objects.filter(
+        consultation=consultation, 
+        termine=True
+    ).select_related('prestation')
 
     if request.method == "POST":
-        prescription_texte = request.POST.get('prescription')
+        # On récupère le texte du textarea (le name dans le HTML est "prescription")
+        texte_recu = request.POST.get('prescription')
 
-        if prescription_texte:
-            # 3. Création de l'ordonnance
-            Ordonnance.objects.create(
-                consultation=consultation,
-                medecin=request.user,
-                prescription=prescription_texte
-            )
-            
-            # Optionnel : Marquer la consultation comme terminée ou prescrite
-            # consultation.statut = 'TERMINE'
-            # consultation.save()
-            
-            messages.success(request, f"L'ordonnance pour {patient.noms} a été enregistrée avec succès.")
-            return redirect('resultats_labo_medecin')
+        if texte_recu and texte_recu.strip():
+            try:
+                # CORRECTION ICI : On utilise le nom exact du champ de votre modèle
+                Ordonnance.objects.create(
+                    consultation=consultation,
+                    medecin=request.user,
+                    contenu_prescription=texte_recu.strip() # <--- Nom du champ corrigé
+                )
+                
+                messages.success(request, f"L'ordonnance pour {patient.noms} a été enregistrée.")
+                return redirect('resultats_labo_medecin')
+                
+            except Exception as e:
+                messages.error(request, f"Erreur technique : {e}")
         else:
-            messages.error(request, "Le contenu de l'ordonnance est requis.")
+            messages.error(request, "L'ordonnance ne peut pas être vide.")
 
-    # Données de session/profil
+    # Gestion du profil pour la sidebar
     profil_connecte = Profil.objects.filter(userProfil=request.user).first()
-    fonction = profil_connecte.fonction.fonction if profil_connecte and profil_connecte.fonction else None
-
-    return render(request, 'back-end/medecin_formulaire_ordonnance.html', {
+    
+    context = {
         'consultation': consultation,
         'patient': patient,
         'examens': examens_faits,
         'profil_connecte': profil_connecte,
-        'fonction': fonction
-    })
+    }
+    
+    return render(request, 'back-end/medecin_formulaire_ordonnance.html', context)

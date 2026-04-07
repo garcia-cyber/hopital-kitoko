@@ -217,3 +217,46 @@ class OccupationLitAdmin(admin.ModelAdmin):
     readonly_fields = ('date_admission',)
 
 
+@admin.register(Ordonnance)
+class OrdonnanceAdmin(admin.ModelAdmin):
+    # Colonnes affichées dans la liste
+    list_display = (
+        'id', 
+        'get_patient', 
+        'medecin', 
+        'date_creation', 
+        'est_delivré'
+    )
+    
+    # Filtres sur le côté droit
+    list_filter = ('est_delivré', 'date_creation', 'medecin')
+    
+    # Champs de recherche (permet de chercher par nom de patient ou id)
+    search_fields = (
+        'consultation__patient__noms', 
+        'medecin__username', 
+        'id'
+    )
+    
+    # Organisation des champs dans le formulaire d'édition
+    fieldsets = (
+        ('Informations Générales', {
+            'fields': ('consultation', 'medecin')
+        }),
+        ('Détails Médicaux', {
+            'fields': ('contenu_prescription', 'instructions_posologie')
+        }),
+        ('Statut Pharmacie', {
+            'fields': ('est_delivré',),
+        }),
+    )
+    
+    # Empêcher la modification de la date de création
+    readonly_fields = ('date_creation',)
+
+    # Méthode pour afficher le nom du patient dans la liste
+    def get_patient(self, obj):
+        return obj.consultation.patient.noms
+    get_patient.short_description = 'Patient'
+
+
