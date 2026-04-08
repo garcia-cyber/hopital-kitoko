@@ -1128,13 +1128,198 @@ def rediger_ordonnance(request, consultation_id):
             messages.error(request, "L'ordonnance ne peut pas être vide.")
 
     # Gestion du profil pour la sidebar
+   
     profil_connecte = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil_connecte.fonction.fonction if profil_connecte and profil_connecte.fonction else None
     
     context = {
         'consultation': consultation,
         'patient': patient,
         'examens': examens_faits,
-        'profil_connecte': profil_connecte,
+        'fonction': fonction,
     }
     
-    return render(request, 'back-end/medecin_formulaire_ordonnance.html', context)
+
+
+# 34 
+# =====================================================================================================
+# liste des ordonnances
+# ======================================================================================================
+@login_required
+def liste_ordonnances_infirmier(request):
+    # On récupère les ordonnances qui n'ont pas encore été délivrées/traitées
+    # ordonnees par les plus récentes
+    ordonnances = Ordonnance.objects.filter(est_delivré=False).select_related(
+        'consultation__patient', 
+        'medecin'
+    )
+    
+    profil_connecte = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil_connecte.fonction.fonction if profil_connecte and profil_connecte.fonction else None
+
+    context = {
+        'ordonnances': ordonnances,
+        'fonction': fonction,
+        'title': "Plan de Traitement - Infirmier"
+    }
+    return render(request, 'back-end/infirmier_liste_ordonnances.html', context)
+
+# 35 
+# =====================================================================================================
+# detail ordonnance 
+# ======================================================================================================
+@login_required()
+def detail_ordonnance_traitement(request, ordonnance_id):
+    """
+    Vue permettant à l'infirmier de consulter une ordonnance 
+    et de marquer le traitement comme effectué (délivré).
+    """
+    # 1. Récupération de l'ordonnance avec les détails du patient
+    ordonnance = get_object_or_404(Ordonnance, id=ordonnance_id)
+    
+    # 2. Gestion de la validation (Action de l'infirmier)
+    if request.method == "POST":
+        # On passe le statut à True pour indiquer que le soin est fait
+        ordonnance.est_delivré = True
+        ordonnance.save()
+        
+        # Message de confirmation pour l'utilisateur
+        messages.success(request, f"Le traitement pour {ordonnance.consultation.patient.noms} a été marqué comme délivré.")
+        
+        # Redirection vers la liste globale des attentes
+        return redirect('liste_ordonnances_infirmier')
+
+    # 3. Préparation du contexte pour l'affichage (GET)
+    # On récupère le profil pour que le menu sidebar s'affiche correctement
+    profil_connecte = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil_connecte.fonction.fonction if profil_connecte and profil_connecte.fonction else None
+    
+    context = {
+        'ordonnance': ordonnance,
+        'fonction': fonction,
+        'title': f"Détail Traitement - {ordonnance.consultation.patient.noms}"
+    }
+
+    return render(request, 'back-end/infirmier_detail_ordonnance.html', context)
+
+# 36 
+# ========================================================================================
+# ajoute stocker partie pharmacie
+# =========================================================================================
+@login_required
+def ajouter_stock(request):
+    produits = Medicament.objects.all().order_by('designation')
+
+    if request.method == "POST":
+        medicament_id = request.POST.get('medicament_id')
+        nb_cartons = request.POST.get('nb_cartons')
+        prix_achat = request.POST.get('prix_achat_carton')
+        fournisseur = request.POST.get('fournisseur')
+
+        # 1. Vérification de base des champs
+        if not all([medicament_id, nb_cartons, prix_achat]):
+            messages.error(request, "Veuillez remplir tous les champs obligatoires.")
+            return render(request, 'back-end/ajouter_stock.html', {'produits': produits})
+
+        try:
+            med = Medicament.objects.get(id=medicament_id)
+            nb_cartons = int(nb_cartons)
+            prix_achat = float(prix_achat)
+
+            # 2. PROTECTION ANTI-DOUBLON (Sécurité 5 minutes)
+            # On vérifie si un bon identique a été créé pour ce produit dans les 5 dernières minutes
+            temps_limite = timezone.now() - timedelta(minutes=5)
+            doublon = BonEntree.objects.filter(
+                medicament=med,
+                nb_cartons_recus=nb_cartons,
+                prix_achat_carton=prix_achat,
+                date_reception__gte=temps_limite
+            ).exists()
+
+            if doublon:
+                messages.warning(request, f"Attention : Un bon identique pour {med.designation} a déjà été enregistré il y a quelques instants.")
+                return redirect('liste_stock')
+
+            # 3. CRÉATION DU BON
+            bon = BonEntree.objects.create(
+                medicament=med,
+                nb_cartons_recus=nb_cartons,
+                prix_achat_carton=prix_achat,
+                fournisseur=fournisseur
+            )
+
+            # 4. LOG DE L'OPÉRATION
+            LogPharmacie.objects.create(
+                utilisateur=request.user,
+                action='ENTREE',
+                details=f"Achat de {nb_cartons} cartons de {med.designation} chez {fournisseur}."
+            )
+
+            messages.success(request, f"Stock de {med.designation} mis à jour (+{nb_cartons} cartons).")
+            return redirect('liste_stock')
+
+        except Medicament.DoesNotExist:
+            messages.error(request, "Médicament introuvable.")
+        except ValueError:
+            messages.error(request, "Veuillez saisir des nombres valides pour la quantité et le prix.")
+        except Exception as e:
+            messages.error(request, f"Erreur critique : {e}")
+
+    profil_connecte = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil_connecte.fonction.fonction if profil_connecte and profil_connecte.fonction else None
+
+    return render(request, 'back-end/ajouter_stock.html', {'produits': produits , 'fonction':fonction})
+
+
+
+
+
+
+#37
+# =========================================================================================
+# ajouter medicament
+# =========================================================================================
+@login_required
+def ajouter_medicament(request):
+    if request.method == "POST":
+        designation = request.POST.get('designation')
+        forme = request.POST.get('forme')  # Sirop, Comprimé, etc.
+        dosage = request.POST.get('dosage')
+        nb_pieces = request.POST.get('nb_pieces_par_carton')
+        prix_vente = request.POST.get('prix_vente_detail')
+
+        try:
+            Medicament.objects.create(
+                designation=designation,
+                forme_pharmaceutique=forme,
+                dosage=dosage,
+                nb_pieces_par_carton=int(nb_pieces),
+                prix_vente_detail=float(prix_vente),
+                quantite_stock_pieces=0  # On commence à zéro, l'entrée de stock fera le reste
+            )
+            messages.success(request, f"Le médicament {designation} a été créé.")
+            return redirect('liste_stock')
+        except Exception as e:
+            messages.error(request, f"Erreur lors de la création : {e}")
+
+    return render(request, 'back-end/ajouter_medicament.html')
+
+# 37 
+# ========================================================================================
+#  liste de stock
+# ========================================================================================
+def liste_stock(request):
+    # On récupère tous les médicaments par ordre alphabétique
+    stocks = Medicament.objects.all().order_by('designation')
+    
+    # On peut ajouter ici une logique pour compter les alertes
+    total_articles = stocks.count()
+    alertes_stock = stocks.filter(quantite_stock_pieces__lt=10).count()
+
+    context = {
+        'stocks': stocks,
+        'total_articles': total_articles,
+        'alertes_stock': alertes_stock,
+        'title': "Inventaire de la Pharmacie"
+    }
+    return render(request, 'back-end/liste_stock.html', context)

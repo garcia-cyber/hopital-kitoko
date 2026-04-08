@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+    <title>Plan de Traitement - Hospital ERP</title>
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'back-end/assets/img/favicon.ico' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css' %}">
+    <style>
+        :root { --primary-med: #009efb; --bg-light: #f4f7f6; }
+        body { background-color: var(--bg-light); }
+        .table-avatar { font-weight: 600; color: #333; }
+        .prescription-preview { 
+            max-width: 300px; 
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+            color: #666;
+            font-size: 0.9rem;
+        }
+        .card-box { border-radius: 12px; border: none; box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
+        .status-badge { border-radius: 20px; padding: 5px 15px; font-size: 12px; }
+        .btn-treatment { border-radius: 20px; font-weight: 600; transition: all 0.3s; }
+        .btn-treatment:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,158,251,0.2); }
+    </style>
+</head>
+
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="row align-items-center m-b-20">
+                    <div class="col-sm-8">
+                        <h4 class="page-title"><i class="fa fa-pills text-primary"></i> File d'attente des Soins & Traitements</h4>
+                    </div>
+                    <div class="col-sm-4 text-right">
+                        <span class="badge badge-pill badge-danger shadow-sm px-3 py-2">
+                             {{ ordonnances|length }} traitement(s) en attente
+                        </span>
+                    </div>
+                </div>
+
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="card card-box">
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover custom-table mb-0 datatable">
+                                        <thead>
+                                            <tr>
+                                                <th>N° Ord.</th>
+                                                <th>Heure/Date</th>
+                                                <th>Patient</th>
+                                                <th>Médecin Prescripteur</th>
+                                                <th>Aperçu Médicaments</th>
+                                                <th class="text-center">Statut</th>
+                                                <th class="text-right">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for ord in ordonnances %}
+                                            <tr>
+                                                <td><span class="text-muted">#{{ ord.id }}</span></td>
+                                                <td>
+                                                    <span class="font-weight-600 text-dark">{{ ord.date_creation|date:"H:i" }}</span><br>
+                                                    <small class="text-muted">{{ ord.date_creation|date:"d M Y" }}</small>
+                                                </td>
+                                                <td>
+                                                    <a href="#" class="table-avatar text-primary">
+                                                        {{ ord.consultation.patient.noms }}
+                                                    </a>
+                                                    <br>
+                                                    <small class="badge badge-light">DOC-{{ ord.consultation.patient.id|stringformat:"04d" }}</small>
+                                                </td>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <i class="fa fa-user-md mr-2 text-muted"></i>
+                                                        <span>Dr. {{ ord.medecin.get_full_name }}</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="prescription-preview">
+                                                        <i class="fa fa-prescription mr-1 text-info"></i> 
+                                                        {{ ord.contenu_prescription }}
+                                                    </div>
+                                                </td>
+                                                <td class="text-center">
+                                                    <span class="status-badge bg-warning-light text-warning">
+                                                        <i class="fa fa-clock"></i> En attente
+                                                    </span>
+                                                </td>
+                                                <td class="text-right">
+                                                    <a href="{% url 'detail_ordonnance_traitement' ord.id %}" class="btn btn-primary btn-sm btn-treatment">
+                                                        <i class="fa fa-hand-holding-medical"></i> Administrer Soins
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                            {% empty %}
+                                            <tr>
+                                                <td colspan="7" class="text-center py-5">
+                                                    <img src="{% static 'back-end/assets/img/empty-list.png' %}" alt="" style="width: 80px; opacity: 0.5;">
+                                                    <p class="text-muted mt-3">Aucune ordonnance en attente de traitement actuellement.</p>
+                                                    <a href="{% url 'panel' %}" class="btn btn-white btn-sm mt-2">Retour au tableau de bord</a>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js' %}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js' %}"></script>
+    <script src="{% static 'back-end/assets/js/app.js' %}"></script>
+    
+    <script>
+        setTimeout(function(){
+           location.reload();
+        }, 120000); 
+    </script>
+</body>
+</html>

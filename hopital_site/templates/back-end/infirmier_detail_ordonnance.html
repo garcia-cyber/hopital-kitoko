@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+    <title>Détail Traitement - Hospital ERP</title>
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'back-end/assets/img/favicon.ico' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css' %}">
+    <style>
+        :root { --primary-med: #009efb; --bg-light: #f4f7f6; --success-med: #28a745; }
+        body { background-color: var(--bg-light); font-family: 'Inter', sans-serif; }
+        
+        .prescription-paper {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            min-height: 500px;
+            padding: 40px;
+            position: relative;
+            border-top: 5px solid var(--primary-med);
+        }
+        .paper-header { border-bottom: 2px solid #eee; padding-bottom: 20px; margin-bottom: 30px; }
+        .medication-box { 
+            font-family: 'Courier New', Courier, monospace; 
+            font-size: 18px; 
+            line-height: 2;
+            color: #2c3e50;
+            padding: 20px;
+            background: #fdfdfd;
+            border-radius: 5px;
+        }
+        .posology-note {
+            background: #fff9c4;
+            padding: 15px;
+            border-left: 4px solid #fbc02d;
+            margin-top: 20px;
+            font-style: italic;
+        }
+        .patient-sidebar { background: #fff; border-radius: 10px; padding: 20px; height: fit-content; }
+        .vital-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f1f1f1; }
+    </style>
+</head>
+
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="row align-items-center m-b-20">
+                    <div class="col-sm-8">
+                        <h4 class="page-title"><i class="fa fa-hand-holding-medical text-primary"></i> Administration du Traitement</h4>
+                    </div>
+                    <div class="col-sm-4 text-right">
+                        <a href="{% url 'liste_ordonnances_infirmier' %}" class="btn btn-white btn-rounded shadow-sm">
+                            <i class="fa fa-arrow-left"></i> Retour à la liste
+                        </a>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-lg-8">
+                        <div class="prescription-paper">
+                            <div class="paper-header d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h3 class="mb-0 text-uppercase font-weight-bold">Ordonnance Médicale</h3>
+                                    <p class="text-muted">N° {{ ordonnance.id }} — Prescription du {{ ordonnance.date_creation|date:"d/m/Y à H:i" }}</p>
+                                </div>
+                                <div class="text-right">
+                                    <h5 class="mb-0">Dr. {{ ordonnance.medecin.get_full_name }}</h5>
+                                    <small class="text-muted">Médecin Prescripteur</small>
+                                </div>
+                            </div>
+
+                            <div class="content-body">
+                                <h6 class="text-primary font-weight-bold mb-3"><i class="fa fa-pills"></i> MÉDICAMENTS & DOSAGES :</h6>
+                                <div class="medication-box">
+                                    {{ ordonnance.contenu_prescription|linebreaksbr }}
+                                </div>
+
+                                {% if ordonnance.instructions_posologie %}
+                                <div class="posology-note">
+                                    <strong><i class="fa fa-info-circle"></i> Instructions du médecin :</strong><br>
+                                    {{ ordonnance.instructions_posologie }}
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="mt-5 pt-4 border-top">
+                                <form method="POST" onsubmit="return confirm('Confirmez-vous avoir administré ce traitement au patient ?');">
+                                    {% csrf_token %}
+                                    <div class="alert alert-info border-0 shadow-sm">
+                                        <i class="fa fa-exclamation-triangle"></i> 
+                                        En cliquant sur le bouton ci-dessous, vous confirmez que les médicaments ont été délivrés ou administrés selon les instructions.
+                                    </div>
+                                    <button type="submit" class="btn btn-success btn-lg btn-block shadow font-weight-bold">
+                                        <i class="fa fa-check-circle"></i> MARQUER COMME TRAITÉ / DÉLIVRÉ
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-4">
+                        <div class="patient-sidebar shadow-sm">
+                            <div class="text-center mb-4">
+                                <div class="avatar-lg bg-primary-light rounded-circle mb-3 mx-auto d-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                                    <i class="fa fa-user-injured fa-2x text-primary"></i>
+                                </div>
+                                <h4 class="mb-0">{{ ordonnance.consultation.patient.noms }}</h4>
+                                <span class="badge badge-pill badge-light">DOC-{{ ordonnance.consultation.patient.id|stringformat:"04d" }}</span>
+                            </div>
+
+                            <div class="patient-details">
+                                <div class="vital-item">
+                                    <span><i class="fa fa-venus-mars text-muted"></i> Genre</span>
+                                    <span class="font-weight-bold">{{ ordonnance.consultation.patient.sexe }}</span>
+                                </div>
+                                <div class="vital-item">
+                                    <span><i class="fa fa-birthday-cake text-muted"></i> Âge</span>
+                                    <span class="font-weight-bold">{{ ordonnance.consultation.patient.age }} ans</span>
+                                </div>
+                                <div class="vital-item">
+                                    <span><i class="fa fa-phone text-muted"></i> Contact</span>
+                                    <span class="font-weight-bold">{{ ordonnance.consultation.patient.telephone|default:"Non renseigné" }}</span>
+                                </div>
+                            </div>
+
+                            <div class="mt-4">
+                                <h6 class="font-weight-bold border-bottom pb-2">Dernières Signes Vitaux</h6>
+                                {% if ordonnance.consultation.signes_vitaux %}
+                                    <div class="vital-item text-danger">
+                                        <span><i class="fa fa-heartbeat"></i> Tension</span>
+                                        <strong>{{ ordonnance.consultation.signes_vitaux.tension_arterielle }}</strong>
+                                    </div>
+                                    <div class="vital-item text-primary">
+                                        <span><i class="fa fa-thermometer-half"></i> Température</span>
+                                        <strong>{{ ordonnance.consultation.signes_vitaux.temperature }} °C</strong>
+                                    </div>
+                                    <div class="vital-item">
+                                        <span><i class="fa fa-weight"></i> Poids</span>
+                                        <strong>{{ ordonnance.consultation.signes_vitaux.poids }} kg</strong>
+                                    </div>
+                                {% else %}
+                                    <p class="text-muted small mt-2">Aucune donnée de triage disponible.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js' %}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js' %}"></script>
+    <script src="{% static 'back-end/assets/js/app.js' %}"></script>
+</body>
+</html>

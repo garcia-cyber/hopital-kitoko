@@ -44,6 +44,12 @@ urlpatterns = [
     path('imprimer-facture-globale/<int:facture_id>/', views.imprimer_facture_globale, name='imprimerFactureGlobale'),
     path('prendre-signes/<int:patient_id>/', views.prendre_signes, name='prendre_signes'),
     path('historique-signes/', views.historique_signes_vitaux, name='historique_signes'),
+    
+    # ================================================
+    # infirmier - Traitement & Ordonnances
+    #
+    path('infirmier/ordonnances/', views.liste_ordonnances_infirmier, name='liste_ordonnances_infirmier'),
+    path('infirmier/ordonnance/<int:ordonnance_id>/', views.detail_ordonnance_traitement, name='detail_ordonnance_traitement'),
 
     # =================================================
     # medecin (CORRIGÉ)
@@ -76,4 +82,11 @@ urlpatterns = [
     # 
     path('labo/liste/', views.liste_examens_labo, name='liste_examens_labo'),
     path('labo/saisir-resultat/<int:examen_id>/', views.saisir_resultat_labo, name='saisir_resultat_labo'),
+
+    # ==============================================
+    # pharmacien 
+    #
+    path('stock/ajouter/', views.ajouter_stock, name='ajouter_stock'),
+    path('medicament/nouveau/', views.ajouter_medicament, name='ajouter_medicament'),
+    path('stock/liste/', views.liste_stock, name='liste_stock'),
 ]

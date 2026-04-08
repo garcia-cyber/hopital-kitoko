@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+    <title>Pharmacie - Entrée Stock</title>
+
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'back-end/assets/img/favicon.ico'%}">
+    <link href="https://fonts.googleapis.com/css?family=Fira+Sans:400,500,600,700" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css'%}" >
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/select2.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css'%}">
+</head>
+
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="row">
+                    <div class="col-md-8 offset-md-2">
+                        <h4 class="page-title">Réception de Marchandise</h4>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-8 offset-md-2">
+                        <div class="card shadow-sm">
+                            <div class="card-body">
+                                {% if messages %}
+                                    {% for message in messages %}
+                                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                            {{ message }}
+                                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                                <span aria-hidden="true">&times;</span>
+                                            </button>
+                                        </div>
+                                    {% endfor %}
+                                {% endif %}
+
+                                <form method="post" id="form-stock">
+                                    {% csrf_token %}
+                                    
+                                    <div class="row">
+                                        <div class="col-md-12">
+                                            <div class="form-group">
+                                                <label>Sélectionner le Médicament <span class="text-danger">*</span></label>
+                                                <select name="medicament_id" class="select form-control" required>
+                                                    <option value="">Choisir un produit...</option>
+                                                    {% for p in produits %}
+                                                        <option value="{{ p.id }}">
+                                                            {{ p.designation }} (Stock actuel : {{ p.quantite_stock_pieces }} pièces)
+                                                        </option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label>Nombre de Cartons <span class="text-danger">*</span></label>
+                                                <input type="number" name="nb_cartons" class="form-control" min="1" required>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label>Prix d'Achat / Carton (CDF) <span class="text-danger">*</span></label>
+                                                <input type="number" step="0.01" name="prix_achat_carton" class="form-control" required>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-12">
+                                            <div class="form-group">
+                                                <label>Fournisseur / Laboratoire</label>
+                                                <input type="text" name="fournisseur" class="form-control" placeholder="Ex: Pharmakina, Laborex...">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="m-t-20 text-center">
+                                        <button type="submit" id="btn-submit" class="btn btn-primary submit-btn">
+                                            <i class="fas fa-save"></i> Enregistrer l'Entrée
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row m-t-20">
+                    <div class="col-md-8 offset-md-2">
+                        <div class="card">
+                            <div class="card-header bg-light">
+                                <h5 class="card-title mb-0">5 Dernières Entrées Enregistrées</h5>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-striped custom-table mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Produit</th>
+                                            <th>Quantité</th>
+                                            <th>Prix Carton</th>
+                                            <th>Date & Heure</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for entree in dernieres_entrees %}
+                                        <tr>
+                                            <td><strong>{{ entree.medicament.designation }}</strong></td>
+                                            <td><span class="badge badge-info">{{ entree.nb_cartons_recus }} ctns</span></td>
+                                            <td>{{ entree.prix_achat_carton|floatformat:2 }} CDF</td>
+                                            <td>{{ entree.date_reception|date:"d/m/Y H:i" }}</td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="4" class="text-center text-muted">Aucune entrée récente trouvée.</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/jquery.slimscroll.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/select2.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/app.js'%}"></script>
+
+    <script>
+        $(document).ready(function() {
+            // Initialisation de Select2 pour la recherche rapide dans la liste
+            $('.select').select2({
+                width: '100%',
+                placeholder: "Rechercher un médicament..."
+            });
+
+            // Désactivation du bouton après soumission
+            $('#form-stock').on('submit', function() {
+                let btn = $('#btn-submit');
+                btn.attr('disabled', true);
+                btn.html('<i class="fas fa-spinner fa-spin"></i> Traitement...');
+            });
+        });
+    </script>
+</body>
+</html>

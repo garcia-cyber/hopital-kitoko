@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+    <title>Pharmacie - Inventaire Global</title>
+
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'back-end/assets/img/favicon.ico'%}">
+    <link href="https://fonts.googleapis.com/css?family=Fira+Sans:400,500,600,700" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css'%}" >
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/dataTables.bootstrap4.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css'%}">
+</head>
+
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="row">
+                    <div class="col-sm-8 col-5">
+                        <h4 class="page-title">Inventaire de la Pharmacie</h4>
+                    </div>
+                    <div class="col-sm-4 col-7 text-right m-b-30">
+                        <a href="{% url 'ajouter_stock' %}" class="btn btn-primary btn-rounded float-right">
+                            <i class="fa fa-plus"></i> Approvisionner
+                        </a>
+                        <a href="{% url 'ajouter_medicament' %}" class="btn btn-outline-primary btn-rounded float-right m-r-10">
+                            <i class="fa fa-pills"></i> Nouveau Produit
+                        </a>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 col-sm-6 col-lg-6 col-xl-4">
+                        <div class="dash-widget">
+                            <span class="dash-widget-bg1"><i class="fas fa-layer-group"></i></span>
+                            <div class="dash-widget-info text-right">
+                                <h3>{{ total_articles }}</h3>
+                                <span class="widget-title1">Produits <i class="fa fa-check" aria-hidden="true"></i></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-sm-6 col-lg-6 col-xl-4">
+                        <div class="dash-widget">
+                            <span class="dash-widget-bg3"><i class="fas fa-exclamation-triangle"></i></span>
+                            <div class="dash-widget-info text-right">
+                                <h3>{{ alertes_stock }}</h3>
+                                <span class="widget-title3">Alertes Stock <i class="fa fa-check" aria-hidden="true"></i></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-striped custom-table datatable">
+                                        <thead>
+                                            <tr>
+                                                <th>Désignation</th>
+                                                <th>Forme</th>
+                                                <th>Dosage</th>
+                                                <th class="text-center">Stock (Pièces)</th>
+                                                <th>Prix de Vente</th>
+                                                <th>Statut</th>
+                                                <th class="text-right">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for med in stocks %}
+                                            <tr>
+                                                <td>
+                                                    <strong>{{ med.designation }}</strong>
+                                                </td>
+                                                <td>{{ med.forme_pharmaceutique|default:"-" }}</td>
+                                                <td>{{ med.dosage|default:"-" }}</td>
+                                                <td class="text-center">
+                                                    {% if med.quantite_stock_pieces < 10 %}
+                                                        <span class="badge badge-danger" style="font-size: 14px;">
+                                                            {{ med.quantite_stock_pieces }}
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="badge badge-success" style="font-size: 14px;">
+                                                            {{ med.quantite_stock_pieces }}
+                                                        </span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ med.prix_vente_detail|floatformat:2 }} CDF</td>
+                                                <td>
+                                                    {% if med.quantite_stock_pieces <= 0 %}
+                                                        <span class="custom-badge status-red">Rupture</span>
+                                                    {% elif med.quantite_stock_pieces < 10 %}
+                                                        <span class="custom-badge status-orange">Critique</span>
+                                                    {% else %}
+                                                        <span class="custom-badge status-green">En Stock</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td class="text-right">
+                                                    <div class="dropdown dropdown-action">
+                                                        <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
+                                                        <div class="dropdown-menu dropdown-menu-right">
+                                                            <a class="dropdown-item" href="#"><i class="fa fa-pencil m-r-5"></i> Modifier</a>
+                                                            <a class="dropdown-item" href="#"><i class="fa fa-history m-r-5"></i> Historique</a>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/jquery.slimscroll.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/jquery.dataTables.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/dataTables.bootstrap4.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/app.js'%}"></script>
+</body>
+</html>

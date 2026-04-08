@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+    <title>Pharmacie - Nouveau Produit</title>
+
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'back-end/assets/img/favicon.ico'%}">
+    <link href="https://fonts.googleapis.com/css?family=Fira+Sans:400,500,600,700" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css'%}" >
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css'%}">
+</head>
+
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="row">
+                    <div class="col-md-8 offset-md-2">
+                        <h4 class="page-title">Enregistrer un Nouveau Médicament</h4>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-8 offset-md-2">
+                        <div class="card shadow-sm">
+                            <div class="card-body">
+                                {% if messages %}
+                                    {% for message in messages %}
+                                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                                            {{ message }}
+                                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                                <span aria-hidden="true">&times;</span>
+                                            </button>
+                                        </div>
+                                    {% endfor %}
+                                {% endif %}
+
+                                <form method="post" id="form-nouveau-med">
+                                    {% csrf_token %}
+                                    
+                                    <div class="row">
+                                        <div class="col-md-12">
+                                            <div class="form-group">
+                                                <label>Désignation / Nom Commercial <span class="text-danger">*</span></label>
+                                                <input type="text" name="designation" class="form-control" placeholder="Ex: Paracétamol 500mg" required>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label>Forme Pharmaceutique</label>
+                                                <select name="forme" class="form-control">
+                                                    <option value="Comprimé">Comprimé</option>
+                                                    <option value="Sirop">Sirop</option>
+                                                    <option value="Injectable">Injectable</option>
+                                                    <option value="Gélule">Gélule</option>
+                                                    <option value="Pommade">Pommade</option>
+                                                    <option value="Suspension">Suspension</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label>Dosage (mg, ml, g)</label>
+                                                <input type="text" name="dosage" class="form-control" placeholder="Ex: 500mg">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label>Nombre de Pièces / Carton <span class="text-danger">*</span></label>
+                                                <input type="number" name="nb_pieces_par_carton" class="form-control" min="1" placeholder="Ex: 100" required>
+                                                <small class="text-muted">C'est ce chiffre qui servira au calcul du stock.</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label>Prix de Vente / Unité (CDF) <span class="text-danger">*</span></label>
+                                                <input type="number" step="0.01" name="prix_vente_detail" class="form-control" placeholder="Prix pour 1 pièce" required>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="m-t-20 text-center">
+                                        <a href="{% url 'liste_stock' %}" class="btn btn-secondary btn-rounded">Annuler</a>
+                                        <button type="submit" id="btn-save" class="btn btn-primary btn-rounded">
+                                            <i class="fas fa-check"></i> Créer la Fiche
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/jquery.slimscroll.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/app.js'%}"></script>
+
+    <script>
+        $(document).ready(function() {
+            $('#form-nouveau-med').on('submit', function() {
+                let btn = $('#btn-save');
+                btn.attr('disabled', true);
+                btn.html('<i class="fas fa-spinner fa-spin"></i> Création...');
+            });
+        });
+    </script>
+</body>
+</html>

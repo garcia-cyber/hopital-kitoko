@@ -95,7 +95,7 @@ class Patient(models.Model):
 # Gestion de taux 
 #
 class ConfigurationHopital(models.Model):
-    taux_usd_en_cdf = models.DecimalField(max_digits=10, decimal_places=2, default=2500.00)
+    taux_usd_en_cdf = models.DecimalField(max_digits=10, decimal_places=2, default=2250.00)
     derniere_mise_a_jour = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -429,3 +429,100 @@ class Ordonnance(models.Model):
 
     def __str__(self):
         return f"Ordonnance #{self.id} - Patient: {self.consultation.patient.noms}"
+
+
+
+# 1. Le Produit (Le cœur du stock)
+class Medicament(models.Model):
+    designation = models.CharField(max_length=200)
+    quantite_stock_pieces = models.PositiveIntegerField(default=0)
+    pieces_par_carton = models.PositiveIntegerField(default=1)
+    seuil_alerte = models.PositiveIntegerField(default=5)
+    
+    # Prix d'achat unitaire moyen (mis à jour à chaque entrée)
+    prix_achat_unitaire_moyen = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    
+    # Prix de vente fixés par le pharmacien
+    prix_vente_detail = models.DecimalField(max_digits=12, decimal_places=2)
+    prix_vente_gros = models.DecimalField(max_digits=12, decimal_places=2)
+
+    def __str__(self):
+        return self.designation
+
+    @property
+    def stock_en_cartons(self):
+        return self.quantite_stock_pieces // self.pieces_par_carton
+
+    @property
+    def reste_en_pieces(self):
+        return self.quantite_stock_pieces % self.pieces_par_carton
+
+    @property
+    def est_en_alerte(self):
+        return self.quantite_stock_pieces <= self.seuil_alerte
+
+
+
+# 2. La Réception (Comment la marchandise arrive)
+class BonEntree(models.Model):
+    medicament = models.ForeignKey(Medicament, on_delete=models.CASCADE)
+    fournisseur = models.CharField(max_length=200, blank=True)
+    nb_cartons_recus = models.PositiveIntegerField()
+    prix_achat_carton = models.DecimalField(max_digits=12, decimal_places=2)
+    date_reception = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        # 1. Calcul du prix d'achat à l'unité pour ce lot
+        if self.medicament.pieces_par_carton > 0:
+            prix_unitaire_lot = float(self.prix_achat_carton) / self.medicament.pieces_par_carton
+            self.medicament.prix_achat_unitaire_moyen = prix_unitaire_lot
+        
+        # 2. Conversion cartons -> pièces et mise à jour du stock
+        nb_pieces = self.nb_cartons_recus * self.medicament.pieces_par_carton
+        self.medicament.quantite_stock_pieces += nb_pieces
+        
+        # Sauvegarde du médicament avant le bon d'entrée
+        self.medicament.save()
+        super().save(*args, **kwargs)
+
+# 3. La Vente
+class VentePharmacie(models.Model):
+    STATUT_CHOICES = [
+        ('VALIDE', 'Validée'),
+        ('ANNULE', 'Annulée'),
+    ]
+    vendeur = models.ForeignKey(User, on_delete=models.CASCADE)
+    date_vente = models.DateTimeField(auto_now_add=True)
+    total_cdf = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    statut = models.CharField(max_length=10, choices=STATUT_CHOICES, default='VALIDE')
+
+    def __str__(self):
+        return f"Vente #{self.id} - {self.statut}"
+
+    def total_en_usd(self):
+        # Récupère le dernier taux configuré
+        config = ConfigurationHopital.objects.first()
+        taux = config.taux_usd_en_cdf if config else 2500
+        return round(float(self.total_cdf) / float(taux), 2)
+
+class LigneVente(models.Model):
+    vente = models.ForeignKey(VentePharmacie, related_name='lignes', on_delete=models.CASCADE)
+    medicament = models.ForeignKey(Medicament, on_delete=models.CASCADE)
+    quantite = models.PositiveIntegerField() # En pièces
+    type_vente = models.CharField(max_length=10, choices=[('DETAIL', 'Détail'), ('GROS', 'Gros')])
+    prix_unitaire_applique = models.DecimalField(max_digits=12, decimal_places=2)
+
+# --- 5. AUDIT & LOGS ---
+class LogPharmacie(models.Model):
+    ACTION_CHOICES = [
+        ('VENTE', 'Vente'),
+        ('ANNULATION', 'Annulation'),
+        ('ENTREE', 'Entrée Stock')
+    ]
+    utilisateur = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    action = models.CharField(max_length=50, choices=ACTION_CHOICES)
+    details = models.TextField()
+    date_action = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-date_action'] # Les plus récents en premier

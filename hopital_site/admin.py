@@ -260,3 +260,68 @@ class OrdonnanceAdmin(admin.ModelAdmin):
     get_patient.short_description = 'Patient'
 
 
+
+
+# --- 2. GESTION DES MÉDICAMENTS (STOCK) ---
+@admin.register(Medicament)
+class MedicamentAdmin(admin.ModelAdmin):
+    list_display = ('designation', 'get_stock_format', 'prix_vente_detail', 'prix_vente_gros', 'prix_achat_unitaire_moyen', 'statut_alerte')
+    list_filter = ('designation',)
+    search_fields = ('designation',)
+    readonly_fields = ('quantite_stock_pieces', 'prix_achat_unitaire_moyen') # Sécurité : on ne change pas le stock à la main
+
+    def get_stock_format(self, obj):
+        return f"{obj.stock_en_cartons} Cartons / {obj.reste_en_pieces} Pièces"
+    get_stock_format.short_description = "Stock Actuel"
+
+    def statut_alerte(self, obj):
+        if obj.est_en_alerte:
+            return "⚠️ RÉAPPROVISIONNER"
+        return "✅ OK"
+
+# --- 3. RÉCEPTION DE MARCHANDISE ---
+@admin.register(BonEntree)
+class BonEntreeAdmin(admin.ModelAdmin):
+    list_display = ('date_reception', 'medicament', 'nb_cartons_recus', 'prix_achat_carton', 'fournisseur')
+    list_filter = ('date_reception', 'fournisseur')
+    search_fields = ('medicament__designation',)
+
+# --- 4. LES VENTES (AVEC LIGNES INTÉGRÉES) ---
+class LigneVenteInline(admin.TabularInline):
+    model = LigneVente
+    extra = 0
+    readonly_fields = ('medicament', 'quantite', 'type_vente', 'prix_unitaire_applique')
+
+@admin.register(VentePharmacie)
+class VentePharmacieAdmin(admin.ModelAdmin):
+    list_display = ('id', 'date_vente', 'vendeur', 'total_cdf', 'get_total_usd', 'statut')
+    list_filter = ('statut', 'date_vente', 'vendeur')
+    inlines = [LigneVenteInline]
+    actions = ['marquer_comme_annulee']
+
+    def get_total_usd(self, obj):
+        return f"{obj.total_en_usd()} $"
+    get_total_usd.short_description = "Total (USD)"
+
+    def marquer_comme_annulee(self, request, queryset):
+        for vente in queryset:
+            if vente.statut != 'ANNULE':
+                # On passe l'utilisateur pour le signal
+                vente._user_annulation = request.user 
+                vente.statut = 'ANNULE'
+                vente.save()
+        self.message_user(request, "Les ventes sélectionnées ont été annulées et le stock remis en place.")
+    marquer_comme_annulee.short_description = "Annuler les ventes sélectionnées"
+
+# --- 5. AUDIT / LOGS (LECTURE SEULE) ---
+@admin.register(LogPharmacie)
+class LogPharmacieAdmin(admin.ModelAdmin):
+    list_display = ('date_action', 'utilisateur', 'action', 'details')
+    list_filter = ('action', 'date_action', 'utilisateur')
+    search_fields = ('details',)
+    
+    # On empêche la modification des logs pour la sécurité
+    def has_add_permission(self, request): return False
+    def has_change_permission(self, request, obj=None): return False
+
+
