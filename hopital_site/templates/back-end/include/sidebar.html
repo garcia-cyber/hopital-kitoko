@@ -120,16 +120,38 @@
                         <span class="menu-arrow"></span>
                     </a>
                     <ul style="display: none;">
+                        <li class="{% if request.resolver_match.url_name == 'dashboard_pharmacie' %}active{% endif %}">
+                    <a href="{% url 'dashboard_pharmacie' %}"><i class="fas fa-chart-line"></i> <span>Dashboard Pharma</span></a>
+                </li>
                         <li>
-            <a href="{% url 'ajouter_medicament' %}">
-                <i class="fas fa-plus-square"></i> <span>Nouveau Médicament</span>
-            </a>
-        </li>
+                            <a href="{% url 'ajouter_medicament' %}">
+                            <i class="fas fa-plus-square"></i> <span>Nouveau Médicament</span>
+                            </a>
+                        </li>
+
                         <li>
                             <a href="{% url 'ajouter_stock' %}">
                                 <i class="fas fa-plus-circle"></i> Entrée de Stock
                             </a>
                         </li>
+                        <li>
+                            <a href="{% url 'liste_stock' %}">
+                                <i class="fas fa-plus-circle"></i> Liste Stock
+                            </a>
+                        </li>
+
+
+                        <li class="{% if request.resolver_match.url_name == 'effectuer_vente' %}active{% endif %}">
+    <a href="{% url 'effectuer_vente' %}">
+        <i class="fas fa-plus-circle"></i> <span>Nouvelle Vente</span>
+    </a>
+</li>
+
+<li class="{% if request.resolver_match.url_name == 'historique_ventes' %}active{% endif %}">
+    <a href="{% url 'historique_ventes' %}">
+        <i class="fas fa-history"></i> <span>Historique Ventes</span>
+    </a>
+</li>
                     </ul>
                 </li>
                 {% endif %}

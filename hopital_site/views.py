@@ -1,4 +1,4 @@
-from django.shortcuts import render , redirect , get_object_or_404
+from django.shortcuts import render , redirect , get_object_or_404 , HttpResponse
 from .forms import * 
 from django.contrib.auth import authenticate , login as auth , logout 
 from django.contrib.auth.decorators import login_required 
@@ -11,6 +11,8 @@ from django.forms import inlineformset_factory
 from django.db import transaction  # <--- AJOUTE CETTE LIGNE
 from datetime import timedelta
 from django.utils import timezone
+import json
+from django.http import JsonResponse
 
 # Create your views here.
 
@@ -1283,43 +1285,307 @@ def ajouter_stock(request):
 def ajouter_medicament(request):
     if request.method == "POST":
         designation = request.POST.get('designation')
-        forme = request.POST.get('forme')  # Sirop, Comprimé, etc.
+        forme = request.POST.get('forme')
         dosage = request.POST.get('dosage')
-        nb_pieces = request.POST.get('nb_pieces_par_carton')
-        prix_vente = request.POST.get('prix_vente_detail')
+        
+        pieces_brutes = request.POST.get('pieces_par_carton')
+        prix_detail_brut = request.POST.get('prix_vente_detail')
+        prix_gros_brut = request.POST.get('prix_vente_gros')
+        seuil_brut = request.POST.get('seuil_alerte')
 
-        try:
-            Medicament.objects.create(
-                designation=designation,
-                forme_pharmaceutique=forme,
-                dosage=dosage,
-                nb_pieces_par_carton=int(nb_pieces),
-                prix_vente_detail=float(prix_vente),
-                quantite_stock_pieces=0  # On commence à zéro, l'entrée de stock fera le reste
-            )
-            messages.success(request, f"Le médicament {designation} a été créé.")
-            return redirect('liste_stock')
-        except Exception as e:
-            messages.error(request, f"Erreur lors de la création : {e}")
+        # --- VÉRIFICATION DE DOUBLON ---
+        # On vérifie si un médicament avec le même nom, forme ET dosage existe déjà
+        existe_deja = Medicament.objects.filter(
+            designation__iexact=designation, 
+            forme__iexact=forme, 
+            dosage__iexact=dosage
+        ).exists()
 
-    return render(request, 'back-end/ajouter_medicament.html')
+        if existe_deja:
+            messages.warning(request, f"Le médicament '{designation} ({forme} {dosage})' existe déjà dans le système.")
+            # On reste sur la page pour permettre de corriger
+        else:
+            try:
+                Medicament.objects.create(
+                    designation=designation,
+                    forme=forme,
+                    dosage=dosage,
+                    pieces_par_carton=int(pieces_brutes) if pieces_brutes else 1,
+                    prix_vente_detail=float(prix_detail_brut) if prix_detail_brut else 0.0,
+                    prix_vente_gros=float(prix_gros_brut) if prix_gros_brut else 0.0,
+                    seuil_alerte=int(seuil_brut) if seuil_brut else 5,
+                    quantite_stock_pieces=0
+                )
+                messages.success(request, f"Le médicament {designation} a été créé avec succès.")
+                return redirect('liste_stock')
+            except Exception as e:
+                messages.error(request, f"Erreur lors de la création : {e}")
+
+    # Logique de profil habituelle
+    profil_connecte = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil_connecte.fonction.fonction if profil_connecte and profil_connecte.fonction else None
+
+    return render(request, 'back-end/ajouter_medicament.html', {'fonction': fonction})
 
 # 37 
 # ========================================================================================
 #  liste de stock
 # ========================================================================================
+@login_required()
 def liste_stock(request):
-    # On récupère tous les médicaments par ordre alphabétique
+    # On récupère tous les médicaments
     stocks = Medicament.objects.all().order_by('designation')
     
-    # On peut ajouter ici une logique pour compter les alertes
-    total_articles = stocks.count()
-    alertes_stock = stocks.filter(quantite_stock_pieces__lt=10).count()
+    # Logique pour compter les alertes basée sur le seuil de chaque produit
+    # On crée une liste des IDs des médicaments en alerte
+    alertes_ids = [s.id for s in stocks if s.est_en_alerte]
+    alertes_count = len(alertes_ids)
+
+    profil_connecte = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil_connecte.fonction.fonction if profil_connecte and profil_connecte.fonction else None
 
     context = {
         'stocks': stocks,
-        'total_articles': total_articles,
-        'alertes_stock': alertes_stock,
-        'title': "Inventaire de la Pharmacie"
+        'total_articles': stocks.count(),
+        'alertes_stock': alertes_count,
+        'title': "Inventaire de la Pharmacie",
+        'fonction': fonction
     }
     return render(request, 'back-end/liste_stock.html', context)
+# 38
+# =============================================================================================
+# inventaire global meme action que liste stock
+# =============================================================================================
+@login_required
+def inventaire_global(request):
+    stocks = Medicament.objects.all()
+    total_articles = stocks.count()
+    alertes_stock = sum(1 for med in stocks if med.est_en_alerte)
+    profil_connecte = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil_connecte.fonction.fonction if profil_connecte and profil_connecte.fonction else None
+    
+    return render(request, 'back-end/inventaire.html', {
+        'stocks': stocks,
+        'total_articles': total_articles,
+        'alertes_stock': alertes_stock,
+        'fonction': fonction 
+    })
+
+# 39
+# =====================================================================================================
+# medicament details
+# =====================================================================================================
+@login_required
+def medicament_details(request, pk):
+    # On récupère le médicament ou on affiche une erreur 404 s'il n'existe pas
+    medicament = get_object_or_404(Medicament, pk=pk)
+    profil_connecte = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil_connecte.fonction.fonction if profil_connecte and profil_connecte.fonction else None
+
+    return render(request, 'back-end/details_medicament.html', {'medicament': medicament, 'fonction':fonction})
+
+# 40
+# =====================================================================================================
+# medicament historique
+# =====================================================================================================
+@login_required
+def medicament_historique(request, pk):
+    medicament = get_object_or_404(Medicament, pk=pk)
+    
+    # On récupère les entrées (achats) et les sorties (ventes) pour ce produit
+    entrees = BonEntree.objects.filter(medicament=medicament).order_by('-date_reception')
+    sorties = LigneVente.objects.filter(medicament=medicament).order_by('-vente__date_vente')
+
+    profil_connecte = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil_connecte.fonction.fonction if profil_connecte and profil_connecte.fonction else None
+    
+    context = {
+        'medicament': medicament,
+        'entrees': entrees,
+        'sorties': sorties,
+        'fonction' : fonction 
+    }
+    return render(request, 'back-end/historique_medicament.html', context)
+
+# 41
+# ====================================================================================================
+# dashboard pharmacie gestion finance cote pharmacie
+# ====================================================================================================
+@login_required()
+def dashboard_pharmacie(request):
+    profil_connecte = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil_connecte.fonction.fonction if profil_connecte and profil_connecte.fonction else None
+
+    # 1. Récupération des données de base
+    stocks = Medicament.objects.all()
+    config = ConfigurationHopital.objects.first()
+    taux = config.taux_usd_en_cdf if config else 2500
+    
+    # 2. Ventes du jour (uniquement validées)
+    aujourdhui = datetime.date.today()
+    ventes_du_jour = VentePharmacie.objects.filter(
+        date_vente__date=aujourdhui, 
+        statut='VALIDE'
+    )
+
+    # 3. Calculs financiers
+    ca_jour_cdf = ventes_du_jour.aggregate(total=Sum('total_cdf'))['total'] or 0
+    ca_jour_usd = float(ca_jour_cdf) / float(taux)
+
+    # Valeur du stock (basé sur le prix d'achat en CDF)
+    valeur_stock_cdf = stocks.aggregate(
+        total=Sum(F('quantite_stock_pieces') * F('prix_achat_unitaire_moyen'))
+    )['total'] or 0
+    valeur_stock_usd = float(valeur_stock_cdf) / float(taux)
+
+    context = {
+        'total_articles': stocks.count(),
+        'alertes_stock': sum(1 for med in stocks if med.est_en_alerte),
+        'valeur_stock_cdf': valeur_stock_cdf,
+        'valeur_stock_usd': valeur_stock_usd,
+        'ca_jour_cdf': ca_jour_cdf,
+        'ca_jour_usd': ca_jour_usd,
+        'taux': taux,
+        'ventes_recentes': ventes_du_jour.order_by('-date_vente')[:5] , 
+        'fonction' : fonction 
+    }
+    return render(request, 'back-end/pharmacie/dashboard.html', context)
+
+# 42
+# ==============================================================================================
+# nouvelle vente 
+# ==============================================================================================
+@login_required
+@transaction.atomic
+def effectuer_vente(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            panier = data.get('panier')
+            
+            if not panier:
+                return JsonResponse({'status': 'error', 'message': 'Panier vide'})
+
+            config = ConfigurationHopital.objects.first()
+            if not config:
+                return JsonResponse({'status': 'error', 'message': 'Taux de change non configuré'})
+
+            # 1. CRÉER LA VENTE
+            nouvelle_vente = VentePharmacie.objects.create(
+                vendeur=request.user,
+                total_cdf=0,
+                statut='VALIDE'
+            )
+
+            total_global = 0
+            for item in panier:
+                med = Medicament.objects.get(id=item['id'])
+                qte = int(item['quantite'])
+                p_unit = float(item['prix'])
+                
+                LigneVente.objects.create(
+                    vente=nouvelle_vente,
+                    medicament=med,
+                    quantite=qte,
+                    prix_unitaire_applique=p_unit
+                )
+                
+                med.quantite_stock_pieces -= qte
+                med.save()
+                total_global += (p_unit * qte)
+
+            nouvelle_vente.total_cdf = total_global
+            nouvelle_vente.save()
+
+            # 2. LOGIQUE COMPTABLE (FACTURE & PAIEMENT)
+            facture_compta = Facture.objects.create(
+                patient=None,  
+                # Assure-toi que ce champ existe dans ton modèle Facture
+                # sinon utilise une ForeignKey générique ou une autre méthode de liaison
+                vente_pharmacie=nouvelle_vente, 
+                prix_fixe_cdf=total_global,
+                taux_fixe=config.taux_usd_en_cdf
+            )
+
+            Paiement.objects.create(
+                facture=facture_compta,
+                montant_physique=total_global,
+                devise='CDF'
+            )
+
+            return JsonResponse({'status': 'success', 'vente_id': nouvelle_vente.id})
+
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+
+    # =====================================================================
+    # LE RETURN MANQUANT POUR LE CHARGEMENT DE LA PAGE (GET)
+    # =====================================================================
+    # On récupère les médicaments en stock pour les afficher dans le select
+    medicaments = Medicament.objects.filter(quantite_stock_pieces__gt=0).order_by('designation')
+    
+    return render(request, 'back-end/nouvelle_vente.html', {
+        'medicaments': medicaments
+    })
+
+# 43 
+# ===========================================================================================================
+# historique vente
+# ===========================================================================================================
+@login_required
+def historique_ventes(request):
+    # Récupération de toutes les ventes validées, triées par date (récente en haut)
+    ventes = VentePharmacie.objects.filter(statut='VALIDE').order_by('-date_vente')
+    
+    # Récupération du taux pour conversion globale si besoin
+    config = ConfigurationHopital.objects.first()
+    taux = config.taux_usd_en_cdf if config else 2500
+    
+    context = {
+        'ventes': ventes,
+        'taux': taux,
+    }
+    return render(request, 'back-end/historique_ventes.html', context)
+
+# 44
+# ===========================================================================================================
+# annuler vente
+# ===========================================================================================================
+@login_required
+def annuler_vente(request, vente_id):
+    vente = get_object_or_404(VentePharmacie, id=vente_id)
+    
+    if vente.statut == 'ANNULE':
+        messages.warning(request, "Cette vente est déjà annulée.")
+        return redirect('historique_ventes')
+
+    with transaction.atomic():
+        # 1. Remettre les produits en stock
+        for ligne in vente.lignes.all():
+            med = ligne.medicament
+            med.quantite_stock_pieces += ligne.quantite
+            med.save()
+        
+        # 2. Changer le statut
+        vente.statut = 'ANNULE'
+        vente.save()
+        
+        # 3. Logger l'action
+        LogPharmacie.objects.create(
+            utilisateur=request.user,
+            action='ANNULATION',
+            details=f"Annulation de la facture #{vente.id} d'un montant de {vente.total_cdf} CDF"
+        )
+        
+    messages.success(request, f"La vente #{vente.id} a été annulée et le stock mis à jour.")
+    return redirect('historique_ventes')
+
+
+# 45 
+# ===========================================================================================================
+# genere facture vente
+# ===========================================================================================================
+@login_required
+def generer_facture_pdf(request, vente_id):
+    vente = get_object_or_404(VentePharmacie, id=vente_id)
+    return render(request, 'back-end/facture_format_ticket.html', {'vente': vente})

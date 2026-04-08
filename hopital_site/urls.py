@@ -89,4 +89,12 @@ urlpatterns = [
     path('stock/ajouter/', views.ajouter_stock, name='ajouter_stock'),
     path('medicament/nouveau/', views.ajouter_medicament, name='ajouter_medicament'),
     path('stock/liste/', views.liste_stock, name='liste_stock'),
+    path('pharmacie/inventaire/', views.inventaire_global, name='page_inventaire'),
+    path('pharmacie/medicament/<int:pk>/details/', views.medicament_details, name='medicament_details'),
+    path('pharmacie/medicament/<int:pk>/historique/', views.medicament_historique, name='medicament_historique'),
+    path('dashboard/', views.dashboard_pharmacie, name='dashboard_pharmacie'),
+    path('vente/nouvelle/', views.effectuer_vente, name='effectuer_vente'),
+    path('vente/historique/', views.historique_ventes, name='historique_ventes'),
+    path('vente/<int:vente_id>/facture/', views.generer_facture_pdf, name='generer_facture_pdf'),
+    path('vente/<int:vente_id>/annuler/', views.annuler_vente, name='annuler_vente'),
 ]

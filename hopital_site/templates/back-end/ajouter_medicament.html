@@ -48,7 +48,7 @@
                                         <div class="col-md-12">
                                             <div class="form-group">
                                                 <label>Désignation / Nom Commercial <span class="text-danger">*</span></label>
-                                                <input type="text" name="designation" class="form-control" placeholder="Ex: Paracétamol 500mg" required>
+                                                <input type="text" name="designation" class="form-control" placeholder="Ex: Paracétamol" required>
                                             </div>
                                         </div>
                                     </div>
@@ -56,8 +56,9 @@
                                     <div class="row">
                                         <div class="col-md-6">
                                             <div class="form-group">
-                                                <label>Forme Pharmaceutique</label>
-                                                <select name="forme" class="form-control">
+                                                <label>Forme Pharmaceutique <span class="text-danger">*</span></label>
+                                                <select name="forme" class="form-control" required>
+                                                    <option value="" disabled selected>Choisir la forme...</option>
                                                     <option value="Comprimé">Comprimé</option>
                                                     <option value="Sirop">Sirop</option>
                                                     <option value="Injectable">Injectable</option>
@@ -69,8 +70,8 @@
                                         </div>
                                         <div class="col-md-6">
                                             <div class="form-group">
-                                                <label>Dosage (mg, ml, g)</label>
-                                                <input type="text" name="dosage" class="form-control" placeholder="Ex: 500mg">
+                                                <label>Dosage <span class="text-danger">*</span></label>
+                                                <input type="text" name="dosage" class="form-control" placeholder="Ex: 500mg ou 100ml" required>
                                             </div>
                                         </div>
                                     </div>
@@ -79,14 +80,29 @@
                                         <div class="col-md-6">
                                             <div class="form-group">
                                                 <label>Nombre de Pièces / Carton <span class="text-danger">*</span></label>
-                                                <input type="number" name="nb_pieces_par_carton" class="form-control" min="1" placeholder="Ex: 100" required>
-                                                <small class="text-muted">C'est ce chiffre qui servira au calcul du stock.</small>
+                                                <input type="number" name="pieces_par_carton" class="form-control" min="1" placeholder="Ex: 100" required>
+                                                <small class="text-muted">Conversion pour le calcul automatique du stock.</small>
                                             </div>
                                         </div>
                                         <div class="col-md-6">
                                             <div class="form-group">
-                                                <label>Prix de Vente / Unité (CDF) <span class="text-danger">*</span></label>
+                                                <label>Seuil d'Alerte (en pièces) <span class="text-danger">*</span></label>
+                                                <input type="number" name="seuil_alerte" class="form-control" value="5" required>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label>Prix de Vente Détail (CDF) <span class="text-danger">*</span></label>
                                                 <input type="number" step="0.01" name="prix_vente_detail" class="form-control" placeholder="Prix pour 1 pièce" required>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label>Prix de Vente Gros (CDF) <span class="text-danger">*</span></label>
+                                                <input type="number" step="0.01" name="prix_vente_gros" class="form-control" placeholder="Prix par carton" required>
                                             </div>
                                         </div>
                                     </div>
@@ -116,7 +132,7 @@
             $('#form-nouveau-med').on('submit', function() {
                 let btn = $('#btn-save');
                 btn.attr('disabled', true);
-                btn.html('<i class="fas fa-spinner fa-spin"></i> Création...');
+                btn.html('<i class="fas fa-spinner fa-spin"></i> Vérification et création...');
             });
         });
     </script>

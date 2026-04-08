@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+    <title>Pharmacie - Nouvelle Vente</title>
+
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css' %}" >
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css' %}">
+    
+    <style>
+        .total-box { background: #e3f2fd; border: 2px solid #009efb; padding: 20px; border-radius: 10px; margin-top: 20px; }
+        .total-amount { font-size: 32px; font-weight: 800; color: #009efb; }
+        .card { border-radius: 10px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .table-panier td { vertical-align: middle; }
+    </style>
+</head>
+
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="row">
+                    <div class="col-sm-12">
+                        <h4 class="page-title"><i class="fa fa-cash-register"></i> Établir une Facture Client</h4>
+                    </div>
+                </div>
+
+                <div class="row mt-3">
+                    <div class="col-md-5">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="text-primary border-bottom pb-2">Article</h5>
+                                <div class="form-group">
+                                    <label class="font-weight-bold">Médicament</label>
+                                    <select id="med-select" class="form-control" style="height: 45px;">
+                                        <option value="">-- Sélectionner --</option>
+                                        {% for m in medicaments %}
+                                            <option value="{{ m.id }}" 
+                                                    data-nom="{{ m.designation }}"
+                                                    data-prix="{{ m.prix_vente_detail }}" 
+                                                    data-stock="{{ m.quantite_stock_pieces }}">
+                                                {{ m.designation }} (Stock: {{ m.quantite_stock_pieces }})
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="font-weight-bold">Quantité</label>
+                                    <input type="number" id="qty" class="form-control" value="1" min="1">
+                                </div>
+                                <button type="button" onclick="ajouterAuPanier()" class="btn btn-success btn-block btn-lg">
+                                    <i class="fa fa-plus"></i> Ajouter au panier
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-7">
+                        <div class="card">
+                            <div class="card-body p-0">
+                                <div class="table-responsive" style="min-height: 250px;">
+                                    <table class="table table-hover mb-0">
+                                        <thead class="thead-dark">
+                                            <tr>
+                                                <th>Désignation</th>
+                                                <th>P.U</th>
+                                                <th>Qté</th>
+                                                <th>Total</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="panier-body">
+                                            <tr><td colspan="5" class="text-center text-muted p-5">Le panier est vide</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                
+                                <div class="p-3">
+                                    <div class="total-box text-right">
+                                        <span class="text-muted">TOTAL GÉNÉRAL</span><br>
+                                        <span class="total-amount" id="total-display">0</span> <small>CDF</small>
+                                    </div>
+                                    <div class="mt-3 text-right">
+                                        <button type="button" onclick="validerLaVente()" id="btn-valider" class="btn btn-primary btn-lg btn-rounded shadow">
+                                            <i class="fa fa-check-circle"></i> Valider et Enregistrer
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js' %}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js' %}"></script>
+
+    <script>
+        // Le Panier Global
+        var panier = [];
+
+        function ajouterAuPanier() {
+            var select = $('#med-select');
+            var option = select.find('option:selected');
+            
+            var id = select.val();
+            var nom = option.data('nom');
+            var prix = parseFloat(option.data('prix'));
+            var stock = parseInt(option.data('stock'));
+            var qte = parseInt($('#qty').val());
+
+            if (!id) { alert("Veuillez choisir un produit"); return; }
+            if (qte <= 0) { alert("Quantité invalide"); return; }
+            if (qte > stock) { alert("Stock insuffisant !"); return; }
+
+            // Vérifier si doublon
+            var existe = panier.find(item => item.id === id);
+            if (existe) {
+                if ((existe.quantite + qte) > stock) { alert("Stock max atteint"); return; }
+                existe.quantite += qte;
+            } else {
+                panier.push({ id: id, nom: nom, prix: prix, quantite: qte });
+            }
+
+            renderPanier();
+        }
+
+        function supprimerItem(index) {
+            panier.splice(index, 1);
+            renderPanier();
+        }
+
+        function renderPanier() {
+            var html = "";
+            var total = 0;
+
+            if (panier.length === 0) {
+                html = '<tr><td colspan="5" class="text-center text-muted p-5">Le panier est vide</td></tr>';
+            } else {
+                panier.forEach((item, index) => {
+                    var sous_total = item.prix * item.quantite;
+                    total += sous_total;
+                    html += `<tr>
+                        <td><b>${item.nom}</b></td>
+                        <td>${item.prix.toLocaleString()}</td>
+                        <td>${item.quantite}</td>
+                        <td><b>${sous_total.toLocaleString()}</b></td>
+                        <td class="text-right">
+                            <button onclick="supprimerItem(${index})" class="btn btn-sm btn-outline-danger"><i class="fa fa-trash"></i></button>
+                        </td>
+                    </tr>`;
+                });
+            }
+
+            $('#panier-body').html(html);
+            $('#total-display').text(total.toLocaleString());
+        }
+
+        function validerLaVente() {
+            if (panier.length === 0) { alert("Le panier est vide !"); return; }
+
+            if (!confirm("Voulez-vous finaliser cette vente ?")) return;
+
+            // Bloquer le bouton
+            $('#btn-valider').prop('disabled', true).text("Enregistrement...");
+
+            $.ajax({
+                url: "{% url 'effectuer_vente' %}",
+                method: "POST",
+                headers: { "X-CSRFToken": "{{ csrf_token }}" },
+                contentType: "application/json",
+                data: JSON.stringify({ panier: panier }),
+                success: function(response) {
+                    if (response.status === 'success') {
+                        alert("Vente enregistrée avec succès !");
+                        window.location.href = "{% url 'historique_ventes' %}";
+                    } else {
+                        alert("Erreur: " + response.message);
+                        $('#btn-valider').prop('disabled', false).text("Valider et Enregistrer");
+                    }
+                },
+                error: function() {
+                    alert("Erreur de connexion au serveur.");
+                    $('#btn-valider').prop('disabled', false).text("Valider et Enregistrer");
+                }
+            });
+        }
+    </script>
+</body>
+</html>

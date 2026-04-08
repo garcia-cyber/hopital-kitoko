@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models , transaction
 from django.contrib.auth.models import User
 from django.utils import timezone
 from datetime import timedelta
@@ -138,6 +138,7 @@ class Facture(models.Model):
     
     prix_fixe_cdf = models.DecimalField(max_digits=15, decimal_places=2, editable=False)
     taux_fixe = models.DecimalField(max_digits=10, decimal_places=2, editable=False)
+    vente_pharmacie = models.OneToOneField('VentePharmacie', on_delete=models.CASCADE, null=True, blank=True)
 
     def save(self, *args, **kwargs):
         if not self.id:
@@ -433,28 +434,42 @@ class Ordonnance(models.Model):
 
 
 # 1. Le Produit (Le cœur du stock)
+
 class Medicament(models.Model):
+    # Informations de base
     designation = models.CharField(max_length=200)
+    forme = models.CharField(max_length=100, null=True, blank=True)
+    dosage = models.CharField(max_length=100, null=True, blank=True)
+    
+    # Gestion du stock
     quantite_stock_pieces = models.PositiveIntegerField(default=0)
     pieces_par_carton = models.PositiveIntegerField(default=1)
     seuil_alerte = models.PositiveIntegerField(default=5)
     
-    # Prix d'achat unitaire moyen (mis à jour à chaque entrée)
+    # Prix d'achat
     prix_achat_unitaire_moyen = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     
-    # Prix de vente fixés par le pharmacien
+    # Prix de vente
     prix_vente_detail = models.DecimalField(max_digits=12, decimal_places=2)
     prix_vente_gros = models.DecimalField(max_digits=12, decimal_places=2)
 
     def __str__(self):
-        return self.designation
+        # On sécurise l'affichage au cas où forme ou dosage sont vides
+        forme_display = self.forme if self.forme else "Forme non spécifiée"
+        dosage_display = self.dosage if self.dosage else "Dosage non spécifié"
+        return f"{self.designation} ({forme_display} - {dosage_display})"
 
     @property
     def stock_en_cartons(self):
+        # Sécurité pour éviter la division par zéro
+        if self.pieces_par_carton == 0:
+            return 0
         return self.quantite_stock_pieces // self.pieces_par_carton
 
     @property
     def reste_en_pieces(self):
+        if self.pieces_par_carton == 0:
+            return self.quantite_stock_pieces
         return self.quantite_stock_pieces % self.pieces_par_carton
 
     @property
@@ -464,6 +479,8 @@ class Medicament(models.Model):
 
 
 # 2. La Réception (Comment la marchandise arrive)
+
+
 class BonEntree(models.Model):
     medicament = models.ForeignKey(Medicament, on_delete=models.CASCADE)
     fournisseur = models.CharField(max_length=200, blank=True)
@@ -472,18 +489,26 @@ class BonEntree(models.Model):
     date_reception = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
-        # 1. Calcul du prix d'achat à l'unité pour ce lot
-        if self.medicament.pieces_par_carton > 0:
-            prix_unitaire_lot = float(self.prix_achat_carton) / self.medicament.pieces_par_carton
-            self.medicament.prix_achat_unitaire_moyen = prix_unitaire_lot
-        
-        # 2. Conversion cartons -> pièces et mise à jour du stock
-        nb_pieces = self.nb_cartons_recus * self.medicament.pieces_par_carton
-        self.medicament.quantite_stock_pieces += nb_pieces
-        
-        # Sauvegarde du médicament avant le bon d'entrée
-        self.medicament.save()
-        super().save(*args, **kwargs)
+        # On utilise une transaction pour être sûr que si l'un échoue, l'autre aussi
+        with transaction.atomic():
+            # 1. Calcul du prix d'achat à l'unité pour ce lot
+            if self.medicament.pieces_par_carton > 0:
+                prix_unitaire_lot = float(self.prix_achat_carton) / self.medicament.pieces_par_carton
+                self.medicament.prix_achat_unitaire_moyen = prix_unitaire_lot
+            
+            # 2. Mise à jour du stock uniquement à la création (pour ne pas doubler si on modifie le bon)
+            if not self.pk:  # Si c'est un nouveau Bon d'Entrée
+                nb_pieces = self.nb_cartons_recus * self.medicament.pieces_par_carton
+                self.medicament.quantite_stock_pieces += nb_pieces
+            
+            # 3. Sauvegarde du médicament
+            self.medicament.save()
+            
+            # 4. Sauvegarde du bon d'entrée
+            super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Arrivage {self.medicament.designation} - {self.date_reception.strftime('%d/%m/%Y')}"
 
 # 3. La Vente
 class VentePharmacie(models.Model):

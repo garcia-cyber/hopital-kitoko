@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        @media print { .no-print { display: none; } }
+        body { font-family: 'Courier New', Courier, monospace; width: 80mm; font-size: 12px; }
+        .text-center { text-align: center; }
+        .border-top { border-top: 1px dashed #000; margin-top: 5px; padding-top: 5px; }
+        table { width: 100%; }
+    </style>
+</head>
+<body onload="window.print()">
+    <div class="text-center">
+        <h3>MA PHARMACIE</h3>
+        <p>Kinshasa, RDC<br>Tél: +243 ...</p>
+        <p><b>FACTURE #{{ vente.id }}</b><br>{{ vente.date_vente|date:"d/m/Y H:i" }}</p>
+    </div>
+    <div class="border-top">
+        <table>
+            {% for ligne in vente.lignes.all %}
+            <tr>
+                <td>{{ ligne.medicament.designation }} (x{{ ligne.quantite }})</td>
+                <td style="text-align: right;">{{ ligne.prix_unitaire_applique }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+    <div class="border-top">
+        <p><b>TOTAL CDF: {{ vente.total_cdf }}</b></p>
+        <p><b>TOTAL USD: {{ vente.total_en_usd }} $</b></p>
+    </div>
+    <p class="text-center border-top">Merci de votre confiance !</p>
+    <button class="no-print" onclick="window.close()">Fermer</button>
+</body>
+</html>

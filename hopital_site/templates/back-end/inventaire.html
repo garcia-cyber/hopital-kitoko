@@ -19,13 +19,14 @@
         .status-orange { background-color: #fff4e5; color: #ff8c00; border: 1px solid #ffe0b3; }
         .status-green { background-color: #e5f9e5; color: #28a745; border: 1px solid #ccebcc; }
         
-        /* Ajustement pour la barre de recherche */
+        /* Style pour la barre de recherche DataTables */
         .dataTables_filter { float: right; margin-bottom: 15px; }
         .dataTables_filter input { 
             border: 1px solid #ccc; 
             border-radius: 20px; 
             padding: 5px 15px; 
             outline: none; 
+            width: 250px;
         }
     </style>
 </head>
@@ -121,15 +122,20 @@
                                                     <div class="dropdown dropdown-action">
                                                         <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
                                                         <div class="dropdown-menu dropdown-menu-right">
-                                                            <a class="dropdown-item" href="#"><i class="fa fa-pencil m-r-5"></i> Modifier</a>
-
+                                                            <a class="dropdown-item" href="#"><i class="fa fa-pencil-alt m-r-5"></i> Modifier</a>
+                                                            
                                                             <a class="dropdown-item" href="{% url 'medicament_details' med.pk %}"><i class="fa fa-eye m-r-5"></i> Voir Détails</a>
-
                                                             <a class="dropdown-item" href="{% url 'medicament_historique' med.pk %}"><i class="fa fa-history m-r-5"></i> Historique</a>
-                                                            <a class="dropdown-item" href="#"><i class="fa fa-trash-alt m-r-5 text-danger"></i> Supprimer</a>
+                                                            
+                                                            <div class="dropdown-divider"></div>
+                                                            <a class="dropdown-item text-danger" href="#"><i class="fa fa-trash m-r-5"></i> Supprimer</a>
                                                         </div>
                                                     </div>
                                                 </td>
+                                            </tr>
+                                            {% empty %}
+                                            <tr>
+                                                <td colspan="7" class="text-center">Aucun médicament trouvé dans l'inventaire.</td>
                                             </tr>
                                             {% endfor %}
                                         </tbody>
@@ -152,17 +158,25 @@
 
     <script>
         $(document).ready(function() {
+            if ( $.fn.DataTable.isDataTable( '#table-inventaire' ) ) {
+                $('#table-inventaire').DataTable().destroy();
+            }
+            
             $('#table-inventaire').DataTable({
                 "language": {
                     "search": "Chercher un produit : ",
                     "lengthMenu": "Afficher _MENU_ produits",
+                    "zeroRecords": "Aucun résultat trouvé",
                     "info": "Affichage de _START_ à _END_ sur _TOTAL_ produits",
+                    "infoEmpty": "Aucun produit disponible",
+                    "infoFiltered": "(filtré de _MAX_ produits au total)",
                     "paginate": {
                         "next": "Suivant",
                         "previous": "Précédent"
                     }
                 },
-                "pageLength": 10
+                "pageLength": 10,
+                "ordering": true
             });
         });
     </script>
