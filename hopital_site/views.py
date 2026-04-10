@@ -1,4 +1,4 @@
-from django.shortcuts import render , redirect , get_object_or_404 , HttpResponse
+from django.shortcuts import render , redirect , get_object_or_404 , HttpResponse 
 from .forms import * 
 from django.contrib.auth import authenticate , login as auth , logout 
 from django.contrib.auth.decorators import login_required 
@@ -1098,39 +1098,83 @@ def rediger_ordonnance(request, consultation_id):
     consultation = get_object_or_404(Consultation, id=consultation_id)
     patient = consultation.patient
     
-    # Sécurité anti-doublon
-    if Ordonnance.objects.filter(consultation=consultation).exists():
-        messages.warning(request, f"Une ordonnance existe déjà pour {patient.noms}.")
-        return redirect('resultats_labo_medecin')
-
+    # 1. Récupération des médicaments disponibles
+    produits_stock = Medicament.objects.filter(quantite_stock_pieces__gt=0).order_by('designation')
+    
     examens_faits = ExamenPrescrit.objects.filter(
-        consultation=consultation, 
-        termine=True
+        consultation=consultation, termine=True
     ).select_related('prestation')
 
     if request.method == "POST":
-        # On récupère le texte du textarea (le name dans le HTML est "prescription")
-        texte_recu = request.POST.get('prescription')
+        medics_ids = request.POST.getlist('produit_id[]')
+        qtes_demandees = request.POST.getlist('quantite_prescrite[]')
+        posologie_globale = request.POST.get('posologie', '')
 
-        if texte_recu and texte_recu.strip():
-            try:
-                # CORRECTION ICI : On utilise le nom exact du champ de votre modèle
-                Ordonnance.objects.create(
-                    consultation=consultation,
-                    medecin=request.user,
-                    contenu_prescription=texte_recu.strip() # <--- Nom du champ corrigé
-                )
-                
-                messages.success(request, f"L'ordonnance pour {patient.noms} a été enregistrée.")
-                return redirect('resultats_labo_medecin')
-                
-            except Exception as e:
-                messages.error(request, f"Erreur technique : {e}")
+        if not medics_ids:
+            messages.error(request, "Veuillez ajouter au moins un médicament.")
         else:
-            messages.error(request, "L'ordonnance ne peut pas être vide.")
+            erreurs = []
+            lignes_a_creer = []
+
+            # 2. Vérification technique des stocks
+            for m_id, q_voulue in zip(medics_ids, qtes_demandees):
+                try:
+                    if not q_voulue or int(q_voulue) <= 0:
+                        continue
+                        
+                    medoc = Medicament.objects.get(id=m_id)
+                    q_voulue = int(q_voulue)
+
+                    if medoc.quantite_stock_pieces < q_voulue:
+                        erreurs.append(
+                            f"Stock insuffisant pour {medoc.designation}. "
+                            f"Disponible: {medoc.quantite_stock_pieces}, Demandé: {q_voulue}."
+                        )
+                    else:
+                        lignes_a_creer.append({
+                            'objet_medoc': medoc,
+                            'quantite': q_voulue
+                        })
+                except (Medicament.DoesNotExist, ValueError):
+                    continue
+
+            if erreurs:
+                for err in erreurs:
+                    messages.error(request, err)
+            else:
+                try:
+                    # 3. SAUVEGARDE ATOMIQUE (Tout ou rien)
+                    with transaction.atomic():
+                        # A. Création de l'objet Ordonnance principal
+                        # On garde contenu_prescription pour l'historique texte
+                        description_texte = "Détail des lignes :\n" + "\n".join([
+                            f"- {l['objet_medoc'].designation}: {l['quantite']}" for l in lignes_a_creer
+                        ])
+                        
+                        ordonnance = Ordonnance.objects.create(
+                            consultation=consultation,
+                            medecin=request.user,
+                            contenu_prescription=description_texte,
+                            instructions_posologie=posologie_globale
+                        )
+
+                        # B. Création des LigneOrdonnance pour le suivi CAISSE/PHARMACIE
+                        for item in lignes_a_creer:
+                            LigneOrdonnance.objects.create(
+                                ordonnance=ordonnance,
+                                medicament=item['objet_medoc'],
+                                quantite_prescrite=item['quantite'],
+                                quantite_payee=0,    # Initialement 0
+                                quantite_delivree=0  # Initialement 0
+                            )
+
+                        messages.success(request, f"Ordonnance n°{ordonnance.id} enregistrée. Le patient peut passer à la caisse.")
+                        return redirect('resultats_labo_medecin')
+                
+                except Exception as e:
+                    messages.error(request, f"Erreur technique lors de la sauvegarde : {e}")
 
     # Gestion du profil pour la sidebar
-   
     profil_connecte = Profil.objects.filter(userProfil=request.user).first()
     fonction = profil_connecte.fonction.fonction if profil_connecte and profil_connecte.fonction else None
     
@@ -1138,8 +1182,10 @@ def rediger_ordonnance(request, consultation_id):
         'consultation': consultation,
         'patient': patient,
         'examens': examens_faits,
+        'produits_stock': produits_stock,
         'fonction': fonction,
     }
+    return render(request, 'back-end/rediger_ordonnance.html', context)
     
 
 
@@ -1462,70 +1508,91 @@ def effectuer_vente(request):
         try:
             data = json.loads(request.body)
             panier = data.get('panier')
+            patient_id = data.get('patient_id')
             
             if not panier:
                 return JsonResponse({'status': 'error', 'message': 'Panier vide'})
 
+            # 1. Vérification de la configuration et de la prestation
             config = ConfigurationHopital.objects.first()
-            if not config:
-                return JsonResponse({'status': 'error', 'message': 'Taux de change non configuré'})
+            prestation_pharma = Prestation.objects.filter(libelle__icontains="PHARMACIE").first()
+            
+            if not config or not prestation_pharma:
+                return JsonResponse({'status': 'error', 'message': 'Configuration ou Prestation PHARMACIE manquante.'})
 
-            # 1. CRÉER LA VENTE
+            # 2. Identification du patient (si fourni)
+            patient = None
+            if patient_id:
+                patient = Patient.objects.get(id=patient_id)
+
+            # 3. Création de la Vente
             nouvelle_vente = VentePharmacie.objects.create(
                 vendeur=request.user,
-                total_cdf=0,
-                statut='VALIDE'
+                patient=patient,
+                total_cdf=0 # Sera mis à jour après
             )
 
             total_global = 0
             for item in panier:
-                med = Medicament.objects.get(id=item['id'])
+                med = Medicament.objects.select_for_update().get(id=item['id'])
                 qte = int(item['quantite'])
-                p_unit = float(item['prix'])
+                prix_u = Decimal(str(item['prix']))
                 
+                # Vérification stock de sécurité
+                if med.quantite_stock_pieces < qte:
+                    raise ValueError(f"Stock insuffisant pour {med.designation}")
+
+                # Création ligne
                 LigneVente.objects.create(
                     vente=nouvelle_vente,
                     medicament=med,
                     quantite=qte,
-                    prix_unitaire_applique=p_unit
+                    prix_unitaire_applique=prix_u
                 )
-                
+
+                # Mise à jour stock
                 med.quantite_stock_pieces -= qte
                 med.save()
-                total_global += (p_unit * qte)
+                total_global += (prix_u * qte)
 
+            # Mise à jour du total final
             nouvelle_vente.total_cdf = total_global
             nouvelle_vente.save()
 
-            # 2. LOGIQUE COMPTABLE (FACTURE & PAIEMENT)
-            facture_compta = Facture.objects.create(
-                patient=None,  
-                # Assure-toi que ce champ existe dans ton modèle Facture
-                # sinon utilise une ForeignKey générique ou une autre méthode de liaison
-                vente_pharmacie=nouvelle_vente, 
-                prix_fixe_cdf=total_global,
-                taux_fixe=config.taux_usd_en_cdf
-            )
+            # 4. Création de la Facture (Automatique via ta logique métier)
+            # Note: Si c'est un patient, ton modèle Facture vérifiera la fiche valide
+            try:
+                facture = Facture.objects.create(
+                    patient=patient if patient else Patient.objects.first(), # Ajuste selon ta gestion "Comptoir"
+                    prestation=prestation_pharma,
+                    vente_pharmacie=nouvelle_vente,
+                    prix_fixe_cdf=total_global
+                )
 
-            Paiement.objects.create(
-                facture=facture_compta,
-                montant_physique=total_global,
-                devise='CDF'
-            )
+                # 5. Enregistrement du Paiement
+                Paiement.objects.create(
+                    facture=facture,
+                    montant_physique=total_global,
+                    devise='CDF'
+                )
+            except ValidationError as e:
+                return JsonResponse({'status': 'error', 'message': str(e)})
 
-            return JsonResponse({'status': 'success', 'vente_id': nouvelle_vente.id})
+            return JsonResponse({
+                'status': 'success', 
+                'message': 'Vente et facturation terminées',
+                'vente_id': nouvelle_vente.id
+            })
 
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)})
 
-    # =====================================================================
-    # LE RETURN MANQUANT POUR LE CHARGEMENT DE LA PAGE (GET)
-    # =====================================================================
-    # On récupère les médicaments en stock pour les afficher dans le select
+    # Partie GET
     medicaments = Medicament.objects.filter(quantite_stock_pieces__gt=0).order_by('designation')
-    
+    patients = Patient.objects.all().order_by('noms')
     return render(request, 'back-end/nouvelle_vente.html', {
-        'medicaments': medicaments
+        'medicaments': medicaments,
+        'patients': patients
     })
 
 # 43 
@@ -1589,3 +1656,119 @@ def annuler_vente(request, vente_id):
 def generer_facture_pdf(request, vente_id):
     vente = get_object_or_404(VentePharmacie, id=vente_id)
     return render(request, 'back-end/facture_format_ticket.html', {'vente': vente})
+
+# 46
+# =============================================================================================================
+# liste des ordonnance 
+# =============================================================================================================
+@login_required
+def liste_ordonnances(request):
+    # 1. Récupération du profil et de la fonction
+    profil_connecte = Profil.objects.filter(userProfil=request.user).first()
+    nom_fonction = profil_connecte.fonction.fonction.upper() if profil_connecte and profil_connecte.fonction else ""
+
+    # 2. Base de la requête : On prend tout, trié par date
+    queryset = Ordonnance.objects.select_related(
+        'consultation__patient', 
+        'medecin'
+    ).order_by('-date_creation')
+
+    # 3. Logique d'affichage par rôle
+    if "INFIRMIER" in nom_fonction:
+        # L'infirmier se concentre sur les tâches urgentes (non délivrées)
+        ordonnances = queryset.filter(est_delivré=False)
+        page_title = "Plan de Soins - Ordonnances à Traiter"
+    
+    elif "MEDECIN" in nom_fonction:
+        # Le médecin voit TOUT pour le suivi clinique, confrères inclus
+        ordonnances = queryset.all()
+        page_title = "Registre des Prescriptions Médicales"
+    
+    else:
+        # Pharmacie ou Admin : tout voir par défaut
+        ordonnances = queryset.all()
+        page_title = "Gestion des Ordonnances"
+
+    context = {
+        'ordonnances': ordonnances,
+        'fonction': nom_fonction,
+        'user_actuel': request.user, # Pour mettre en avant ses propres ordonnances dans le HTML
+        'title': page_title
+    }
+    
+    return render(request, 'back-end/liste_ordonnances_generale.html', context)
+
+# 47
+# ================================================================================================
+# detail ordonnance
+# ================================================================================================
+@login_required
+def ordonnance_details(request, ordonnance_id):
+    # On récupère l'ordonnance ou erreur 404
+    ordonnance = get_object_or_404(Ordonnance, id=ordonnance_id)
+    
+    # On récupère toutes les lignes (médicaments) liées à cette ordonnance
+    # 'lignes' est le related_name que tu as normalement dans ton modèle LigneOrdonnance
+    lignes = ordonnance.lignes.all() 
+
+    context = {
+        'ordonnance': ordonnance,
+        'lignes': lignes,
+        'title': f"Détails Ordonnance #{ordonnance.id}"
+    }
+    return render(request, 'back-end/ordonnance_details.html', context)
+
+# 48
+# ===============================================================================================
+# delivre orodnnance 
+# ===============================================================================================
+@login_required
+def delivrer_ordonnance(request, ordonnance_id):
+    ordonnance = get_object_or_404(Ordonnance, id=ordonnance_id)
+    
+    if request.method == "POST":
+        # On passe le statut à True
+        ordonnance.est_delivré = True
+        ordonnance.save()
+        
+        # Optionnel : Tu peux ici ajouter une logique pour déduire 
+        # automatiquement les quantités du stock si ce n'est pas déjà fait via les signaux.
+        
+        messages.success(request, f"L'ordonnance #{ordonnance.id} a été marquée comme délivrée avec succès.")
+        return redirect('liste_ordonnances')
+
+    # Si on y accède par erreur en GET, on redirige vers la liste
+    return redirect('liste_ordonnances')
+
+# 49 
+# =====================================================================
+# payer ordonnance 
+# =======================================================================
+@login_required
+def payer_ordonnance(request, patient_id):
+    patient = get_object_or_404(Patient, id=patient_id)
+    
+    # On cherche l'ordonnance non payée
+    ordonnance = Ordonnance.objects.filter(
+        consultation__patient=patient, 
+        est_paye=False 
+    ).order_by('-date_creation').first()
+
+    if not ordonnance:
+        messages.warning(request, f"Aucune ordonnance en attente de paiement pour {patient.noms}.")
+        return redirect('patientRead') # <-- CORRIGÉ ICI
+
+    if request.method == 'POST':
+        ordonnance.est_paye = True
+        ordonnance.save()
+        
+        messages.success(request, f"Paiement validé pour l'ordonnance #{ordonnance.id}.")
+        return redirect('patientRead') # <-- CORRIGÉ ICI
+
+    context = {
+        'patient': patient,
+        'ordonnance': ordonnance,
+        'title': "Paiement de l'Ordonnance"
+    }
+    
+    return render(request, 'back-end/payer_ordonnance.html', context)

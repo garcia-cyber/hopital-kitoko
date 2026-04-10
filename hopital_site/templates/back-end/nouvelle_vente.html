@@ -9,12 +9,14 @@
     <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css' %}">
     <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css' %}" >
     <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/select2.min.css' %}">
     
     <style>
         .total-box { background: #e3f2fd; border: 2px solid #009efb; padding: 20px; border-radius: 10px; margin-top: 20px; }
         .total-amount { font-size: 32px; font-weight: 800; color: #009efb; }
         .card { border-radius: 10px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         .table-panier td { vertical-align: middle; }
+        .badge-stock { font-size: 0.8em; margin-left: 5px; }
     </style>
 </head>
 
@@ -35,11 +37,22 @@
                     <div class="col-md-5">
                         <div class="card">
                             <div class="card-body">
-                                <h5 class="text-primary border-bottom pb-2">Article</h5>
+                                <h5 class="text-primary border-bottom pb-2">Informations Vente</h5>
+                                
+                                <div class="form-group">
+                                    <label class="font-weight-bold text-danger">Type de Client (Patient ou Passage)</label>
+                                    <select id="patient-id" class="form-control select">
+                                        <option value="">-- Client de passage (Comptoir) --</option>
+                                        {% for p in patients %}
+                                            <option value="{{ p.id }}">{{ p.nom }} {{ p.prenom }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
                                 <div class="form-group">
                                     <label class="font-weight-bold">Médicament</label>
-                                    <select id="med-select" class="form-control" style="height: 45px;">
-                                        <option value="">-- Sélectionner --</option>
+                                    <select id="med-select" class="form-control select">
+                                        <option value="">-- Sélectionner un produit --</option>
                                         {% for m in medicaments %}
                                             <option value="{{ m.id }}" 
                                                     data-nom="{{ m.designation }}"
@@ -50,10 +63,12 @@
                                         {% endfor %}
                                     </select>
                                 </div>
+
                                 <div class="form-group">
-                                    <label class="font-weight-bold">Quantité</label>
-                                    <input type="number" id="qty" class="form-control" value="1" min="1">
+                                    <label class="font-weight-bold">Quantité à vendre</label>
+                                    <input type="number" id="qty" class="form-control" value="1" min="1" style="height: 45px;">
                                 </div>
+
                                 <button type="button" onclick="ajouterAuPanier()" class="btn btn-success btn-block btn-lg">
                                     <i class="fa fa-plus"></i> Ajouter au panier
                                 </button>
@@ -64,7 +79,7 @@
                     <div class="col-md-7">
                         <div class="card">
                             <div class="card-body p-0">
-                                <div class="table-responsive" style="min-height: 250px;">
+                                <div class="table-responsive" style="min-height: 300px;">
                                     <table class="table table-hover mb-0">
                                         <thead class="thead-dark">
                                             <tr>
@@ -72,7 +87,7 @@
                                                 <th>P.U</th>
                                                 <th>Qté</th>
                                                 <th>Total</th>
-                                                <th></th>
+                                                <th class="text-right">Action</th>
                                             </tr>
                                         </thead>
                                         <tbody id="panier-body">
@@ -81,14 +96,14 @@
                                     </table>
                                 </div>
                                 
-                                <div class="p-3">
+                                <div class="p-4 border-top">
                                     <div class="total-box text-right">
-                                        <span class="text-muted">TOTAL GÉNÉRAL</span><br>
-                                        <span class="total-amount" id="total-display">0</span> <small>CDF</small>
+                                        <span class="text-muted font-weight-bold">TOTAL À PAYER</span><br>
+                                        <span class="total-amount" id="total-display">0</span> <small class="font-weight-bold">CDF</small>
                                     </div>
-                                    <div class="mt-3 text-right">
-                                        <button type="button" onclick="validerLaVente()" id="btn-valider" class="btn btn-primary btn-lg btn-rounded shadow">
-                                            <i class="fa fa-check-circle"></i> Valider et Enregistrer
+                                    <div class="mt-4 text-right">
+                                        <button type="button" onclick="validerLaVente()" id="btn-valider" class="btn btn-primary btn-lg btn-rounded shadow-sm px-5">
+                                            <i class="fa fa-check-circle"></i> Valider l'Enregistrement
                                         </button>
                                     </div>
                                 </div>
@@ -102,9 +117,18 @@
 
     <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js' %}"></script>
     <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js' %}"></script>
+    <script src="{% static 'back-end/assets/js/jquery.slimscroll.js' %}"></script>
+    <script src="{% static 'back-end/assets/js/select2.min.js' %}"></script>
+    <script src="{% static 'back-end/assets/js/app.js' %}"></script>
 
     <script>
-        // Le Panier Global
+        // Initialisation de Select2 pour une meilleure recherche
+        $(document).ready(function() {
+            $('.select').select2({
+                width: '100%'
+            });
+        });
+
         var panier = [];
 
         function ajouterAuPanier() {
@@ -117,20 +141,28 @@
             var stock = parseInt(option.data('stock'));
             var qte = parseInt($('#qty').val());
 
-            if (!id) { alert("Veuillez choisir un produit"); return; }
-            if (qte <= 0) { alert("Quantité invalide"); return; }
-            if (qte > stock) { alert("Stock insuffisant !"); return; }
-
-            // Vérifier si doublon
+            if (!id) { alert("Veuillez sélectionner un médicament."); return; }
+            if (isNaN(qte) || qte <= 0) { alert("Veuillez saisir une quantité valide."); return; }
+            
+            // Vérification du stock
+            var qteDejaDansPanier = 0;
             var existe = panier.find(item => item.id === id);
+            if (existe) { qteDejaDansPanier = existe.quantite; }
+
+            if ((qteDejaDansPanier + qte) > stock) { 
+                alert("Action impossible : Le stock disponible est de " + stock); 
+                return; 
+            }
+
             if (existe) {
-                if ((existe.quantite + qte) > stock) { alert("Stock max atteint"); return; }
                 existe.quantite += qte;
             } else {
                 panier.push({ id: id, nom: nom, prix: prix, quantite: qte });
             }
 
             renderPanier();
+            $('#qty').val(1); // Reset quantité
+            select.val('').trigger('change'); // Reset select2
         }
 
         function supprimerItem(index) {
@@ -149,12 +181,14 @@
                     var sous_total = item.prix * item.quantite;
                     total += sous_total;
                     html += `<tr>
-                        <td><b>${item.nom}</b></td>
+                        <td><strong>${item.nom}</strong></td>
                         <td>${item.prix.toLocaleString()}</td>
                         <td>${item.quantite}</td>
-                        <td><b>${sous_total.toLocaleString()}</b></td>
+                        <td><span class="text-primary font-weight-bold">${sous_total.toLocaleString()}</span></td>
                         <td class="text-right">
-                            <button onclick="supprimerItem(${index})" class="btn btn-sm btn-outline-danger"><i class="fa fa-trash"></i></button>
+                            <button onclick="supprimerItem(${index})" class="btn btn-sm btn-outline-danger">
+                                <i class="fa fa-trash"></i>
+                            </button>
                         </td>
                     </tr>`;
                 });
@@ -165,30 +199,42 @@
         }
 
         function validerLaVente() {
-            if (panier.length === 0) { alert("Le panier est vide !"); return; }
+            if (panier.length === 0) { 
+                alert("Erreur : Le panier est vide."); 
+                return; 
+            }
 
-            if (!confirm("Voulez-vous finaliser cette vente ?")) return;
+            var patient_id = $('#patient-id').val();
+            var confirmationMsg = patient_id === "" ? 
+                "Confirmer la vente au COMPTOIR (Client simple) ?" : 
+                "Confirmer la vente pour ce PATIENT ?";
 
-            // Bloquer le bouton
-            $('#btn-valider').prop('disabled', true).text("Enregistrement...");
+            if (!confirm(confirmationMsg)) return;
+
+            // Interface Loading
+            $('#btn-valider').prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Traitement...');
 
             $.ajax({
                 url: "{% url 'effectuer_vente' %}",
                 method: "POST",
                 headers: { "X-CSRFToken": "{{ csrf_token }}" },
                 contentType: "application/json",
-                data: JSON.stringify({ panier: panier }),
+                data: JSON.stringify({ 
+                    panier: panier,
+                    patient_id: patient_id 
+                }),
                 success: function(response) {
                     if (response.status === 'success') {
-                        alert("Vente enregistrée avec succès !");
+                        alert(response.message || "Vente réussie !");
                         window.location.href = "{% url 'historique_ventes' %}";
                     } else {
-                        alert("Erreur: " + response.message);
+                        alert("Erreur : " + response.message);
                         $('#btn-valider').prop('disabled', false).text("Valider et Enregistrer");
                     }
                 },
-                error: function() {
-                    alert("Erreur de connexion au serveur.");
+                error: function(xhr) {
+                    alert("Erreur critique du serveur. Vérifiez la console.");
+                    console.log(xhr.responseText);
                     $('#btn-valider').prop('disabled', false).text("Valider et Enregistrer");
                 }
             });

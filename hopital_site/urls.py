@@ -30,6 +30,7 @@ urlpatterns = [
     path('patientRead/', patientRead, name='patientRead'), 
     path('liste_patients_soldes/', liste_patients_soldes, name='liste_soldes'),
     path('patient/<int:patient_id>/archives/', views.dossier_archive_patient, name='dossier_archive_patient'),
+    path('caisse/payer-ordonnance/<int:patient_id>/', views.payer_ordonnance, name='payer_ordonnance'),
 
     # ===============================================
     # paiement fiche historique
@@ -61,6 +62,12 @@ urlpatterns = [
     
     # On garde uniquement cette ligne pour éviter le conflit 'examen_id'
     path('medecin/prescrire/<int:consultation_id>/', views.rediger_ordonnance, name='rediger_ordonnance'),
+    path('ordonnances/liste/', views.liste_ordonnances, name='liste_ordonnances_generale'),
+    path('ordonnance/details/<int:ordonnance_id>/', views.ordonnance_details, name='ordonnance_details'),
+    
+    # 4. Action de délivrance (Pour l'infirmier/pharmacien)
+    path('ordonnance/delivrer/<int:ordonnance_id>/', views.delivrer_ordonnance, name='delivrer_ordonnance'),
+
 
     # ===============================================
     # reception / finance

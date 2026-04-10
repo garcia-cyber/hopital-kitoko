@@ -85,11 +85,12 @@
                     </ul>
                 </li>
                 <li>
-                    <a href="{% url 'liste_ordonnances_infirmier' %}">
-                        <i class="fas fa-hand-holding-medical"></i> <span>Ordonnances à Traiter</span>
+                    <a href="{% url 'liste_ordonnances_generale' %}">
+                        <i class="fas fa-hand-holding-medical"></i> <span>liste Ordonnances</span>
                     </a>
                 </li>
 
+               
                 {% elif fonction == 'medecin' %}
                 <li class="submenu">
                     <a href="#"><i class="fas fa-stethoscope"></i> <span> Consultation </span> <span class="menu-arrow"></span></a>
@@ -105,7 +106,7 @@
                     </a>
                 </li>
                 <li>
-                    <a href="#"><i class="fas fa-prescription"></i> <span>Mes Ordonnances</span></a>
+                    <a href="{% url 'liste_ordonnances_generale'%}"><i class="fas fa-prescription"></i> <span>liste Ordonnances</span></a>
                 </li>
 
                 {% elif fonction == 'laborantin' %}

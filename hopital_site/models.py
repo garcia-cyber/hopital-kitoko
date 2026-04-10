@@ -1,80 +1,52 @@
-from django.db import models , transaction
+from django.db import models, transaction
 from django.contrib.auth.models import User
 from django.utils import timezone
 from datetime import timedelta
 from django.core.exceptions import ValidationError
 from decimal import Decimal
 
-# Create your models here.
-
-# 1
-# =============================================
-#   TYPE DE FONCTION 
+# 1 =============================================
 class Fonction(models.Model):
-    fonction = models.CharField(max_length = 30) 
-
+    fonction = models.CharField(max_length=30) 
     def __str__(self):
         return self.fonction
 
-# 2
-# =============================================
-# SERVICE
-#
+# 2 =============================================
 class Service(models.Model):
-    nomService = models.CharField(max_length = 40) 
-
+    nomService = models.CharField(max_length=40) 
     def __str__(self):
         return self.nomService  
-# 3
-# =============================================
-# PROFIL 
-# 
+
+# 3 =============================================
 class Profil(models.Model):
-    nomComplet = models.CharField(max_length = 50 , null = True) 
-    CHOIX_SEXE = [
-        ('masculin','Masculin') ,
-        ('feminin', 'Feminin')
-    ]
-    sexe = models.CharField(max_length = 15 , choices = CHOIX_SEXE)
-    phone = models.CharField(max_length = 15)
-    adresse = models.CharField(max_length = 50)
-    fonction = models.ForeignKey(Fonction, on_delete = models.SET_NULL, null = True) 
-    service  = models.ForeignKey(Service , on_delete = models.SET_NULL , null = True) 
-    date_register = models.DateField(auto_now_add = True)
-    userProfil = models.ForeignKey(User , on_delete = models.SET_NULL, null = True)
-
+    nomComplet = models.CharField(max_length=50, null=True) 
+    CHOIX_SEXE = [('masculin','Masculin'), ('feminin', 'Feminin')]
+    sexe = models.CharField(max_length=15, choices=CHOIX_SEXE)
+    phone = models.CharField(max_length=15)
+    adresse = models.CharField(max_length=50)
+    fonction = models.ForeignKey(Fonction, on_delete=models.SET_NULL, null=True) 
+    service = models.ForeignKey(Service, on_delete=models.SET_NULL, null=True) 
+    date_register = models.DateField(auto_now_add=True)
+    userProfil = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     def __str__(self):
-
         return self.nomComplet
 
-# 4
-# ================================================
-# PATIENT 
-#
+# 4 ================================================
 class Patient(models.Model):
-    noms = models.CharField(max_length = 50)
-    CHOIX_SEXE = [
-        ('masculin','Masculin') ,
-        ('feminin', 'Feminin')
-    ]
-    sexeP = models.CharField(max_length = 15 , choices = CHOIX_SEXE) 
+    noms = models.CharField(max_length=50)
+    CHOIX_SEXE = [('masculin','Masculin'), ('feminin', 'Feminin')]
+    sexeP = models.CharField(max_length=15, choices=CHOIX_SEXE) 
     ageP = models.IntegerField()
-    phone_responsable = models.CharField(max_length =15)
-    adresseP = models.CharField(max_length = 60) 
-    service  = models.ForeignKey(Service , on_delete = models.SET_NULL , null =True)
-    date_registerP = models.DateField(auto_now_add = True)
-
+    phone_responsable = models.CharField(max_length=15)
+    adresseP = models.CharField(max_length=60) 
+    service = models.ForeignKey(Service, on_delete=models.SET_NULL, null=True)
+    date_registerP = models.DateField(auto_now_add=True)
 
     def __str__(self):
         return self.noms 
 
-    # --- LOGIQUE DE LA FICHE ANNUELLE ---
-    
     def a_une_fiche_valide(self):
-        """ Vérifie si le patient a payé une fiche il y a moins de 365 jours """
         un_an_en_arriere = timezone.now().date() - timedelta(days=365)
-        # On cherche une facture de catégorie 'ADM' (Administratif/Fiche) 
-        # créée pour ce patient depuis moins d'un an.
         return Facture.objects.filter(
             patient=self, 
             prestation__categorie='ADM', 
@@ -82,32 +54,22 @@ class Patient(models.Model):
         ).exists()
 
     def doit_solder_fiche(self):
-        """ Vérifie s'il existe une facture de fiche non payée (Reste > 0) """
         factures_fiche = Facture.objects.filter(patient=self, prestation__categorie='ADM')
         for f in factures_fiche:
             if f.reste_a_payer > 0:
-                return True # Il a une dette sur sa fiche
+                return True
         return False
 
-
-# 5
-# ==================================================
-# Gestion de taux 
-#
+# 5 ==================================================
 class ConfigurationHopital(models.Model):
     taux_usd_en_cdf = models.DecimalField(max_digits=10, decimal_places=2, default=2250.00)
     derniere_mise_a_jour = models.DateTimeField(auto_now=True)
-
     class Meta:
         verbose_name = "Configuration du Taux"
-
     def __str__(self):
         return f"1 USD = {self.taux_usd_en_cdf} CDF"
 
-# 6 
-# ===================================================
-# Prestation 
-#
+# 6 ===================================================
 class Prestation(models.Model):
     CATEGORIES = [
         ('ADM', 'Administratif (Fiche, etc.)'),
@@ -118,51 +80,35 @@ class Prestation(models.Model):
     libelle = models.CharField(max_length=200)
     categorie = models.CharField(max_length=10, choices=CATEGORIES)
     prix_cdf = models.DecimalField(max_digits=15, decimal_places=2)
-
     def __str__(self):
         return f"{self.libelle} - {self.prix_cdf} CDF"
 
-
-# 7 
-# ======================================================
-# Facture 
-#
-# ====================================================
-# Facturation & Paiement (Ton code original préservé)
-# ====================================================
-
+# 7 ======================================================
 class Facture(models.Model):
     patient = models.ForeignKey('Patient', on_delete=models.CASCADE)
     prestation = models.ForeignKey('Prestation', on_delete=models.CASCADE)
     date_emission = models.DateTimeField(auto_now_add=True)
-    
     prix_fixe_cdf = models.DecimalField(max_digits=15, decimal_places=2, editable=False)
     taux_fixe = models.DecimalField(max_digits=10, decimal_places=2, editable=False)
     vente_pharmacie = models.OneToOneField('VentePharmacie', on_delete=models.CASCADE, null=True, blank=True)
 
     def save(self, *args, **kwargs):
         if not self.id:
-            # Sécurité Fiche Annuelle
             if self.prestation.categorie != 'ADM':
                 if not self.patient.a_une_fiche_valide():
                     raise ValidationError(f"Action refusée : {self.patient.noms} n'a pas de fiche valide.")
                 if self.patient.doit_solder_fiche():
                     raise ValidationError(f"Action refusée : {self.patient.noms} doit solder sa fiche.")
-
-            # Figement des valeurs
             config = ConfigurationHopital.objects.first()
             if not config:
                 raise ValidationError("Erreur : Aucun taux de change configuré.")
-            
             self.taux_fixe = config.taux_usd_en_cdf
             self.prix_fixe_cdf = self.prestation.prix_cdf
-            
         super().save(*args, **kwargs)
 
     @property
     def total_paye(self):
         from django.db.models import Sum
-        # On utilise le montant comptable calculé lors du paiement
         return self.paiements.aggregate(Sum('montant_comptable_cdf'))['montant_comptable_cdf__sum'] or 0
 
     @property
@@ -172,8 +118,7 @@ class Facture(models.Model):
     def __str__(self):
         return f"Facture {self.id} - {self.patient.noms}"
 
-# 8
-# ======================================================================
+# 8 ======================================================================
 class Paiement(models.Model):
     facture = models.ForeignKey(Facture, on_delete=models.CASCADE, related_name='paiements')
     montant_physique = models.DecimalField(max_digits=15, decimal_places=2)
@@ -183,23 +128,18 @@ class Paiement(models.Model):
 
     def save(self, *args, **kwargs):
         if self.devise == 'USD':
-            # Utilisation du taux figé sur la facture au moment de l'émission
             self.montant_comptable_cdf = self.montant_physique * self.facture.taux_fixe
         else:
             self.montant_comptable_cdf = self.montant_physique
         super().save(*args, **kwargs)
 
-# 9 
-# =======================================================
-# depense
-#
+# 9 =======================================================
 class Depense(models.Model):
     motif = models.CharField(max_length=255)
     montant = models.DecimalField(max_digits=15, decimal_places=2)
     devise = models.CharField(max_length=3, choices=[('CDF', 'CDF'), ('USD', 'USD')])
     valeur_cdf = models.DecimalField(max_digits=15, decimal_places=2, editable=False)
     date_depense = models.DateTimeField(auto_now_add=True)
-
     def save(self, *args, **kwargs):
         if self.devise == 'USD':
             config = ConfigurationHopital.objects.first()
@@ -207,167 +147,67 @@ class Depense(models.Model):
         else:
             self.valeur_cdf = self.montant
         super().save(*args, **kwargs)
-# 10 
-# =======================================================
-# signe vitaux
-#
+
+# 10 =======================================================
 class SignesVitaux(models.Model):
-    # 1. LIENS (RELATIONS)
-    # Relie les signes à un patient précis. Si le patient est supprimé, ses signes le sont aussi.
-    patient = models.ForeignKey(
-        'Patient', 
-        on_delete=models.CASCADE, 
-        related_name='signes_vitaux'
-    )
-    
-    # Relie l'action à l'utilisateur (infirmier) connecté. 
-    # Si le compte de l'infirmier est supprimé, on garde les données (null=True).
-    infirmier = models.ForeignKey(
-        User, 
-        on_delete=models.SET_NULL, 
-        null=True, 
-        blank=True,
-        verbose_name="Infirmier ayant effectué le prélèvement"
-    )
-
-    # 2. HORODATAGE
-    # Enregistre la date et l'heure exactes de la prise des constantes.
+    patient = models.ForeignKey('Patient', on_delete=models.CASCADE, related_name='signes_vitaux')
+    infirmier = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     date_prelevement = models.DateTimeField(auto_now_add=True)
-
-    # 3. CONSTANTES MÉDICALES
-    # Température : ex 37.5 (max 4 chiffres, 1 après la virgule)
-    temperature = models.DecimalField(
-        max_digits=4, 
-        decimal_places=1, 
-        verbose_name="Température (°C)",
-        help_text="Ex: 37.5"
-    )
-    
-    # Tension : stockée en texte car contient souvent un "/" (ex: 12/8)
-    tension_arterielle = models.CharField(
-        max_length=20, 
-        verbose_name="Tension Artérielle",
-        help_text="Ex: 12/8 ou 120/80"
-    )
-    
-    # Poids : ex 75.50 (max 5 chiffres, 2 après la virgule)
-    poids = models.DecimalField(
-        max_digits=5, 
-        decimal_places=2, 
-        verbose_name="Poids (kg)"
-    )
-    
-    # Pouls : Battements par minute (Nombre entier)
-    frequence_cardiaque = models.IntegerField(
-        verbose_name="Fréquence Cardiaque (BPM)"
-    )
-    
-    # Respiration : Cycles par minute (Optionnel)
-    frequence_respiratoire = models.IntegerField(
-        null=True, 
-        blank=True, 
-        verbose_name="Fréquence Respiratoire"
-    )
-    
-    # SPO2 : Saturation en oxygène (Optionnel, en %)
-    saturation_oxygene = models.IntegerField(
-        null=True, 
-        blank=True, 
-        verbose_name="Saturation (SpO2 %)",
-        help_text="Saturation en oxygène"
-    )
-
-    # 4. MÉTA-DONNÉES
+    temperature = models.DecimalField(max_digits=4, decimal_places=1)
+    tension_arterielle = models.CharField(max_length=20)
+    poids = models.DecimalField(max_digits=5, decimal_places=2)
+    frequence_cardiaque = models.IntegerField()
+    frequence_respiratoire = models.IntegerField(null=True, blank=True)
+    saturation_oxygene = models.IntegerField(null=True, blank=True)
     class Meta:
-        verbose_name = "Signe Vital"
-        verbose_name_plural = "Signes Vitaux"
-        ordering = ['-date_prelevement'] # Les plus récents en premier
-
-    # 5. AFFICHAGE DANS L'ADMIN
+        ordering = ['-date_prelevement']
     def __str__(self):
         infirmier_nom = self.infirmier.username if self.infirmier else "Inconnu"
-        return f"Signes de {self.patient.noms} - {self.date_prelevement.strftime('%d/%m/%Y %H:%M')} (Par: {infirmier_nom})"
-    
+        return f"Signes de {self.patient.noms} - {self.date_prelevement.strftime('%d/%m/%Y %H:%M')}"
 
-    
-# 11  
-# =============================================================
-# 
-
-
-# ====================================================
-# Consultation & Examens (Flux Médical)
-# ====================================================
-
+# 11 ====================================================
 class Consultation(models.Model):
     patient = models.ForeignKey('Patient', on_delete=models.CASCADE)
     signes_vitaux = models.OneToOneField('SignesVitaux', on_delete=models.CASCADE, related_name='consultation')
     medecin = models.ForeignKey(User, on_delete=models.CASCADE)
-    motif = models.TextField(verbose_name="Motif de consultation")
+    motif = models.TextField()
     diagnostic = models.TextField(null=True, blank=True)
     date_consultation = models.DateTimeField(auto_now_add=True)
-
     def __str__(self):
         return f"Consultation de {self.patient.noms} le {self.date_consultation}"
-# 12
-# =====================================================
-# examen prescrit
-#
 
+# 12 =====================================================
 class ExamenPrescrit(models.Model):
     consultation = models.ForeignKey('Consultation', on_delete=models.CASCADE, related_name='examens_prescrits')
     prestation = models.ForeignKey('Prestation', on_delete=models.CASCADE)
     quantite = models.PositiveIntegerField(default=1)
-    
-    # --- LOGIQUE FLUX DE TRAVAIL ---
-    paye = models.BooleanField(default=False, verbose_name="Est payé (Caisse)")
-    termine = models.BooleanField(default=False, verbose_name="Analyse terminée (Labo)") 
-
-    # --- AJOUTS POUR LE LABORATOIRE (Résultats) ---
-    resultat_labo = models.TextField(null=True, blank=True, verbose_name="Résultats / Conclusions")
+    paye = models.BooleanField(default=False)
+    termine = models.BooleanField(default=False) 
+    resultat_labo = models.TextField(null=True, blank=True)
     date_analyse = models.DateTimeField(null=True, blank=True)
     laborantin = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='analyses_faites')
-    
-    # --- LOGIQUE FINANCIÈRE ---
     prix_total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     date_prescription = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        etat = "TERMINÉ" if self.termine else ("PAYÉ" if self.paye else "EN ATTENTE")
-        return f"{self.prestation.libelle} - {self.consultation.patient.noms} ({etat})"
-
     def save(self, *args, **kwargs):
         if self.prestation:
             self.prix_total = Decimal(str(self.prestation.prix_cdf)) * self.quantite
         super().save(*args, **kwargs)
 
-# 13 
-# =========================================================================
-#
-
+# 13 =========================================================================
 class Chambre(models.Model):
-    TYPES = [
-        ('VIP', 'Privée VIP'),
-        ('STANDARD', 'Standard'),
-        ('COMMUNE', 'Salle Commune'),
-        ('REANIMATION', 'Réanimation'),
-    ]
-    
-    numero = models.CharField("N° de Chambre", max_length=10, unique=True)
+    TYPES = [('VIP', 'Privée VIP'), ('STANDARD', 'Standard'), ('COMMUNE', 'Salle Commune'), ('REANIMATION', 'Réanimation')]
+    numero = models.CharField(max_length=10, unique=True)
     type_chambre = models.CharField(max_length=50, choices=TYPES, default='STANDARD')
-    prix_journalier = models.DecimalField(max_digits=12, decimal_places=2, help_text="Prix par jour en CDF")
-
+    prix_journalier = models.DecimalField(max_digits=12, decimal_places=2)
     def __str__(self):
-        return f"Chambre {self.numero} ({self.type_chambre})"
+        return f"Chambre {self.numero}"
 
 class Lit(models.Model):
     chambre = models.ForeignKey(Chambre, on_delete=models.CASCADE, related_name="lits")
-    nom_lit = models.CharField("Nom du Lit", max_length=10) # ex: L1, L2
-    est_occupe = models.BooleanField("Est occupé ?", default=False)
-
+    nom_lit = models.CharField(max_length=10)
+    est_occupe = models.BooleanField(default=False)
     def __str__(self):
-        status = "Occupé" if self.est_occupe else "Libre"
-        return f"{self.chambre.numero} - {self.nom_lit} ({status})"
+        return f"{self.chambre.numero} - {self.nom_lit}"
 
 class OccupationLit(models.Model):
     patient = models.ForeignKey('Patient', on_delete=models.CASCADE)
@@ -375,111 +215,68 @@ class OccupationLit(models.Model):
     date_admission = models.DateTimeField(default=timezone.now)
     date_sortie = models.DateTimeField(null=True, blank=True)
     est_paye = models.BooleanField(default=False)
-
     @property
     def nombre_jours(self):
-        if not self.date_sortie:
-            fin = timezone.now()
-        else:
-            fin = self.date_sortie
-        
+        fin = self.date_sortie or timezone.now()
         diff = fin - self.date_admission
-        # Si le patient reste moins d'un jour, on facture 1 jour par défaut
-        jours = diff.days if diff.days > 0 else 1
-        return jours
-
+        return diff.days if diff.days > 0 else 1
     @property
     def total_facture_cdf(self):
-        """Calcul du total en Francs Congolais"""
         return self.nombre_jours * self.lit.chambre.prix_journalier
 
-    def __str__(self):
-        return f"Occupation: {self.patient} sur {self.lit}"
-
-# 14 
-# ==============================================================
-# ordonnance
-
+# 14 ==============================================================
 class Ordonnance(models.Model):
-    # Lien avec la consultation parente
-    consultation = models.ForeignKey(
-        'Consultation', 
-        on_delete=models.CASCADE, 
-        related_name='ordonnances'
-    )
-    
-    # Le médecin qui prescrit
-    medecin = models.ForeignKey(
-        User, 
-        on_delete=models.CASCADE, 
-        related_name='ordonnances_prescrites'
-    )
-    
-    # Détails de la prescription
-    # On utilise TextField pour permettre une liste longue de médicaments
-    contenu_prescription = models.TextField(verbose_name="Liste des Médicaments")
-    instructions_posologie = models.TextField(verbose_name="Posologie et Durée", null=True, blank=True)
-    
-    # Metadata
+    consultation = models.ForeignKey('Consultation', on_delete=models.CASCADE, related_name='ordonnances')
+    medecin = models.ForeignKey(User, on_delete=models.CASCADE, related_name='ordonnances_prescrites')
+    contenu_prescription = models.TextField()
+    instructions_posologie = models.TextField(null=True, blank=True)
     date_creation = models.DateTimeField(auto_now_add=True)
-    est_delivré = models.BooleanField(default=False, verbose_name="Délivré par la pharmacie")
+    
+    # CHAMPS DE FLUX LOGIQUE
+    est_paye = models.BooleanField(default=False) # Ajout pour la caisse
+    est_delivré = models.BooleanField(default=False) # Pour la pharmacie
+    
+    # Optionnel : prix total si tu veux gérer les montants
+    montant_total = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
 
     class Meta:
-        verbose_name = "Ordonnance"
         ordering = ['-date_creation']
 
     def __str__(self):
-        return f"Ordonnance #{self.id} - Patient: {self.consultation.patient.noms}"
+        return f"Ordonnance #{self.id} - {self.consultation.patient.noms}"
 
-
-
-# 1. Le Produit (Le cœur du stock)
-
+# PHARMACIE ==========================================================
 class Medicament(models.Model):
-    # Informations de base
     designation = models.CharField(max_length=200)
     forme = models.CharField(max_length=100, null=True, blank=True)
     dosage = models.CharField(max_length=100, null=True, blank=True)
-    
-    # Gestion du stock
     quantite_stock_pieces = models.PositiveIntegerField(default=0)
-    pieces_par_carton = models.PositiveIntegerField(default=1)
+    pieces_par_carton = models.PositiveIntegerField(default=1) # Sécurisé par défaut à 1
     seuil_alerte = models.PositiveIntegerField(default=5)
-    
-    # Prix d'achat
     prix_achat_unitaire_moyen = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    
-    # Prix de vente
     prix_vente_detail = models.DecimalField(max_digits=12, decimal_places=2)
     prix_vente_gros = models.DecimalField(max_digits=12, decimal_places=2)
 
     def __str__(self):
-        # On sécurise l'affichage au cas où forme ou dosage sont vides
-        forme_display = self.forme if self.forme else "Forme non spécifiée"
-        dosage_display = self.dosage if self.dosage else "Dosage non spécifié"
-        return f"{self.designation} ({forme_display} - {dosage_display})"
+        return self.designation
 
+    # --- CORRECTION ICI POUR ÉVITER LE TYPEERROR ADMIN ---
     @property
     def stock_en_cartons(self):
-        # Sécurité pour éviter la division par zéro
-        if self.pieces_par_carton == 0:
+        # Sécurité : Division par zéro impossible
+        if not self.pieces_par_carton or self.pieces_par_carton <= 0:
             return 0
         return self.quantite_stock_pieces // self.pieces_par_carton
 
     @property
     def reste_en_pieces(self):
-        if self.pieces_par_carton == 0:
+        if not self.pieces_par_carton or self.pieces_par_carton <= 0:
             return self.quantite_stock_pieces
         return self.quantite_stock_pieces % self.pieces_par_carton
 
     @property
     def est_en_alerte(self):
         return self.quantite_stock_pieces <= self.seuil_alerte
-
-
-
-# 2. La Réception (Comment la marchandise arrive)
-
 
 class BonEntree(models.Model):
     medicament = models.ForeignKey(Medicament, on_delete=models.CASCADE)
@@ -489,65 +286,46 @@ class BonEntree(models.Model):
     date_reception = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
-        # On utilise une transaction pour être sûr que si l'un échoue, l'autre aussi
         with transaction.atomic():
-            # 1. Calcul du prix d'achat à l'unité pour ce lot
             if self.medicament.pieces_par_carton > 0:
-                prix_unitaire_lot = float(self.prix_achat_carton) / self.medicament.pieces_par_carton
-                self.medicament.prix_achat_unitaire_moyen = prix_unitaire_lot
-            
-            # 2. Mise à jour du stock uniquement à la création (pour ne pas doubler si on modifie le bon)
-            if not self.pk:  # Si c'est un nouveau Bon d'Entrée
-                nb_pieces = self.nb_cartons_recus * self.medicament.pieces_par_carton
-                self.medicament.quantite_stock_pieces += nb_pieces
-            
-            # 3. Sauvegarde du médicament
+                self.medicament.prix_achat_unitaire_moyen = float(self.prix_achat_carton) / self.medicament.pieces_par_carton
+            if not self.pk:
+                self.medicament.quantite_stock_pieces += (self.nb_cartons_recus * self.medicament.pieces_par_carton)
             self.medicament.save()
-            
-            # 4. Sauvegarde du bon d'entrée
             super().save(*args, **kwargs)
 
-    def __str__(self):
-        return f"Arrivage {self.medicament.designation} - {self.date_reception.strftime('%d/%m/%Y')}"
-
-# 3. La Vente
 class VentePharmacie(models.Model):
-    STATUT_CHOICES = [
-        ('VALIDE', 'Validée'),
-        ('ANNULE', 'Annulée'),
-    ]
     vendeur = models.ForeignKey(User, on_delete=models.CASCADE)
+    patient = models.ForeignKey(Patient, on_delete=models.SET_NULL, null=True, blank=True)
     date_vente = models.DateTimeField(auto_now_add=True)
     total_cdf = models.DecimalField(max_digits=15, decimal_places=2, default=0)
-    statut = models.CharField(max_length=10, choices=STATUT_CHOICES, default='VALIDE')
-
-    def __str__(self):
-        return f"Vente #{self.id} - {self.statut}"
-
-    def total_en_usd(self):
-        # Récupère le dernier taux configuré
-        config = ConfigurationHopital.objects.first()
-        taux = config.taux_usd_en_cdf if config else 2500
-        return round(float(self.total_cdf) / float(taux), 2)
+    statut = models.CharField(max_length=10, choices=[('VALIDE', 'Validée'), ('ANNULE', 'Annulée')], default='VALIDE')
 
 class LigneVente(models.Model):
     vente = models.ForeignKey(VentePharmacie, related_name='lignes', on_delete=models.CASCADE)
     medicament = models.ForeignKey(Medicament, on_delete=models.CASCADE)
-    quantite = models.PositiveIntegerField() # En pièces
-    type_vente = models.CharField(max_length=10, choices=[('DETAIL', 'Détail'), ('GROS', 'Gros')])
+    quantite = models.PositiveIntegerField()
+    type_vente = models.CharField(max_length=10, choices=[('DETAIL', 'Détail'), ('GROS', 'Gros')], default='DETAIL')
     prix_unitaire_applique = models.DecimalField(max_digits=12, decimal_places=2)
 
-# --- 5. AUDIT & LOGS ---
 class LogPharmacie(models.Model):
-    ACTION_CHOICES = [
-        ('VENTE', 'Vente'),
-        ('ANNULATION', 'Annulation'),
-        ('ENTREE', 'Entrée Stock')
-    ]
     utilisateur = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
-    action = models.CharField(max_length=50, choices=ACTION_CHOICES)
+    action = models.CharField(max_length=50)
     details = models.TextField()
     date_action = models.DateTimeField(auto_now_add=True)
 
-    class Meta:
-        ordering = ['-date_action'] # Les plus récents en premier
+class LigneOrdonnance(models.Model):
+    ordonnance = models.ForeignKey(Ordonnance, on_delete=models.CASCADE, related_name='lignes')
+    medicament = models.ForeignKey(Medicament, on_delete=models.CASCADE, related_name='lignes_prescrites')
+    quantite_prescrite = models.PositiveIntegerField()
+    quantite_payee = models.PositiveIntegerField(default=0)
+    quantite_delivree = models.PositiveIntegerField(default=0)
+    date_creation = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def reste_a_payer(self):
+        return max(0, self.quantite_prescrite - self.quantite_payee)
+
+    @property
+    def reste_a_delivrer(self):
+        return max(0, self.quantite_payee - self.quantite_delivree)

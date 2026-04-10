@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+    <title>{{ title }} - Système Hospitalier</title>
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'back-end/assets/img/favicon.ico'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css'%}">
+    <style>
+        .invoice-card { border-top: 4px solid #007bff; }
+        .prescription-box { background: #f9f9f9; border: 1px dashed #ddd; padding: 15px; border-radius: 5px; }
+        .patient-info { font-size: 1.1rem; color: #333; }
+    </style>
+</head>
+
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="row">
+                    <div class="col-sm-12">
+                        <h4 class="page-title">{{ title }}</h4>
+                    </div>
+                </div>
+
+                <div class="row justify-content-center">
+                    <div class="col-md-8">
+                        <div class="card invoice-card shadow-sm">
+                            <div class="card-header bg-white">
+                                <h5 class="mb-0"><i class="fas fa-file-invoice-dollar text-primary"></i> Détails du Paiement</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row mb-4">
+                                    <div class="col-sm-6">
+                                        <h6 class="text-muted">Patient :</h6>
+                                        <p class="patient-info"><strong>{{ patient.noms }}</strong></p>
+                                        <p class="mb-1">Sexe : {{ patient.sexeP }}</p>
+                                        <p>Âge : {{ patient.ageP }} ans</p>
+                                    </div>
+                                    <div class="col-sm-6 text-sm-right">
+                                        <h6 class="text-muted">Ordonnance N° :</h6>
+                                        <p class="patient-info"><strong>#{{ ordonnance.id }}</strong></p>
+                                        <p class="mb-1">Date : {{ ordonnance.date_creation|date:"d/m/Y H:i" }}</p>
+                                        <p>Médecin : Dr. {{ ordonnance.medecin.username }}</p>
+                                    </div>
+                                </div>
+
+                                <div class="prescription-box mb-4">
+                                    <h6 class="font-weight-bold text-primary"><i class="fas fa-pills"></i> Médicaments prescrits :</h6>
+                                    <hr>
+                                    <p class="white-space-pre-wrap">{{ ordonnance.contenu_prescription|linebreaks }}</p>
+                                </div>
+
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle"></i> Veuillez confirmer la réception du paiement avant de valider. Une fois validée, l'ordonnance sera visible par la pharmacie pour la délivrance.
+                                </div>
+
+                                <form method="POST">
+                                    {% csrf_token %}
+                                    <div class="row mt-4">
+                                        <div class="col-6">
+                                            <a href="{% url 'patientRead' %}" class="btn btn-secondary btn-block">
+                                                <i class="fas fa-times"></i> Annuler
+                                            </a>
+                                        </div>
+                                        <div class="col-6">
+                                            <button type="submit" class="btn btn-success btn-block" onclick="return confirm('Confirmer l\'encaissement de cette ordonnance ?')">
+                                                <i class="fas fa-check-circle"></i> Valider le Paiement
+                                            </button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/app.js'%}"></script>
+</body>
+</html>
