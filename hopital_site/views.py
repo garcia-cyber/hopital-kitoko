@@ -1772,3 +1772,24 @@ def payer_ordonnance(request, patient_id):
     }
     
     return render(request, 'back-end/payer_ordonnance.html', context)
+
+# 50
+# ==========================================================================================================
+# supprimer profil
+# ==========================================================================================================
+@login_required
+def supprimer_profil(request, profil_id):
+    # On récupère le profil ou on renvoie une erreur 404
+    profil = get_object_or_404(Profil, id=profil_id)
+    
+    # Sécurité : Seul l'utilisateur lui-même ou un admin peut supprimer
+    if request.user == profil.userProfil or request.user.is_staff:
+        if request.method == 'POST':
+            profil.delete()
+            messages.success(request, "Le profil a été supprimé avec succès.")
+            return redirect('profiltRead') # Redirige vers la liste des employés
+    else:
+        messages.error(request, "Vous n'avez pas la permission de supprimer ce profil.")
+        return redirect('ProfilRead')
+
+    return render(request, 'back-end/confirmer_suppression.html', {'profil': profil})
