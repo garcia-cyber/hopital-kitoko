@@ -204,3 +204,22 @@ class DepenseForm(forms.ModelForm):
             'montant': forms.NumberInput(attrs={'class': 'form-control'}),
             'devise': forms.Select(attrs={'class': 'form-control'}),
         }
+
+
+# 9
+# ========================================================
+# modifier profil
+# ========================================================
+class ProfilForm(forms.ModelForm):
+    class Meta:
+        model = Profil
+        # On exclut userProfil car on ne veut pas changer l'utilisateur lié
+        exclude = ['userProfil', 'date_register']
+        widgets = {
+            'nomComplet': forms.TextInput(attrs={'class': 'form-control'}),
+            'sexe': forms.Select(attrs={'class': 'form-control select'}),
+            'phone': forms.TextInput(attrs={'class': 'form-control'}),
+            'adresse': forms.TextInput(attrs={'class': 'form-control'}),
+            'fonction': forms.Select(attrs={'class': 'form-control select'}),
+            'service': forms.Select(attrs={'class': 'form-control select'}),
+        }

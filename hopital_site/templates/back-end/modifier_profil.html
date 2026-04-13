@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+    <title>Modifier Profil | HMS</title>
+
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'back-end/assets/img/favicon.ico'%}">
+    <link href="https://fonts.googleapis.com/css?family=Fira+Sans:400,500,600,700" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css'%}" >
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/select2.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css'%}">
+</head>
+
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html'%}
+        {% include 'back-end/include/sidebar.html'%}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="row">
+                    <div class="col-lg-8 offset-lg-2">
+                        <h4 class="page-title">Modifier le Profil de {{ profil.nomComplet }}</h4>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-lg-8 offset-lg-2">
+                        <form method="POST">
+                            {% csrf_token %}
+                            <div class="row">
+                                <div class="col-sm-6">
+                                    <div class="form-group">
+                                        <label>Nom Complet <span class="text-danger">*</span></label>
+                                        {{ form.nomComplet }}
+                                    </div>
+                                </div>
+                                <div class="col-sm-6">
+                                    <div class="form-group">
+                                        <label>Sexe</label>
+                                        {{ form.sexe }}
+                                    </div>
+                                </div>
+                                <div class="col-sm-6">
+                                    <div class="form-group">
+                                        <label>Téléphone</label>
+                                        {{ form.phone }}
+                                    </div>
+                                </div>
+                                <div class="col-sm-6">
+                                    <div class="form-group">
+                                        <label>Service</label>
+                                        {{ form.service }}
+                                    </div>
+                                </div>
+                                <div class="col-sm-12">
+                                    <div class="form-group">
+                                        <label>Fonction</label>
+                                        {{ form.fonction }}
+                                    </div>
+                                </div>
+                                <div class="col-sm-12">
+                                    <div class="form-group">
+                                        <label>Adresse</label>
+                                        {{ form.adresse }}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="m-t-20 text-center">
+                                <button class="btn btn-primary submit-btn">Enregistrer les modifications</button>
+                                <a href="{% url 'employeRead' %}" class="btn btn-secondary submit-btn">Annuler</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/jquery.slimscroll.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/select2.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/app.js'%}"></script>
+</body>
+</html>

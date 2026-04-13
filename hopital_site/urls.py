@@ -22,6 +22,8 @@ urlpatterns = [
     path('employeRead/', employeRead, name='employeRead'), 
     path('profilAdd/<int:user_id>/', profilAdd, name='profilAdd'),
     path('profilRead/', profilRead, name='profilRead'), 
+    path('profil/supprimer/<int:profil_id>/', views.supprimer_profil, name='supprimer_profil'),
+    path('profil/modifier/<int:profil_id>/', views.modifier_profil, name='modifier_profil'),
     
 
     # ============================================
@@ -32,7 +34,7 @@ urlpatterns = [
     path('liste_patients_soldes/', liste_patients_soldes, name='liste_soldes'),
     path('patient/<int:patient_id>/archives/', views.dossier_archive_patient, name='dossier_archive_patient'),
     path('caisse/payer-ordonnance/<int:patient_id>/', views.payer_ordonnance, name='payer_ordonnance'),
-    path('profil/supprimer/<int:profil_id>/', views.supprimer_profil, name='supprimer_profil'),
+
 
     # ===============================================
     # paiement fiche historique

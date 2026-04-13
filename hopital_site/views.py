@@ -1793,3 +1793,25 @@ def supprimer_profil(request, profil_id):
         return redirect('ProfilRead')
 
     return render(request, 'back-end/confirmer_suppression.html', {'profil': profil})
+
+
+# 51
+# ========================================================================================================
+# modifier profile
+# ========================================================================================================
+@login_required
+def modifier_profil(request, profil_id):
+    # Récupérer le profil à modifier
+    profil = get_object_or_404(Profil, id=profil_id)
+    
+    if request.method == 'POST':
+        form = ProfilForm(request.POST, instance=profil)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Le profil a été mis à jour avec succès !")
+            return redirect('profilRead') # 
+    else:
+        # Pré-remplir le formulaire avec les données actuelles
+        form = ProfilForm(instance=profil)
+    
+    return render(request, 'back-end/modifier_profil.html', {'form': form, 'profil': profil})
