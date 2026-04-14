@@ -8,11 +8,12 @@ from decimal import Decimal
 from django.contrib import messages
 from django.db.models import Sum, F , Q , Count
 from django.forms import inlineformset_factory
-from django.db import transaction  # <--- AJOUTE CETTE LIGNE
+from django.db import transaction 
 from datetime import timedelta
 from django.utils import timezone
 import json
 from django.http import JsonResponse
+from django.contrib.auth.forms import SetPasswordForm
 
 # Create your views here.
 
@@ -1815,3 +1816,33 @@ def modifier_profil(request, profil_id):
         form = ProfilForm(instance=profil)
     
     return render(request, 'back-end/modifier_profil.html', {'form': form, 'profil': profil})
+
+
+# 52 
+# =========================================================================================================
+# change mot de passe par d'amin c.a.d sans savoir l'ancien mot de passe
+# ==========================================================================================================
+@login_required
+def admin_force_password(request, user_id):
+    # On récupère l'utilisateur lié au profil
+    user_to_edit = get_object_or_404(User, id=user_id)
+    
+    if request.method == 'POST':
+        # On passe l'instance de l'utilisateur au formulaire
+        form = SetPasswordForm(user=user_to_edit, data=request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Le mot de passe de {user_to_edit.username} a été réinitialisé avec succès.")
+            return redirect('employeRead')
+    else:
+        form = SetPasswordForm(user=user_to_edit)
+    
+    return render(request, 'back-end/changer_mdp.html', {
+        'form': form, 
+        'user_to_edit': user_to_edit
+    })
+
+# 53
+# ==========================================================================================================
+# change mot de passe par employe lui meme 
+# ==========================================================================================================

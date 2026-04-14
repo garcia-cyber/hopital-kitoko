@@ -24,6 +24,7 @@ urlpatterns = [
     path('profilRead/', profilRead, name='profilRead'), 
     path('profil/supprimer/<int:profil_id>/', views.supprimer_profil, name='supprimer_profil'),
     path('profil/modifier/<int:profil_id>/', views.modifier_profil, name='modifier_profil'),
+    path('gestion/password-reset/<int:user_id>/', views.admin_force_password, name='admin_force_password'),
     
 
     # ============================================

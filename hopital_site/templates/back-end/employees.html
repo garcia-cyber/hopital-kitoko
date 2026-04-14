@@ -74,6 +74,9 @@
                                                 <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
                                                 <div class="dropdown-menu dropdown-menu-right">
                                                     <a class="dropdown-item" href="{% url 'profilAdd' listeUser.id %}"><i class="fas fa-user-circle m-r-5"></i> Profil</a>
+                                                    <a class="dropdown-item" href="{% url 'admin_force_password' listeUser.id %}">
+    <i class="fas fa-key m-r-5 text-danger"></i> Forcer le mot de passe
+</a>
                                                     <a class="dropdown-item" href="#"><i class="fas fa-pen m-r-5"></i> Modifier</a>
                                                     <a class="dropdown-item" href="#" data-toggle="modal" data-target="#delete_employee"><i class="far fa-trash-alt m-r-5"></i> Supprimer</a>
                                                 </div>
