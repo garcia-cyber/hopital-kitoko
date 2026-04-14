@@ -1,6 +1,6 @@
 from django.shortcuts import render , redirect , get_object_or_404 , HttpResponse 
 from .forms import * 
-from django.contrib.auth import authenticate , login as auth , logout 
+from django.contrib.auth import authenticate , login as auth , logout ,update_session_auth_hash
 from django.contrib.auth.decorators import login_required 
 from django.contrib.auth.models import User
 from .models import *
@@ -13,7 +13,7 @@ from datetime import timedelta
 from django.utils import timezone
 import json
 from django.http import JsonResponse
-from django.contrib.auth.forms import SetPasswordForm
+from django.contrib.auth.forms import SetPasswordForm , PasswordChangeForm
 
 # Create your views here.
 
@@ -1846,3 +1846,18 @@ def admin_force_password(request, user_id):
 # ==========================================================================================================
 # change mot de passe par employe lui meme 
 # ==========================================================================================================
+@login_required
+def modifier_mon_mdp(request):
+    if request.method == 'POST':
+        form = PasswordChangeForm(user=request.user, data=request.POST)
+        if form.is_valid():
+            user = form.save()
+            # Très important : garde la session active après le changement
+            update_session_auth_hash(request, user)
+            messages.success(request, "Votre mot de passe a été mis à jour avec succès !")
+            return redirect('panel') 
+    else:
+        form = PasswordChangeForm(user=request.user)
+    
+    return render(request, 'back-end/mon_compte_mdp.html', {'form': form}) 
+    

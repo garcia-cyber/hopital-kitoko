@@ -25,6 +25,7 @@ urlpatterns = [
     path('profil/supprimer/<int:profil_id>/', views.supprimer_profil, name='supprimer_profil'),
     path('profil/modifier/<int:profil_id>/', views.modifier_profil, name='modifier_profil'),
     path('gestion/password-reset/<int:user_id>/', views.admin_force_password, name='admin_force_password'),
+    path('mon-profil/securite/', views.modifier_mon_mdp, name='modifier_mon_mdp'),
     
 
     # ============================================

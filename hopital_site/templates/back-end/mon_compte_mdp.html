@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+    <title>Mon Profil | HMS</title>
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css'%}" >
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css'%}">
+</head>
+
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html'%}
+        {% include 'back-end/include/sidebar.html'%}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="row">
+                    <div class="col-lg-6 offset-lg-3">
+                        <h4 class="page-title">Changer mon mot de passe</h4>
+                        <div class="card shadow-sm border-0">
+                            <div class="card-body">
+                                <form method="POST">
+                                    {% csrf_token %}
+                                    
+                                    {% for field in form %}
+                                        <div class="form-group">
+                                            <label class="font-weight-bold">{{ field.label }}</label>
+                                            <input type="password" 
+                                                   name="{{ field.name }}" 
+                                                   class="form-control {% if field.errors %}is-invalid{% endif %}" 
+                                                   placeholder="Saisissez votre {{ field.label|lower }}">
+                                            {% if field.help_text %}
+                                                <small class="form-text text-muted">{{ field.help_text|safe }}</small>
+                                            {% endif %}
+                                            {% for error in field.errors %}
+                                                <div class="invalid-feedback d-block">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    {% endfor %}
+                                    
+                                    <div class="m-t-20 text-center">
+                                        <button class="btn btn-primary submit-btn btn-block shadow">Confirmer le changement</button>
+                                        <a href="javascript:history.back()" class="btn btn-light mt-2">Annuler</a>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js'%}"></script>
+</body>
+</html>
