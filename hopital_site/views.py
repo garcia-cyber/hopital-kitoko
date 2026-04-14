@@ -9,7 +9,7 @@ from django.contrib import messages
 from django.db.models import Sum, F , Q , Count
 from django.forms import inlineformset_factory
 from django.db import transaction 
-from datetime import timedelta
+from datetime import timedelta , datetime
 from django.utils import timezone
 import json
 from django.http import JsonResponse
@@ -1468,8 +1468,10 @@ def dashboard_pharmacie(request):
     config = ConfigurationHopital.objects.first()
     taux = config.taux_usd_en_cdf if config else 2500
     
-    # 2. Ventes du jour (uniquement validées)
-    aujourdhui = datetime.date.today()
+    # 2. Ventes du jour (Correction ici)
+    # timezone.now().date() est plus fiable que datetime.date.today()
+    aujourdhui = timezone.now().date() 
+    
     ventes_du_jour = VentePharmacie.objects.filter(
         date_vente__date=aujourdhui, 
         statut='VALIDE'
@@ -1477,13 +1479,22 @@ def dashboard_pharmacie(request):
 
     # 3. Calculs financiers
     ca_jour_cdf = ventes_du_jour.aggregate(total=Sum('total_cdf'))['total'] or 0
-    ca_jour_usd = float(ca_jour_cdf) / float(taux)
+    
+    # Sécurité pour éviter la division par zéro si le taux n'est pas configuré
+    try:
+        ca_jour_usd = float(ca_jour_cdf) / float(taux)
+    except (ZeroDivisionError, TypeError):
+        ca_jour_usd = 0
 
-    # Valeur du stock (basé sur le prix d'achat en CDF)
+    # Valeur du stock
     valeur_stock_cdf = stocks.aggregate(
         total=Sum(F('quantite_stock_pieces') * F('prix_achat_unitaire_moyen'))
     )['total'] or 0
-    valeur_stock_usd = float(valeur_stock_cdf) / float(taux)
+    
+    try:
+        valeur_stock_usd = float(valeur_stock_cdf) / float(taux)
+    except (ZeroDivisionError, TypeError):
+        valeur_stock_usd = 0
 
     context = {
         'total_articles': stocks.count(),
@@ -1493,10 +1504,10 @@ def dashboard_pharmacie(request):
         'ca_jour_cdf': ca_jour_cdf,
         'ca_jour_usd': ca_jour_usd,
         'taux': taux,
-        'ventes_recentes': ventes_du_jour.order_by('-date_vente')[:5] , 
-        'fonction' : fonction 
+        'ventes_recentes': ventes_du_jour.order_by('-date_vente')[:5],
+        'fonction': fonction 
     }
-    return render(request, 'back-end/pharmacie/dashboard.html', context)
+    return render(request, 'back-end/dashboard.html', context)
 
 # 42
 # ==============================================================================================

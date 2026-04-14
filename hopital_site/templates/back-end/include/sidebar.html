@@ -157,11 +157,11 @@
                 </li>
                 {% else %}
                 {% endif %}
-                <li class="menu-title">Compte & Sécurité</li>
+                
                     <li class="{% if request.resolver_match.url_name == 'modifier_mon_mdp' %}active{% endif %}">
                             <a href="{% url 'modifier_mon_mdp' %}">
                                 <i class="fas fa-user-lock"></i> 
-                                <span>Changer mot de passe</span>
+                                <span>Changer password</span> 
                             </a>
                     </li>
             </ul>
