@@ -1799,7 +1799,7 @@ def supprimer_profil(request, profil_id):
         if request.method == 'POST':
             profil.delete()
             messages.success(request, "Le profil a été supprimé avec succès.")
-            return redirect('profiltRead') # Redirige vers la liste des employés
+            return redirect('profilRead') 
     else:
         messages.error(request, "Vous n'avez pas la permission de supprimer ce profil.")
         return redirect('ProfilRead')
