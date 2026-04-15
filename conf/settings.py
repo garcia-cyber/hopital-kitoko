@@ -16,7 +16,8 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-votre-cle-de-test-ici
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 # Autorise localhost et ton adresse sur Render
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.onrender.com']
+#ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.onrender.com'] avec la version de l'application
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'hopital-kitoko.onrender.com']
 
 # 3. Applications installées
 INSTALLED_APPS = [
