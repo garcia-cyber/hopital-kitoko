@@ -80,7 +80,7 @@ USE_I18N = True
 USE_TZ = True
 
 # 8. Fichiers Statiques (CSS, JavaScript, Images)
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 
 # Dossier source des fichiers statiques
 STATICFILES_DIRS = [
@@ -110,5 +110,6 @@ LOGOUT_REDIRECT_URL = '/home/'
 
 # 11 configuration media pour gere les images 
 #
+
 MEDIA_URL = '/media/'
-MEDIA_ROOT = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media' # Sans les slashs autour pour utiliser le chemin relatif au projet
