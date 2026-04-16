@@ -5,11 +5,15 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
     <title>Pannes en cours - HMS</title>
+
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'back-end/assets/img/favicon.ico'%}">
+    <link href="https://fonts.googleapis.com/css?family=Fira+Sans:400,500,600,700" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css'%}">
-    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css'%}" >
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css'%}">
     <link rel="stylesheet" href="{% static 'back-end/assets/css/dataTables.bootstrap4.min.css'%}">
     <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css'%}">
 </head>
+
 <body>
     <div class="main-wrapper">
         {% include 'back-end/include/header.html' %}
@@ -24,7 +28,7 @@
                 </div>
 
                 <div class="row">
-                    <div class="col-md-6">
+                    <div class="col-md-6 col-sm-6 col-lg-6 col-xl-6">
                         <div class="dash-widget">
                             <span class="dash-widget-bg2"><i class="fas fa-exclamation-circle"></i></span>
                             <div class="dash-widget-info text-right">
@@ -33,7 +37,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-6 col-sm-6 col-lg-6 col-xl-6">
                         <div class="dash-widget">
                             <span class="dash-widget-bg4"><i class="fas fa-wrench"></i></span>
                             <div class="dash-widget-info text-right">
@@ -62,33 +66,43 @@
                                         <th>Matériel</th>
                                         <th>S/N</th>
                                         <th>Service</th>
-                                        <th>État</th>
-                                        <th>Description du problème</th>
-                                        <th class="text-right">Action</th>
+                                        <th>État actuel</th>
+                                        <th>Problème signalé</th>
+                                        <th class="text-right">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for m in materiels_panne %}
                                     <tr>
-                                        <td><strong>{{ m.nom }}</strong><br><small>{{ m.marque }}</small></td>
+                                        <td>
+                                            <strong>{{ m.nom }}</strong><br>
+                                            <small class="text-muted">{{ m.marque|default:"" }}</small>
+                                        </td>
                                         <td>{{ m.numero_serie }}</td>
-                                        <td><span class="badge badge-info">{{ m.service_affecte.nomService }}</span></td>
+                                        <td><span class="custom-badge status-blue">{{ m.service_affecte.nomService }}</span></td>
                                         <td>
                                             {% if m.etat_actuel == 'PANNE' %}
-                                                <span class="badge badge-danger">PANNE</span>
+                                                <span class="badge badge-danger">HORS SERVICE</span>
                                             {% else %}
-                                                <span class="badge badge-warning">RÉPARATION</span>
+                                                <span class="badge badge-warning">RÉPARATION...</span>
                                             {% endif %}
                                         </td>
-                                        <td><small>{{ m.description|default:"Non précisée" }}</small></td>
+                                        <td><small>{{ m.description|default:"Aucun détail fourni" }}</small></td>
                                         <td class="text-right">
-                                            <a href="#" class="btn btn-primary btn-sm">Gérer</a>
+                                            {% if fonction == 'TECHNICIEN' %}
+                                                <a href="#" class="btn btn-primary btn-sm">
+                                                    <i class="fas fa-tools"></i> Gérer
+                                                </a>
+                                            {% else %}
+                                                <span class="text-muted small">Consultation</span>
+                                            {% endif %}
                                         </td>
                                     </tr>
                                     {% empty %}
                                     <tr>
-                                        <td colspan="6" class="text-center text-success">
-                                            <i class="fas fa-check-circle"></i> Tout le matériel est opérationnel !
+                                        <td colspan="6" class="text-center text-success p-4">
+                                            <i class="fas fa-check-circle fa-2x mb-2"></i><br>
+                                            Tout le matériel est opérationnel !
                                         </td>
                                     </tr>
                                     {% endfor %}
@@ -109,12 +123,13 @@
 
     <script>
         $(document).ready(function() {
-            if($('#table_pannes').length > 0) {
+            if ($('#table_pannes').length > 0) {
                 var table = $('#table_pannes').DataTable({
                     "bFilter": true,
-                    "dom": 'lrtip', // Cache la barre par défaut
+                    "dom": 'lrtip', // l=length, r=processing, t=table, i=info, p=pagination
                     "language": {
-                        "zeroRecords": "Aucune panne correspondante",
+                        "zeroRecords": "Aucune panne ne correspond à votre recherche",
+                        "info": "Affichage de _START_ à _END_ sur _TOTAL_ lignes",
                         "paginate": {
                             "next": "Suivant",
                             "previous": "Précédent"
@@ -122,7 +137,7 @@
                     }
                 });
 
-                // Liaison avec l'input personnalisé
+                // Liaison entre l'input stylé et le moteur de recherche DataTable
                 $('#searchPanne').on('keyup', function() {
                     table.search(this.value).draw();
                 });

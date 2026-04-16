@@ -1991,20 +1991,23 @@ def signaler_panne_materiel(request, materiel_id):
 @login_required
 def materiel_en_panne(request):
     # On filtre uniquement ce qui n'est pas fonctionnel
-    materiels_panne = Materiel.objects.filter(etat_actuel__in=['PANNE', 'REPARATION']).order_by('service_affecte')
+    # On trie par service_affecte (utilise '__nomService' si tu veux trier par nom)
+    materiels_panne = Materiel.objects.filter(
+        etat_actuel__in=['PANNE', 'REPARATION']
+    ).order_by('service_affecte')
     
     # Statistiques pour les badges du haut
     en_panne_count = Materiel.objects.filter(etat_actuel='PANNE').count()
     en_reparation_count = Materiel.objects.filter(etat_actuel='REPARATION').count()
 
-
-    profil = Profil.objects.filter(userProfil = request.user).first()
-    fonction = profil.fonction.fonction if profil else None
+    # Récupération du profil pour la gestion des permissions dans le template
+    profil = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil.fonction.fonction if profil and profil.fonction else None
 
     context = {
         'materiels_panne': materiels_panne,
         'en_panne': en_panne_count,
         'en_reparation': en_reparation_count,
-        'fonction' : fonction 
+        'fonction': fonction 
     }
     return render(request, 'back-end/logistique/materiel_en_panne.html', context)
