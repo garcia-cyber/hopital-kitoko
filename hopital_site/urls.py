@@ -83,7 +83,10 @@ urlpatterns = [
     path('finance/dashboard/', views.tableau_bord_finance, name='tableau_bord_finance'),
     path('finance/depenses/', views.gestion_depenses, name='gestion_depenses'),
     
+    # =================================================
     # Hospitalisation
+    #
+
     path('chambre/ajouter/', views.ajouter_chambre, name='ajouter_chambre'),
     path('lit/ajouter/', views.ajouter_lit, name='ajouter_lit'),
     path('gestion-chambres/', views.gestion_chambres, name='gestion_chambres'),
@@ -110,4 +113,12 @@ urlpatterns = [
     path('vente/historique/', views.historique_ventes, name='historique_ventes'),
     path('vente/<int:vente_id>/facture/', views.generer_facture_pdf, name='generer_facture_pdf'),
     path('vente/<int:vente_id>/annuler/', views.annuler_vente, name='annuler_vente'),
+
+    # =================================================
+    # logistique
+    #
+    path('logistique/materiel/', views.liste_materiel, name='liste_materiel'),
+    path('logistique/materiel/ajouter/', views.ajouter_materiel, name='ajouter_materiel'),
+    path('logistique/materiel/panne/<int:materiel_id>/', views.signaler_panne_materiel, name='signaler_panne'),
+    path('logistique/materiel/en-panne/', views.materiel_en_panne, name='materiel_en_panne'),
 ]

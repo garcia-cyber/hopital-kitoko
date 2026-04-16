@@ -41,6 +41,35 @@
                     <a href="{% url 'liste_ordonnances_infirmier' %}"><i class="fas fa-pills"></i> <span>Suivi Traitements</span></a>
                 </li>
 
+                <li class="submenu">
+                    <a href="#"><i class="fas fa-boxes"></i> <span> Logistique </span> <span class="menu-arrow"></span></a>
+                <ul style="display: none;">
+                    <li>
+                        <a href="{% url 'liste_materiel' %}" class="{% if request.resolver_match.url_name == 'liste_materiel' %}active{% endif %}">
+                        <i class="fas fa-clipboard-list"></i> Inventaire Matériel
+                        </a>
+                    </li>
+        
+                    <li>
+                        <a href="{% url 'ajouter_materiel' %}" class="{% if request.resolver_match.url_name == 'ajouter_materiel' %}active{% endif %}">
+                        <i class="fas fa-plus-circle"></i> Ajouter Matériel
+                        </a>
+                    </li>
+        <!-- <li>
+            <a href="#" class="text-danger">
+                <i class="fas fa-exclamation-triangle"></i> Matériels en Panne
+            </a>
+        </li> -->
+
+                    <li>
+                        <a href="{% url 'materiel_en_panne' %}">
+                        <i class="fas fa-exclamation-triangle"></i> Matériels en Panne 
+                        <span class="badge badge-pill bg-danger float-right">{{ en_panne }}</span>
+                        </a>
+                    </li>
+            </ul>
+            </li>
+
                 {% elif fonction == 'receptionniste' %}
                 <li>
                     <a href="{% url 'patientAdd' %}"><i class="fas fa-user-plus"></i> <span>Ajouter Patient</span></a>

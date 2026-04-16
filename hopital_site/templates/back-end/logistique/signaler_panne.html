@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Signaler Panne - HMS</title>
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css'%}">
+</head>
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="row">
+                    <div class="col-md-6 offset-md-3">
+                        <h4 class="page-title">Signaler une Panne</h4>
+                        <div class="card shadow-sm">
+                            <div class="card-body">
+                                <div class="alert alert-info">
+                                    <strong>Matériel :</strong> {{ materiel.nom }}<br>
+                                    <strong>S/N :</strong> {{ materiel.numero_serie }}<br>
+                                    <strong>Service :</strong> {{ materiel.service_affecte.nomService }}
+                                </div>
+
+                                <form method="post">
+                                    {% csrf_token %}
+                                    <div class="form-group">
+                                        <label>Description du problème constaté <span class="text-danger">*</span></label>
+                                        <textarea class="form-control" name="description_panne" rows="5" placeholder="Expliquez ici le type de panne (ex: l'écran ne s'allume plus, batterie gonflée...)" required></textarea>
+                                    </div>
+                                    <div class="m-t-20 text-center">
+                                        <a href="{% url 'liste_materiel' %}" class="btn btn-secondary submit-btn">Annuler</a>
+                                        <button class="btn btn-danger submit-btn">Confirmer la panne</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/app.js'%}"></script>
+</body>
+</html>

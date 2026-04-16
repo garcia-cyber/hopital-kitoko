@@ -329,3 +329,61 @@ class LigneOrdonnance(models.Model):
     @property
     def reste_a_delivrer(self):
         return max(0, self.quantite_payee - self.quantite_delivree)
+
+# =============================================================================================
+# materiel
+# =============================================================================================
+class Materiel(models.Model):
+    CATEGORIES = [
+        ('LAPTOP', 'Ordinateur Portable'),
+        ('DESKTOP', 'Ordinateur de Bureau'),
+        ('TABLET', 'Tablette'),
+        ('PRINTER', 'Imprimante'),
+        ('MEDICAL', 'Appareil Médical'),
+        ('TECH', 'Matériel Technique (Groupe, etc.)'),
+    ]
+
+    ETAT_CHOICES = [
+        ('FONCTIONNEL', 'En marche'),
+        ('PANNE', 'En Panne'),
+        ('REPARATION', 'En Réparation'),
+        ('DECLASSE', 'Hors service / Déclassé'),
+    ]
+
+    nom = models.CharField(max_length=100)
+    marque = models.CharField(max_length=100)
+    modele = models.CharField(max_length=100)
+    numero_serie = models.CharField(max_length=100, unique=True)
+    categorie = models.CharField(max_length=50, choices=CATEGORIES)
+    
+    # Relation avec ton modèle Service
+    service_affecte = models.ForeignKey(Service, on_delete=models.CASCADE, related_name='materiels')
+    
+    date_achat = models.DateField(null=True, blank=True)
+    etat_actuel = models.CharField(max_length=20, choices=ETAT_CHOICES, default='FONCTIONNEL')
+    description = models.TextField(blank=True, null=True, help_text="Caractéristique technique (RAM, Stockage, etc.)")
+
+    def __str__(self):
+        return f"{self.nom} - {self.service_affecte.nomService} ({self.numero_serie})"
+
+
+
+#
+# maintenance
+# ===============================================================================================
+class Maintenance(models.Model):
+    # Relie la panne au matériel spécifique
+    materiel = models.ForeignKey(Materiel, on_delete=models.CASCADE, related_name='historique_pannes')
+    
+    date_signalement = models.DateTimeField(auto_now_add=True)
+    description_panne = models.TextField(help_text="Expliquez le problème constaté")
+    
+    # Suivi de la réparation
+    est_repare = models.BooleanField(default=False)
+    date_reparation = models.DateTimeField(null=True, blank=True)
+    rapport_technique = models.TextField(blank=True, null=True, help_text="Ce qui a été fait pour réparer")
+    cout_reparation = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+    def __str__(self):
+        status = "Réparé" if self.est_repare else "En attente"
+        return f"Panne sur {self.materiel.nom} ({status})"

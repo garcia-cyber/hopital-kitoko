@@ -1871,4 +1871,140 @@ def modifier_mon_mdp(request):
         form = PasswordChangeForm(user=request.user)
     
     return render(request, 'back-end/mon_compte_mdp.html', {'form': form}) 
+
+# 54
+# =======================================================================================================
+# ajouter materiel
+# =======================================================================================================
+@login_required
+def ajouter_materiel(request):
+    services = Service.objects.all()
     
+    if request.method == 'POST':
+        n_serie = request.POST.get('numero_serie')
+        
+        # 1. Vérification : Est-ce que ce numéro de série existe déjà ?
+        if Materiel.objects.filter(numero_serie=n_serie).exists():
+            messages.error(request, f"Erreur : Un matériel avec le numéro de série '{n_serie}' existe déjà dans le système.")
+            # On renvoie vers le formulaire avec les données déjà saisies pour ne pas tout retaper
+            return render(request, 'back-end/logistique/ajouter_materiel.html', {'services': services})
+
+        try:
+            service_id = request.POST.get('service')
+            service_obj = Service.objects.get(id=service_id)
+            
+            Materiel.objects.create(
+                nom=request.POST.get('nom'),
+                marque=request.POST.get('marque'),
+                modele=request.POST.get('modele'),
+                numero_serie=n_serie,
+                categorie=request.POST.get('categorie'),
+                service_affecte=service_obj,
+                date_achat=request.POST.get('date_achat') or None,
+                description=request.POST.get('description')
+            )
+            messages.success(request, "Le matériel a été enregistré avec succès.")
+            return redirect('liste_materiel')
+            
+        except Exception as e:
+            messages.error(request, f"Erreur lors de l'enregistrement : {e}")
+
+    profil = Profil.objects.filter(userProfil = request.user).first()
+    fonction = profil.fonction.fonction if profil else None 
+
+    return render(request, 'back-end/logistique/ajouter_materiel.html', {'services': services , 'fonction': fonction})
+
+# 55
+# ====================================================================================================
+# liste de materiel enregistre 
+# ====================================================================================================
+@login_required
+def liste_materiel(request):
+    # 1. On récupère tous les services avec leur matériel associé
+    # prefetch_related évite de faire une requête SQL par ligne (optimisation)
+    services = Service.objects.prefetch_related('materiels').all()
+    
+    # 2. On calcule les statistiques pour le haut de la page
+    total_appareils = Materiel.objects.count()
+    en_panne = Materiel.objects.filter(etat_actuel='PANNE').count()
+    en_reparation = Materiel.objects.filter(etat_actuel='REPARATION').count()
+
+    profil = Profil.objects.filter(userProfil = request.user).first()
+    fonction = profil.fonction.fonction if profil else None 
+
+    context = {
+        'services': services,
+        'total_appareils': total_appareils,
+        'en_panne': en_panne,
+        'en_reparation': en_reparation,
+        'fonction' : fonction 
+    }
+    
+    return render(request, 'back-end/logistique/liste_materiel.html', context)
+
+# 56
+# ============================================================================================================
+# signaler panne materiel
+# ============================================================================================================
+@login_required
+def signaler_panne_materiel(request, materiel_id):
+    # Récupérer le matériel concerné
+    materiel = get_object_or_404(Materiel, id=materiel_id)
+    
+    if request.method == 'POST':
+        description = request.POST.get('description_panne')
+        
+        if not description:
+            messages.error(request, "Veuillez fournir une description du problème.")
+            return render(request, 'back-end/logistique/signaler_panne.html', {'materiel': materiel})
+            
+        try:
+            # 1. Mise à jour de l'état du matériel
+            materiel.etat_actuel = 'PANNE'
+            materiel.save()
+            
+            # 2. Création de l'entrée dans la table Maintenance
+            Maintenance.objects.create(
+                materiel=materiel,
+                description_panne=description,
+                date_signalement=timezone.now(),
+                est_repare=False
+            )
+            
+            messages.warning(request, f"La panne sur {materiel.nom} (S/N: {materiel.numero_serie}) a été signalée.")
+            return redirect('liste_materiel')
+            
+        except Exception as e:
+            messages.error(request, f"Une erreur est survenue : {e}")
+
+
+    profil = Profil.objects.filter(userProfil = request.user).first()
+    fonction = profil.fonction.fonction if profil else None 
+
+    return render(request, 'back-end/logistique/signaler_panne.html', {'materiel': materiel , 'fonction' : fonction})
+
+
+# 57 
+# ===================================================================================================================
+#  materiel en panne 
+# ===================================================================================================================
+@login_required
+def materiel_en_panne(request):
+    # On filtre uniquement ce qui n'est pas fonctionnel
+    materiels_panne = Materiel.objects.filter(etat_actuel__in=['PANNE', 'REPARATION']).order_by('service_affecte')
+    
+    # Statistiques pour les badges du haut
+    en_panne_count = Materiel.objects.filter(etat_actuel='PANNE').count()
+    en_reparation_count = Materiel.objects.filter(etat_actuel='REPARATION').count()
+
+
+    profil = Profil.objects.filter(userProfil = request.user).first()
+    fonction = profil.fonction.fonction if profil else None
+
+    context = {
+        'materiels_panne': materiels_panne,
+        'en_panne': en_panne_count,
+        'en_reparation': en_reparation_count,
+        'fonction' : fonction 
+    }
+    return render(request, 'back-end/logistique/materiel_en_panne.html', context)

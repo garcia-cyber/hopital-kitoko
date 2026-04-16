@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+    <title>Pannes en cours - HMS</title>
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css'%}" >
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/dataTables.bootstrap4.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css'%}">
+</head>
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="row">
+                    <div class="col-sm-12">
+                        <h4 class="page-title">Matériels en Panne / Réparation</h4>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="dash-widget">
+                            <span class="dash-widget-bg2"><i class="fas fa-exclamation-circle"></i></span>
+                            <div class="dash-widget-info text-right">
+                                <h3 class="text-danger">{{ en_panne }}</h3>
+                                <span>Arrêts Critiques</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="dash-widget">
+                            <span class="dash-widget-bg4"><i class="fas fa-wrench"></i></span>
+                            <div class="dash-widget-info text-right">
+                                <h3 class="text-warning">{{ en_reparation }}</h3>
+                                <span>En cours de réparation</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row filter-row">
+                    <div class="col-sm-6 col-md-3">
+                        <div class="form-group form-focus">
+                            <label class="focus-label">Filtrer par S/N ou Matériel</label>
+                            <input type="text" id="searchPanne" class="form-control floating">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="table-responsive">
+                            <table class="table table-striped custom-table datatable" id="table_pannes">
+                                <thead>
+                                    <tr>
+                                        <th>Matériel</th>
+                                        <th>S/N</th>
+                                        <th>Service</th>
+                                        <th>État</th>
+                                        <th>Description du problème</th>
+                                        <th class="text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for m in materiels_panne %}
+                                    <tr>
+                                        <td><strong>{{ m.nom }}</strong><br><small>{{ m.marque }}</small></td>
+                                        <td>{{ m.numero_serie }}</td>
+                                        <td><span class="badge badge-info">{{ m.service_affecte.nomService }}</span></td>
+                                        <td>
+                                            {% if m.etat_actuel == 'PANNE' %}
+                                                <span class="badge badge-danger">PANNE</span>
+                                            {% else %}
+                                                <span class="badge badge-warning">RÉPARATION</span>
+                                            {% endif %}
+                                        </td>
+                                        <td><small>{{ m.description|default:"Non précisée" }}</small></td>
+                                        <td class="text-right">
+                                            <a href="#" class="btn btn-primary btn-sm">Gérer</a>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="6" class="text-center text-success">
+                                            <i class="fas fa-check-circle"></i> Tout le matériel est opérationnel !
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/jquery.dataTables.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/dataTables.bootstrap4.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/app.js'%}"></script>
+
+    <script>
+        $(document).ready(function() {
+            if($('#table_pannes').length > 0) {
+                var table = $('#table_pannes').DataTable({
+                    "bFilter": true,
+                    "dom": 'lrtip', // Cache la barre par défaut
+                    "language": {
+                        "zeroRecords": "Aucune panne correspondante",
+                        "paginate": {
+                            "next": "Suivant",
+                            "previous": "Précédent"
+                        }
+                    }
+                });
+
+                // Liaison avec l'input personnalisé
+                $('#searchPanne').on('keyup', function() {
+                    table.search(this.value).draw();
+                });
+            }
+        });
+    </script>
+</body>
+</html>

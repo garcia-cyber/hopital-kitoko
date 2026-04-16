@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+    <title>Inventaire Matériel - HMS</title>
+
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'back-end/assets/img/favicon.ico'%}">
+    <link href="https://fonts.googleapis.com/css?family=Fira+Sans:400,500,600,700" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css'%}" >
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/select2.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/dataTables.bootstrap4.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css'%}">
+</head>
+
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="row">
+                    <div class="col-sm-8 col-5">
+                        <h4 class="page-title">Inventaire du Matériel</h4>
+                    </div>
+                    <div class="col-sm-4 col-7 text-right m-b-30">
+                        <a href="{% url 'ajouter_materiel' %}" class="btn btn-primary btn-rounded float-right">
+                            <i class="fas fa-plus"></i> Ajouter Matériel
+                        </a>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 col-sm-6 col-lg-6 col-xl-3">
+                        <div class="dash-widget">
+                            <span class="dash-widget-bg1"><i class="fas fa-boxes"></i></span>
+                            <div class="dash-widget-info text-right">
+                                <h3>{{ total_appareils }}</h3>
+                                <span class="widget-title1">Total <i class="fa fa-check"></i></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-sm-6 col-lg-6 col-xl-3">
+                        <div class="dash-widget">
+                            <span class="dash-widget-bg2"><i class="fas fa-tools"></i></span>
+                            <div class="dash-widget-info text-right">
+                                <h3 class="text-danger">{{ en_panne }}</h3>
+                                <span class="widget-title2">En Panne <i class="fa fa-exclamation-triangle"></i></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row filter-row">
+                    <div class="col-sm-6 col-md-3">
+                        <div class="form-group form-focus">
+                            <label class="focus-label">Rechercher S/N ou Nom</label>
+                            <input type="text" id="materielSearch" class="form-control floating">
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-md-3">
+                        </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="table-responsive">
+                            <table class="table table-striped custom-table datatable" id="table_materiel">
+                                <thead>
+                                    <tr>
+                                        <th>S/N</th>
+                                        <th>Désignation</th>
+                                        <th>Catégorie</th>
+                                        <th>Service</th>
+                                        <th>État actuel</th>
+                                        <th class="text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for service in services %}
+                                        {% for m in service.materiels.all %}
+                                        <tr>
+                                            <td><strong>{{ m.numero_serie }}</strong></td>
+                                            <td>
+                                                {{ m.nom }}<br>
+                                                <small class="text-muted">{{ m.marque }} {{ m.modele }}</small>
+                                            </td>
+                                            <td>{{ m.get_categorie_display }}</td>
+                                            <td><span class="custom-badge status-blue">{{ service.nomService }}</span></td>
+                                            <td>
+                                                {% if m.etat_actuel == 'FONCTIONNEL' %}
+                                                    <span class="badge badge-success">En marche</span>
+                                                {% elif m.etat_actuel == 'PANNE' %}
+                                                    <span class="badge badge-danger">En Panne</span>
+                                                {% elif m.etat_actuel == 'REPARATION' %}
+                                                    <span class="badge badge-warning">En Réparation</span>
+                                                {% else %}
+                                                    <span class="badge badge-secondary">Déclassé</span>
+                                                {% endif %}
+                                            </td>
+                                            <td class="text-right">
+                                                {% if m.etat_actuel == 'FONCTIONNEL' %}
+                                                <a href="{% url 'signaler_panne' m.id %}" class="btn btn-outline-danger btn-sm">
+                                                    <i class="fas fa-bug"></i> Signaler Panne
+                                                </a>
+                                                {% else %}
+                                                <span class="text-muted small italic">Maintenance en cours</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    {% empty %}
+                                        <tr>
+                                            <td colspan="6" class="text-center">Aucun matériel trouvé.</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/jquery.dataTables.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/dataTables.bootstrap4.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/app.js'%}"></script>
+
+    <script>
+        $(document).ready(function() {
+            // On initialise DataTable
+            var table = $('#table_materiel').DataTable({
+                "bFilter": true, 
+                "dom": 'lrtip', // On cache la barre de recherche par défaut de DataTables
+                "language": {
+                    "zeroRecords": "Aucun résultat trouvé",
+                    "info": "Page _PAGE_ sur _PAGES_",
+                    "paginate": {
+                        "next": "Suivant",
+                        "previous": "Précédent"
+                    }
+                }
+            });
+
+            // On lie l'input personnalisé à la recherche globale du tableau
+            $('#materielSearch').on('keyup', function() {
+                table.search(this.value).draw();
+            });
+        });
+    </script>
+</body>
+</html>

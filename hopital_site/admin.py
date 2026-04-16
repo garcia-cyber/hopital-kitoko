@@ -207,3 +207,44 @@ class BonEntreeAdmin(admin.ModelAdmin):
 class LogPharmacieAdmin(admin.ModelAdmin):
     list_display = ('date_action', 'utilisateur', 'action', 'details')
     def has_add_permission(self, request): return False
+
+# ===================================================================================
+# materiel
+# ===================================================================================
+@admin.register(Materiel)
+class MaterielAdmin(admin.ModelAdmin):
+    # Colonnes affichées dans la liste
+    list_display = ('numero_serie', 'nom', 'categorie', 'service_affecte', 'etat_actuel')
+    
+    # Filtres sur le côté droit
+    list_filter = ('categorie', 'service_affecte', 'etat_actuel')
+    
+    # Barre de recherche (recherche par nom ou S/N)
+    search_fields = ('nom', 'numero_serie', 'marque')
+    
+    # Permet de modifier l'état directement depuis la liste sans ouvrir la fiche
+    list_editable = ('etat_actuel',)
+    
+    # Organisation des champs dans la fiche de modification
+    fieldsets = (
+        ('Identification', {
+            'fields': ('numero_serie', 'nom', 'categorie')
+        }),
+        ('Affectation & État', {
+            'fields': ('service_affecte', 'etat_actuel')
+        }),
+        ('Détails Techniques', {
+            'fields': ('marque', 'modele', 'date_achat', 'description')
+        }),
+    )
+# ============================================================================================
+# maintenance 
+# ============================================================================================
+@admin.register(Maintenance)
+class MaintenanceAdmin(admin.ModelAdmin):
+    list_display = ('materiel', 'date_signalement', 'est_repare', 'date_reparation', 'cout_reparation')
+    list_filter = ('est_repare', 'date_signalement')
+    search_fields = ('materiel__nom', 'materiel__numero_serie', 'description_panne')
+    
+    # Pour rendre le rapport plus propre
+    readonly_fields = ('date_signalement',)
