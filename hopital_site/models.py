@@ -4,7 +4,7 @@ from django.utils import timezone
 from datetime import timedelta
 from django.core.exceptions import ValidationError
 from decimal import Decimal
-
+import datetime
 # 1 =============================================
 class Fonction(models.Model):
     fonction = models.CharField(max_length=30) 
@@ -120,18 +120,64 @@ class Facture(models.Model):
 
 # 8 ======================================================================
 class Paiement(models.Model):
+    # Définition des modes de paiement
+    CHOIX_MODE = [
+        ('CASH', 'Espèces (Cash)'),
+        ('MPESA', 'M-Pesa'),
+    ]
+
     facture = models.ForeignKey(Facture, on_delete=models.CASCADE, related_name='paiements')
     montant_physique = models.DecimalField(max_digits=15, decimal_places=2)
     devise = models.CharField(max_length=3, choices=[('CDF', 'CDF'), ('USD', 'USD')])
+    
+    # --- Nouveaux champs pour la traçabilité M-Pesa ---
+    mode_paiement = models.CharField(
+        max_length=10, 
+        choices=CHOIX_MODE, 
+        default='CASH',
+        verbose_name="Mode de paiement"
+    )
+    reference_transaction = models.CharField(
+        max_length=100, 
+        null=True, 
+        blank=True, 
+        verbose_name="ID Transaction / Référence"
+    )
+    # ------------------------------------------------
+
     date_paiement = models.DateTimeField(auto_now_add=True)
     montant_comptable_cdf = models.DecimalField(max_digits=15, decimal_places=2, editable=False)
 
     def save(self, *args, **kwargs):
+        # Ta logique de conversion originale (ne change pas)
         if self.devise == 'USD':
+            # Utilise le taux fixé au moment de la création de la facture
             self.montant_comptable_cdf = self.montant_physique * self.facture.taux_fixe
         else:
             self.montant_comptable_cdf = self.montant_physique
+            
         super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Paiement {self.mode_paiement} - {self.montant_physique} {self.devise} (Facture #{self.facture.id})"
+
+    class Meta:
+        verbose_name = "Paiement"
+        verbose_name_plural = "Paiements"
+# class Paiement(models.Model):
+#     facture = models.ForeignKey(Facture, on_delete=models.CASCADE, related_name='paiements')
+#     montant_physique = models.DecimalField(max_digits=15, decimal_places=2)
+#     devise = models.CharField(max_length=3, choices=[('CDF', 'CDF'), ('USD', 'USD')])
+#     date_paiement = models.DateTimeField(auto_now_add=True)
+#     montant_comptable_cdf = models.DecimalField(max_digits=15, decimal_places=2, editable=False)
+
+#     def save(self, *args, **kwargs):
+#         if self.devise == 'USD':
+#             self.montant_comptable_cdf = self.montant_physique * self.facture.taux_fixe
+#         else:
+#             self.montant_comptable_cdf = self.montant_physique
+#         super().save(*args, **kwargs)
+
 
 # 9 =======================================================
 class Depense(models.Model):
@@ -387,3 +433,107 @@ class Maintenance(models.Model):
     def __str__(self):
         status = "Réparé" if self.est_repare else "En attente"
         return f"Panne sur {self.materiel.nom} ({status})"
+
+
+#
+# employe
+# ==================================================================================================
+
+class Employe(models.Model):
+    # Lien unique vers le compte de connexion
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='fiche_employe')
+    
+    # --- Informations Administratives ---
+    # blank=True permet de laisser le champ vide dans le formulaire pour la génération auto
+    matricule = models.CharField(max_length=50, unique=True, blank=True, verbose_name="Matricule")
+    date_embauche = models.DateField(verbose_name="Date de début / Embauche")
+    date_fin = models.DateField(null=True, blank=True, verbose_name="Date de fin de contrat")
+    
+    TYPES_CONTRAT = [
+        ('CDI', 'Contrat à Durée Indéterminée (CDI)'),
+        ('CDD', 'Contrat à Durée Déterminée (CDD)'),
+        ('STAGE_PRO', 'Stagiaire Professionnel'),
+        ('STAGE_ACA', 'Stagiaire Académique (Non payé)'),
+        ('PRESTAIRE', 'Consultant / Prestataire Extérieur'),
+    ]
+    type_contrat = models.CharField(max_length=20, choices=TYPES_CONTRAT, default='CDI')
+    salaire_base = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, verbose_name="Salaire de base")
+
+    # --- Documents Numérisés ---
+    carte_identite = models.FileField(upload_to='rh/identite/', null=True, blank=True, verbose_name="Carte d'identité")
+    diplome = models.FileField(upload_to='rh/diplomes/', null=True, blank=True, verbose_name="Diplôme")
+    contrat_signe = models.FileField(upload_to='rh/contrats/', null=True, blank=True, verbose_name="Contrat signé")
+
+    # --- Santé ---
+    GROUPES_SANGUINS = [
+        ('A+', 'A+'), ('A-', 'A-'), ('B+', 'B+'), ('B-', 'B-'),
+        ('AB+', 'AB+'), ('AB-', 'AB-'), ('O+', 'O+'), ('O-', 'O-'),
+    ]
+    groupe_sanguin = models.CharField(max_length=3, choices=GROUPES_SANGUINS, null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Employé"
+        verbose_name_plural = "Employés"
+        ordering = ['-date_embauche']
+
+    def __str__(self):
+        return f"{self.user.last_name} {self.user.first_name} ({self.matricule})"
+
+    # --- LOGIQUE DE GÉNÉRATION ET VALIDATION ---
+
+    def clean(self):
+        """Validation des règles métiers"""
+        # 1. Règle Stagiaire Académique
+        if self.type_contrat == 'STAGE_ACA' and self.salaire_base > 0:
+            raise ValidationError("Un stagiaire académique ne peut pas avoir de salaire.")
+        
+        # 2. Règle Date de fin obligatoire (sauf CDI)
+        if self.type_contrat != 'CDI' and not self.date_fin:
+            raise ValidationError({
+                'date_fin': "La date de fin est obligatoire pour ce type de contrat."
+            })
+            
+        # 3. Cohérence des dates
+        if self.date_fin and self.date_fin < self.date_embauche:
+            raise ValidationError("La date de fin ne peut pas être avant la date d'embauche.")
+
+    def save(self, *args, **kwargs):
+        # 1. Génération automatique du matricule (Format: HOSP-2026-001)
+        if not self.matricule:
+            annee = datetime.datetime.now().year
+            # On cherche le dernier matricule de l'année en cours
+            dernier = Employe.objects.filter(matricule__contains=f"-{annee}-").order_by('-id').first()
+            
+            if dernier:
+                try:
+                    dernier_num = int(dernier.matricule.split('-')[-1])
+                    nouveau_num = dernier_num + 1
+                except (ValueError, IndexError):
+                    nouveau_num = 1
+            else:
+                nouveau_num = 1
+            
+            self.matricule = f"HOSP-{annee}-{nouveau_num:03d}"
+
+        # 2. Forcer le salaire à 0 pour les stagiaires académiques
+        if self.type_contrat == 'STAGE_ACA':
+            self.salaire_base = 0
+            
+        self.full_clean()
+        super(Employe, self).save(*args, **kwargs)
+
+    # --- PROPRIÉTÉS POUR L'INTERFACE (Templates) ---
+
+    @property
+    def jours_restants(self):
+        """Nombre de jours avant la fin du contrat"""
+        if self.date_fin:
+            delta = self.date_fin - timezone.now().date()
+            return delta.days
+        return None
+
+    @property
+    def est_urgent(self):
+        """Alerte si le contrat finit dans moins de 15 jours"""
+        restant = self.jours_restants
+        return restant is not None and 0 <= restant <= 15

@@ -228,54 +228,63 @@ def patientRead(request):
 def encaisser_fiche(request, patient_id):
     patient = get_object_or_404(Patient, id=patient_id)
     
-    # 1. Récupération des données en base
+    # --- TES VÉRIFICATIONS DE BASE ---
     prestation_fiche = Prestation.objects.filter(categorie='ADM').first()
     deja_paye = Facture.objects.filter(patient=patient, prestation__categorie='ADM').exists()
     
-    # Récupération du taux depuis ton modèle ConfigurationHopital
     config = ConfigurationHopital.objects.first()
-    TAUX = config.taux_usd_en_cdf if config else 2500.00 # 2500 par défaut si vide
+    TAUX = config.taux_usd_en_cdf if config else 2500.00 
 
     error_message = None
     if not prestation_fiche:
-        error_message = "Erreur : La prestation de catégorie 'ADM' (Fiche) n'est pas configurée."
+        error_message = "Erreur : La prestation 'ADM' n'est pas configurée."
 
     if request.method == 'POST' and not error_message and not deja_paye:
         form = PaiementFicheForm(request.POST)
         if form.is_valid():
+            # Récupération des données du formulaire
             montant_saisi = form.cleaned_data.get('montant_physique')
             devise = form.cleaned_data.get('devise')
+            mode_p = form.cleaned_data.get('mode_paiement') # Choix Cash ou M-Pesa
+            ref_p = form.cleaned_data.get('reference_transaction') # Référence optionnelle
+            
             prix_fiche_cdf = prestation_fiche.prix_cdf
 
-            # 2. Logique de conversion pour la vérification
+            # --- TA LOGIQUE DE CONVERSION ET VÉRIFICATION DE MONTANT ---
             montant_en_cdf = montant_saisi
             if devise == 'USD':
                 montant_en_cdf = montant_saisi * TAUX
 
-            # 3. Vérification stricte du montant
             if montant_en_cdf > prix_fiche_cdf:
+                # Tes messages d'erreur personnalisés
                 if devise == 'USD':
                     max_usd = prix_fiche_cdf / TAUX
                     form.add_error('montant_physique', f"Trop élevé. Le max est de {max_usd:.2f} USD")
                 else:
                     form.add_error('montant_physique', f"Trop élevé. Le max est de {prix_fiche_cdf} CDF")
+            
+            # --- VÉRIFICATION SPÉCIFIQUE M-PESA (si le choix est M-Pesa) ---
+            elif mode_p == 'MPESA' and not ref_p:
+                form.add_error('reference_transaction', "Veuillez saisir la référence de transaction M-Pesa.")
+            
             else:
-                # 4. Création de la facture et enregistrement du paiement
+                # --- TOUT EST OK : CRÉATION ---
                 nouvelle_facture = Facture.objects.create(
                     patient=patient,
                     prestation=prestation_fiche
                 )
+                
                 paiement = form.save(commit=False)
                 paiement.facture = nouvelle_facture
-                # On peut stocker le montant converti si ton modèle Paiement a un champ dédié
-                paiement.save()
+                # Rappel : le calcul de montant_comptable_cdf se fait dans Paiement.save()
+                paiement.save() 
                 
                 return redirect('patientRead')
     else:
         form = PaiementFicheForm()
 
-
-    profil = Profil.objects.filter(userProfil = request.user).first()
+    # --- RÉCUPÉRATION DU PROFIL (comme dans ton code) ---
+    profil = Profil.objects.filter(userProfil=request.user).first()
     fonction = profil.fonction.fonction if profil else None
 
     return render(request, 'back-end/encaisser.html', {
@@ -284,8 +293,8 @@ def encaisser_fiche(request, patient_id):
         'prestation': prestation_fiche,
         'deja_paye': deja_paye,
         'taux': TAUX,
-        'error_message': error_message , 
-        'fonction' : fonction
+        'error_message': error_message,
+        'fonction': fonction
     })
 
 # 12

@@ -140,13 +140,38 @@ class PatientAddForm(forms.ModelForm):
 class PaiementFicheForm(forms.ModelForm):
     class Meta:
         model = Paiement
-        fields = ['montant_physique', 'devise']
+        # AJOUT des deux nouveaux champs ici :
+        fields = ['montant_physique', 'devise', 'mode_paiement', 'reference_transaction']
+        
+        # On peut ajouter des placeholders pour aider le caissier
+        widgets = {
+            'reference_transaction': forms.TextInput(attrs={
+                'placeholder': 'Code de transaction M-Pesa (ex: PP2604...)',
+            }),
+            'montant_physique': forms.NumberInput(attrs={
+                'placeholder': '0.00',
+            }),
+        }
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # On ajoute du style Bootstrap pour que ce soit joli
+        # Ta boucle magique qui met du style Bootstrap sur tout le monde
         for field in self.fields.values():
             field.widget.attrs.update({'class': 'form-control'})
+        
+        # Optionnel : On peut rendre le label plus joli
+        self.fields['mode_paiement'].label = "Mode de Paiement"
+        self.fields['reference_transaction'].label = "Référence de Transaction"
+# class PaiementFicheForm(forms.ModelForm):
+#     class Meta:
+#         model = Paiement
+#         fields = ['montant_physique', 'devise']
+    
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#         # On ajoute du style Bootstrap pour que ce soit joli
+#         for field in self.fields.values():
+#             field.widget.attrs.update({'class': 'form-control'})
 
 # 6
 # ========================================================

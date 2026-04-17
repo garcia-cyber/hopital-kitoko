@@ -248,3 +248,69 @@ class MaintenanceAdmin(admin.ModelAdmin):
     
     # Pour rendre le rapport plus propre
     readonly_fields = ('date_signalement',)
+
+
+# ==========================================================================================
+#  employe 
+# ==========================================================================================
+@admin.register(Employe)
+class EmployeAdmin(admin.ModelAdmin):
+    # Configuration de la liste principale
+    list_display = ('get_matricule', 'user_full_name', 'contrat_badge', 'date_embauche', 'date_fin_display', 'salaire_base')
+    list_filter = ('type_contrat', 'groupe_sanguin', 'date_embauche')
+    search_fields = ('matricule', 'user__last_name', 'user__first_name', 'user__username')
+    
+    # Organisation des champs dans le formulaire d'édition
+    fieldsets = (
+        ('Identité & Compte', {
+            'fields': ('user', 'matricule')
+        }),
+        ('Contrat & Finances', {
+            'fields': ('type_contrat', 'date_embauche', 'date_fin', 'salaire_base')
+        }),
+        ('Documents Numérisés', {
+            'fields': ('carte_identite', 'diplome', 'contrat_signe'),
+            'description': 'Formats acceptés : PDF, PNG, JPG'
+        }),
+        ('Informations Médicales', {
+            'fields': ('groupe_sanguin',),
+        }),
+    )
+
+    # Le matricule est généré par le modèle, on le met en lecture seule
+    readonly_fields = ('matricule',)
+
+    # --- MÉTHODES D'AFFICHAGE PERSONNALISÉES ---
+
+    def user_full_name(self, obj):
+        return f"{obj.user.last_name.upper()} {obj.user.first_name}"
+    user_full_name.short_description = "Nom complet"
+
+    def get_matricule(self, obj):
+        return format_html('<b>{}</b>', obj.matricule)
+    get_matricule.short_description = "Matricule"
+
+    def contrat_badge(self, obj):
+        """Affiche un badge de couleur selon le type de contrat"""
+        colors = {
+            'CDI': '#28a745',       # Vert
+            'CDD': '#ffc107',       # Jaune
+            'STAGE_PRO': '#17a2b8', # Bleu ciel
+            'STAGE_ACA': '#6c757d', # Gris
+            'PRESTAIRE': '#6610f2', # Violet
+        }
+        color = colors.get(obj.type_contrat, '#000')
+        return format_html(
+            '<span style="background-color: {}; color: white; padding: 3px 10px; border-radius: 10px; font-size: 10px;">{}</span>',
+            color,
+            obj.get_type_contrat_display()
+        )
+    contrat_badge.short_description = "Type de Contrat"
+
+    def date_fin_display(self, obj):
+        if obj.type_contrat == 'CDI':
+            return "Indéfini"
+        if obj.est_urgent:
+            return format_html('<span style="color: red; font-weight: bold;">{} (Bientôt fini)</span>', obj.date_fin)
+        return obj.date_fin
+    date_fin_display.short_description = "Date de fin"
