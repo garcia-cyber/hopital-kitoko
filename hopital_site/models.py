@@ -390,6 +390,9 @@ class LogPharmacie(models.Model):
     details = models.TextField()
     date_action = models.DateTimeField(auto_now_add=True)
 
+# =================================================================
+# ligne ordonnance 
+
 class LigneOrdonnance(models.Model):
     ordonnance = models.ForeignKey(Ordonnance, on_delete=models.CASCADE, related_name='lignes')
     medicament = models.ForeignKey(Medicament, on_delete=models.CASCADE, related_name='lignes_prescrites')
@@ -398,6 +401,12 @@ class LigneOrdonnance(models.Model):
     quantite_delivree = models.PositiveIntegerField(default=0)
     date_creation = models.DateTimeField(auto_now_add=True)
     paye = models.BooleanField(default=False)
+
+    @property
+    def prix_total(self):
+        if self.medicament and self.medicament.prix_vente_detail:
+            return self.quantite_prescrite * self.medicament.prix_vente_detail
+        return 0
 
     @property
     def reste_a_payer(self):
