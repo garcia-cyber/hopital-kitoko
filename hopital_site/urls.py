@@ -67,7 +67,7 @@ urlpatterns = [
     path('medecin/resultats-labo/', views.examens_termines_medecin, name='resultats_labo_medecin'),
     
     # On garde uniquement cette ligne pour éviter le conflit 'examen_id'
-    path('medecin/prescrire/<int:consultation_id>/', views.rediger_ordonnance, name='rediger_ordonnance'),
+    path('medecin/prescrire/<int:consultation_id>/', views.rediger_ordonnance, name='rediger_ordonnance'), 
     path('ordonnances/liste/', views.liste_ordonnances, name='liste_ordonnances_generale'),
     path('ordonnance/details/<int:ordonnance_id>/', views.ordonnance_details, name='ordonnance_details'),
     

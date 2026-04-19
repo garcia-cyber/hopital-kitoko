@@ -10,9 +10,12 @@
     <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css'%}">
     <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css'%}">
     <style>
-        .invoice-card { border-top: 4px solid #007bff; }
-        .prescription-box { background: #f9f9f9; border: 1px dashed #ddd; padding: 15px; border-radius: 5px; }
-        .patient-info { font-size: 1.1rem; color: #333; }
+        .invoice-card { border-top: 4px solid #28a745; }
+        .amount-badge { font-size: 1.2rem; padding: 10px; border-radius: 5px; min-width: 200px; display: block; }
+        .bg-money { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
+        .bg-remain { background: #fff3e0; color: #e65100; border: 1px solid #ffe0b2; }
+        .table-prescription { background: #fdfdfd; border-radius: 8px; overflow: hidden; border: 1px solid #dee2e6; }
+        .conversion-info { font-weight: bold; color: #28a745; display: block; margin-top: 5px; min-height: 20px; }
     </style>
 </head>
 
@@ -23,55 +26,103 @@
 
         <div class="page-wrapper">
             <div class="content">
-                <div class="row">
-                    <div class="col-sm-12">
-                        <h4 class="page-title">{{ title }}</h4>
-                    </div>
-                </div>
-
                 <div class="row justify-content-center">
-                    <div class="col-md-8">
+                    <div class="col-md-11">
                         <div class="card invoice-card shadow-sm">
-                            <div class="card-header bg-white">
-                                <h5 class="mb-0"><i class="fas fa-file-invoice-dollar text-primary"></i> Détails du Paiement</h5>
+                            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0"><i class="fas fa-cash-register text-success"></i> Encaissement Pharmacie</h5>
+                                <span class="badge badge-dark">Patient ID: #{{ patient.id }}</span>
                             </div>
+                            
                             <div class="card-body">
                                 <div class="row mb-4">
                                     <div class="col-sm-6">
-                                        <h6 class="text-muted">Patient :</h6>
-                                        <p class="patient-info"><strong>{{ patient.noms }}</strong></p>
-                                        <p class="mb-1">Sexe : {{ patient.sexeP }}</p>
-                                        <p>Âge : {{ patient.ageP }} ans</p>
+                                        <h6 class="text-muted text-uppercase small font-weight-bold">Détails Patient :</h6>
+                                        <p class="mb-0 h5"><strong>{{ patient.noms }}</strong></p>
+                                        <p class="text-muted small">Âge : {{ patient.ageP }} ans | Sexe : {{ patient.sexeP }}</p>
                                     </div>
                                     <div class="col-sm-6 text-sm-right">
-                                        <h6 class="text-muted">Ordonnance N° :</h6>
-                                        <p class="patient-info"><strong>#{{ ordonnance.id }}</strong></p>
-                                        <p class="mb-1">Date : {{ ordonnance.date_creation|date:"d/m/Y H:i" }}</p>
-                                        <p>Médecin : Dr. {{ ordonnance.medecin.username }}</p>
+                                        <div class="d-inline-block text-left">
+                                            <div class="amount-badge bg-money mb-2 shadow-sm text-center">
+                                                Total à payer : <strong>{{ total_cdf }} FC</strong>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div class="prescription-box mb-4">
-                                    <h6 class="font-weight-bold text-primary"><i class="fas fa-pills"></i> Médicaments prescrits :</h6>
-                                    <hr>
-                                    <p class="white-space-pre-wrap">{{ ordonnance.contenu_prescription|linebreaks }}</p>
+                                <div class="table-responsive table-prescription mb-4">
+                                    <table class="table table-hover mb-0">
+                                        <thead class="bg-light text-uppercase small font-weight-bold">
+                                            <tr>
+                                                <th>Médicament</th>
+                                                <th class="text-center">Qté</th>
+                                                <th class="text-right">P.U (CDF)</th>
+                                                <th class="text-right">Sous-total (CDF)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for ligne in lignes %}
+                                            <tr>
+                                                <td class="font-weight-bold text-primary">{{ ligne.medicament.designation }}</td>
+                                                <td class="text-center">{{ ligne.quantite_prescrite }}</td>
+                                                <td class="text-right">{{ ligne.medicament.prix_vente_detail }}</td>
+                                                <td class="text-right font-weight-bold text-success">
+                                                    {{ ligne.prix_total }} </td>
+                                            </tr>
+                                            {% empty %}
+                                            <tr>
+                                                <td colspan="4" class="text-center text-muted py-4">Aucun médicament en attente de paiement.</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
                                 </div>
 
-                                <div class="alert alert-info">
-                                    <i class="fas fa-info-circle"></i> Veuillez confirmer la réception du paiement avant de valider. Une fois validée, l'ordonnance sera visible par la pharmacie pour la délivrance.
-                                </div>
-
-                                <form method="POST">
+                                <form method="POST" id="paymentForm">
                                     {% csrf_token %}
+                                    <div class="row">
+                                        <div class="col-md-6 form-group">
+                                            <label class="font-weight-bold">Montant versé <span class="text-danger">*</span></label>
+                                            <div class="input-group input-group-lg">
+                                                <input type="number" name="montant_physique" id="id_montant_physique" step="0.01" class="form-control border-success" placeholder="Saisir le montant" required>
+                                                <div class="input-group-append">
+                                                    <select name="devise" id="id_devise" class="custom-select bg-success text-white" style="border-radius: 0 5px 5px 0;">
+                                                        <option value="CDF" selected>CDF</option>
+                                                        <option value="USD">USD</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <span id="conversion_info" class="conversion-info small"></span>
+                                            <small class="text-info"><i class="fas fa-info-circle"></i> Taux actuel : 1 USD = {{ taux }} FC</small>
+                                        </div>
+
+                                        <div class="col-md-6 form-group">
+                                            <label class="font-weight-bold">Mode de paiement <span class="text-danger">*</span></label>
+                                            <select name="mode_paiement" id="mode_paiement" class="form-control form-control-lg border-primary" required>
+                                                <option value="CASH">Espèces (Cash)</option>
+                                                <option value="MPESA">M-Pesa (Vodacom)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="row mt-2" id="reference_row" style="display: none;">
+                                        <div class="col-md-12 form-group">
+                                            <label class="text-primary font-weight-bold">Référence Transaction M-Pesa</label>
+                                            <input type="text" name="reference_transaction" id="ref_field" class="form-control form-control-lg border-primary" placeholder="Entrez le code de transaction">
+                                        </div>
+                                    </div>
+
+                                    <hr>
+
                                     <div class="row mt-4">
                                         <div class="col-6">
-                                            <a href="{% url 'patientRead' %}" class="btn btn-secondary btn-block">
+                                            <a href="{% url 'patientRead' %}" class="btn btn-outline-secondary btn-lg btn-block">
                                                 <i class="fas fa-times"></i> Annuler
                                             </a>
                                         </div>
                                         <div class="col-6">
-                                            <button type="submit" class="btn btn-success btn-block" onclick="return confirm('Confirmer l\'encaissement de cette ordonnance ?')">
-                                                <i class="fas fa-check-circle"></i> Valider le Paiement
+                                            <button type="submit" class="btn btn-success btn-lg btn-block shadow-sm font-weight-bold">
+                                                <i class="fas fa-check-circle"></i> Confirmer l'Encaissement
                                             </button>
                                         </div>
                                     </div>
@@ -86,6 +137,43 @@
 
     <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js'%}"></script>
     <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js'%}"></script>
-    <script src="{% static 'back-end/assets/js/app.js'%}"></script>
+    <script>
+        $(document).ready(function() {
+            const taux = parseFloat("{{ taux }}");
+
+            // Conversion dynamique USD -> CDF
+            function updateConversion() {
+                const montant = parseFloat($('#id_montant_physique').val()) || 0;
+                const devise = $('#id_devise').val();
+                
+                if (devise === 'USD') {
+                    const equivalent = (montant * taux).toLocaleString('fr-FR');
+                    $('#conversion_info').html('<i class="fas fa-exchange-alt"></i> Équivalent : ' + equivalent + ' FC');
+                } else {
+                    $('#conversion_info').html('');
+                }
+            }
+
+            $('#id_montant_physique, #id_devise').on('input change', updateConversion);
+
+            // Gestion de l'affichage M-Pesa
+            $('#mode_paiement').on('change', function() {
+                if ($(this).val() === 'MPESA') {
+                    $('#reference_row').slideDown();
+                    $('#ref_field').attr('required', true);
+                } else {
+                    $('#reference_row').slideUp();
+                    $('#ref_field').attr('required', false);
+                }
+            });
+
+            // Validation de sécurité avant envoi
+            $('#paymentForm').on('submit', function() {
+                const montant = $('#id_montant_physique').val();
+                const devise = $('#id_devise').val();
+                return confirm("Confirmez-vous l'encaissement de " + montant + " " + devise + " ?");
+            });
+        });
+    </script>
 </body>
 </html>

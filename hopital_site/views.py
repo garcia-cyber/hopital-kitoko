@@ -1767,32 +1767,101 @@ def delivrer_ordonnance(request, ordonnance_id):
 # =======================================================================
 @login_required
 def payer_ordonnance(request, patient_id):
+    # 1. Contexte
     patient = get_object_or_404(Patient, id=patient_id)
+    profil = Profil.objects.filter(userProfil=request.user).first()
     
-    # On cherche l'ordonnance non payée
-    ordonnance = Ordonnance.objects.filter(
-        consultation__patient=patient, 
-        est_paye=False 
-    ).order_by('-date_creation').first()
+    # 2. Récupérer les LIGNES d'ordonnance non payées
+    lignes_a_payer = LigneOrdonnance.objects.filter(
+        ordonnance__consultation__patient=patient,
+        paye=False
+    ).select_related('medicament')
 
-    if not ordonnance:
-        messages.warning(request, f"Aucune ordonnance en attente de paiement pour {patient.noms}.")
-        return redirect('patientRead') # <-- CORRIGÉ ICI
+    # 3. Calcul du total global restant
+    total_du_cdf = sum(Decimal(str(l.quantite_prescrite * l.medicament.prix_vente_detail)) for l in lignes_a_payer)
+
+    # 4. Taux de change
+    config = ConfigurationHopital.objects.first()
+    taux_actuel = Decimal(str(config.taux_usd_en_cdf)) if config else Decimal("2500.0")
 
     if request.method == 'POST':
-        ordonnance.est_paye = True
-        ordonnance.save()
-        
-        messages.success(request, f"Paiement validé pour l'ordonnance #{ordonnance.id}.")
-        return redirect('patientRead') # <-- CORRIGÉ ICI
+        montant_saisi = request.POST.get('montant_physique')
+        devise = request.POST.get('devise')
 
-    context = {
+        if montant_saisi:
+            try:
+                montant_decimal = Decimal(str(montant_saisi))
+                argent_disponible_cdf = (montant_decimal * taux_actuel) if devise == 'USD' else montant_decimal
+
+                if argent_disponible_cdf > total_du_cdf:
+                    messages.error(request, f"Le montant dépasse la dette ({int(total_du_cdf)} FC).")
+                elif argent_disponible_cdf <= 0:
+                    messages.error(request, "Montant invalide.")
+                else:
+                    reste_a_distribuer = argent_disponible_cdf
+                    lignes_soldees = 0
+
+                    for ligne in lignes_a_payer:
+                        if reste_a_distribuer <= 0:
+                            break
+
+                        # Prix total pour CETTE ligne précise
+                        prix_ligne = Decimal(str(ligne.quantite_prescrite * ligne.medicament.prix_vente_detail))
+
+                        # On récupère ou crée la facture pour cette ligne
+                        # On utilise la prestation Pharmacie par défaut
+                        prestation_pharma = Prestation.objects.filter(libelle__icontains='Pharmacie').first()
+                        
+                        facture, created = Facture.objects.get_or_create(
+                            patient=patient,
+                            ordonnance=ligne.ordonnance,
+                            prestation=prestation_pharma,
+                            defaults={'prix_fixe_cdf': prix_ligne, 'taux_fixe': taux_actuel}
+                        )
+
+                        # Calcul du reste sur cette ligne (si acompte déjà versé)
+                        deja_paye = sum(p.montant_physique * (taux_actuel if p.devise == 'USD' else 1) for p in facture.paiements.all())
+                        du_sur_cette_ligne = prix_ligne - deja_paye
+
+                        # Distribution de l'argent
+                        versement_cdf = min(reste_a_distribuer, du_sur_cette_ligne)
+
+                        if versement_cdf > 0:
+                            part_physique = versement_cdf / taux_actuel if devise == 'USD' else versement_cdf
+                            
+                            Paiement.objects.create(
+                                facture=facture,
+                                montant_physique=part_physique,
+                                devise=devise
+                            )
+
+                            # Si la ligne est totalement payée
+                            if (deja_paye + versement_cdf) >= prix_ligne:
+                                ligne.paye = True
+                                ligne.save()
+                                lignes_soldees += 1
+
+                            reste_a_distribuer -= versement_cdf
+
+                    # Si TOUTES les lignes de l'ordonnance sont payées, on ferme l'ordonnance
+                    if not LigneOrdonnance.objects.filter(ordonnance=ligne.ordonnance, paye=False).exists():
+                        ligne.ordonnance.est_paye = True
+                        ligne.ordonnance.save()
+
+                    messages.success(request, f"Payé : {int(argent_disponible_cdf)} FC. {lignes_soldees} médicament(s) validé(s).")
+                    return redirect('patientRead')
+
+            except Exception as e:
+                messages.error(request, f"Erreur : {str(e)}")
+
+    return render(request, 'back-end/payer_ordonnance.html', {
         'patient': patient,
-        'ordonnance': ordonnance,
-        'title': "Paiement de l'Ordonnance"
-    }
-    
-    return render(request, 'back-end/payer_ordonnance.html', context)
+        'lignes': lignes_a_payer,
+        'total_cdf': total_du_cdf,
+        'taux': taux_actuel,
+        'profil': profil,
+        'title': "Paiement Médicaments"
+    })
 
 # 50
 # ==========================================================================================================
@@ -1834,8 +1903,11 @@ def modifier_profil(request, profil_id):
     else:
         # Pré-remplir le formulaire avec les données actuelles
         form = ProfilForm(instance=profil)
+
+    profil = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil.fonction.fonction if profil else None
     
-    return render(request, 'back-end/modifier_profil.html', {'form': form, 'profil': profil})
+    return render(request, 'back-end/modifier_profil.html', {'form': form, 'profil': profil , 'fonction': fonction})
 
 
 # 52 
@@ -1856,10 +1928,15 @@ def admin_force_password(request, user_id):
             return redirect('employeRead')
     else:
         form = SetPasswordForm(user=user_to_edit)
+
+    profil = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil.fonction.fonction if profil else None
+
     
     return render(request, 'back-end/changer_mdp.html', {
         'form': form, 
-        'user_to_edit': user_to_edit
+        'user_to_edit': user_to_edit , 
+        'fonction' : fonction ,
     })
 
 # 53
@@ -1879,7 +1956,11 @@ def modifier_mon_mdp(request):
     else:
         form = PasswordChangeForm(user=request.user)
     
-    return render(request, 'back-end/mon_compte_mdp.html', {'form': form}) 
+
+    profil = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil.fonction.fonction if profil else None
+
+    return render(request, 'back-end/mon_compte_mdp.html', {'form': form , 'fonction':fonction})  
 
 # 54
 # =======================================================================================================

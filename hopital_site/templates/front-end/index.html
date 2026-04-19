@@ -32,27 +32,23 @@
             overflow-x: hidden;
         }
 
-        h1, h2, h3, .navbar-brand { font-family: 'Montserrat', sans-serif; font-weight: 800; color: white; }
+        h1, h2, h3, .navbar-brand { font-family: 'Montserrat', sans-serif; font-weight: 800; }
 
-        /* --- NAVBAR GLASSMORPHISM --- */
+        /* --- NAVBAR BLANCHE ET TEXTE NOIR --- */
         .custom-navbar { 
-            background: rgba(15, 23, 42, 0.85); 
-            backdrop-filter: blur(15px); 
-            -webkit-backdrop-filter: blur(15px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            background: #ffffff !important; 
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
             padding: 15px 0;
             transition: all 0.4s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
 
         .navbar-brand { display: flex; align-items: center; font-size: 24px; letter-spacing: -1px; }
-        .brand-logo { 
-            height: 45px; width: auto; margin-right: 12px; border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-        }
+        .brand-logo { height: 45px; width: auto; margin-right: 12px; border-radius: 8px; }
 
         .nav li a { 
-            color: var(--text-light) !important; 
-            font-weight: 500; 
+            color: #1e293b !important; 
+            font-weight: 600; 
             text-transform: uppercase;
             font-size: 12px;
             letter-spacing: 1px;
@@ -65,110 +61,49 @@
             content: ''; position: absolute; width: 0; height: 2px;
             bottom: 0; left: 20px; background: var(--accent); transition: width 0.3s;
         }
-
         .nav li a:hover::after { width: calc(100% - 40px); }
         .nav li a:hover { color: var(--accent) !important; background: transparent !important; }
 
         .btn-nav-contact {
-            background: linear-gradient(45deg, var(--accent), #00b8b9);
+            background: var(--deep-blue) !important;
             color: white !important;
             padding: 10px 25px !important;
             border-radius: 50px !important;
             font-weight: 700 !important;
-            box-shadow: 0 4px 15px rgba(0, 210, 211, 0.3);
-            border: none;
             margin-left: 15px;
-            transition: transform 0.3s ease !important;
+            border: none;
+            transition: all 0.3s ease !important;
         }
+        .btn-nav-contact:hover { background: var(--accent) !important; transform: translateY(-3px); }
 
-        .btn-nav-contact:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0, 210, 211, 0.4); }
+        .navbar-toggle .icon-bar { background-color: var(--deep-blue) !important; }
 
-        /* --- HERO --- */
-        #home { 
-            height: 90vh; 
-            position: relative; 
-            display: flex; 
-            align-items: center; 
-            background-color: #000;
-            overflow: hidden;
-        }
-
-        .hero-img-bg { 
-            position: absolute; 
-            right: 0; 
-            top: 0; 
-            width: 100%; 
-            height: 100%; 
-            object-fit: cover; 
-            opacity: 0.5; 
-            z-index: 0;
-        }
-
-        .hero-overlay {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(to top, #000 0%, #0008 100%);
-            z-index: 1;
-        }
-
+        /* --- CONTENU --- */
+        #home { height: 90vh; position: relative; display: flex; align-items: center; background-color: #000; overflow: hidden; }
+        .hero-img-bg { position: absolute; right: 0; top: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.5; z-index: 0; }
+        .hero-overlay { position: absolute; width: 100%; height: 100%; background: linear-gradient(to top, #000 0%, #0008 100%); z-index: 1; }
         .hero-content { position: relative; z-index: 2; }
 
-        /* --- SECTIONS --- */
         section { padding: 100px 0; }
-        .glass-card { 
-            background: rgba(255, 255, 255, 0.03); 
-            padding: 40px; 
-            border-radius: 24px; 
-            border: 1px solid var(--card-border); 
-            transition: 0.3s ease;
-        }
+        .glass-card { background: rgba(255, 255, 255, 0.03); padding: 40px; border-radius: 24px; border: 1px solid var(--card-border); transition: 0.3s ease; }
         .glass-card:hover { background: rgba(255, 255, 255, 0.05); border-color: var(--accent); }
         .accent-bar { width: 60px; height: 4px; background: var(--accent); margin-bottom: 30px; border-radius: 2px; }
 
-        /* --- BIOGRAPHIE PHOTO STYLE --- */
-        .bio-img-container {
-            position: relative;
-            padding: 10px;
-        }
+        .bio-img-container { position: relative; padding: 10px; }
         .bio-img-container::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            border: 2px solid var(--accent);
-            border-radius: 20px;
-            transform: translate(-15px, 15px);
-            z-index: 0;
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            border: 2px solid var(--accent); border-radius: 20px; transform: translate(-15px, 15px); z-index: 0;
         }
-        .bio-img {
-            border-radius: 20px;
-            position: relative;
-            z-index: 1;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            width: 100%;
-            height: auto;
-            object-fit: cover;
-        }
+        .bio-img { border-radius: 20px; position: relative; z-index: 1; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 100%; height: auto; object-fit: cover; }
 
-        /* --- FORM --- */
-        .form-control { 
-            background: rgba(255, 255, 255, 0.05); border: 1px solid var(--card-border); 
-            color: white !important; height: 55px; border-radius: 12px; margin-bottom: 20px;
-        }
-        .btn-main { 
-            background: var(--accent); color: white; font-weight: 700; padding: 15px 40px; 
-            border-radius: 12px; border: none; box-shadow: 0 10px 20px rgba(0, 210, 211, 0.2);
-        }
+        .form-control { background: rgba(255, 255, 255, 0.05); border: 1px solid var(--card-border); color: white !important; height: 55px; border-radius: 12px; margin-bottom: 20px; }
+        .btn-main { background: var(--accent); color: white; font-weight: 700; padding: 15px 40px; border-radius: 12px; border: none; box-shadow: 0 10px 20px rgba(0, 210, 211, 0.2); }
 
         footer { padding: 60px 0; border-top: 1px solid var(--card-border); text-align: center; background: #0a0f1d; }
 
         @media (max-width: 768px) {
             #home { text-align: center; height: auto; padding: 160px 0 80px; }
             .btn-nav-contact { margin: 15px 0; display: inline-block; }
-            .bio-img-container { margin-bottom: 50px; }
         }
     </style>
 </head>
@@ -179,13 +114,13 @@
         <div class="container">
             <div class="navbar-header">
                 <button class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse" style="border:none;">
-                    <span class="icon-bar" style="background:var(--accent)"></span>
-                    <span class="icon-bar" style="background:var(--accent)"></span>
-                    <span class="icon-bar" style="background:var(--accent)"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
                 </button>
                 <a href="#" class="navbar-brand">
-                    <img src="{% static 'front-end/assets/images/banner/logo2.jpg' %}" alt="Logo" class="brand-logo">
-                    <span style="color:white">Centre hospitalier KITOKO</span><span style="color:var(--accent)">.</span>
+                    <img src="{% static 'front-end/assets/images/banner/logo2.jpg' %}" alt="Logo" class="brand-logo" width="80">
+                    <span style="color:var(--deep-blue)">Centre hospitalier KITOKO</span><span style="color:var(--accent)">.</span>
                 </a>
             </div>
             <div class="collapse navbar-collapse">
@@ -195,10 +130,10 @@
                     <li><a href="#biographie">Le Promoteur</a></li>
                     <li><a href="#contact" class="btn-nav-contact">PRENDRE RDV</a></li>
                     {% if user.is_authenticated %}
-                    <li><a href="{% url 'panel' %}">dashboard</a></li>
-                    <li><a href="{% url 'deconnexion' %}">deconnexion</a></li>
+                    <li><a href="{% url 'panel' %}">DASHBOARD</a></li>
+                    <li><a href="{% url 'deconnexion' %}">DECONNEXION</a></li>
                     {% else %}
-                    <li><a href="{% url 'login' %}">Login</a></li>
+                    <li><a href="{% url 'login' %}">LOGIN</a></li>
                     {% endif%}
                 </ul>
             </div>
@@ -227,13 +162,13 @@
         <div class="container">
             <div class="row">
                 <div class="col-md-12">
-                    <h2>L'INSTITUTION</h2>
+                    <h2 style="color:white">L'INSTITUTION</h2>
                     <div class="accent-bar"></div>
                 </div>
                 <div class="col-md-6">
                     <div class="glass-card wow fadeInLeft">
                         <h3 style="color: var(--accent); margin-top: 0;">Historique</h3>
-                        <p>Lancé le <strong>11 mars 2024</strong> au sein de la Fondation KITOKO, notre établissement se situe au croisement des avenues Ngungu et du Marché à Kinshasa. Nous apportons une réponse spécialisée aux besoins de santé de la population kinoise.</p>
+                        <p>Lancé le <strong>11 mars 2024</strong> au sein de la Fondation KITOKO, notre établissement se situe au croisement des avenues Ngungu et du Marché à Kinshasa.</p>
                     </div>
                 </div>
                 <div class="col-md-6">
@@ -254,7 +189,7 @@
         <div class="container">
             <div class="row">
                 <div class="col-md-12 text-center">
-                    <h2>LE PROMOTEUR LAWRENCE KITOKO</h2>
+                    <h2 style="color:white">LE PROMOTEUR LAWRENCE KITOKO</h2>
                     <div class="accent-bar" style="margin: 0 auto 50px;"></div>
                 </div>
             </div>
@@ -267,10 +202,10 @@
                 <div class="col-md-8">
                     <div class="glass-card wow fadeInUp">
                         <p style="text-align: justify; font-size: 17px;">
-                            Originaire de la Province de Tshopo et né à Kinshasa, Lawrence Kitoko vit entre le Congo et la France. Diplômé en kinésithérapie (Bruxelles), ostéopathie (Louvain) et santé publique (UCL), il a œuvré comme coordonnateur médical des <strong>SIMBAS-EUROPE</strong>. 
+                            Originaire de la Province de Tshopo et né à Kinshasa, Lawrence Kitoko vit entre le Congo et la France. Diplômé en kinésithérapie (Bruxelles), ostéopathie (Louvain) et santé publique (UCL).
                         </p>
                         <p style="text-align: justify; color: var(--text-muted); margin-top: 15px;">
-                            Fondateur de l’ONG IMELA et du KONGO GOVERNANCE INSTITUTE, il a été lauréat de nombreux prix d'excellence au Canada. Depuis février 2024, il dirige le Centre Hospitalier KITOKO, fusionnant son expertise internationale avec une vision moderne de la santé en RDC.
+                            Fondateur de l’ONG IMELA et du KONGO GOVERNANCE INSTITUTE. Depuis février 2024, il dirige le Centre Hospitalier KITOKO, fusionnant son expertise internationale avec une vision moderne de la santé en RDC.
                         </p>
                     </div>
                 </div>
@@ -282,7 +217,7 @@
         <div class="container">
             <div class="row">
                 <div class="col-md-5">
-                    <h2 style="margin-top:0">Contactez-nous</h2>
+                    <h2 style="margin-top:0; color:white">Contactez-nous</h2>
                     <div class="accent-bar"></div>
                     <div style="margin-top: 40px; font-size: 16px;">
                         <p><i class="fa fa-envelope" style="color:var(--accent)"></i> lawrencekitoko@hotmail.com</p>
@@ -307,7 +242,7 @@
 
     <footer>
         <div class="container">
-            <p style="font-weight: 700; font-size: 20px;">CHK<span style="color:var(--accent)">.</span></p>
+            <p style="font-weight: 700; font-size: 20px; color:white;">CHK<span style="color:var(--accent)">.</span></p>
             <p style="color: var(--text-muted); font-size: 13px; margin-top: 10px;">
                 &copy; 2026 Centre Hospitalier KITOKO | Lawrence Kitoko | Kinshasa, RDC.
             </p>

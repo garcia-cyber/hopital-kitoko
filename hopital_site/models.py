@@ -5,6 +5,7 @@ from datetime import timedelta
 from django.core.exceptions import ValidationError
 from decimal import Decimal
 import datetime
+from django.db.models import Sum, F
 # 1 =============================================
 class Fonction(models.Model):
     fonction = models.CharField(max_length=30) 
@@ -76,6 +77,7 @@ class Prestation(models.Model):
         ('CONS', 'Consultation'),
         ('LABO', 'Laboratoire'),
         ('SOIN', 'Soins / Nursing'),
+        ('PHARMA', 'Pharmacie'),
     ]
     libelle = models.CharField(max_length=200)
     categorie = models.CharField(max_length=10, choices=CATEGORIES)
@@ -87,37 +89,73 @@ class Prestation(models.Model):
 class Facture(models.Model):
     patient = models.ForeignKey('Patient', on_delete=models.CASCADE)
     prestation = models.ForeignKey('Prestation', on_delete=models.CASCADE)
+    ordonnance = models.OneToOneField(
+        'Ordonnance', 
+        on_delete=models.CASCADE, 
+        null=True, 
+        blank=True, 
+        related_name='facture'
+    )
     date_emission = models.DateTimeField(auto_now_add=True)
-    prix_fixe_cdf = models.DecimalField(max_digits=15, decimal_places=2, editable=False)
-    taux_fixe = models.DecimalField(max_digits=10, decimal_places=2, editable=False)
+    # On met default=0 pour éviter les erreurs de calcul au départ
+    prix_fixe_cdf = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    taux_fixe = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     vente_pharmacie = models.OneToOneField('VentePharmacie', on_delete=models.CASCADE, null=True, blank=True)
+
+    def calculer_total_reel(self):
+        """ Calcule le montant total basé sur les lignes de l'ordonnance """
+        if self.ordonnance:
+            # Calcule la somme de (quantité * prix) pour chaque ligne
+            total = self.ordonnance.lignes.aggregate(
+                total_ord=Sum(F('quantite_prescrite') * F('medicament__prix_vente_detail'))
+            )['total_ord']
+            return total or 0
+        return self.prestation.prix_cdf
+
+    
 
     def save(self, *args, **kwargs):
         if not self.id:
-            if self.prestation.categorie != 'ADM':
-                if not self.patient.a_une_fiche_valide():
-                    raise ValidationError(f"Action refusée : {self.patient.noms} n'a pas de fiche valide.")
-                if self.patient.doit_solder_fiche():
-                    raise ValidationError(f"Action refusée : {self.patient.noms} doit solder sa fiche.")
+            # 1. Taux de change
+            from .models import ConfigurationHopital 
             config = ConfigurationHopital.objects.first()
-            if not config:
-                raise ValidationError("Erreur : Aucun taux de change configuré.")
-            self.taux_fixe = config.taux_usd_en_cdf
-            self.prix_fixe_cdf = self.prestation.prix_cdf
+            self.taux_fixe = config.taux_usd_en_cdf if config else 2500
+            
+            # 2. CALCUL DU PRIX (LOGIQUE INVERSÉE POUR ÉVITER LES ERREURS)
+            if self.ordonnance:
+                # On calcule d'abord le total des médicaments
+                total_medics = self.calculer_total_reel()
+                if total_medics > 0:
+                    self.prix_fixe_cdf = total_medics
+                else:
+                    # Si l'ordonnance est vide, on prend quand même le prix de la prestation pharma
+                    self.prix_fixe_cdf = self.prestation.prix_cdf
+            else:
+                # Si pas d'ordonnance, c'est une fiche ou autre prestation standard
+                self.prix_fixe_cdf = self.prestation.prix_cdf
+
+            # 3. VERIFICATION DE LA FICHE (Uniquement si ce n'est PAS une ordonnance)
+            if not self.ordonnance and self.prestation.categorie != 'ADM':
+                if not self.patient.a_une_fiche_valide():
+                    raise ValidationError("Le patient n'a pas de fiche valide.")
+
         super().save(*args, **kwargs)
+
+
 
     @property
     def total_paye(self):
-        from django.db.models import Sum
-        return self.paiements.aggregate(Sum('montant_comptable_cdf'))['montant_comptable_cdf__sum'] or 0
+        """ Somme de tous les paiements effectués sur cette facture """
+        res = self.paiements.aggregate(Sum('montant_comptable_cdf'))['montant_comptable_cdf__sum']
+        return res if res else 0
 
     @property
     def reste_a_payer(self):
+        """ Ce qu'il reste à payer (Total - Déjà payé) """
         return self.prix_fixe_cdf - self.total_paye
 
     def __str__(self):
         return f"Facture {self.id} - {self.patient.noms}"
-
 # 8 ======================================================================
 class Paiement(models.Model):
     # Définition des modes de paiement
@@ -164,19 +202,6 @@ class Paiement(models.Model):
     class Meta:
         verbose_name = "Paiement"
         verbose_name_plural = "Paiements"
-# class Paiement(models.Model):
-#     facture = models.ForeignKey(Facture, on_delete=models.CASCADE, related_name='paiements')
-#     montant_physique = models.DecimalField(max_digits=15, decimal_places=2)
-#     devise = models.CharField(max_length=3, choices=[('CDF', 'CDF'), ('USD', 'USD')])
-#     date_paiement = models.DateTimeField(auto_now_add=True)
-#     montant_comptable_cdf = models.DecimalField(max_digits=15, decimal_places=2, editable=False)
-
-#     def save(self, *args, **kwargs):
-#         if self.devise == 'USD':
-#             self.montant_comptable_cdf = self.montant_physique * self.facture.taux_fixe
-#         else:
-#             self.montant_comptable_cdf = self.montant_physique
-#         super().save(*args, **kwargs)
 
 
 # 9 =======================================================
@@ -339,10 +364,15 @@ class BonEntree(models.Model):
                 self.medicament.quantite_stock_pieces += (self.nb_cartons_recus * self.medicament.pieces_par_carton)
             self.medicament.save()
             super().save(*args, **kwargs)
+# ===========================================================================
+# vente pharmacie
 
 class VentePharmacie(models.Model):
     vendeur = models.ForeignKey(User, on_delete=models.CASCADE)
     patient = models.ForeignKey(Patient, on_delete=models.SET_NULL, null=True, blank=True)
+    # AJOUTE CETTE LIGNE :
+    ordonnance = models.OneToOneField('Ordonnance', on_delete=models.CASCADE, null=True, blank=True, related_name='vente')
+    
     date_vente = models.DateTimeField(auto_now_add=True)
     total_cdf = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     statut = models.CharField(max_length=10, choices=[('VALIDE', 'Validée'), ('ANNULE', 'Annulée')], default='VALIDE')
@@ -367,6 +397,7 @@ class LigneOrdonnance(models.Model):
     quantite_payee = models.PositiveIntegerField(default=0)
     quantite_delivree = models.PositiveIntegerField(default=0)
     date_creation = models.DateTimeField(auto_now_add=True)
+    paye = models.BooleanField(default=False)
 
     @property
     def reste_a_payer(self):
