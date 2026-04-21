@@ -188,6 +188,16 @@
 </li>
                     </ul>
                 </li>
+
+                <li class="{% if request.resolver_match.url_name == 'livraison_pharmacie' %}active{% endif %}">
+    <a href="{% url 'livraison_pharmacie' %}">
+        <i class="fas fa-boxes"></i> 
+        <span>Livraisons Pharma</span>
+        <span class="badge badge-pill badge-danger float-right">
+            New
+        </span>
+    </a>
+</li>
                 {% else %}
                 {% endif %}
                 

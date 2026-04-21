@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <title>KITOKO - File de Livraison Pharmacie</title>
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css' %}">
+    <style>
+        .patient-name { color: #007bff; font-weight: bold; font-size: 1.1rem; }
+        .med-list { background: #f8f9fa; border-radius: 8px; padding: 10px; }
+        .pulse-success { animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+    </style>
+</head>
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="row">
+                    <div class="col-sm-12">
+                        <h4 class="page-title"><i class="fa fa-truck"></i> Commandes Payées - À Délivrer</h4>
+                        <p class="text-muted">Liste des médicaments prêts à être remis aux patients.</p>
+                    </div>
+                </div>
+
+                <div class="row">
+                    {% for facture in commandes %}
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card shadow-sm border-success mb-4">
+                            <div class="card-header bg-white d-flex justify-content-between">
+                                <span class="badge badge-success pulse-success">PAYÉ</span>
+                                <small class="text-muted">#PH-{{ facture.id }}</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="patient-name mb-2">
+                                    <i class="fa fa-user"></i> {{ facture.patient.noms }}
+                                </div>
+                                
+                                <div class="med-list">
+                                    <h6 class="small font-weight-bold text-uppercase">Médicaments :</h6>
+                                    <ul class="list-unstyled mb-0">
+                                        {% for ligne in facture.lignes.all %}
+                                        <li class="d-flex justify-content-between border-bottom py-1">
+                                            <span>{{ ligne.medicament.designation }}</span>
+                                            <span class="badge badge-primary">x {{ ligne.quantite }}</span>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="card-footer bg-white">
+                                <div class="row">
+                                    <div class="col-6">
+                                        <a href="{% url 'imprimer_facture_pharma' facture.id %}" target="_blank" class="btn btn-outline-dark btn-sm btn-block">
+                                            <i class="fa fa-print"></i> Ticket
+                                        </a>
+                                    </div>
+                                    <div class="col-6">
+                                        <button class="btn btn-success btn-sm btn-block">
+                                            <i class="fa fa-check"></i> Servir
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="col-12 text-center py-5">
+                        <div class="display-4 text-muted"><i class="fa fa-box-open"></i></div>
+                        <h3 class="text-muted mt-3">Aucune commande en attente de livraison.</h3>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js' %}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js' %}"></script>
+</body>
+</html>

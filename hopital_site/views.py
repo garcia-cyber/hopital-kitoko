@@ -2168,3 +2168,19 @@ def imprimer_facture_pharma(request, facture_id):
         'date': facture.date_facture,
     }
     return render(request, 'back-end/pharmacie/print_facture.html', context)
+
+# 61
+# ================================================================================================================
+# tableau de bord medicament a donne au patient 
+# =================================================================================================================
+@login_required
+def tableau_bord_livraison_pharmacie(request):
+    commandes_a_livrer = FacturePharmacie.objects.annotate(
+        total_paye_db=Sum('paiements__montant_comptable_cdf')
+    ).filter(
+        total_paye_db__gte=F('total_a_payer_cdf')
+    ).select_related('patient').prefetch_related('lignes__medicament')
+
+    return render(request, 'back-end/pharmacie/livraison_queue.html', {
+        'commandes': commandes_a_livrer
+    })

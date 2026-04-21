@@ -5,7 +5,7 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=Edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Hopital | KITOKO </title>
+    <title>Hôpital | KITOKO </title>
     
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700&family=Montserrat:wght@800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
@@ -34,59 +34,61 @@
 
         h1, h2, h3, .navbar-brand { font-family: 'Montserrat', sans-serif; font-weight: 800; }
 
-        /* --- NAVBAR BLANCHE ET TEXTE NOIR --- */
+        /* --- NAVBAR AJUSTÉE --- */
         .custom-navbar { 
             background: #ffffff !important; 
             border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-            padding: 15px 0;
+            padding: 5px 0; /* Padding réduit pour compenser la taille du logo */
             transition: all 0.4s ease;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
 
-        .navbar-brand { display: flex; align-items: center; font-size: 24px; letter-spacing: -1px; }
-        .brand-logo { height: 45px; width: auto; margin-right: 12px; border-radius: 8px; }
+        .navbar-brand { 
+            display: flex; 
+            align-items: center; 
+            padding: 10px 15px !important; 
+            height: auto;
+        }
+
+        .brand-logo { 
+            height: 80px; /* Logo bien visible */
+            width: auto; 
+            margin-right: 15px; 
+            border-radius: 8px;
+        }
 
         .nav li a { 
             color: #1e293b !important; 
-            font-weight: 600; 
+            font-weight: 700; 
             text-transform: uppercase;
-            font-size: 12px;
-            letter-spacing: 1px;
-            padding: 10px 20px !important;
+            font-size: 13px;
+            padding: 40px 15px !important; /* Augmenté pour centrer verticalement avec le logo de 80px */
             transition: all 0.3s;
-            position: relative;
         }
 
-        .nav li a::after {
-            content: ''; position: absolute; width: 0; height: 2px;
-            bottom: 0; left: 20px; background: var(--accent); transition: width 0.3s;
-        }
-        .nav li a:hover::after { width: calc(100% - 40px); }
-        .nav li a:hover { color: var(--accent) !important; background: transparent !important; }
+        .nav li a:hover { color: var(--accent) !important; }
 
         .btn-nav-contact {
             background: var(--deep-blue) !important;
             color: white !important;
-            padding: 10px 25px !important;
+            padding: 12px 25px !important;
             border-radius: 50px !important;
-            font-weight: 700 !important;
+            margin-top: 28px !important; /* Aligné avec le reste du menu */
             margin-left: 15px;
             border: none;
-            transition: all 0.3s ease !important;
+            transition: 0.3s !important;
         }
-        .btn-nav-contact:hover { background: var(--accent) !important; transform: translateY(-3px); }
 
-        .navbar-toggle .icon-bar { background-color: var(--deep-blue) !important; }
+        .btn-nav-contact:hover { background: var(--accent) !important; transform: translateY(-2px); }
 
-        /* --- CONTENU --- */
+        /* --- SECTIONS --- */
         #home { height: 90vh; position: relative; display: flex; align-items: center; background-color: #000; overflow: hidden; }
-        .hero-img-bg { position: absolute; right: 0; top: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.5; z-index: 0; }
+        .hero-img-bg { position: absolute; right: 0; top: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.5; }
         .hero-overlay { position: absolute; width: 100%; height: 100%; background: linear-gradient(to top, #000 0%, #0008 100%); z-index: 1; }
         .hero-content { position: relative; z-index: 2; }
 
         section { padding: 100px 0; }
-        .glass-card { background: rgba(255, 255, 255, 0.03); padding: 40px; border-radius: 24px; border: 1px solid var(--card-border); transition: 0.3s ease; }
-        .glass-card:hover { background: rgba(255, 255, 255, 0.05); border-color: var(--accent); }
+        .glass-card { background: rgba(255, 255, 255, 0.03); padding: 40px; border-radius: 24px; border: 1px solid var(--card-border); }
         .accent-bar { width: 60px; height: 4px; background: var(--accent); margin-bottom: 30px; border-radius: 2px; }
 
         .bio-img-container { position: relative; padding: 10px; }
@@ -94,16 +96,18 @@
             content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             border: 2px solid var(--accent); border-radius: 20px; transform: translate(-15px, 15px); z-index: 0;
         }
-        .bio-img { border-radius: 20px; position: relative; z-index: 1; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 100%; height: auto; object-fit: cover; }
+        .bio-img { border-radius: 20px; position: relative; z-index: 1; width: 100%; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
 
         .form-control { background: rgba(255, 255, 255, 0.05); border: 1px solid var(--card-border); color: white !important; height: 55px; border-radius: 12px; margin-bottom: 20px; }
-        .btn-main { background: var(--accent); color: white; font-weight: 700; padding: 15px 40px; border-radius: 12px; border: none; box-shadow: 0 10px 20px rgba(0, 210, 211, 0.2); }
+        .btn-main { background: var(--accent); color: white; font-weight: 700; padding: 15px 40px; border-radius: 12px; border: none; }
 
         footer { padding: 60px 0; border-top: 1px solid var(--card-border); text-align: center; background: #0a0f1d; }
 
         @media (max-width: 768px) {
-            #home { text-align: center; height: auto; padding: 160px 0 80px; }
-            .btn-nav-contact { margin: 15px 0; display: inline-block; }
+            .brand-logo { height: 60px; }
+            .nav li a { padding: 15px 15px !important; }
+            .btn-nav-contact { margin-top: 10px !important; margin-bottom: 20px; }
+            #home { text-align: center; padding-top: 160px; }
         }
     </style>
 </head>
@@ -113,14 +117,17 @@
     <nav class="navbar navbar-fixed-top custom-navbar">
         <div class="container">
             <div class="navbar-header">
-                <button class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse" style="border:none;">
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
+                <button class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                    <span class="icon-bar" style="background-color: var(--deep-blue);"></span>
+                    <span class="icon-bar" style="background-color: var(--deep-blue);"></span>
+                    <span class="icon-bar" style="background-color: var(--deep-blue);"></span>
                 </button>
                 <a href="#" class="navbar-brand">
-                    <img src="{% static 'front-end/assets/images/banner/logo2.jpg' %}" alt="Logo" class="brand-logo" width="80">
-                    <span style="color:var(--deep-blue)">Centre hospitalier KITOKO</span><span style="color:var(--accent)">.</span>
+                    <img src="{% static 'front-end/assets/images/banner/logo.jpg' %}" alt="Logo" class="brand-logo">
+                    <div style="line-height: 1.1;">
+                        <span style="color:var(--deep-blue); font-size: 16px; display: block; font-weight: 700;">CENTRE HOSPITALIER</span>
+                        <span style="color:var(--accent); font-size: 22px; font-weight: 900;">KITOKO.</span>
+                    </div>
                 </a>
             </div>
             <div class="collapse navbar-collapse">
@@ -128,13 +135,12 @@
                     <li><a href="#home">Accueil</a></li>
                     <li><a href="#presentation">L'Institution</a></li>
                     <li><a href="#biographie">Le Promoteur</a></li>
-                    <li><a href="#contact" class="btn-nav-contact">PRENDRE RDV</a></li>
+                    <li><a href="#contact" class="">PRENDRE RDV</a></li>
                     {% if user.is_authenticated %}
-                    <li><a href="{% url 'panel' %}">DASHBOARD</a></li>
-                    <li><a href="{% url 'deconnexion' %}">DECONNEXION</a></li>
+                        <li><a href="{% url 'panel' %}">DASHBOARD</a></li>
                     {% else %}
-                    <li><a href="{% url 'login' %}">LOGIN</a></li>
-                    {% endif%}
+                        <li><a href="{% url 'login' %}">CONNEXION</a></li>
+                    {% endif %}
                 </ul>
             </div>
         </div>
@@ -152,7 +158,7 @@
                     <p class="wow fadeInUp" data-wow-delay="0.6s" style="font-size: 20px; color: var(--text-muted); margin: 30px 0;">
                         Le Centre Hospitalier KITOKO : l'excellence médicale internationale au cœur de Kinshasa, alliant innovation et humanité.
                     </p>
-                    <a href="#presentation" class="btn-main wow fadeInUp" data-wow-delay="0.8s">DÉCOUVRIR NOS SOINS</a>
+                    <a href="#presentation" class="btn-main wow fadeInUp" data-wow-delay="0.8s">DÉCOUVRIR NOS SERVICES</a>
                 </div>
             </div>
         </div>
@@ -174,7 +180,7 @@
                 <div class="col-md-6">
                     <div class="glass-card wow fadeInRight">
                         <h3 style="color: var(--accent); margin-top: 0;">Infrastructure</h3>
-                        <ul class="list-unstyled" style="font-size: 16px;">
+                        <ul class="list-unstyled">
                             <li><i class="fa fa-check" style="color:var(--accent)"></i> 50 Lits d'hospitalisation de haut standing</li>
                             <li><i class="fa fa-check" style="color:var(--accent)"></i> Bloc opératoire et Urgences 24h/7</li>
                             <li><i class="fa fa-check" style="color:var(--accent)"></i> Maternité, Pédiatrie et Médecine Interne</li>
@@ -196,16 +202,18 @@
             <div class="row" style="display: flex; align-items: center; flex-wrap: wrap;">
                 <div class="col-md-4 wow fadeInLeft">
                     <div class="bio-img-container">
-                        <img src="{% static 'front-end/hopital/kitoko2.jpg' %}" class="bio-img" alt="Lawrence Kitoko">
+                        <img src="{% static 'front-end/hopital/kitoko.jpg' %}" class="bio-img" alt="Lawrence Kitoko">
                     </div>
                 </div>
                 <div class="col-md-8">
                     <div class="glass-card wow fadeInUp">
-                        <p style="text-align: justify; font-size: 17px;">
+                        <p style="text-align: justify; font-size: 17px; font-weight: 600;">
                             Originaire de la Province de Tshopo et né à Kinshasa, Lawrence Kitoko vit entre le Congo et la France. Diplômé en kinésithérapie (Bruxelles), ostéopathie (Louvain) et santé publique (UCL).
                         </p>
                         <p style="text-align: justify; color: var(--text-muted); margin-top: 15px;">
-                            Fondateur de l’ONG IMELA et du KONGO GOVERNANCE INSTITUTE. Depuis février 2024, il dirige le Centre Hospitalier KITOKO, fusionnant son expertise internationale avec une vision moderne de la santé en RDC.
+                            Lawrence KITOKO‑LUBULA est un kinésithérapeute internationalement formé, spécialisé en rééducation fonctionnelle, neurologique et sportive, disposant d’une solide expérience clinique acquise en Europe, au Canada et en Afrique. Titulaire d’un Master en Santé Publique et engagé dans un parcours doctoral dans le même domaine, il développe une approche thérapeutique basée sur les standards scientifiques internationaux, l’innovation technologique et l’amélioration continue de la qualité des soins. 
+                            <br><br>
+                            Ancien praticien auprès de l’équipe nationale espoir de la RDC et collaborateur de plusieurs structures sportives professionnelles en Belgique, il possède une expertise reconnue dans la prise en charge des pathologies complexes. Entrepreneur du secteur médical, il est également le propriétaire du centre PHYSIOKIN – PARIS.
                         </p>
                     </div>
                 </div>
@@ -217,22 +225,22 @@
         <div class="container">
             <div class="row">
                 <div class="col-md-5">
-                    <h2 style="margin-top:0; color:white">Contactez-nous</h2>
+                    <h2 style="color:white">CONTACTS</h2>
                     <div class="accent-bar"></div>
-                    <div style="margin-top: 40px; font-size: 16px;">
-                        <p><i class="fa fa-envelope" style="color:var(--accent)"></i> lawrencekitoko@hotmail.com</p>
-                        <p><i class="fa fa-phone" style="color:var(--accent)"></i> +33 6 05 52 19 34 (France)</p>
-                        <p><i class="fa fa-whatsapp" style="color:var(--accent)"></i> +243 976 159 242 (RDC)</p>
+                    <div style="font-size: 16px; margin-top: 30px;">
+                        <p><i class="fa fa-map-marker" style="color:var(--accent); width:25px"></i> 102, Avenue Ngungu, Quartier Pende, Commune de Kinshasa, RDC</p>
+                        <p><i class="fa fa-envelope" style="color:var(--accent); width:25px"></i> lawrencekitoko@hotmail.com</p>
+                        <p><i class="fa fa-phone" style="color:var(--accent); width:25px"></i> +33 6 05 52 19 34 (FR) / +243 976 159 242 (RDC)</p>
                     </div>
                 </div>
                 <div class="col-md-7">
-                    <form action="#" method="post" class="glass-card wow fadeIn">
+                    <form action="#" method="post" class="glass-card">
                         {% csrf_token %}
                         <div class="row">
-                            <div class="col-md-6"><input type="text" name="nom" class="form-control" placeholder="Nom complet"></div>
-                            <div class="col-md-6"><input type="email" name="email" class="form-control" placeholder="Email"></div>
+                            <div class="col-md-6"><input type="text" name="nom" class="form-control" placeholder="Nom complet" required></div>
+                            <div class="col-md-6"><input type="email" name="email" class="form-control" placeholder="Email" required></div>
                         </div>
-                        <textarea name="message" class="form-control" rows="4" placeholder="Comment pouvons-nous vous aider ?"></textarea>
+                        <textarea name="message" class="form-control" rows="4" placeholder="Comment pouvons-nous vous aider ?" required></textarea>
                         <button type="submit" class="btn-main" style="width:100%">ENVOYER LE MESSAGE</button>
                     </form>
                 </div>
@@ -243,8 +251,9 @@
     <footer>
         <div class="container">
             <p style="font-weight: 700; font-size: 20px; color:white;">CHK<span style="color:var(--accent)">.</span></p>
-            <p style="color: var(--text-muted); font-size: 13px; margin-top: 10px;">
-                &copy; 2026 Centre Hospitalier KITOKO | Lawrence Kitoko | Kinshasa, RDC.
+            <p style="color: var(--text-muted); font-size: 13px;">
+                102, Avenue Ngungu, Quartier Pende, Commune de Kinshasa, RDC<br>
+                &copy; 2026 Centre Hospitalier KITOKO | Lawrence Kitoko.
             </p>
         </div>
     </footer>
@@ -253,6 +262,5 @@
     <script src="{% static 'front-end/assets/js/bootstrap.min.js' %}"></script>
     <script src="{% static 'front-end/assets/js/wow.min.js' %}"></script>
     <script>new WOW().init();</script>
-
 </body>
 </html>
