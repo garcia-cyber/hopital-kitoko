@@ -1108,12 +1108,19 @@ def rediger_ordonnance(request, consultation_id):
     consultation = get_object_or_404(Consultation, id=consultation_id)
     patient = consultation.patient
     
+    # --- VÉRIFICATION : Empêcher les doublons ---
+    if Ordonnance.objects.filter(consultation=consultation).exists():
+        messages.warning(request, f"Une ordonnance a déjà été rédigée pour la consultation de {patient.noms}.")
+        return redirect('resultats_labo_medecin')
+
     # 1. Récupération des médicaments disponibles
     produits_stock = Medicament.objects.filter(quantite_stock_pieces__gt=0).order_by('designation')
     
+    # 2. Récupération des examens terminés avec les résultats du labo
     examens_faits = ExamenPrescrit.objects.filter(
-        consultation=consultation, termine=True
-    ).select_related('prestation')
+        consultation=consultation, 
+        termine=True
+    ).select_related('prestation', 'laborantin').order_by('-date_analyse')
 
     if request.method == "POST":
         medics_ids = request.POST.getlist('produit_id[]')
@@ -1126,41 +1133,31 @@ def rediger_ordonnance(request, consultation_id):
             erreurs = []
             lignes_a_creer = []
 
-            # 2. Vérification technique des stocks
+            # Vérification des stocks
             for m_id, q_voulue in zip(medics_ids, qtes_demandees):
                 try:
-                    if not q_voulue or int(q_voulue) <= 0:
-                        continue
-                        
+                    if not q_voulue or int(q_voulue) <= 0: continue
                     medoc = Medicament.objects.get(id=m_id)
                     q_voulue = int(q_voulue)
 
                     if medoc.quantite_stock_pieces < q_voulue:
-                        erreurs.append(
-                            f"Stock insuffisant pour {medoc.designation}. "
-                            f"Disponible: {medoc.quantite_stock_pieces}, Demandé: {q_voulue}."
-                        )
+                        erreurs.append(f"Stock insuffisant pour {medoc.designation} (Dispo: {medoc.quantite_stock_pieces}).")
                     else:
-                        lignes_a_creer.append({
-                            'objet_medoc': medoc,
-                            'quantite': q_voulue
-                        })
+                        lignes_a_creer.append({'objet_medoc': medoc, 'quantite': q_voulue})
                 except (Medicament.DoesNotExist, ValueError):
                     continue
 
             if erreurs:
-                for err in erreurs:
-                    messages.error(request, err)
+                for err in erreurs: messages.error(request, err)
             else:
                 try:
-                    # 3. SAUVEGARDE ATOMIQUE (Tout ou rien)
                     with transaction.atomic():
-                        # A. Création de l'objet Ordonnance principal
-                        # On garde contenu_prescription pour l'historique texte
-                        description_texte = "Détail des lignes :\n" + "\n".join([
+                        # Construction du texte descriptif
+                        description_texte = "Prescription :\n" + "\n".join([
                             f"- {l['objet_medoc'].designation}: {l['quantite']}" for l in lignes_a_creer
                         ])
                         
+                        # Création de l'ordonnance
                         ordonnance = Ordonnance.objects.create(
                             consultation=consultation,
                             medecin=request.user,
@@ -1168,23 +1165,22 @@ def rediger_ordonnance(request, consultation_id):
                             instructions_posologie=posologie_globale
                         )
 
-                        # B. Création des LigneOrdonnance pour le suivi CAISSE/PHARMACIE
+                        # Création des lignes de détails
                         for item in lignes_a_creer:
                             LigneOrdonnance.objects.create(
                                 ordonnance=ordonnance,
                                 medicament=item['objet_medoc'],
                                 quantite_prescrite=item['quantite'],
-                                quantite_payee=0,    # Initialement 0
-                                quantite_delivree=0  # Initialement 0
+                                quantite_payee=0, 
+                                quantite_delivree=0
                             )
 
-                        messages.success(request, f"Ordonnance n°{ordonnance.id} enregistrée. Le patient peut passer à la caisse.")
+                        messages.success(request, f"Ordonnance n°{ordonnance.id} enregistrée avec succès.")
                         return redirect('resultats_labo_medecin')
-                
                 except Exception as e:
-                    messages.error(request, f"Erreur technique lors de la sauvegarde : {e}")
+                    messages.error(request, f"Erreur technique : {e}")
 
-    # Gestion du profil pour la sidebar
+    # Profil pour la sidebar
     profil_connecte = Profil.objects.filter(userProfil=request.user).first()
     fonction = profil_connecte.fonction.fonction if profil_connecte and profil_connecte.fonction else None
     
@@ -1194,6 +1190,7 @@ def rediger_ordonnance(request, consultation_id):
         'examens': examens_faits,
         'produits_stock': produits_stock,
         'fonction': fonction,
+        'profil_connecte': profil_connecte
     }
     return render(request, 'back-end/rediger_ordonnance.html', context)
     

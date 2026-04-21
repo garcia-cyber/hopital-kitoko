@@ -18,7 +18,7 @@ DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 # Autorise localhost et ton adresse sur Render
 #ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.onrender.com'] avec la version de l'application
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'hopital-kitoko.onrender.com']
-
+#ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS','*').split(',')
 # 3. Applications installées
 INSTALLED_APPS = [
     'django.contrib.admin',

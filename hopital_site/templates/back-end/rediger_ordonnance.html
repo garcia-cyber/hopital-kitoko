@@ -13,20 +13,12 @@
     
     <style>
         .prescription-card { border-top: 4px solid #007bff; }
-        .labo-results-box { max-height: 200px; overflow-y: auto; background: #fdfdfd; border: 1px solid #eee; padding: 10px; border-radius: 5px; }
+        .labo-results-box { max-height: 550px; overflow-y: auto; background: #f4f7f6; border: 1px solid #ddd; padding: 15px; border-radius: 8px; }
+        .examen-card { background: white; border-radius: 6px; padding: 12px; margin-bottom: 12px; border-left: 5px solid #17a2b8; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .resultat-valeur { color: #dc3545; font-weight: bold; background: #fff5f5; padding: 5px; border-radius: 4px; display: block; margin-top: 5px; border: 1px dashed #feb2b2; }
         .med-label { font-weight: bold; color: #2c3e50; display: block; margin-bottom: 10px; }
-        
-        /* Style pour Select2 et Stock */
-        .select2-container--default .select2-selection--single {
-            height: 40px !important;
-            border: 1px solid #ced4da !important;
-            display: flex;
-            align-items: center;
-        }
-        .stock-display { font-size: 0.85rem; margin-top: 4px; display: block; }
-        .text-success-stock { color: #28a745; font-weight: bold; }
-        .text-danger-stock { color: #dc3545; font-weight: bold; }
-        .is-invalid-custom { border: 2px solid #dc3545 !important; }
+        .select2-container--default .select2-selection--single { height: 40px !important; display: flex; align-items: center; border: 1px solid #ced4da !important; }
+        .stock-info { font-size: 0.8rem; font-weight: bold; }
     </style>
 </head>
 
@@ -39,13 +31,13 @@
             <div class="content">
                 <div class="row">
                     <div class="col-sm-12">
-                        <h4 class="page-title">Rédaction d'Ordonnance : <span class="text-primary">{{ patient.noms }}</span></h4>
+                        <h4 class="page-title">Session de Prescription : <span class="text-primary">{{ patient.noms }}</span></h4>
                     </div>
                 </div>
 
                 {% if messages %}
                     {% for message in messages %}
-                        <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show">
+                        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% else %}success{% endif %} alert-dismissible fade show">
                             {{ message }}
                             <button type="button" class="close" data-dismiss="alert">&times;</button>
                         </div>
@@ -55,40 +47,53 @@
                 <form method="POST">
                     {% csrf_token %}
                     <div class="row">
-                        <div class="col-lg-4">
-                            <div class="card shadow-sm border-0">
-                                <div class="card-header bg-white">
-                                    <h5 class="card-title mb-0"><i class="fas fa-microscope text-info"></i> Examens Terminés</h5>
+                        <div class="col-lg-5">
+                            <div class="card shadow-sm">
+                                <div class="card-header bg-white border-bottom">
+                                    <h5 class="mb-0"><i class="fas fa-file-medical-alt text-info"></i> Résultats Laboratoire</h5>
                                 </div>
                                 <div class="card-body">
                                     <div class="labo-results-box">
-                                        <ul class="list-group list-group-flush">
-                                            {% for examen in examens %}
-                                                <li class="list-group-item px-0">
-                                                    <i class="fas fa-check-circle text-success small"></i> {{ examen.prestation.libelle }}
-                                                </li>
-                                            {% empty %}
-                                                <li class="list-group-item px-0 text-muted">Aucun examen disponible.</li>
-                                            {% endfor %}
-                                        </ul>
+                                        {% for examen in examens %}
+                                            <div class="examen-card">
+                                                <div class="d-flex justify-content-between">
+                                                    <span class="text-dark font-weight-bold">{{ examen.prestation.libelle }}</span>
+                                                    <small class="text-muted">{{ examen.date_analyse|date:"d/m/Y H:i" }}</small>
+                                                </div>
+                                                <div class="mt-2">
+                                                    <small class="text-muted text-uppercase" style="font-size: 0.65rem;">Données saisies par le labo :</small>
+                                                    <div class="resultat-valeur">
+                                                        {{ examen.resultat_labo|default:"Aucune observation rédigée"|linebreaksbr }}
+                                                    </div>
+                                                </div>
+                                                {% if examen.laborantin %}
+                                                    <div class="mt-2 text-right">
+                                                        <small class="font-italic">Par: {{ examen.laborantin.get_full_name }}</small>
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                        {% empty %}
+                                            <div class="text-center py-5">
+                                                <i class="fas fa-vials text-muted fa-3x"></i>
+                                                <p class="text-muted mt-3">Aucun examen disponible pour cette consultation.</p>
+                                            </div>
+                                        {% endfor %}
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="col-lg-8">
+                        <div class="col-lg-7">
                             <div class="card shadow-sm prescription-card">
                                 <div class="card-body">
-                                    <label class="med-label text-uppercase">
-                                        <i class="fas fa-pills text-primary"></i> Prescription Médicamenteuse
-                                    </label>
+                                    <label class="med-label text-uppercase text-primary"><i class="fas fa-pills"></i> Liste des Médicaments</label>
                                     
                                     <div class="table-responsive">
-                                        <table class="table table-bordered" id="prescriptionTable">
-                                            <thead>
-                                                <tr class="bg-light">
-                                                    <th width="50%">Médicament (Recherche)</th>
-                                                    <th>Détails</th>
+                                        <table class="table table-hover border" id="prescriptionTable">
+                                            <thead class="bg-light">
+                                                <tr>
+                                                    <th>Médicament</th>
+                                                    <th width="30%">Info</th>
                                                     <th width="15%">Qté</th>
                                                     <th width="5%"></th>
                                                 </tr>
@@ -97,40 +102,35 @@
                                                 <tr>
                                                     <td>
                                                         <select name="produit_id[]" class="form-control select-produit" required style="width: 100%;">
-                                                            <option value="">-- Rechercher... --</option>
+                                                            <option value="">-- Sélectionner --</option>
                                                             {% for m in produits_stock %}
-                                                                <option value="{{ m.id }}" 
-                                                                        data-forme="{{ m.forme }}" 
-                                                                        data-dosage="{{ m.dosage }}" 
-                                                                        data-stock="{{ m.quantite_stock_pieces }}">
+                                                                <option value="{{ m.id }}" data-forme="{{ m.forme }}" data-dosage="{{ m.dosage }}" data-stock="{{ m.quantite_stock_pieces }}">
                                                                     {{ m.designation }}
                                                                 </option>
                                                             {% endfor %}
                                                         </select>
-                                                        <div class="stock-display"></div>
+                                                        <div class="stock-info mt-1"></div>
                                                     </td>
-                                                    <td><input type="text" class="form-control display-info" readonly placeholder="-"></td>
-                                                    <td><input type="number" name="quantite_prescrite[]" class="form-control qte-input" value="1" min="1" required></td>
-                                                    <td class="text-center">
-                                                        <button type="button" class="btn btn-outline-danger btn-sm remove-row"><i class="fas fa-trash"></i></button>
-                                                    </td>
+                                                    <td><input type="text" class="form-control display-info" readonly></td>
+                                                    <td><input type="number" name="quantite_prescrite[]" class="form-control" value="1" min="1" required></td>
+                                                    <td><button type="button" class="btn btn-danger btn-sm remove-row"><i class="fas fa-times"></i></button></td>
                                                 </tr>
                                             </tbody>
                                         </table>
                                     </div>
 
                                     <button type="button" class="btn btn-info btn-sm mb-4" id="addRow">
-                                        <i class="fas fa-plus"></i> Ajouter un médicament
+                                        <i class="fas fa-plus"></i> Ajouter un autre médicament
                                     </button>
 
                                     <div class="form-group">
-                                        <label class="med-label text-uppercase"><i class="fas fa-edit"></i> Posologie & Instructions</label>
-                                        <textarea name="posologie" class="form-control" rows="3" placeholder="Ex: 1 comprimé 3 fois par jour..."></textarea>
+                                        <label class="med-label text-uppercase"><i class="fas fa-comment-medical"></i> Posologie & Recommandations</label>
+                                        <textarea name="posologie" class="form-control" rows="4" placeholder="Ex: Matin et Soir après le repas pendant 7 jours..."></textarea>
                                     </div>
 
-                                    <div class="text-center mt-4">
-                                        <button type="submit" class="btn btn-primary btn-lg px-5 shadow">
-                                            <i class="fas fa-save"></i> ENREGISTRER L'ORDONNANCE
+                                    <div class="text-right mt-4">
+                                        <button type="submit" class="btn btn-success btn-lg px-5">
+                                            <i class="fas fa-check-circle"></i> ENREGISTRER L'ORDONNANCE
                                         </button>
                                     </div>
                                 </div>
@@ -148,84 +148,43 @@
 
     <script>
         $(document).ready(function() {
-            // Initialisation de Select2
-            function applySelect2(element) {
-                element.select2({
-                    placeholder: "Tapez le nom du médicament...",
-                    allowClear: true,
-                    width: '100%'
-                });
+            function initSelect2(element) {
+                element.select2({ placeholder: "Rechercher...", allowClear: true, width: '100%', dropdownParent: element.parent() });
             }
 
-            applySelect2($('.select-produit'));
+            initSelect2($('.select-produit'));
 
-            // Ajouter une ligne
             $("#addRow").click(function() {
-                var row = `<tr>
-                    <td>
-                        <select name="produit_id[]" class="form-control select-produit" required style="width: 100%;">
-                            <option value="">-- Rechercher... --</option>
-                            {% for m in produits_stock %}
-                                <option value="{{ m.id }}" data-forme="{{ m.forme }}" data-dosage="{{ m.dosage }}" data-stock="{{ m.quantite_stock_pieces }}">{{ m.designation }}</option>
-                            {% endfor %}
-                        </select>
-                        <div class="stock-display"></div>
-                    </td>
-                    <td><input type="text" class="form-control display-info" readonly placeholder="-"></td>
-                    <td><input type="number" name="quantite_prescrite[]" class="form-control qte-input" value="1" min="1" required></td>
-                    <td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm remove-row"><i class="fas fa-trash"></i></button></td>
+                var optionsHtml = $('.select-produit').first().html();
+                var newRow = `<tr>
+                    <td><select name="produit_id[]" class="form-control select-produit" required>${optionsHtml}</select><div class="stock-info mt-1"></div></td>
+                    <td><input type="text" class="form-control display-info" readonly></td>
+                    <td><input type="number" name="quantite_prescrite[]" class="form-control" value="1" min="1" required></td>
+                    <td><button type="button" class="btn btn-danger btn-sm remove-row"><i class="fas fa-times"></i></button></td>
                 </tr>`;
-                var $newRow = $(row);
-                $("#prescriptionBody").append($newRow);
-                applySelect2($newRow.find('.select-produit'));
+                var $row = $(newRow);
+                $("#prescriptionBody").append($row);
+                $row.find('.select-produit').val('').trigger('change');
+                initSelect2($row.find('.select-produit'));
             });
 
-            // Supprimer une ligne
             $(document).on('click', '.remove-row', function() {
                 if ($('#prescriptionBody tr').length > 1) $(this).closest('tr').remove();
             });
 
-            // Gestion du changement de produit (Stock + Info)
             $(document).on('change', '.select-produit', function() {
                 var row = $(this).closest('tr');
                 var opt = $(this).find('option:selected');
-                
                 if (opt.val()) {
-                    var forme = opt.data('forme') || "";
-                    var dosage = opt.data('dosage') || "";
-                    var stock = parseInt(opt.data('stock')) || 0;
-
-                    row.find('.display-info').val(forme + " " + dosage);
-                    
-                    var badgeClass = (stock > 5) ? 'text-success-stock' : 'text-danger-stock';
-                    row.find('.stock-display').html(`<span class="${badgeClass}"><i class="fas fa-box"></i> Stock: ${stock} pcs</span>`);
-                    
-                    checkLimit(row, stock);
+                    row.find('.display-info').val(opt.data('forme') + " - " + opt.data('dosage'));
+                    var stock = parseInt(opt.data('stock'));
+                    var color = stock < 5 ? 'text-danger' : 'text-success';
+                    row.find('.stock-info').html(`<span class="${color}">En Stock: ${stock}</span>`);
                 } else {
-                    row.find('.display-info').val("");
-                    row.find('.stock-display').empty();
+                    row.find('.display-info').val('');
+                    row.find('.stock-info').empty();
                 }
             });
-
-            // Alerte si la quantité dépasse le stock
-            $(document).on('input', '.qte-input', function() {
-                var row = $(this).closest('tr');
-                var stock = parseInt(row.find('.select-produit option:selected').data('stock')) || 0;
-                checkLimit(row, stock);
-            });
-
-            function checkLimit(row, stock) {
-                var qte = parseInt(row.find('.qte-input').val()) || 0;
-                if (qte > stock) {
-                    row.find('.qte-input').addClass('is-invalid-custom');
-                    if(row.find('.stock-error').length === 0) {
-                        row.find('.stock-display').append('<br><small class="text-danger stock-error">Attention: Stock insuffisant !</small>');
-                    }
-                } else {
-                    row.find('.qte-input').removeClass('is-invalid-custom');
-                    row.find('.stock-error').remove();
-                }
-            }
         });
     </script>
 </body>
