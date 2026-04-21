@@ -158,50 +158,45 @@ class Facture(models.Model):
         return f"Facture {self.id} - {self.patient.noms}"
 # 8 ======================================================================
 class Paiement(models.Model):
-    # Définition des modes de paiement
     CHOIX_MODE = [
         ('CASH', 'Espèces (Cash)'),
         ('MPESA', 'M-Pesa'),
     ]
 
-    facture = models.ForeignKey(Facture, on_delete=models.CASCADE, related_name='paiements')
+    # Lien vers Facture Prestation (Optionnel désormais)
+    facture = models.ForeignKey(Facture, on_delete=models.CASCADE, null=True, blank=True, related_name='paiements')
+    
+    # NOUVEAU : Lien vers Facture Pharmacie (Optionnel)
+    facture_pharma = models.ForeignKey('FacturePharmacie', on_delete=models.CASCADE, null=True, blank=True, related_name='paiements')
+    
     montant_physique = models.DecimalField(max_digits=15, decimal_places=2)
     devise = models.CharField(max_length=3, choices=[('CDF', 'CDF'), ('USD', 'USD')])
-    
-    # --- Nouveaux champs pour la traçabilité M-Pesa ---
-    mode_paiement = models.CharField(
-        max_length=10, 
-        choices=CHOIX_MODE, 
-        default='CASH',
-        verbose_name="Mode de paiement"
-    )
-    reference_transaction = models.CharField(
-        max_length=100, 
-        null=True, 
-        blank=True, 
-        verbose_name="ID Transaction / Référence"
-    )
-    # ------------------------------------------------
-
+    mode_paiement = models.CharField(max_length=10, choices=CHOIX_MODE, default='CASH')
+    reference_transaction = models.CharField(max_length=100, null=True, blank=True)
     date_paiement = models.DateTimeField(auto_now_add=True)
     montant_comptable_cdf = models.DecimalField(max_digits=15, decimal_places=2, editable=False)
 
     def save(self, *args, **kwargs):
-        # Ta logique de conversion originale (ne change pas)
+        # 1. Déterminer quel taux utiliser dynamiquement
+        taux = Decimal("2500") # Taux par défaut de secours
+        
+        if self.facture:
+            taux = self.facture.taux_fixe
+        elif self.facture_pharma:
+            taux = self.facture_pharma.taux_fixe
+
+        # 2. Calculer le montant comptable en CDF
         if self.devise == 'USD':
-            # Utilise le taux fixé au moment de la création de la facture
-            self.montant_comptable_cdf = self.montant_physique * self.facture.taux_fixe
+            self.montant_comptable_cdf = self.montant_physique * taux
         else:
             self.montant_comptable_cdf = self.montant_physique
             
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"Paiement {self.mode_paiement} - {self.montant_physique} {self.devise} (Facture #{self.facture.id})"
-
-    class Meta:
-        verbose_name = "Paiement"
-        verbose_name_plural = "Paiements"
+        id_f = self.facture.id if self.facture else self.facture_pharma.id
+        type_f = "Prestation" if self.facture else "Pharmacie"
+        return f"Paiement {self.mode_paiement} - {self.montant_physique} {self.devise} ({type_f} #{id_f})"
 
 
 # 9 =======================================================
@@ -415,6 +410,58 @@ class LigneOrdonnance(models.Model):
     @property
     def reste_a_delivrer(self):
         return max(0, self.quantite_payee - self.quantite_delivree)
+
+
+# ===================================================================
+# facture pharmacie
+class FacturePharmacie(models.Model):
+    STATUT_CHOICES = [
+        ('NON_PAYE', 'Non Payé'),
+        ('PARTIEL', 'Paiement Partiel'),
+        ('SOLDE', 'Soldé'),
+    ]
+
+    # Si c'est un patient enregistré
+    patient = models.ForeignKey('Patient', on_delete=models.CASCADE, null=True, blank=True, related_name='factures_pharma')
+    # Si c'est un client de passage (externe)
+    nom_client_externe = models.CharField(max_length=200, null=True, blank=True, help_text="Pour les clients sans dossier")
+    
+    # Lien vers l'ordonnance (optionnel, uniquement pour les patients internes)
+    ordonnance = models.OneToOneField('Ordonnance', on_delete=models.SET_NULL, null=True, blank=True, related_name='facture_pharma')
+    
+    total_a_payer_cdf = models.DecimalField(max_digits=15, decimal_places=2)
+    taux_fixe = models.DecimalField(max_digits=10, decimal_places=2)
+    date_facture = models.DateTimeField(auto_now_add=True)
+    vendeur = models.ForeignKey(User, on_delete=models.CASCADE)
+
+    def __str__(self):
+        nom = self.patient.noms if self.patient else self.nom_client_externe
+        return f"Facture Pharma #{self.id} - {nom}"
+
+    @property
+    def total_paye(self):
+        return sum(p.montant_comptable_cdf for p in self.paiements.all())
+
+    @property
+    def reste_a_payer(self):
+        return self.total_a_payer_cdf - self.total_paye
+
+    @property
+    def statut_paiement(self):
+        paye = self.total_paye
+        if paye <= 0: return 'NON_PAYE'
+        if paye < self.total_a_payer_cdf: return 'PARTIEL'
+        return 'SOLDE'
+
+class LigneFacturePharma(models.Model):
+    facture = models.ForeignKey(FacturePharmacie, related_name='lignes', on_delete=models.CASCADE)
+    medicament = models.ForeignKey(Medicament, on_delete=models.CASCADE)
+    quantite = models.PositiveIntegerField()
+    prix_unitaire_applique = models.DecimalField(max_digits=12, decimal_places=2)
+    
+    @property
+    def sous_total(self):
+        return self.quantite * self.prix_unitaire_applique
 
 # =============================================================================================
 # materiel

@@ -1753,89 +1753,105 @@ def delivrer_ordonnance(request, ordonnance_id):
 # payer ordonnance 
 # =======================================================================
 @login_required
-def payer_ordonnance(request, patient_id):
-    # 1. Initialisation des données
-    patient = get_object_or_404(Patient, id=patient_id)
+@transaction.atomic
+def payer_ordonnance(request, patient_id=None):
+    # 1. Initialisation des acteurs (Patient ou Externe)
+    patient = get_object_or_404(Patient, id=patient_id) if patient_id else None
     profil = Profil.objects.filter(userProfil=request.user).first()
     
-    # Récupération des médicaments non payés
-    lignes_a_payer = LigneOrdonnance.objects.filter(
-        ordonnance__consultation__patient=patient,
-        paye=False
-    ).select_related('medicament', 'ordonnance')
-
-    # 2. Calcul du montant total exact (via la property prix_total du modèle)
-    total_du_cdf = Decimal("0.00")
-    ordonnance_obj = None
-    for l in lignes_a_payer:
-        total_du_cdf += Decimal(str(l.prix_total))
-        if not ordonnance_obj:
-            ordonnance_obj = l.ordonnance
-
-    # 3. Récupération du taux de change
+    # 2. Récupération des données financières
     config = ConfigurationHopital.objects.first()
     taux_actuel = Decimal(str(config.taux_usd_en_cdf)) if config else Decimal("2500")
+    
+    lignes_a_payer = []
+    total_du_cdf = Decimal("0.00")
+    ordonnance_obj = None
 
-    # 4. Traitement du Paiement
+    # CAS PATIENT : Récupération auto des lignes de l'ordonnance non payées
+    if patient:
+        lignes_a_payer = LigneOrdonnance.objects.filter(
+            ordonnance__consultation__patient=patient,
+            paye=False
+        ).select_related('medicament', 'ordonnance')
+        
+        total_du_cdf = sum(l.prix_total for l in lignes_a_payer)
+        if lignes_a_payer.exists():
+            ordonnance_obj = lignes_a_payer.first().ordonnance
+
+    # 3. Traitement du Paiement (POST)
     if request.method == 'POST':
-        montant_saisi = request.POST.get('montant_physique')
+        montant_saisi_brut = request.POST.get('montant_physique')
         devise = request.POST.get('devise')
         mode_p = request.POST.get('mode_paiement')
         ref = request.POST.get('reference_transaction')
+        nom_externe = request.POST.get('nom_client_externe') # Pour vente directe
 
-        if not montant_saisi:
+        if not montant_saisi_brut:
             messages.error(request, "Erreur : Le montant est obligatoire.")
         else:
             try:
-                # Conversion propre du montant saisi (gestion virgule/point)
-                montant_decimal = Decimal(str(montant_saisi).replace(',', '.'))
-                
-                # Conversion en CDF si payé en USD
+                montant_decimal = Decimal(str(montant_saisi_brut).replace(',', '.'))
+                # Conversion en CDF pour la vérification comptable
                 argent_recu_en_cdf = (montant_decimal * taux_actuel) if devise == 'USD' else montant_decimal
 
-                # --- VÉRIFICATION STRICTE (AUCUNE MARGE) ---
-                if argent_recu_en_cdf < total_du_cdf:
-                    messages.error(request, f"Paiement refusé : Montant insuffisant ({argent_recu_en_cdf} FC sur {total_du_cdf} FC).")
-                
-                elif argent_recu_en_cdf > total_du_cdf:
-                    messages.error(request, f"Paiement refusé : Le montant saisi dépasse le total dû ({total_du_cdf} FC).")
+                # A. Créer ou récupérer la FacturePharmacie (Gestion de la dette)
+                # On cherche si une facture existe déjà pour cette ordonnance
+                facture, created = FacturePharmacie.objects.get_or_create(
+                    ordonnance=ordonnance_obj,
+                    defaults={
+                        'patient': patient,
+                        'nom_client_externe': nom_externe,
+                        'total_a_payer_cdf': total_du_cdf,
+                        'taux_fixe': taux_actuel,
+                        'vendeur': request.user
+                    }
+                )
 
+                # B. Validation stricte : Ne pas payer plus que le reste dû
+                if argent_recu_en_cdf > facture.reste_a_payer:
+                    messages.error(request, f"Refusé : Le montant dépasse le reste à payer ({facture.reste_a_payer} FC).")
                 else:
-                    # MONTANT EXACT : On procède à la facturation
-                    prestation_pharma = Prestation.objects.filter(categorie='MED').first() or Prestation.objects.first()
-
-                    facture = Facture.objects.create(
-                        patient=patient,
-                        ordonnance=ordonnance_obj,
-                        prestation=prestation_pharma,
-                        prix_fixe_cdf=total_du_cdf,
-                        taux_fixe=taux_actuel
+                    # C. Créer l'entrée dans l'historique des Paiements
+                    Paiement.objects.create(
+                        facture_pharma=facture,
+                        montant_physique=montant_decimal,
+                        devise=devise,
+                        mode_paiement=mode_p,
+                        reference_transaction=ref
                     )
 
-                    # Validation des lignes d'ordonnance
-                    for ligne in lignes_a_payer:
-                        ligne.paye = True
-                        ligne.quantite_payee = ligne.quantite_prescrite
-                        ligne.save()
+                    # D. Si le paiement solde la facture, on valide les stocks et l'ordonnance
+                    if facture.statut_paiement == 'SOLDE':
+                        if ordonnance_obj:
+                            # On marque les lignes comme payées
+                            lignes_a_payer.update(
+                                paye=True, 
+                                quantite_payee=F('quantite_prescrite')
+                            )
+                            ordonnance_obj.est_paye = True
+                            ordonnance_obj.save()
+                        
+                        messages.success(request, f"Succès ! Facture #{facture.id} entièrement soldée.")
+                    else:
+                        messages.warning(request, f"Paiement partiel enregistré. Reste à payer : {facture.reste_a_payer} FC.")
 
-                    messages.success(request, f"Succès ! Facture n°{facture.id} générée pour un montant de {total_du_cdf} FC.")
-                    return redirect('patientRead')
+                    return redirect('patientRead') if patient else redirect('accueil_pharmacie')
 
             except Exception as e:
                 messages.error(request, f"Erreur technique : {str(e)}")
 
-    profil = Profil.objects.filter(userProfil=request.user).first()
-    fonction = profil.fonction.fonction if profil else None
-
-    return render(request, 'back-end/payer_ordonnance.html', {
+    # 4. Préparation du rendu
+    context = {
         'patient': patient,
         'lignes': lignes_a_payer,
         'total_cdf': total_du_cdf,
         'taux': taux_actuel,
         'profil': profil,
-        'title': "Encaissement Pharmacie" , 
-        'fonction': fonction 
-    })
+        'title': "Caisse Pharmacie",
+        'fonction': profil.fonction.fonction if profil else None
+    }
+    
+    return render(request, 'back-end/payer_ordonnance.html', context)
 
 
 
@@ -2077,3 +2093,78 @@ def materiel_en_panne(request):
         'fonction': fonction 
     }
     return render(request, 'back-end/logistique/materiel_en_panne.html', context)
+
+# 58
+# ======================================================================================================================
+# historique pharmacie
+# ======================================================================================================================
+@login_required
+def historique_pharma_patient(request, patient_id):
+    patient = get_object_or_404(Patient, id=patient_id)
+    # On récupère les factures avec les relations pour éviter trop de requêtes SQL
+    historique = FacturePharmacie.objects.filter(patient=patient).prefetch_related('lignes__medicament', 'paiements').order_by('-date_facture')
+    
+    total_du = sum(f.total_a_payer_cdf for f in historique)
+    total_paye = sum(f.total_paye for f in historique)
+    dette_totale = total_du - total_paye
+
+    return render(request, 'back-end/historique_patient_pharma.html', {
+        'patient': patient,
+        'historique': historique,
+        'total_du': total_du,
+        'total_paye': total_paye,
+        'dette_totale': dette_totale,
+    })
+
+# 59
+# ======================================================================================================================
+# reste a payer
+# =======================================================================================================================
+@login_required
+def encaisser_reste_pharma(request, facture_id):
+    facture = get_object_or_404(FacturePharmacie, id=facture_id)
+    
+    if request.method == 'POST':
+        montant_saisi = Decimal(request.POST.get('montant_physique', 0))
+        devise = request.POST.get('devise')
+        mode = request.POST.get('mode_paiement')
+        ref = request.POST.get('reference_transaction')
+        
+        # Calcul de la valeur en CDF selon le taux de la facture
+        taux = facture.taux_fixe
+        montant_en_cdf = montant_saisi * taux if devise == 'USD' else montant_saisi
+        
+        reste_reel = facture.reste_a_payer
+
+        # VERIFICATION : Ne pas dépasser le reste
+        if montant_en_cdf > reste_reel:
+            messages.error(request, f"Erreur : Le montant ({montant_en_cdf} FC) dépasse le reste à payer ({reste_reel} FC).")
+            return redirect('historique_pharma_patient', patient_id=facture.patient.id)
+
+        # Enregistrement du paiement
+        Paiement.objects.create(
+            facture_pharma=facture,
+            montant_physique=montant_saisi,
+            devise=devise,
+            mode_paiement=mode,
+            reference_transaction=ref
+        )
+        
+        messages.success(request, "Paiement de la dette enregistré avec succès !")
+        return redirect('historique_pharma_patient', patient_id=facture.patient.id)
+
+# 60 
+# ====================================================================================================================
+# imprimer facture 
+# ====================================================================================================================
+@login_required
+def imprimer_facture_pharma(request, facture_id):
+    facture = get_object_or_404(FacturePharmacie, id=facture_id)
+    lignes = facture.lignes.all()
+    
+    context = {
+        'facture': facture,
+        'lignes': lignes,
+        'date': facture.date_facture,
+    }
+    return render(request, 'back-end/pharmacie/print_facture.html', context)

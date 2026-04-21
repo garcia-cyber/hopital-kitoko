@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <title>KITOKO - Historique {{ patient.noms }}</title>
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css' %}">
+</head>
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="row">
+                    <div class="col-sm-12">
+                        <h4 class="page-title">Historique Pharmacie : <strong>{{ patient.noms }}</strong></h4>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card p-3 shadow-sm border-left border-primary">
+                            <small class="text-muted">Total Facturé</small>
+                            <h3 class="text-primary">{{ total_du }} FC</h3>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card p-3 shadow-sm border-left border-success">
+                            <small class="text-muted">Total Payé</small>
+                            <h3 class="text-success">{{ total_paye }} FC</h3>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card p-3 shadow-sm border-left border-danger">
+                            <small class="text-muted">Reste à Payer</small>
+                            <h3 class="text-danger">{{ dette_totale }} FC</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        {% for facture in historique %}
+                        <div class="card mb-4 shadow-sm">
+                            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                                <strong>Facture #PH-{{ facture.id }} - {{ facture.date_facture|date:"d/m/Y H:i" }}</strong>
+                                <a href="{% url 'imprimer_facture_pharma' facture.id %}" target="_blank" class="btn btn-sm btn-outline-info">
+                                    <i class="fa fa-print"></i> Imprimer
+                                </a>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    
+                                    <div class="col-md-7 border-right">
+                                        <h6 class="font-weight-bold text-info"><i class="fa fa-pills"></i> Médicaments délivrés :</h6>
+                                        <table class="table table-sm table-hover table-striped mt-2">
+                                            <thead class="thead-light">
+                                                <tr>
+                                                    <th>Désignation</th>
+                                                    <th>Quantité</th>
+                                                    <th class="text-right">P.U</th>
+                                                    <th class="text-right">Sous-total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for ligne in facture.lignes.all %}
+                                                <tr>
+                                                    <td>{{ ligne.medicament.designation }}</td>
+                                                    <td><strong>{{ ligne.quantite }}</strong></td>
+                                                    <td class="text-right">{{ ligne.prix_unitaire_applique }} FC</td>
+                                                    <td class="text-right font-weight-bold">{{ ligne.sous_total }} FC</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <div class="col-md-5">
+                                        <div class="p-2">
+                                            <p class="d-flex justify-content-between">
+                                                <span>Montant Facture :</span>
+                                                <strong>{{ facture.total_a_payer_cdf }} FC</strong>
+                                            </p>
+                                            <p class="d-flex justify-content-between text-success">
+                                                <span>Déjà payé :</span>
+                                                <strong>- {{ facture.total_paye }} FC</strong>
+                                            </p>
+                                            <p class="d-flex justify-content-between text-danger border-top pt-2 h5">
+                                                <span>Reste à payer :</span>
+                                                <strong>{{ facture.reste_a_payer }} FC</strong>
+                                            </p>
+                                        </div>
+
+                                        {% if facture.reste_a_payer > 0 %}
+                                        <div class="mt-3 p-3 bg-light rounded border">
+                                            <form action="{% url 'encaisser_reste_pharma' facture.id %}" method="POST">
+                                                {% csrf_token %}
+                                                <div class="input-group input-group-sm">
+                                                    <input type="number" name="montant_physique" step="0.01" class="form-control" placeholder="Montant" required>
+                                                    <div class="input-group-append">
+                                                        <select name="devise" class="custom-select custom-select-sm">
+                                                            <option value="CDF">CDF</option>
+                                                            <option value="USD">USD</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <button type="submit" class="btn btn-success btn-sm btn-block mt-2">Solder le reste</button>
+                                            </form>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="alert alert-warning text-center">Aucun historique disponible pour ce patient.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js' %}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js' %}"></script>
+</body>
+</html>

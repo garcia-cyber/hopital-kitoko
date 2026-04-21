@@ -314,3 +314,83 @@ class EmployeAdmin(admin.ModelAdmin):
             return format_html('<span style="color: red; font-weight: bold;">{} (Bientôt fini)</span>', obj.date_fin)
         return obj.date_fin
     date_fin_display.short_description = "Date de fin"
+
+
+class LigneFacturePharmaInline(admin.TabularInline):
+    model = LigneFacturePharma
+    extra = 0
+    readonly_fields = ['sous_total']
+    can_delete = False
+
+class PaiementInline(admin.TabularInline):
+    model = Paiement
+    extra = 0
+    # On met en lecture seule pour éviter de modifier un paiement validé par erreur
+    readonly_fields = ['date_paiement', 'montant_comptable_cdf']
+    fields = ['montant_physique', 'devise', 'mode_paiement', 'reference_transaction', 'date_paiement', 'montant_comptable_cdf']
+    can_delete = False
+
+@admin.register(FacturePharmacie)
+class FacturePharmacieAdmin(admin.ModelAdmin):
+    # Configuration de la liste principale
+    list_display = (
+        'id', 
+        'get_client_name', 
+        'total_a_payer_cdf', 
+        'get_total_paye', 
+        'get_reste', 
+        'get_statut', 
+        'date_facture'
+    )
+    list_filter = ('date_facture', 'vendeur')
+    search_fields = ('patient__noms', 'nom_client_externe', 'id')
+    
+    # Organisation du formulaire de modification
+    fieldsets = (
+        ('Informations Client', {
+            'fields': ('patient', 'nom_client_externe', 'ordonnance', 'vendeur')
+        }),
+        ('Données Financières', {
+            'fields': ('total_a_payer_cdf', 'taux_fixe')
+        }),
+    )
+    
+    # Intégration des lignes de médicaments et des paiements
+    inlines = [LigneFacturePharmaInline, PaiementInline]
+
+    # --- Méthodes d'affichage pour la liste ---
+    
+    def get_client_name(self, obj):
+        if obj.patient:
+            return f"👤 {obj.patient.noms}"
+        return f"🛒 {obj.nom_client_externe} (Externe)"
+    get_client_name.short_description = "Client / Patient"
+
+    def get_total_paye(self, obj):
+        return f"{obj.total_paye} FC"
+    get_total_paye.short_description = "Déjà Payé"
+
+    def get_reste(self, obj):
+        return f"{obj.reste_a_payer} FC"
+    get_reste.short_description = "Reste à Payer"
+
+    def get_statut(self, obj):
+        statut = obj.statut_paiement
+        colors = {
+            'SOLDE': 'green',
+            'PARTIEL': 'orange',
+            'NON_PAYE': 'red'
+        }
+        from django.utils.html import format_html
+        return format_html(
+            '<span style="color: {}; font-weight: bold;">{}</span>',
+            colors.get(statut, 'black'),
+            statut
+        )
+    get_statut.short_description = "État du Paiement"
+
+# Enregistrement optionnel si tu veux gérer les lignes séparément
+@admin.register(LigneFacturePharma)
+class LigneFacturePharmaAdmin(admin.ModelAdmin):
+    list_display = ('facture', 'medicament', 'quantite', 'sous_total')
+    list_filter = ('medicament',)

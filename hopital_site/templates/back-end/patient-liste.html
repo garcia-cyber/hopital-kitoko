@@ -101,6 +101,11 @@
                                                             <a class="dropdown-item" href="{% url 'historique_patient' p.id %}">
                                                                 <i class="fas fa-history m-r-5"></i> Historique
                                                             </a>
+
+                                                            <a class="dropdown-item" href="{% url 'historique_pharma_patient' p.id %}">
+                                                                <i class="fas fa-history m-r-5"></i> Historique pharmacie
+                                                            </a>
+
                                                             <a class="dropdown-item" href="#"><i class="fas fa-pen m-r-5"></i> Modifier</a>
                                                             <a class="dropdown-item" href="#" data-toggle="modal" data-target="#delete_patient_{{p.id}}">
                                                                 <i class="far fa-trash-alt m-r-5 text-danger"></i> Supprimer

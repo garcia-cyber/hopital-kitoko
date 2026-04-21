@@ -4,18 +4,18 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
-    <title>Encaissement - {{ patient.noms }}</title>
+    <title>Encaissement Pharmacie - {% if patient %}{{ patient.noms }}{% else %}Client Externe{% endif %}</title>
     <link rel="shortcut icon" type="image/x-icon" href="{% static 'back-end/assets/img/favicon.ico'%}">
     <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css'%}">
     <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css'%}">
     <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css'%}">
     <style>
         .invoice-card { border-top: 4px solid #28a745; }
-        .amount-badge { font-size: 1.2rem; padding: 10px; border-radius: 5px; min-width: 200px; display: block; }
-        .bg-money { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
-        .table-prescription { background: #fdfdfd; border-radius: 8px; overflow: hidden; border: 1px solid #dee2e6; }
-        .conversion-info { font-weight: bold; color: #28a745; display: block; margin-top: 5px; min-height: 20px; }
-        .is-invalid-strict { border-color: #dc3545 !important; background-color: #fff8f8; }
+        .amount-badge { font-size: 1.1rem; padding: 10px; border-radius: 5px; display: block; margin-bottom: 10px; }
+        .bg-total { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
+        .bg-reste { background: #fff3e0; color: #e65100; border: 1px solid #ffe0b2; }
+        .table-prescription { border-radius: 8px; overflow: hidden; border: 1px solid #dee2e6; }
+        .conversion-info { font-weight: bold; display: block; margin-top: 5px; min-height: 20px; }
     </style>
 </head>
 
@@ -42,55 +42,66 @@
                         <div class="card invoice-card shadow-sm">
                             <div class="card-header bg-white d-flex justify-content-between align-items-center">
                                 <h5 class="mb-0"><i class="fas fa-cash-register text-success"></i> Encaissement Pharmacie</h5>
-                                <span class="badge badge-dark">Patient ID: #{{ patient.id }}</span>
+                                <span class="badge badge-dark">{% if patient %}Patient #{{ patient.id }}{% else %}Vente Directe{% endif %}</span>
                             </div>
                             
                             <div class="card-body">
-                                <div class="row mb-4">
-                                    <div class="col-sm-6">
-                                        <h6 class="text-muted text-uppercase small font-weight-bold">Détails Patient :</h6>
-                                        <p class="mb-0 h5"><strong>{{ patient.noms }}</strong></p>
-                                        <p class="text-muted small">Âge : {{ patient.ageP }} ans | Sexe : {{ patient.sexeP }}</p>
-                                    </div>
-                                    <div class="col-sm-6 text-sm-right">
-                                        <div class="amount-badge bg-money mb-2 shadow-sm text-center">
-                                            Total Médicaments : <strong id="display_total">{{ total_cdf }}</strong> <strong>FC</strong>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="table-responsive table-prescription mb-4">
-                                    <table class="table table-hover mb-0">
-                                        <thead class="bg-light text-uppercase small font-weight-bold">
-                                            <tr>
-                                                <th>Médicament</th>
-                                                <th class="text-center">Qté</th>
-                                                <th class="text-right">P.U (CDF)</th>
-                                                <th class="text-right">Sous-total (CDF)</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {% for ligne in lignes %}
-                                            <tr>
-                                                <td class="font-weight-bold text-primary">{{ ligne.medicament.designation }}</td>
-                                                <td class="text-center">{{ ligne.quantite_prescrite }}</td>
-                                                <td class="text-right">{{ ligne.medicament.prix_vente_detail }}</td>
-                                                <td class="text-right font-weight-bold text-success">{{ ligne.prix_total }}</td>
-                                            </tr>
-                                            {% empty %}
-                                            <tr><td colspan="4" class="text-center text-muted py-4">Aucun médicament en attente de paiement.</td></tr>
-                                            {% endfor %}
-                                        </tbody>
-                                    </table>
-                                </div>
-
                                 <form method="POST" id="paymentForm">
                                     {% csrf_token %}
+                                    
+                                    <div class="row mb-4">
+                                        <div class="col-sm-6">
+                                            <h6 class="text-muted text-uppercase small font-weight-bold">Bénéficiaire :</h6>
+                                            {% if patient %}
+                                                <p class="mb-0 h5"><strong>{{ patient.noms }}</strong></p>
+                                                <p class="text-muted small">Âge : {{ patient.ageP }} ans | Sexe : {{ patient.sexeP }}</p>
+                                            {% else %}
+                                                <div class="form-group">
+                                                    <input type="text" name="nom_client_externe" class="form-control border-warning" placeholder="Nom du Client Externe" required>
+                                                    <small class="text-warning">Client non enregistré dans le système</small>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-sm-6 text-sm-right">
+                                            <div class="amount-badge bg-total shadow-sm">
+                                                Total Dû : <strong id="total_fixe">{{ total_cdf }}</strong> <strong>FC</strong>
+                                            </div>
+                                            <div class="amount-badge bg-reste shadow-sm" id="badge_reste">
+                                                Reste à payer : <strong id="display_reste">{{ total_cdf }}</strong> <strong>FC</strong>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {% if lignes %}
+                                    <div class="table-responsive table-prescription mb-4">
+                                        <table class="table table-sm table-hover mb-0">
+                                            <thead class="bg-light text-uppercase small font-weight-bold">
+                                                <tr>
+                                                    <th>Médicament</th>
+                                                    <th class="text-center">Qté</th>
+                                                    <th class="text-right">P.U (CDF)</th>
+                                                    <th class="text-right">Sous-total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for ligne in lignes %}
+                                                <tr>
+                                                    <td class="font-weight-bold text-primary">{{ ligne.medicament.designation }}</td>
+                                                    <td class="text-center">{{ ligne.quantite_prescrite }}</td>
+                                                    <td class="text-right">{{ ligne.medicament.prix_vente_detail }}</td>
+                                                    <td class="text-right font-weight-bold text-success">{{ ligne.prix_total }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    {% endif %}
+
                                     <div class="row">
-                                        <div class="col-md-6 form-group">
+                                        <div class="col-md-4 form-group">
                                             <label class="font-weight-bold">Montant à verser <span class="text-danger">*</span></label>
                                             <div class="input-group input-group-lg">
-                                                <input type="number" name="montant_physique" id="id_montant_physique" step="0.01" class="form-control border-success" placeholder="Montant exact" required>
+                                                <input type="number" name="montant_physique" id="id_montant_physique" step="0.01" class="form-control border-success" placeholder="0.00" required>
                                                 <div class="input-group-append">
                                                     <select name="devise" id="id_devise" class="custom-select bg-success text-white">
                                                         <option value="CDF" selected>CDF</option>
@@ -99,22 +110,20 @@
                                                 </div>
                                             </div>
                                             <span id="conversion_info" class="conversion-info small"></span>
-                                            <small class="text-info"><i class="fas fa-info-circle"></i> Taux : 1 USD = {{ taux }} FC</small>
+                                            <small class="text-muted"><i class="fas fa-info-circle"></i> Taux : 1 USD = {{ taux }} FC</small>
                                         </div>
 
-                                        <div class="col-md-6 form-group">
+                                        <div class="col-md-4 form-group">
                                             <label class="font-weight-bold">Mode de paiement <span class="text-danger">*</span></label>
                                             <select name="mode_paiement" id="mode_paiement" class="form-control form-control-lg border-primary" required>
                                                 <option value="CASH">Espèces (Cash)</option>
                                                 <option value="MPESA">M-Pesa (Vodacom)</option>
                                             </select>
                                         </div>
-                                    </div>
 
-                                    <div class="row mt-2" id="reference_row" style="display: none;">
-                                        <div class="col-md-12 form-group">
-                                            <label class="text-primary font-weight-bold">Référence Transaction M-Pesa</label>
-                                            <input type="text" name="reference_transaction" id="ref_field" class="form-control form-control-lg border-primary" placeholder="Code de transaction obligatoire">
+                                        <div class="col-md-4 form-group" id="reference_row" style="display: none;">
+                                            <label class="text-primary font-weight-bold">Référence M-Pesa <span class="text-danger">*</span></label>
+                                            <input type="text" name="reference_transaction" id="ref_field" class="form-control form-control-lg border-primary" placeholder="ID Transaction">
                                         </div>
                                     </div>
 
@@ -126,7 +135,7 @@
                                         </div>
                                         <div class="col-6">
                                             <button type="submit" id="btnSubmit" class="btn btn-success btn-lg btn-block shadow-sm font-weight-bold">
-                                                <i class="fas fa-check-circle"></i> Confirmer l'Encaissement
+                                                <i class="fas fa-check-circle"></i> Confirmer le Paiement
                                             </button>
                                         </div>
                                     </div>
@@ -144,47 +153,50 @@
     
     <script>
         $(document).ready(function() {
-            // Utilisation de replace pour gérer les formats de nombres Django
             const taux = parseFloat("{{ taux }}".replace(',', '.'));
-            const totalDu = parseFloat("{{ total_cdf }}".replace(',', '.'));
+            const totalInitial = parseFloat("{{ total_cdf }}".replace(',', '.'));
 
-            function validerMontant() {
+            function recalculerPaiement() {
                 const saisie = $('#id_montant_physique').val().replace(',', '.');
-                const montant = parseFloat(saisie) || 0;
+                const montantSaisi = parseFloat(saisie) || 0;
                 const devise = $('#id_devise').val();
                 
-                // Calcul de la valeur réelle en CDF
-                let montantConverti = (devise === 'USD') ? (montant * taux) : montant;
-
-                // 1. Affichage de l'info de conversion
-                if (devise === 'USD' && montant > 0) {
-                    $('#conversion_info').html('<i class="fas fa-exchange-alt"></i> Équivalent : ' + montantConverti.toLocaleString('fr-FR') + ' FC');
+                // Calcul du montant payé en CDF
+                let montantEnCDF = (devise === 'USD') ? (montantSaisi * taux) : montantSaisi;
+                
+                // Calcul du reste
+                let reste = totalInitial - montantEnCDF;
+                
+                // 1. Affichage conversion
+                if (devise === 'USD' && montantSaisi > 0) {
+                    $('#conversion_info').html('<i class="fas fa-exchange-alt text-success"></i> Équivalent : ' + montantEnCDF.toLocaleString('fr-FR') + ' FC');
                 } else {
                     $('#conversion_info').html('');
                 }
 
-                // 2. Vérification STRICTE
-                // On utilise Math.round pour éviter les problèmes de précision flottante JS
-                if (Math.round(montantConverti) !== Math.round(totalDu) && montant > 0) {
-                    $('#id_montant_physique').addClass('is-invalid-strict').removeClass('border-success');
+                // 2. Mise à jour du badge Reste à payer
+                $('#display_reste').text(reste.toLocaleString('fr-FR'));
+
+                // 3. Couleur et Validation
+                if (reste < 0) {
+                    $('#badge_reste').removeClass('bg-reste').addClass('bg-danger text-white');
+                    $('#display_reste').text('Trop perçu : ' + Math.abs(reste).toLocaleString('fr-FR'));
                     $('#btnSubmit').attr('disabled', true);
-                    
-                    if (montantConverti > totalDu) {
-                        $('#conversion_info').css('color', 'red').append(' (Trop élevé !)');
-                    } else {
-                        $('#conversion_info').css('color', 'orange').append(' (Insuffisant)');
-                    }
                 } else {
-                    $('#id_montant_physique').removeClass('is-invalid-strict').addClass('border-success');
-                    $('#btnSubmit').attr('disabled', false);
-                    $('#conversion_info').css('color', '#28a745');
+                    $('#badge_reste').removeClass('bg-danger text-white').addClass('bg-reste');
+                    $('#btnSubmit').attr('disabled', montantSaisi <= 0);
+                    
+                    if (reste === 0) {
+                        $('#badge_reste').removeClass('bg-reste').addClass('bg-success text-white');
+                        $('#display_reste').text('SOLDE COMPLET');
+                    }
                 }
             }
 
-            // Écouteurs sur les changements
-            $('#id_montant_physique, #id_devise').on('input change', validerMontant);
+            // Écouteurs
+            $('#id_montant_physique, #id_devise').on('input change', recalculerPaiement);
 
-            // Gestion du champ M-Pesa
+            // Gestion M-Pesa
             $('#mode_paiement').on('change', function() {
                 if ($(this).val() === 'MPESA') {
                     $('#reference_row').slideDown();
@@ -195,20 +207,11 @@
                 }
             });
 
-            // Validation finale au Submit
+            // Confirmation finale
             $('#paymentForm').on('submit', function(e) {
-                const saisie = $('#id_montant_physique').val().replace(',', '.');
-                const montant = parseFloat(saisie) || 0;
+                const montant = $('#id_montant_physique').val();
                 const devise = $('#id_devise').val();
-                let finalCDF = (devise === 'USD') ? (montant * taux) : montant;
-
-                if (Math.round(finalCDF) !== Math.round(totalDu)) {
-                    alert("Erreur : Le montant versé (" + finalCDF + " FC) ne correspond pas au total dû (" + totalDu + " FC).");
-                    e.preventDefault();
-                    return false;
-                }
-                
-                return confirm("Confirmez-vous l'encaissement de " + montant + " " + devise + " pour les médicaments de {{ patient.noms }} ?");
+                return confirm("Confirmer le paiement de " + montant + " " + devise + " ?");
             });
         });
     </script>

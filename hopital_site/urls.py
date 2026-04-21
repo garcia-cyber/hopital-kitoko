@@ -113,6 +113,9 @@ urlpatterns = [
     path('vente/historique/', views.historique_ventes, name='historique_ventes'),
     path('vente/<int:vente_id>/facture/', views.generer_facture_pdf, name='generer_facture_pdf'),
     path('vente/<int:vente_id>/annuler/', views.annuler_vente, name='annuler_vente'),
+    path('patient/<int:patient_id>/historique-pharmacie/', views.historique_pharma_patient, name='historique_pharma_patient'),
+    path('pharmacie/encaisser-reste/<int:facture_id>/', views.encaisser_reste_pharma, name='encaisser_reste_pharma'),
+    path('pharmacie/imprimer-facture/<int:facture_id>/', views.imprimer_facture_pharma, name='imprimer_facture_pharma'),
 
     # =================================================
     # logistique
