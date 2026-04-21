@@ -5,19 +5,17 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
     <title>Rédiger Ordonnance - {{ patient.noms }}</title>
-    <link rel="shortcut icon" type="image/x-icon" href="{% static 'back-end/assets/img/favicon.ico'%}">
     <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css'%}">
     <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css'%}">
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css'%}">
     
     <style>
-        .prescription-card { border-top: 4px solid #007bff; }
-        .labo-results-box { max-height: 550px; overflow-y: auto; background: #f4f7f6; border: 1px solid #ddd; padding: 15px; border-radius: 8px; }
-        .examen-card { background: white; border-radius: 6px; padding: 12px; margin-bottom: 12px; border-left: 5px solid #17a2b8; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .resultat-valeur { color: #dc3545; font-weight: bold; background: #fff5f5; padding: 5px; border-radius: 4px; display: block; margin-top: 5px; border: 1px dashed #feb2b2; }
-        .med-label { font-weight: bold; color: #2c3e50; display: block; margin-bottom: 10px; }
-        .stock-info { font-size: 0.8rem; font-weight: bold; }
+        .prescription-card { border-top: 4px solid #28a745; }
+        .labo-results-box { max-height: 500px; overflow-y: auto; background: #f8f9fa; padding: 15px; border: 1px solid #eee; }
+        .examen-card { background: white; border-left: 4px solid #17a2b8; margin-bottom: 10px; padding: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .resultat-valeur { color: #d9534f; font-weight: bold; font-size: 0.9rem; }
+        .stock-info { font-size: 0.8rem; font-weight: bold; margin-top: 4px; }
     </style>
 </head>
 
@@ -28,93 +26,70 @@
 
         <div class="page-wrapper">
             <div class="content">
-                <div class="row">
-                    <div class="col-sm-12">
-                        <h4 class="page-title">Session de Prescription : <span class="text-primary">{{ patient.noms }}</span></h4>
-                    </div>
-                </div>
+                <h4 class="page-title">Prescription : <span class="text-primary">{{ patient.noms }}</span></h4>
 
                 <form method="POST" id="mainForm">
                     {% csrf_token %}
                     <div class="row">
-                        <div class="col-lg-5">
+                        <div class="col-lg-4">
                             <div class="card shadow-sm">
-                                <div class="card-header bg-white border-bottom">
-                                    <h5 class="mb-0"><i class="fas fa-file-medical-alt text-info"></i> Résultats Laboratoire</h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="labo-results-box">
-                                        {% for examen in examens %}
-                                            <div class="examen-card">
-                                                <div class="d-flex justify-content-between">
-                                                    <span class="text-dark font-weight-bold">{{ examen.prestation.libelle }}</span>
-                                                    <small class="text-muted">{{ examen.date_analyse|date:"d/m/Y H:i" }}</small>
-                                                </div>
-                                                <div class="mt-2">
-                                                    <div class="resultat-valeur">
-                                                        {{ examen.resultat_labo|default:"Aucune observation rédigée"|linebreaksbr }}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        {% empty %}
-                                            <div class="text-center py-5">
-                                                <p class="text-muted">Aucun examen disponible.</p>
-                                            </div>
-                                        {% endfor %}
-                                    </div>
+                                <div class="card-header bg-white"><b><i class="fas fa-microscope"></i> Labo</b></div>
+                                <div class="card-body labo-results-box">
+                                    {% for examen in examens %}
+                                        <div class="examen-card">
+                                            <strong>{{ examen.prestation.libelle }}</strong><br>
+                                            <span class="resultat-valeur">{{ examen.resultat_labo|default:"R.A.S" }}</span>
+                                        </div>
+                                    {% empty %}
+                                        <p class="text-muted">Aucun résultat.</p>
+                                    {% endfor %}
                                 </div>
                             </div>
                         </div>
 
-                        <div class="col-lg-7">
+                        <div class="col-lg-8">
                             <div class="card shadow-sm prescription-card">
                                 <div class="card-body">
-                                    <label class="med-label text-uppercase text-primary"><i class="fas fa-pills"></i> Liste des Médicaments</label>
-                                    
-                                    <div class="table-responsive">
-                                        <table class="table table-hover border" id="prescriptionTable">
-                                            <thead class="bg-light">
-                                                <tr>
-                                                    <th>Médicament</th>
-                                                    <th width="30%">Info</th>
-                                                    <th width="15%">Qté</th>
-                                                    <th width="5%"></th>
-                                                </tr>
-                                            </thead>
-                                            <tbody id="prescriptionBody">
-                                                <tr class="med-row">
-                                                    <td>
-                                                        <select name="produit_id[]" class="form-control select-produit" required style="width: 100%;">
-                                                            <option value="">-- Sélectionner --</option>
-                                                            {% for m in produits_stock %}
-                                                                <option value="{{ m.id }}" data-info="{{ m.forme }} - {{ m.dosage }}" data-stock="{{ m.quantite_stock_pieces }}">
-                                                                    {{ m.designation }}
-                                                                </option>
-                                                            {% endfor %}
-                                                        </select>
-                                                        <div class="stock-info mt-1"></div>
-                                                    </td>
-                                                    <td><input type="text" class="form-control display-info" readonly></td>
-                                                    <td><input type="number" name="quantite_prescrite[]" class="form-control" value="1" min="1" required></td>
-                                                    <td><button type="button" class="btn btn-danger btn-sm remove-row"><i class="fas fa-times"></i></button></td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
+                                    <table class="table" id="prescriptionTable">
+                                        <thead>
+                                            <tr>
+                                                <th>Médicament</th>
+                                                <th width="25%">Dosage/Forme</th>
+                                                <th width="15%">Qté</th>
+                                                <th width="5%"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="prescriptionBody">
+                                            <tr class="med-row">
+                                                <td>
+                                                    <select name="produit_id[]" class="form-control select-produit" required>
+                                                        <option value="">-- Choisir --</option>
+                                                        {% for m in produits_stock %}
+                                                            <option value="{{ m.id }}" data-info="{{ m.forme }} - {{ m.dosage }}" data-stock="{{ m.quantite_stock_pieces }}">
+                                                                {{ m.designation }}
+                                                            </option>
+                                                        {% endfor %}
+                                                    </select>
+                                                    <div class="stock-info"></div>
+                                                </td>
+                                                <td><input type="text" class="form-control display-info" readonly></td>
+                                                <td><input type="number" name="quantite_prescrite[]" class="form-control" value="1" min="1"></td>
+                                                <td><button type="button" class="btn btn-danger btn-sm remove-row"><i class="fas fa-trash"></i></button></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
 
-                                    <button type="button" class="btn btn-info btn-sm mb-4" id="addRow">
-                                        <i class="fas fa-plus"></i> Ajouter un autre médicament
+                                    <button type="button" class="btn btn-outline-info btn-sm" id="addRow">
+                                        <i class="fas fa-plus"></i> Ajouter un médicament
                                     </button>
 
-                                    <div class="form-group">
-                                        <label class="med-label text-uppercase"><i class="fas fa-comment-medical"></i> Posologie & Recommandations</label>
-                                        <textarea name="posologie" class="form-control" rows="4" placeholder="Ex: Matin et Soir..."></textarea>
+                                    <div class="form-group mt-4">
+                                        <label><b>Posologie & Observations</b></label>
+                                        <textarea name="posologie" class="form-control" rows="3" placeholder="Instructions..."></textarea>
                                     </div>
 
-                                    <div class="text-right mt-4">
-                                        <button type="submit" class="btn btn-success btn-lg px-5">
-                                            <i class="fas fa-check-circle"></i> ENREGISTRER L'ORDONNANCE
-                                        </button>
+                                    <div class="text-right">
+                                        <button type="submit" class="btn btn-success btn-lg">ENREGISTRER L'ORDONNANCE</button>
                                     </div>
                                 </div>
                             </div>
@@ -130,65 +105,61 @@
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
     <script>
-        $(document).ready(function() {
-            function applySelect2(elem) {
-                elem.select2({ width: '100%', placeholder: "Rechercher...", allowClear: true });
+    $(document).ready(function() {
+        // 1. On capture un clone "propre" de la ligne AVANT d'activer Select2
+        var cleanRow = $(".med-row").first().clone();
+        cleanRow.find('.stock-info').empty();
+        cleanRow.find('.display-info').val('');
+
+        function initS2(target) {
+            target.select2({ width: '100%', placeholder: "Chercher..." });
+        }
+
+        // Init première ligne
+        initS2($('.select-produit'));
+
+        // AJOUTER LIGNE
+        $("#addRow").click(function() {
+            var $newRow = cleanRow.clone();
+            $("#prescriptionBody").append($newRow);
+            initS2($newRow.find('.select-produit')); // On active Select2 sur la nouvelle ligne uniquement
+        });
+
+        // SUPPRIMER LIGNE
+        $(document).on('click', '.remove-row', function() {
+            if ($(".med-row").length > 1) {
+                $(this).closest('tr').remove();
+            }
+        });
+
+        // CHANGEMENT PRODUIT
+        $(document).on('change', '.select-produit', function() {
+            var $this = $(this);
+            var $row = $this.closest('tr');
+            var val = $this.val();
+
+            if(!val) return;
+
+            // Vérifier doublon
+            var count = 0;
+            $(".select-produit").each(function() {
+                if ($(this).val() === val) count++;
+            });
+
+            if (count > 1) {
+                alert("Médicament déjà ajouté !");
+                $this.val('').trigger('change.select2');
+                return;
             }
 
-            applySelect2($('.select-produit'));
-
-            // AJOUTER UNE LIGNE (Correction pour que ça fonctionne à l'infini)
-            $("#addRow").click(function() {
-                var $tableBody = $("#prescriptionBody");
-                var $templateRow = $tableBody.find(".med-row").first();
-                var $newRow = $templateRow.clone();
-
-                // Nettoyage Select2 pour le clone
-                $newRow.find(".select2-container").remove();
-                var $select = $newRow.find("select");
-                $select.removeClass("select2-hidden-accessible").removeAttr("data-select2-id").removeAttr("aria-hidden").removeAttr("tabindex").val("");
-                $select.find("option").removeAttr("data-select2-id");
-
-                $newRow.find(".display-info").val("");
-                $newRow.find(".stock-info").empty();
-                $newRow.find("input[type='number']").val(1);
-
-                $tableBody.append($newRow);
-                applySelect2($select);
-            });
-
-            // SUPPRIMER
-            $(document).on('click', '.remove-row', function() {
-                if ($('.med-row').length > 1) $(this).closest('tr').remove();
-            });
-
-            // ANTI-DOUBLON ET INFOS
-            $(document).on('change', '.select-produit', function() {
-                var $currentSelect = $(this);
-                var $currentRow = $currentSelect.closest('tr');
-                var selectedId = $currentSelect.val();
-
-                if (!selectedId) return;
-
-                // Vérifier si déjà choisi
-                var isDuplicate = false;
-                $(".select-produit").not($currentSelect).each(function() {
-                    if ($(this).val() === selectedId) { isDuplicate = true; return false; }
-                });
-
-                if (isDuplicate) {
-                    alert("Ce médicament est déjà dans la liste.");
-                    $currentSelect.val('').trigger('change');
-                    return;
-                }
-
-                var $opt = $currentSelect.find('option:selected');
-                $currentRow.find('.display-info').val($opt.data('info'));
-                var stock = $opt.data('stock');
-                var color = (parseInt(stock) <= 0) ? 'text-danger' : 'text-success';
-                $currentRow.find('.stock-info').html('<span class="'+color+'">Stock: '+stock+'</span>');
-            });
+            // Update infos
+            var selected = $this.find(':selected');
+            $row.find('.display-info').val(selected.data('info'));
+            var stock = parseInt(selected.data('stock'));
+            var color = (stock <= 5) ? 'text-danger' : 'text-success';
+            $row.find('.stock-info').html('<span class="'+color+'">Stock : '+stock+'</span>');
         });
+    });
     </script>
 </body>
 </html>
