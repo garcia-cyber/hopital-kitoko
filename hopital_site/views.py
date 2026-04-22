@@ -1105,15 +1105,19 @@ def examens_termines_medecin(request):
 # =======================================================================================================
 @login_required
 def rediger_ordonnance(request, consultation_id):
+    # On récupère la consultation ou 404
     consultation = get_object_or_404(Consultation, id=consultation_id)
     patient = consultation.patient
     
-    # 1. Empêcher les doublons d'ordonnance
-    if Ordonnance.objects.filter(consultation=consultation).exists():
-        messages.warning(request, f"Une ordonnance existe déjà pour cette consultation.")
-        return redirect('resultats_labo_medecin')
+    # 1. VERIFICATION : Une ordonnance existe-t-elle déjà ?
+    ordonnance_existante = Ordonnance.objects.filter(consultation=consultation).first()
+    
+    if ordonnance_existante:
+        # Si elle existe, on peut soit rediriger, soit afficher un message
+        messages.warning(request, f"Une ordonnance a déjà été rédigée pour cette consultation le {ordonnance_existante.date_creation.strftime('%d/%m/%Y')}.")
+        return redirect('resultats_labo_medecin') # Ou vers la vue de l'ordonnance existante
 
-    # 2. Données pour le médecin
+    # 2. Données pour le formulaire
     produits_stock = Medicament.objects.filter(quantite_stock_pieces__gt=0).order_by('designation')
     examens_faits = ExamenPrescrit.objects.filter(
         consultation=consultation, 
@@ -1125,6 +1129,11 @@ def rediger_ordonnance(request, consultation_id):
         qtes_demandees = request.POST.getlist('quantite_prescrite[]')
         posologie_globale = request.POST.get('posologie', '')
 
+        # Double vérification au cas où l'utilisateur aurait ouvert deux onglets
+        if Ordonnance.objects.filter(consultation=consultation).exists():
+            messages.error(request, "Erreur : Une ordonnance vient d'être créée par un autre accès.")
+            return redirect('resultats_labo_medecin')
+
         if not medics_ids:
             messages.error(request, "Veuillez ajouter au moins un médicament.")
         else:
@@ -1133,26 +1142,33 @@ def rediger_ordonnance(request, consultation_id):
 
             for m_id, q_voulue in zip(medics_ids, qtes_demandees):
                 try:
-                    if not q_voulue or int(q_voulue) <= 0: continue
+                    if not q_voulue or not m_id: continue
+                    
                     medoc = Medicament.objects.get(id=m_id)
-                    q_voulue = int(q_voulue)
+                    q_int = int(q_voulue)
 
-                    if medoc.quantite_stock_pieces < q_voulue:
-                        erreurs.append(f"Stock insuffisant pour {medoc.designation}.")
+                    if q_int <= 0:
+                        erreurs.append(f"Quantité invalide pour {medoc.designation}.")
+                        continue
+
+                    if medoc.quantite_stock_pieces < q_int:
+                        erreurs.append(f"Stock insuffisant pour {medoc.designation} (Dispo: {medoc.quantite_stock_pieces}).")
                     else:
-                        lignes_a_creer.append({'objet_medoc': medoc, 'quantite': q_voulue})
+                        lignes_a_creer.append({'objet_medoc': medoc, 'quantite': q_int})
                 except (Medicament.DoesNotExist, ValueError):
                     continue
 
             if erreurs:
                 for err in erreurs: messages.error(request, err)
-            else:
+            elif lignes_a_creer:
                 try:
                     with transaction.atomic():
+                        # Génération automatique du texte récapitulatif
                         description_texte = "Prescription :\n" + "\n".join([
                             f"- {l['objet_medoc'].designation}: {l['quantite']}" for l in lignes_a_creer
                         ])
                         
+                        # Création de l'entête de l'ordonnance
                         ordonnance = Ordonnance.objects.create(
                             consultation=consultation,
                             medecin=request.user,
@@ -1160,27 +1176,30 @@ def rediger_ordonnance(request, consultation_id):
                             instructions_posologie=posologie_globale
                         )
 
+                        # Création des lignes détaillées
                         for item in lignes_a_creer:
                             LigneOrdonnance.objects.create(
                                 ordonnance=ordonnance,
                                 medicament=item['objet_medoc'],
                                 quantite_prescrite=item['quantite'],
-                                quantite_payee=0, quantite_delivree=0
+                                quantite_payee=0, 
+                                quantite_delivree=0
                             )
 
-                        messages.success(request, "Ordonnance enregistrée.")
+                        messages.success(request, f"Ordonnance pour {patient.noms} enregistrée avec succès.")
                         return redirect('resultats_labo_medecin')
                 except Exception as e:
-                    messages.error(request, f"Erreur : {e}")
+                    messages.error(request, f"Erreur technique lors de l'enregistrement : {e}")
 
-    # Profil sidebar
+    # Profil pour la sidebar
     profil_connecte = Profil.objects.filter(userProfil=request.user).first()
+    
     context = {
         'consultation': consultation,
         'patient': patient,
         'examens': examens_faits,
         'produits_stock': produits_stock,
-        'fonction': profil_connecte.fonction.fonction if profil_connecte and profil_connecte.fonction else None,
+        'profil': profil_connecte,
     }
     return render(request, 'back-end/rediger_ordonnance.html', context)
     
@@ -1755,102 +1774,120 @@ def delivrer_ordonnance(request, ordonnance_id):
 @login_required
 @transaction.atomic
 def payer_ordonnance(request, patient_id=None):
-    # 1. Initialisation des acteurs (Patient ou Externe)
     patient = get_object_or_404(Patient, id=patient_id) if patient_id else None
     profil = Profil.objects.filter(userProfil=request.user).first()
-    
-    # 2. Récupération des données financières
     config = ConfigurationHopital.objects.first()
     taux_actuel = Decimal(str(config.taux_usd_en_cdf)) if config else Decimal("2500")
     
-    lignes_a_payer = []
-    total_du_cdf = Decimal("0.00")
-    ordonnance_obj = None
+    # 1. On récupère toutes les lignes non payées pour ce patient
+    lignes_ordonnance = LigneOrdonnance.objects.filter(
+        ordonnance__consultation__patient=patient,
+        paye=False
+    ).select_related('medicament', 'ordonnance')
 
-    # CAS PATIENT : Récupération auto des lignes de l'ordonnance non payées
-    if patient:
-        lignes_a_payer = LigneOrdonnance.objects.filter(
-            ordonnance__consultation__patient=patient,
-            paye=False
-        ).select_related('medicament', 'ordonnance')
-        
-        total_du_cdf = sum(l.prix_total for l in lignes_a_payer)
-        if lignes_a_payer.exists():
-            ordonnance_obj = lignes_a_payer.first().ordonnance
-
-    # 3. Traitement du Paiement (POST)
     if request.method == 'POST':
-        montant_saisi_brut = request.POST.get('montant_physique')
-        devise = request.POST.get('devise')
-        mode_p = request.POST.get('mode_paiement')
-        ref = request.POST.get('reference_transaction')
-        nom_externe = request.POST.get('nom_client_externe') # Pour vente directe
+        devise = request.POST.get('devise', 'CDF')
+        mode_p = request.POST.get('mode_paiement', 'CASH')
+        
+        try:
+            total_a_payer_cette_fois_cdf = Decimal("0.00")
+            lignes_a_traiter = []
 
-        if not montant_saisi_brut:
-            messages.error(request, "Erreur : Le montant est obligatoire.")
-        else:
-            try:
-                montant_decimal = Decimal(str(montant_saisi_brut).replace(',', '.'))
-                # Conversion en CDF pour la vérification comptable
-                argent_recu_en_cdf = (montant_decimal * taux_actuel) if devise == 'USD' else montant_decimal
+            # 2. On parcourt les lignes pour voir ce qui a été saisi dans le formulaire
+            for ligne in lignes_ordonnance:
+                qty_key = f"qty_payer_{ligne.id}"
+                qty_saisie = request.POST.get(qty_key)
+                
+                if qty_saisie and int(qty_saisie) > 0:
+                    q = int(qty_saisie)
+                    reste_a_payer = ligne.quantite_prescrite - ligne.quantite_payee
+                    
+                    if q > reste_a_payer:
+                        messages.error(request, f"Quantité saisie ({q}) supérieure au reste dû pour {ligne.medicament.designation}")
+                        return redirect('payer_ordonnance', patient_id=patient.id)
+                    
+                    # Vérification du stock physique
+                    if ligne.medicament.quantite_stock_pieces < q:
+                        messages.error(request, f"Stock insuffisant pour {ligne.medicament.designation} (Dispo: {ligne.medicament.quantite_stock_pieces})")
+                        return redirect('payer_ordonnance', patient_id=patient.id)
 
-                # A. Créer ou récupérer la FacturePharmacie (Gestion de la dette)
-                # On cherche si une facture existe déjà pour cette ordonnance
-                facture, created = FacturePharmacie.objects.get_or_create(
-                    ordonnance=ordonnance_obj,
-                    defaults={
-                        'patient': patient,
-                        'nom_client_externe': nom_externe,
-                        'total_a_payer_cdf': total_du_cdf,
-                        'taux_fixe': taux_actuel,
-                        'vendeur': request.user
-                    }
+                    montant_ligne = q * ligne.medicament.prix_vente_detail
+                    total_a_payer_cette_fois_cdf += montant_ligne
+                    
+                    lignes_a_traiter.append({
+                        'ligne_obj': ligne,
+                        'quantite': q,
+                        'montant': montant_ligne
+                    })
+
+            if not lignes_a_traiter:
+                messages.warning(request, "Aucune quantité n'a été saisie.")
+                return redirect('payer_ordonnance', patient_id=patient.id)
+
+            # 3. Création de la Facture
+            facture = FacturePharmacie.objects.create(
+                patient=patient,
+                total_a_payer_cdf=total_a_payer_cette_fois_cdf,
+                taux_fixe=taux_actuel,
+                vendeur=request.user,
+                ordonnance=lignes_ordonnance.first().ordonnance
+            )
+
+            # 4. Création du Paiement (On considère que c'est soldé pour les quantités choisies)
+            montant_physique = total_a_payer_cette_fois_cdf
+            if devise == 'USD':
+                montant_physique = total_a_payer_cette_fois_cdf / taux_actuel
+
+            Paiement.objects.create(
+                facture_pharma=facture,
+                montant_physique=montant_physique,
+                devise=devise,
+                mode_paiement=mode_p,
+                montant_comptable_cdf=total_a_payer_cette_fois_cdf,
+                reference_transaction=request.POST.get('reference_transaction', '')
+            )
+
+            # 5. Mise à jour du Stock et des Lignes d'ordonnance
+            for item in lignes_a_traiter:
+                l = item['ligne_obj']
+                qty = item['quantite']
+                
+                # Update Médicament Stock
+                l.medicament.quantite_stock_pieces -= qty
+                l.medicament.save()
+
+                # Update Ligne Ordonnance
+                l.quantite_payee += qty
+                if l.quantite_payee >= l.quantite_prescrite:
+                    l.paye = True
+                l.save()
+
+                # Création du détail facture
+                LigneFacturePharma.objects.create(
+                    facture=facture,
+                    medicament=l.medicament,
+                    quantite=qty,
+                    prix_unitaire_applique=l.medicament.prix_vente_detail
                 )
 
-                # B. Validation stricte : Ne pas payer plus que le reste dû
-                if argent_recu_en_cdf > facture.reste_a_payer:
-                    messages.error(request, f"Refusé : Le montant dépasse le reste à payer ({facture.reste_a_payer} FC).")
-                else:
-                    # C. Créer l'entrée dans l'historique des Paiements
-                    Paiement.objects.create(
-                        facture_pharma=facture,
-                        montant_physique=montant_decimal,
-                        devise=devise,
-                        mode_paiement=mode_p,
-                        reference_transaction=ref
-                    )
+            messages.success(request, f"Encaissement réussi : {total_a_payer_cette_fois_cdf} CDF")
+            return redirect('patientRead') # Ou vers l'impression de la facture
 
-                    # D. Si le paiement solde la facture, on valide les stocks et l'ordonnance
-                    if facture.statut_paiement == 'SOLDE':
-                        if ordonnance_obj:
-                            # On marque les lignes comme payées
-                            lignes_a_payer.update(
-                                paye=True, 
-                                quantite_payee=F('quantite_prescrite')
-                            )
-                            ordonnance_obj.est_paye = True
-                            ordonnance_obj.save()
-                        
-                        messages.success(request, f"Succès ! Facture #{facture.id} entièrement soldée.")
-                    else:
-                        messages.warning(request, f"Paiement partiel enregistré. Reste à payer : {facture.reste_a_payer} FC.")
+        except Exception as e:
+            messages.error(request, f"Une erreur est survenue : {str(e)}")
+            return redirect('payer_ordonnance', patient_id=patient.id)
 
-                    return redirect('patientRead') if patient else redirect('accueil_pharmacie')
+    # Affichage du formulaire
+    profil_connecte = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil_connecte.fonction.fonction if profil_connecte and profil_connecte.fonction else None
 
-            except Exception as e:
-                messages.error(request, f"Erreur technique : {str(e)}")
-
-    # 4. Préparation du rendu
     context = {
         'patient': patient,
-        'lignes': lignes_a_payer,
-        'total_cdf': total_du_cdf,
+        'lignes': lignes_ordonnance,
         'taux': taux_actuel,
         'profil': profil,
-        'title': "Caisse Pharmacie",
-        'fonction': profil.fonction.fonction if profil else None
+        'fonction': fonction
     }
-    
     return render(request, 'back-end/payer_ordonnance.html', context)
 
 
