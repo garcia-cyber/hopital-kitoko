@@ -1193,6 +1193,9 @@ def rediger_ordonnance(request, consultation_id):
 
     # Profil pour la sidebar
     profil_connecte = Profil.objects.filter(userProfil=request.user).first()
+
+    profil = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil.fonction.fonction if profil and profil.fonction else None
     
     context = {
         'consultation': consultation,
@@ -1200,6 +1203,7 @@ def rediger_ordonnance(request, consultation_id):
         'examens': examens_faits,
         'produits_stock': produits_stock,
         'profil': profil_connecte,
+        'fonction':fonction
     }
     return render(request, 'back-end/rediger_ordonnance.html', context)
     
@@ -1738,10 +1742,14 @@ def ordonnance_details(request, ordonnance_id):
     # 'lignes' est le related_name que tu as normalement dans ton modèle LigneOrdonnance
     lignes = ordonnance.lignes.all() 
 
+    profil = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil.fonction.fonction if profil and profil.fonction else None
+
     context = {
         'ordonnance': ordonnance,
         'lignes': lignes,
-        'title': f"Détails Ordonnance #{ordonnance.id}"
+        'title': f"Détails Ordonnance #{ordonnance.id}" , 
+        'fonction': fonction
     }
     return render(request, 'back-end/ordonnance_details.html', context)
 
@@ -1765,7 +1773,10 @@ def delivrer_ordonnance(request, ordonnance_id):
         return redirect('liste_ordonnances')
 
     # Si on y accède par erreur en GET, on redirige vers la liste
-    return redirect('liste_ordonnances')
+    profil = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil.fonction.fonction if profil and profil.fonction else None
+
+    return redirect('liste_ordonnances' , {'fonction':fonction})
 
 # 49 
 # =====================================================================
@@ -2138,12 +2149,34 @@ def materiel_en_panne(request):
 @login_required
 def historique_pharma_patient(request, patient_id):
     patient = get_object_or_404(Patient, id=patient_id)
-    # On récupère les factures avec les relations pour éviter trop de requêtes SQL
-    historique = FacturePharmacie.objects.filter(patient=patient).prefetch_related('lignes__medicament', 'paiements').order_by('-date_facture')
     
+    # Récupération de l'historique avec les lignes et médicaments
+    historique = FacturePharmacie.objects.filter(patient=patient).prefetch_related(
+        'lignes__medicament'
+    ).order_by('-date_facture')
+
+    # Calculs financiers globaux
     total_du = sum(f.total_a_payer_cdf for f in historique)
     total_paye = sum(f.total_paye for f in historique)
     dette_totale = total_du - total_paye
+
+    # Logique de calcul pour le template
+    for facture in historique:
+        # On considère ici que 'total_paye' de la facture proratise les lignes
+        # Ou plus simplement, on prépare les variables pour le HTML
+        for ligne in facture.lignes.all():
+            # Si tu n'as pas encore de champ 'quantite_payee' dans ton modèle :
+            # On considère ici par défaut que si la facture est payée, la ligne l'est aussi.
+            # Mais pour ton besoin de "reliquat", nous utilisons 'quantite'
+            ligne.reste_a_livrer = 0 # Par défaut
+            if facture.etat_paiement != 'PAYE':
+                # Logique personnalisée : si pas payé, tout reste à payer
+                ligne.reste_a_livrer = ligne.quantite
+            
+            ligne.est_termine = (facture.etat_paiement == 'PAYE')
+
+    profil = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil.fonction.fonction if profil and profil.fonction else None
 
     return render(request, 'back-end/historique_patient_pharma.html', {
         'patient': patient,
@@ -2151,6 +2184,7 @@ def historique_pharma_patient(request, patient_id):
         'total_du': total_du,
         'total_paye': total_paye,
         'dette_totale': dette_totale,
+        'fonction' : fonction
     })
 
 # 59
@@ -2188,7 +2222,8 @@ def encaisser_reste_pharma(request, facture_id):
         )
         
         messages.success(request, "Paiement de la dette enregistré avec succès !")
-        return redirect('historique_pharma_patient', patient_id=facture.patient.id)
+        
+        return redirect('historique_pharma_patient', patient_id=facture.patient.id )
 
 # 60 
 # ====================================================================================================================
@@ -2218,6 +2253,10 @@ def tableau_bord_livraison_pharmacie(request):
         total_paye_db__gte=F('total_a_payer_cdf')
     ).select_related('patient').prefetch_related('lignes__medicament')
 
+    profil = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil.fonction.fonction if profil and profil.fonction else None
+
     return render(request, 'back-end/pharmacie/livraison_queue.html', {
-        'commandes': commandes_a_livrer
+        'commandes': commandes_a_livrer , 
+        'fonction': fonction
     })

@@ -43,8 +43,7 @@
                             </div>
                         </div>
                     </div>
-                    {% endif %}
-
+                    {% elif fonction == 'receptionniste'%}
                     <div class="col-md-6 col-sm-6 col-lg-6 col-xl-3">
                         <div class="dash-widget">
                             <span class="dash-widget-bg2">
@@ -56,8 +55,21 @@
                             </div>
                         </div>
                     </div>
+                    {% endif %}
 
-                    <div class="col-md-6 col-sm-6 col-lg-6 col-xl-3">
+                   <!--  <div class="col-md-6 col-sm-6 col-lg-6 col-xl-3">
+                        <div class="dash-widget">
+                            <span class="dash-widget-bg2">
+                                <img src="{% static 'back-end/assets/img/icons/icon-3.png'%}" alt="Icon" width="25">
+                            </span>
+                            <div class="dash-widget-info float-left pl-2">
+                                <h4>{{nbrP}}</h4>
+                                <p>Total Patients</p>
+                            </div>
+                        </div>
+                    </div> -->
+
+                    <!-- <div class="col-md-6 col-sm-6 col-lg-6 col-xl-3">
                         <div class="dash-widget">
                             <span class="dash-widget-bg3">
                                 <img src="{% static 'back-end/assets/img/icons/icon-2.png' %}" alt="Icon" width="25">
@@ -67,9 +79,9 @@
                                 <p>Chambres</p>
                             </div>
                         </div>
-                    </div>
+                    </div> -->
 
-                    <div class="col-md-6 col-sm-6 col-lg-6 col-xl-3">
+                    <!-- <div class="col-md-6 col-sm-6 col-lg-6 col-xl-3">
                         <div class="dash-widget">
                             <span class="dash-widget-bg4">
                                 <img src="{% static 'back-end/assets/img/icons/icon-4.png' %}" alt="Icon" width="25">
@@ -79,7 +91,7 @@
                                 <p>Médecins</p>
                             </div>
                         </div>
-                    </div>
+                    </div> -->
                 </div>
 
                 </div>
