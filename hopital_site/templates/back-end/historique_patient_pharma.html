@@ -15,6 +15,7 @@
         .badge-status { font-size: 0.75rem; padding: 5px 10px; }
         .bg-money { background: #ffffff; border: 1px solid #e3e6f0; border-radius: 10px; padding: 20px; }
         .text-label { color: #858796; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; }
+        .btn-print-sm { padding: 2px 8px; font-size: 11px; }
     </style>
 </head>
 <body>
@@ -131,8 +132,13 @@
                                         <div class="list-group list-group-flush">
                                             {% for p in facture.paiements.all %}
                                             <div class="list-group-item px-0 py-1 bg-transparent border-0 d-flex justify-content-between align-items-center">
-                                                <span><i class="fas fa-arrow-right text-success small"></i> {{ p.date_paiement|date:"d/m/y" }} ({{ p.mode_paiement }})</span>
-                                                <span class="font-weight-bold text-dark">{{ p.montant_physique }} {{ p.devise }}</span>
+                                                <span><i class="fas fa-arrow-right text-success small"></i> {{ p.date_paiement|date:"d/m/y" }}</span>
+                                                <div>
+                                                    <span class="font-weight-bold text-dark mr-2">{{ p.montant_physique }} {{ p.devise }}</span>
+                                                    <a href="{% url 'imprimer_recu_pharmacie' p.id %}" target="_blank" class="btn btn-outline-primary btn-print-sm" title="Imprimer le reçu">
+                                                        <i class="fas fa-print"></i>
+                                                    </a>
+                                                </div>
                                             </div>
                                             {% empty %}
                                             <p class="text-muted small italic">Aucun mouvement financier enregistré.</p>

@@ -2269,3 +2269,20 @@ def tableau_bord_livraison_pharmacie(request):
         'commandes': commandes_a_livrer , 
         'fonction': fonction
     })
+
+# 62
+# ==================================================================================================================
+# reussi paiement du medicament patient pharmacie
+# ===================================================================================================================
+@login_required
+def imprimer_recu_pharmacie(request, paiement_id):
+    # Récupère un paiement spécifique pour l'imprimer
+    paiement = get_object_or_404(Paiement, id=paiement_id)
+    facture = paiement.facture_pharma
+    
+    return render(request, 'back-end/pharmacie/recu_paiement_pharma.html', {
+        'paiement': paiement,
+        'facture': facture,
+        'patient': facture.patient,
+        'date_impression': datetime.now(),
+    })
