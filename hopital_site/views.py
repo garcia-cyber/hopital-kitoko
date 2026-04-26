@@ -1790,7 +1790,7 @@ def payer_ordonnance(request, patient_id=None):
     config = ConfigurationHopital.objects.first()
     taux_actuel = Decimal(str(config.taux_usd_en_cdf)) if config else Decimal("2500")
     
-    # Récupération des lignes non payées
+    # 1. On récupère les lignes non encore totalement payées
     lignes_ordonnance = LigneOrdonnance.objects.filter(
         ordonnance__consultation__patient=patient,
         paye=False
@@ -1804,22 +1804,22 @@ def payer_ordonnance(request, patient_id=None):
             total_a_payer_cette_fois_cdf = Decimal("0.00")
             lignes_a_traiter = []
 
+            # 2. Vérification des quantités saisies
             for ligne in lignes_ordonnance:
                 qty_key = f"qty_payer_{ligne.id}"
                 qty_saisie = request.POST.get(qty_key)
                 
                 if qty_saisie and int(qty_saisie) > 0:
                     q = int(qty_saisie)
-                    
-                    # LOGIQUE DE SÉCURITÉ : Calcul du reste
+                    # Calcul du reste réel à payer pour cette ligne
                     reste_du = ligne.quantite_prescrite - ligne.quantite_payee
                     
                     if q > reste_du:
-                        messages.error(request, f"Erreur : Vous tentez de payer {q} pour {ligne.medicament.designation}, mais le reste dû est de {reste_du}.")
+                        messages.error(request, f"Quantité saisie ({q}) supérieure au reste dû pour {ligne.medicament.designation}")
                         return redirect('payer_ordonnance', patient_id=patient.id)
                     
                     if ligne.medicament.quantite_stock_pieces < q:
-                        messages.error(request, f"Stock insuffisant pour {ligne.medicament.designation} (Dispo: {ligne.medicament.quantite_stock_pieces})")
+                        messages.error(request, f"Stock insuffisant pour {ligne.medicament.designation}")
                         return redirect('payer_ordonnance', patient_id=patient.id)
 
                     montant_ligne = q * ligne.medicament.prix_vente_detail
@@ -1832,19 +1832,27 @@ def payer_ordonnance(request, patient_id=None):
                     })
 
             if not lignes_a_traiter:
-                messages.warning(request, "Aucune quantité valide n'a été saisie.")
+                messages.warning(request, "Aucune quantité n'a été saisie.")
                 return redirect('payer_ordonnance', patient_id=patient.id)
 
-            # Création Facture
-            facture = FacturePharmacie.objects.create(
-                patient=patient,
-                total_a_payer_cdf=total_a_payer_cette_fois_cdf,
-                taux_fixe=taux_actuel,
-                vendeur=request.user,
-                ordonnance=lignes_ordonnance.first().ordonnance
+            # 3. GESTION DE LA FACTURE (Correction de l'erreur UNIQUE constraint)
+            # On utilise get_or_create pour ne pas recréer une facture si l'ordonnance en a déjà une
+            ordonnance_principale = lignes_ordonnance.first().ordonnance
+            facture, created = FacturePharmacie.objects.get_or_create(
+                ordonnance=ordonnance_principale,
+                defaults={
+                    'patient': patient,
+                    'total_a_payer_cdf': 0, 
+                    'taux_fixe': taux_actuel,
+                    'vendeur': request.user,
+                }
             )
 
-            # Création Paiement
+            # On met à jour le montant total de la facture unique
+            facture.total_a_payer_cdf += total_a_payer_cette_fois_cdf
+            facture.save()
+
+            # 4. CRÉATION DU PAIEMENT (Le reçu de la transaction actuelle)
             montant_physique = total_a_payer_cette_fois_cdf
             if devise == 'USD':
                 montant_physique = total_a_payer_cette_fois_cdf / taux_actuel
@@ -1858,19 +1866,22 @@ def payer_ordonnance(request, patient_id=None):
                 reference_transaction=request.POST.get('reference_transaction', '')
             )
 
-            # Mise à jour Stock et Lignes
+            # 5. Mise à jour du Stock et des Lignes d'ordonnance
             for item in lignes_a_traiter:
                 l = item['ligne_obj']
                 qty = item['quantite']
                 
+                # Update Médicament Stock
                 l.medicament.quantite_stock_pieces -= qty
                 l.medicament.save()
 
+                # Update Ligne Ordonnance (Cumul)
                 l.quantite_payee += qty
                 if l.quantite_payee >= l.quantite_prescrite:
                     l.paye = True
                 l.save()
 
+                # Détail de ce passage en caisse
                 LigneFacturePharma.objects.create(
                     facture=facture,
                     medicament=l.medicament,
@@ -1882,16 +1893,15 @@ def payer_ordonnance(request, patient_id=None):
             return redirect('patientRead')
 
         except Exception as e:
-            messages.error(request, f"Erreur système : {str(e)}")
+            messages.error(request, f"Une erreur est survenue : {str(e)}")
             return redirect('payer_ordonnance', patient_id=patient.id)
 
-    # Pré-calcul des restes pour l'affichage HTML
+    # Pour l'affichage initial (GET) : Calcul des restes pour le HTML
     for ligne in lignes_ordonnance:
         ligne.reste_calculé = ligne.quantite_prescrite - ligne.quantite_payee
 
-
-    profil = Profil.objects.filter(userProfil=request.user).first()
-    fonction = profil.fonction.fonction if profil and profil.fonction else None
+    profil_connecte = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil_connecte.fonction.fonction if profil_connecte and profil_connecte.fonction else None
 
     context = {
         'patient': patient,
