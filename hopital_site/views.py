@@ -2161,42 +2161,40 @@ def materiel_en_panne(request):
 def historique_pharma_patient(request, patient_id):
     patient = get_object_or_404(Patient, id=patient_id)
     
-    # Récupération de l'historique avec les lignes et médicaments
-    historique = FacturePharmacie.objects.filter(patient=patient).prefetch_related(
-        'lignes__medicament'
-    ).order_by('-date_facture')
+    # 1. RÉCUPÉRATION DES RELIQUATS (Médicaments non soldés)
+    # On cherche les lignes d'ordonnances liées à ce patient qui ne sont pas payées
+    reliquat = LigneOrdonnance.objects.filter(
+        ordonnance__consultation__patient=patient,
+        paye=False
+    ).select_related('medicament')
 
-    # Calculs financiers globaux
+    # Calcul manuel du reste pour l'affichage dans le template
+    for item in reliquat:
+        item.reste_calculé = item.quantite_prescrite - item.quantite_payee
+
+    # 2. RÉCUPÉRATION DES FACTURES (Historique des ventes)
+    # CORRECTION : order_by au lieu de order_name
+    historique = FacturePharmacie.objects.filter(patient=patient).order_by('-date_facture')
+
+    # Calculs financiers globaux basés sur les @property de ton modèle
     total_du = sum(f.total_a_payer_cdf for f in historique)
     total_paye = sum(f.total_paye for f in historique)
     dette_totale = total_du - total_paye
 
-    # Logique de calcul pour le template
-    for facture in historique:
-        # On considère ici que 'total_paye' de la facture proratise les lignes
-        # Ou plus simplement, on prépare les variables pour le HTML
-        for ligne in facture.lignes.all():
-            # Si tu n'as pas encore de champ 'quantite_payee' dans ton modèle :
-            # On considère ici par défaut que si la facture est payée, la ligne l'est aussi.
-            # Mais pour ton besoin de "reliquat", nous utilisons 'quantite'
-            ligne.reste_a_livrer = 0 # Par défaut
-            if facture.etat_paiement != 'PAYE':
-                # Logique personnalisée : si pas payé, tout reste à payer
-                ligne.reste_a_livrer = ligne.quantite
-            
-            ligne.est_termine = (facture.etat_paiement == 'PAYE')
-
+    # Gestion du profil utilisateur
     profil = Profil.objects.filter(userProfil=request.user).first()
     fonction = profil.fonction.fonction if profil and profil.fonction else None
 
     return render(request, 'back-end/historique_patient_pharma.html', {
         'patient': patient,
+        'reliquat': reliquat,
         'historique': historique,
         'total_du': total_du,
         'total_paye': total_paye,
         'dette_totale': dette_totale,
-        'fonction' : fonction
+        'fonction': fonction
     })
+
 
 # 59
 # ======================================================================================================================

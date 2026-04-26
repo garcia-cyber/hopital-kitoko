@@ -9,10 +9,12 @@
     <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css' %}">
     <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css' %}">
     <style>
-        .card-stats { border-left: 5px solid #007bff; margin-bottom: 20px; }
-        .bg-dette { background-color: #fff5f5; border-left: 5px solid #dc3545; }
-        .med-item { font-weight: bold; color: #2c3e50; }
-        .badge-status { font-size: 0.75rem; text-transform: uppercase; }
+        .card-reliquat { border-top: 4px solid #dc3545; border-radius: 10px; }
+        .card-versement { border-left: 5px solid #28a745; margin-bottom: 15px; border-radius: 8px; transition: 0.3s; }
+        .card-versement:hover { box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .badge-status { font-size: 0.75rem; padding: 5px 10px; }
+        .bg-money { background: #ffffff; border: 1px solid #e3e6f0; border-radius: 10px; padding: 20px; }
+        .text-label { color: #858796; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; }
     </style>
 </head>
 <body>
@@ -22,90 +24,137 @@
 
         <div class="page-wrapper">
             <div class="content">
-                <div class="row">
-                    <div class="col-sm-12">
-                        <h4 class="page-title">Détails Pharmacie : <b>{{ patient.noms }}</b></h4>
+                <div class="page-header">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h3 class="page-title text-primary">Suivi Pharmacie</h3>
+                            <ul class="breadcrumb">
+                                <li class="breadcrumb-item">Patient</li>
+                                <li class="breadcrumb-item active">{{ patient.noms }}</li>
+                            </ul>
+                        </div>
+                        <div class="col-auto">
+                            <a href="{% url 'payer_ordonnance' patient.id %}" class="btn btn-primary btn-rounded">
+                                <i class="fas fa-plus"></i> Nouveau Paiement
+                            </a>
+                        </div>
                     </div>
                 </div>
 
-                <div class="row">
+                <div class="row mb-4">
                     <div class="col-md-4">
-                        <div class="card card-stats shadow-sm">
-                            <div class="card-body">
-                                <p class="text-muted mb-1">Total Facturé</p>
-                                <h4 class="mb-0">{{ total_du }} CDF</h4>
-                            </div>
+                        <div class="bg-money shadow-sm">
+                            <span class="text-label">Total Facturé</span>
+                            <h3 class="mb-0 font-weight-bold">{{ total_du }} <small>CDF</small></h3>
                         </div>
                     </div>
                     <div class="col-md-4">
-                        <div class="card card-stats shadow-sm border-success">
-                            <div class="card-body">
-                                <p class="text-muted mb-1">Total Versé</p>
-                                <h4 class="mb-0 text-success">{{ total_paye }} CDF</h4>
-                            </div>
+                        <div class="bg-money shadow-sm border-bottom border-success">
+                            <span class="text-label">Total déjà Versé</span>
+                            <h3 class="mb-0 text-success font-weight-bold">{{ total_paye }} <small>CDF</small></h3>
                         </div>
                     </div>
                     <div class="col-md-4">
-                        <div class="card shadow-sm bg-dette">
-                            <div class="card-body">
-                                <p class="text-muted mb-1">Reste à Payer</p>
-                                <h4 class="mb-0 text-danger">{{ dette_totale }} CDF</h4>
-                            </div>
+                        <div class="bg-money shadow-sm border-bottom border-danger">
+                            <span class="text-label">Reste à Recouvrer</span>
+                            <h3 class="mb-0 text-danger font-weight-bold">{{ dette_totale }} <small>CDF</small></h3>
                         </div>
                     </div>
                 </div>
 
                 <div class="row">
                     <div class="col-md-12">
-                        <div class="card shadow-sm">
+                        <div class="card card-reliquat shadow-sm">
+                            <div class="card-header bg-white py-3">
+                                <h5 class="card-title mb-0 text-danger font-weight-bold">
+                                    <i class="fas fa-exclamation-triangle"></i> Médicaments en attente de paiement
+                                </h5>
+                            </div>
                             <div class="card-body p-0">
                                 <div class="table-responsive">
                                     <table class="table table-hover mb-0">
-                                        <thead class="thead-light">
+                                        <thead class="bg-light">
                                             <tr>
-                                                <th>Date</th>
                                                 <th>Médicament</th>
-                                                <th class="text-center">Quantité</th>
-                                                <th class="text-right">P.U</th>
-                                                <th class="text-right">Sous-total</th>
-                                                <th class="text-center">Statut Paiement</th>
+                                                <th class="text-center">Quantité Prescrite</th>
+                                                <th class="text-center">Quantité Payée</th>
+                                                <th class="text-center">Reliquat</th>
+                                                <th class="text-right">Action</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {% for facture in historique %}
-                                                {% for ligne in facture.lignes.all %}
-                                                <tr>
-                                                    <td>{{ facture.date_facture|date:"d/m/Y" }}</td>
-                                                    <td>
-                                                        <span class="med-item">{{ ligne.medicament.designation }}</span><br>
-                                                        <small class="text-muted">Facture #{{ facture.id }}</small>
-                                                    </td>
-                                                    <td class="text-center">
-                                                        <span class="badge badge-secondary">{{ ligne.quantite }}</span>
-                                                    </td>
-                                                    <td class="text-right">{{ ligne.prix_unitaire_applique }}</td>
-                                                    <td class="text-right font-weight-bold">{{ ligne.sous_total }}</td>
-                                                    <td class="text-center">
-                                                        {% if facture.etat_paiement == 'PAYE' %}
-                                                            <span class="badge badge-success badge-status">Payé</span>
-                                                        {% elif facture.etat_paiement == 'PARTIEL' %}
-                                                            <span class="badge badge-warning badge-status">Partiel</span>
-                                                        {% else %}
-                                                            <span class="badge badge-danger badge-status">Non Payé</span>
-                                                        {% endif %}
-                                                    </td>
-                                                </tr>
-                                                {% endfor %}
+                                            {% for item in reliquat %}
+                                            <tr>
+                                                <td class="font-weight-bold text-dark">{{ item.medicament.designation }}</td>
+                                                <td class="text-center">{{ item.quantite_prescrite }}</td>
+                                                <td class="text-center text-success">{{ item.quantite_payee }}</td>
+                                                <td class="text-center"><span class="badge badge-danger">{{ item.reste_calculé }}</span></td>
+                                                <td class="text-right">
+                                                    <a href="{% url 'payer_ordonnance' patient.id %}" class="btn btn-sm btn-outline-danger">Solder</a>
+                                                </td>
+                                            </tr>
                                             {% empty %}
-                                                <tr>
-                                                    <td colspan="6" class="text-center py-4">Aucun achat enregistré.</td>
-                                                </tr>
+                                            <tr><td colspan="5" class="text-center py-5 text-muted italic">Aucun reliquat à payer.</td></tr>
                                             {% endfor %}
                                         </tbody>
                                     </table>
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <div class="row mt-5">
+                    <div class="col-md-12">
+                        <h4 class="mb-3 text-dark font-weight-bold">Détails des Versements par Facture</h4>
+                        
+                        {% for facture in historique %}
+                        <div class="card card-versement shadow-sm">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-3 border-right">
+                                        <p class="text-muted mb-1">Facture #{{ facture.id }}</p>
+                                        <h5 class="font-weight-bold">{{ facture.date_facture|date:"d M Y" }}</h5>
+                                        <p class="small text-muted">{{ facture.date_facture|date:"H:i" }}</p>
+                                        
+                                        {% if facture.statut_paiement == 'SOLDE' %}
+                                            <span class="badge badge-success badge-status"><i class="fas fa-check"></i> Soldé</span>
+                                        {% elif facture.statut_paiement == 'PARTIEL' %}
+                                            <span class="badge badge-warning badge-status"><i class="fas fa-clock"></i> Partiel</span>
+                                        {% else %}
+                                            <span class="badge badge-danger badge-status">Non Payé</span>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <div class="col-md-5">
+                                        <p class="font-weight-bold small text-muted mb-2 uppercase">Historique des acomptes :</p>
+                                        <div class="list-group list-group-flush">
+                                            {% for p in facture.paiements.all %}
+                                            <div class="list-group-item px-0 py-1 bg-transparent border-0 d-flex justify-content-between align-items-center">
+                                                <span><i class="fas fa-arrow-right text-success small"></i> {{ p.date_paiement|date:"d/m/y" }} ({{ p.mode_paiement }})</span>
+                                                <span class="font-weight-bold text-dark">{{ p.montant_physique }} {{ p.devise }}</span>
+                                            </div>
+                                            {% empty %}
+                                            <p class="text-muted small italic">Aucun mouvement financier enregistré.</p>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-4 text-right bg-light py-2 rounded">
+                                        <p class="mb-1 small">Total Facturé : <b>{{ facture.total_a_payer_cdf }} CDF</b></p>
+                                        <p class="mb-1 small text-success">Total versé : <b>{{ facture.total_paye }} CDF</b></p>
+                                        <hr class="my-2">
+                                        <h6 class="mb-0 text-danger font-weight-bold">Reste : {{ facture.reste_a_payer }} CDF</h6>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-receipt fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">Aucun historique de paiement pour ce patient.</p>
+                        </div>
+                        {% endfor %}
                     </div>
                 </div>
             </div>
