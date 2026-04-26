@@ -1790,7 +1790,7 @@ def payer_ordonnance(request, patient_id=None):
     config = ConfigurationHopital.objects.first()
     taux_actuel = Decimal(str(config.taux_usd_en_cdf)) if config else Decimal("2500")
     
-    # 1. On récupère toutes les lignes non payées pour ce patient
+    # Récupération des lignes non payées
     lignes_ordonnance = LigneOrdonnance.objects.filter(
         ordonnance__consultation__patient=patient,
         paye=False
@@ -1804,20 +1804,20 @@ def payer_ordonnance(request, patient_id=None):
             total_a_payer_cette_fois_cdf = Decimal("0.00")
             lignes_a_traiter = []
 
-            # 2. On parcourt les lignes pour voir ce qui a été saisi dans le formulaire
             for ligne in lignes_ordonnance:
                 qty_key = f"qty_payer_{ligne.id}"
                 qty_saisie = request.POST.get(qty_key)
                 
                 if qty_saisie and int(qty_saisie) > 0:
                     q = int(qty_saisie)
-                    reste_a_payer = ligne.quantite_prescrite - ligne.quantite_payee
                     
-                    if q > reste_a_payer:
-                        messages.error(request, f"Quantité saisie ({q}) supérieure au reste dû pour {ligne.medicament.designation}")
+                    # LOGIQUE DE SÉCURITÉ : Calcul du reste
+                    reste_du = ligne.quantite_prescrite - ligne.quantite_payee
+                    
+                    if q > reste_du:
+                        messages.error(request, f"Erreur : Vous tentez de payer {q} pour {ligne.medicament.designation}, mais le reste dû est de {reste_du}.")
                         return redirect('payer_ordonnance', patient_id=patient.id)
                     
-                    # Vérification du stock physique
                     if ligne.medicament.quantite_stock_pieces < q:
                         messages.error(request, f"Stock insuffisant pour {ligne.medicament.designation} (Dispo: {ligne.medicament.quantite_stock_pieces})")
                         return redirect('payer_ordonnance', patient_id=patient.id)
@@ -1832,10 +1832,10 @@ def payer_ordonnance(request, patient_id=None):
                     })
 
             if not lignes_a_traiter:
-                messages.warning(request, "Aucune quantité n'a été saisie.")
+                messages.warning(request, "Aucune quantité valide n'a été saisie.")
                 return redirect('payer_ordonnance', patient_id=patient.id)
 
-            # 3. Création de la Facture
+            # Création Facture
             facture = FacturePharmacie.objects.create(
                 patient=patient,
                 total_a_payer_cdf=total_a_payer_cette_fois_cdf,
@@ -1844,7 +1844,7 @@ def payer_ordonnance(request, patient_id=None):
                 ordonnance=lignes_ordonnance.first().ordonnance
             )
 
-            # 4. Création du Paiement (On considère que c'est soldé pour les quantités choisies)
+            # Création Paiement
             montant_physique = total_a_payer_cette_fois_cdf
             if devise == 'USD':
                 montant_physique = total_a_payer_cette_fois_cdf / taux_actuel
@@ -1858,22 +1858,19 @@ def payer_ordonnance(request, patient_id=None):
                 reference_transaction=request.POST.get('reference_transaction', '')
             )
 
-            # 5. Mise à jour du Stock et des Lignes d'ordonnance
+            # Mise à jour Stock et Lignes
             for item in lignes_a_traiter:
                 l = item['ligne_obj']
                 qty = item['quantite']
                 
-                # Update Médicament Stock
                 l.medicament.quantite_stock_pieces -= qty
                 l.medicament.save()
 
-                # Update Ligne Ordonnance
                 l.quantite_payee += qty
                 if l.quantite_payee >= l.quantite_prescrite:
                     l.paye = True
                 l.save()
 
-                # Création du détail facture
                 LigneFacturePharma.objects.create(
                     facture=facture,
                     medicament=l.medicament,
@@ -1882,15 +1879,19 @@ def payer_ordonnance(request, patient_id=None):
                 )
 
             messages.success(request, f"Encaissement réussi : {total_a_payer_cette_fois_cdf} CDF")
-            return redirect('patientRead') # Ou vers l'impression de la facture
+            return redirect('patientRead')
 
         except Exception as e:
-            messages.error(request, f"Une erreur est survenue : {str(e)}")
+            messages.error(request, f"Erreur système : {str(e)}")
             return redirect('payer_ordonnance', patient_id=patient.id)
 
-    # Affichage du formulaire
-    profil_connecte = Profil.objects.filter(userProfil=request.user).first()
-    fonction = profil_connecte.fonction.fonction if profil_connecte and profil_connecte.fonction else None
+    # Pré-calcul des restes pour l'affichage HTML
+    for ligne in lignes_ordonnance:
+        ligne.reste_calculé = ligne.quantite_prescrite - ligne.quantite_payee
+
+
+    profil = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil.fonction.fonction if profil and profil.fonction else None
 
     context = {
         'patient': patient,
