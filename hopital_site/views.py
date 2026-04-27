@@ -1726,11 +1726,15 @@ def liste_ordonnances(request):
         ordonnances = queryset.all()
         page_title = "Gestion des Ordonnances"
 
+    profil = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil.fonction.fonction if profil and profil.fonction else None
+
     context = {
         'ordonnances': ordonnances,
         'fonction': nom_fonction,
         'user_actuel': request.user, # Pour mettre en avant ses propres ordonnances dans le HTML
-        'title': page_title
+        'title': page_title , 
+        'fonction': fonction 
     }
     
     return render(request, 'back-end/liste_ordonnances_generale.html', context)
@@ -1741,12 +1745,11 @@ def liste_ordonnances(request):
 # ================================================================================================
 @login_required
 def ordonnance_details(request, ordonnance_id):
-    # On récupère l'ordonnance ou erreur 404
+    # On récupère l'ordonnance
     ordonnance = get_object_or_404(Ordonnance, id=ordonnance_id)
     
-    # On récupère toutes les lignes (médicaments) liées à cette ordonnance
-    # 'lignes' est le related_name que tu as normalement dans ton modèle LigneOrdonnance
-    lignes = ordonnance.lignes.all() 
+    # CORRECTION : On utilise 'medicament' car c'est le nom exact du champ dans ton modèle
+    lignes = ordonnance.lignes.all().select_related('medicament') 
 
     profil = Profil.objects.filter(userProfil=request.user).first()
     fonction = profil.fonction.fonction if profil and profil.fonction else None
@@ -1754,7 +1757,7 @@ def ordonnance_details(request, ordonnance_id):
     context = {
         'ordonnance': ordonnance,
         'lignes': lignes,
-        'title': f"Détails Ordonnance #{ordonnance.id}" , 
+        'title': f"Détails Ordonnance #{ordonnance.id}",
         'fonction': fonction
     }
     return render(request, 'back-end/ordonnance_details.html', context)

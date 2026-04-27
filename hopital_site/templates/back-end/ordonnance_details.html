@@ -4,149 +4,148 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
-    <title>{{ title }} - Système Hospitalier</title>
+    <title>{{ title }} - KITOKO</title>
     <link rel="shortcut icon" type="image/x-icon" href="{% static 'back-end/assets/img/favicon.ico'%}">
     <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css'%}">
     <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css'%}">
     <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css'%}">
     <style>
-        .prescription-header { background: #f8f9fa; border-bottom: 2px solid #007bff; padding: 20px; border-radius: 8px 8px 0 0; }
-        .info-label { font-weight: bold; color: #555; text-transform: uppercase; font-size: 0.8rem; }
-        .info-value { font-size: 1.1rem; color: #222; }
-        .table-presc { margin-top: 20px; border: 1px solid #dee2e6; }
-        .table-presc thead { background-color: #f1f4f6; }
+        .invoice-title { border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 20px; }
+        .info-label { font-weight: bold; color: #555; min-width: 120px; display: inline-block; }
+        .prescription-box { background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
         
+        /* Styles pour l'impression */
         @media print {
-            .sidebar, .header, .no-print, .btn { display: none !important; }
-            .page-wrapper { margin-left: 0 !important; padding: 0 !important; }
+            .btn, .sidebar, .header, .no-print, .main-wrapper:before { display: none !important; }
+            .page-wrapper { margin: 0 !important; padding: 0 !important; left: 0 !important; }
             .content { padding: 0 !important; }
-            .main-wrapper { background: white !important; }
+            .prescription-box { box-shadow: none; border: none; padding: 0; }
+            body { background-color: #fff !important; }
         }
     </style>
 </head>
 
 <body>
     <div class="main-wrapper">
-        {% include 'back-end/include/header.html' %}
-        {% include 'back-end/include/sidebar.html' %}
+        <div class="no-print">
+            {% include 'back-end/include/header.html' %}
+            {% include 'back-end/include/sidebar.html' %}
+        </div>
 
         <div class="page-wrapper">
             <div class="content">
-                <div class="row no-print mb-3">
+                <div class="row no-print">
                     <div class="col-sm-12">
-                        <a href="{% url 'liste_ordonnances' %}" class="btn btn-white text-primary btn-rounded shadow-sm">
-                            <i class="fas fa-arrow-left"></i> Retour à la liste
-                        </a>
-                        <button onclick="window.print();" class="btn btn-primary btn-rounded shadow-sm float-right">
-                            <i class="fas fa-print"></i> Imprimer l'Ordonnance
-                        </button>
+                        <h4 class="page-title">{{ title }}</h4>
                     </div>
                 </div>
 
-                <div class="card shadow-sm border-0">
-                    <div class="card-body p-0">
-                        <div class="prescription-header">
-                            <div class="row">
+                <div class="row">
+                    <div class="col-md-10 offset-md-1">
+                        <div class="prescription-box">
+                            <div class="row invoice-title">
+                                <div class="col-6">
+                                    <h3 class="text-primary">KITOKO ERP</h3>
+                                    <p class="mb-0">Système de Gestion Hospitalière</p>
+                                    <p class="small text-muted">Kinshasa, RDC</p>
+                                </div>
+                                <div class="col-6 text-right">
+                                    <h4>ORDONNANCE #{{ ordonnance.id }}</h4>
+                                    <p class="text-muted">Date: {{ ordonnance.date_creation|date:"d/m/Y H:i" }}</p>
+                                </div>
+                            </div>
+
+                            <div class="row mb-4">
                                 <div class="col-md-6">
-                                    <h3 class="mb-0 text-primary">ORDONNANCE #{{ ordonnance.id }}</h3>
-                                    <p class="text-muted">Générée le {{ ordonnance.date_creation|date:"d/m/Y à H:i" }}</p>
-                                </div>
-                                <div class="col-md-6 text-md-right">
-                                    <div class="info-label">Statut Pharmacie</div>
-                                    {% if ordonnance.est_delivré %}
-                                        <span class="badge badge-success" style="font-size: 1rem;">DÉLIVRÉE</span>
-                                    {% else %}
-                                        <span class="badge badge-warning" style="font-size: 1rem;">EN ATTENTE DE SERVICE</span>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="p-4">
-                            <div class="row">
-                                <div class="col-sm-4 border-right">
-                                    <div class="info-label">Patient</div>
-                                    <div class="info-value"><strong>{{ ordonnance.consultation.patient.noms }}</strong></div>
-                                    <small class="text-muted">Sexe: {{ ordonnance.consultation.patient.sexeP }} | Âge: {{ ordonnance.consultation.patient.ageP }} ans</small>
-                                </div>
-                                <div class="col-sm-4 border-right">
-                                    <div class="info-label">Médecin Prescripteur</div>
-                                    <div class="info-value">Dr. {{ ordonnance.medecin.get_full_name|default:ordonnance.medecin.username }}</div>
-                                </div>
-                                <div class="col-sm-4">
-                                    <div class="info-label">Service</div>
-                                    <div class="info-value">{{ ordonnance.consultation.patient.service.nomService|default:"Général" }}</div>
-                                </div>
-                            </div>
-
-                            <hr>
-
-                            <h5 class="mt-4 mb-3"><i class="fas fa-pills"></i> Liste des Médicaments</h5>
-                            <div class="table-responsive">
-                                <table class="table table-presc table-striped">
-                                    <thead>
-                                        <tr>
-                                            <th>Médicament</th>
-                                            <th class="text-center">Quantité Prescrite</th>
-                                            <th class="text-center">Payée (Caisse)</th>
-                                            <th class="text-center">Délivrée</th>
-                                            <th>Statut</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for ligne in ordonnance.lignes.all %}
-                                        <tr>
-                                            <td>
-                                                <strong>{{ ligne.medicament.designation }}</strong><br>
-                                                <small class="text-muted">{{ ligne.medicament.forme }} - {{ ligne.medicament.dosage }}</small>
-                                            </td>
-                                            <td class="text-center">{{ ligne.quantite_prescrite }}</td>
-                                            <td class="text-center">
-                                                <span class="badge {% if ligne.quantite_payee >= ligne.quantite_prescrite %}badge-success{% else %}badge-info{% endif %}">
-                                                    {{ ligne.quantite_payee }}
-                                                </span>
-                                            </td>
-                                            <td class="text-center">
-                                                <span class="badge {% if ligne.quantite_delivree >= ligne.quantite_payee %}badge-success{% else %}badge-warning{% endif %}">
-                                                    {{ ligne.quantite_delivree }}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                {% if ligne.est_cloturee %}
-                                                    <span class="text-success"><i class="fa fa-check"></i> Terminé</span>
-                                                {% elif ligne.reste_a_delivrer > 0 %}
-                                                    <span class="text-primary"><i class="fa fa-truck"></i> À servir ({{ ligne.reste_a_delivrer }})</span>
-                                                {% else %}
-                                                    <span class="text-muted">Attente paiement</span>
-                                                {% endif %}
-                                            </td>
-                                        </tr>
-                                        {% empty %}
-                                        <tr>
-                                            <td colspan="5" class="text-center">Aucun médicament prescrit.</td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            {% if ordonnance.instructions_posologie %}
-                            <div class="mt-4 p-3 bg-light border-left border-primary" style="border-left-width: 5px !important;">
-                                <h6 class="font-weight-bold">Instructions & Posologie du Médecin :</h6>
-                                <p class="mb-0 text-dark">{{ ordonnance.instructions_posologie|linebreaks }}</p>
-                            </div>
-                            {% endif %}
-                        </div>
-
-                        <div class="p-4 border-top text-center text-muted">
-                            <div class="row">
-                                <div class="col-md-6 text-left">
-                                    <small>Signature et Sceau du Médecin</small>
-                                    <div style="height: 60px;"></div>
+                                    <h5 class="text-uppercase border-bottom pb-2">Patient</h5>
+                                    <p class="mb-1"><span class="info-label">Nom :</span> {{ ordonnance.consultation.patient.noms }}</p>
+                                    <p class="mb-1"><span class="info-label">ID Patient :</span> #{{ ordonnance.consultation.patient.id }}</p>
                                 </div>
                                 <div class="col-md-6 text-right">
-                                    <small>Signature Pharmacien</small>
-                                    <div style="height: 60px;"></div>
+                                    <h5 class="text-uppercase border-bottom pb-2">Prescripteur</h5>
+                                    <p class="mb-1"><strong>Dr. {{ ordonnance.medecin.get_full_name|default:ordonnance.medecin.username }}</strong></p>
+                                    <p>
+                                        <span class="badge badge-{% if ordonnance.est_delivré %}success{% else %}warning{% endif %}">
+                                            Statut: {% if ordonnance.est_delivré %}Délivré{% else %}En attente{% endif %}
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-striped">
+    <thead class="bg-light">
+        <tr>
+            <th style="width: 45%">Médicament (Désignation)</th>
+            <th style="width: 25%">Forme & Dosage</th>
+            <th style="width: 20%">Posologie</th>
+            <th class="text-center" style="width: 10%">Qté</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for ligne in lignes %}
+        <tr>
+            <td>
+                <strong class="text-primary" style="font-size: 1.1rem;">
+                    {{ ligne.medicament.designation }}
+                </strong>
+            </td>
+            <td>
+                <span class="text-dark">{{ ligne.medicament.forme|default:"" }}</span>
+                {% if ligne.medicament.dosage %}
+                    <br><small class="badge badge-light border">{{ ligne.medicament.dosage }}</small>
+                {% endif %}
+            </td>
+            <td>
+                <span class="small">{{ ligne.posologie|default:"Selon avis médical" }}</span>
+            </td>
+            <td class="text-center">
+                <span class="badge badge-success" style="font-size: 1rem;">
+                    {{ ligne.quantite_prescrite }}
+                </span>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="4" class="text-center py-4">
+                <i class="fas fa-info-circle text-info"></i> Aucun médicament trouvé pour cette ordonnance.
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+                            </div>
+
+                            <div class="row mt-5">
+                                <div class="col-6">
+                                    <p class="text-muted small">Généré par KITOKO le {% now "d/m/Y H:i" %}</p>
+                                </div>
+                                <div class="col-6 text-right">
+                                    <div style="border-top: 1px solid #ccc; display: inline-block; width: 200px; padding-top: 10px; margin-top: 30px;">
+                                        Cachet & Signature
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row mt-4 no-print">
+                                <div class="col-12 text-center">
+                                    <hr>
+                                    <a href="{% url 'liste_ordonnances_generale' %}" class="btn btn-secondary btn-rounded">
+                                        <i class="fas fa-arrow-left"></i> Retour à la liste
+                                    </a>
+                                    
+                                    <button onclick="window.print();" class="btn btn-primary btn-rounded">
+                                        <i class="fas fa-print"></i> Imprimer
+                                    </button>
+                                    
+                                    {% if not ordonnance.est_delivré %}
+                                    <form action="{% url 'delivrer_ordonnance' ordonnance.id %}" method="POST" class="d-inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-success btn-rounded" onclick="return confirm('Voulez-vous marquer cette ordonnance comme délivrée ?')">
+                                            <i class="fas fa-pills"></i> Confirmer la délivrance
+                                        </button>
+                                    </form>
+                                    {% endif %}
                                 </div>
                             </div>
                         </div>
@@ -158,6 +157,5 @@
 
     <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js'%}"></script>
     <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js'%}"></script>
-    <script src="{% static 'back-end/assets/js/app.js'%}"></script>
 </body>
 </html>

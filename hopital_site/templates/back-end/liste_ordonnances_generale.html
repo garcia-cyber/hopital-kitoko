@@ -4,16 +4,21 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
-    <title>{{ title }} - Système Hospitalier</title>
+    <title>{{ title }} - KITOKO ERP</title>
     <link rel="shortcut icon" type="image/x-icon" href="{% static 'back-end/assets/img/favicon.ico'%}">
     <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css'%}">
     <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css'%}">
     <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css'%}">
     <style>
         .my-prescription { border-left: 5px solid #007bff; background-color: #f8fbff !important; }
-        .table-responsive { border-radius: 8px; overflow: hidden; }
+        /* CORRECTION : On permet au dropdown de déborder du tableau */
+        .table-responsive { border-radius: 8px; overflow: visible !important; } 
         .search-box { margin-bottom: 20px; }
-        .badge-status { font-size: 0.85rem; padding: 5px 10px; }
+        .badge-status { font-size: 0.85rem; padding: 5px 10px; min-width: 100px; display: inline-block; text-align: center;}
+        .clickable-id { color: #007bff; text-decoration: underline; cursor: pointer; }
+        .clickable-id:hover { color: #0056b3; }
+        /* S'assurer que le menu est au-dessus de tout */
+        .dropdown-menu { z-index: 9999 !important; }
     </style>
 </head>
 
@@ -40,12 +45,12 @@
                 <div class="row search-box">
                     <div class="col-md-12">
                         <div class="card shadow-sm border-0">
-                            <div class="card-body">
+                            <div class="card-body p-2">
                                 <div class="input-group">
                                     <div class="input-group-prepend">
-                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-search"></i></span>
+                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
                                     </div>
-                                    <input type="text" id="searchInput" class="form-control border-left-0" placeholder="Rechercher un patient, un médecin ou un ID d'ordonnance...">
+                                    <input type="text" id="searchInput" class="form-control border-left-0" placeholder="Rechercher par patient, médecin, date ou ID...">
                                 </div>
                             </div>
                         </div>
@@ -62,17 +67,21 @@
                                         <th>Date</th>
                                         <th>Patient</th>
                                         <th>Médecin Prescripteur</th>
-                                        <th>Statut Pharmacie</th>
+                                        <th>Statut</th>
                                         <th class="text-right">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for ord in ordonnances %}
                                     <tr class="{% if ord.medecin == user_actuel %}my-prescription{% endif %}">
-                                        <td><strong>#{{ ord.id }}</strong></td>
+                                        <td>
+                                            <a href="{% url 'ordonnance_details' ord.id %}" class="font-weight-bold clickable-id">
+                                                #{{ ord.id }}
+                                            </a>
+                                        </td>
                                         <td>{{ ord.date_creation|date:"d/m/Y H:i" }}</td>
                                         <td>
-                                            <span class="text-primary font-weight-bold">
+                                            <span class="text-dark font-weight-bold">
                                                 {{ ord.consultation.patient.noms }}
                                             </span>
                                         </td>
@@ -80,7 +89,7 @@
                                         <td>
                                             {% if ord.est_delivré %}
                                                 <span class="badge badge-pill badge-success badge-status">
-                                                    <i class="fas fa-check"></i> Délivré
+                                                    <i class="fas fa-check-circle"></i> Délivré
                                                 </span>
                                             {% else %}
                                                 <span class="badge badge-pill badge-warning badge-status">
@@ -90,20 +99,21 @@
                                         </td>
                                         <td class="text-right">
                                             <div class="dropdown dropdown-action">
-                                                <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
-                                                <div class="dropdown-menu dropdown-menu-right">
-                                                    
+                                                <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false" data-boundary="window"><i class="fa fa-ellipsis-v"></i></a>
+                                                <div class="dropdown-menu dropdown-menu-right shadow border-0">
                                                     <a class="dropdown-item" href="{% url 'ordonnance_details' ord.id %}">
                                                         <i class="fas fa-eye m-r-5 text-primary"></i> Voir détails
                                                     </a>
                                                     
-                                                    <a class="dropdown-item" href="#"><i class="fas fa-print m-r-5 text-secondary"></i> Imprimer</a>
+                                                    <a class="dropdown-item" href="javascript:void(0);" onclick="window.print();">
+                                                        <i class="fas fa-print m-r-5 text-secondary"></i> Imprimer
+                                                    </a>
                                                     
                                                     {% if not ord.est_delivré %}
                                                         <div class="dropdown-divider"></div>
-                                                        <form action="{% url 'delivrer_ordonnance' ord.id %}" method="POST" style="display: inline;">
+                                                        <form action="{% url 'delivrer_ordonnance' ord.id %}" method="POST" class="d-inline">
                                                             {% csrf_token %}
-                                                            <button type="submit" class="dropdown-item text-success" style="border:none; background:none; width:100%; text-align:left;" onclick="return confirm('Confirmer la délivrance ?')">
+                                                            <button type="submit" class="dropdown-item text-success" onclick="return confirm('Confirmer la délivrance des médicaments pour cette ordonnance ?')">
                                                                 <i class="fas fa-pills m-r-5"></i> Délivrer Médicaments
                                                             </button>
                                                         </form>
@@ -114,7 +124,10 @@
                                     </tr>
                                     {% empty %}
                                     <tr>
-                                        <td colspan="6" class="text-center py-5">Aucune ordonnance trouvée.</td>
+                                        <td colspan="6" class="text-center py-5">
+                                            <img src="{% static 'back-end/assets/img/empty-box.png' %}" alt="" style="width: 80px; opacity: 0.5; margin-bottom: 10px;"><br>
+                                            <span class="text-muted">Aucune ordonnance n'a été trouvée.</span>
+                                        </td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -132,6 +145,10 @@
 
     <script>
         $(document).ready(function(){
+            // Forcer l'initialisation des dropdowns au cas où app.js fait des siennes
+            $('.dropdown-toggle').dropdown();
+
+            // Filtre de recherche dynamique
             $("#searchInput").on("keyup", function() {
                 var value = $(this).val().toLowerCase();
                 $("#ordonnanceTable tbody tr").filter(function() {
