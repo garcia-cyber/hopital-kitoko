@@ -1,57 +1,80 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
-    <title>Facture #PH-{{ facture.id }}</title>
+    <meta charset="UTF-8">
+    <title>Facture Pharmacie - KITOKO</title>
     <style>
-        body { font-family: sans-serif; font-size: 14px; margin: 20px; }
-        .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; }
-        .details { margin: 20px 0; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        .total { text-align: right; font-weight: bold; margin-top: 10px; }
-        @media print { .no-print { display: none; } }
+        body { font-family: 'Arial', sans-serif; font-size: 12px; color: #333; }
+        .invoice-container { max-width: 800px; margin: auto; padding: 20px; border: 1px solid #eee; }
+        .header { text-align: center; border-bottom: 2px solid #333; margin-bottom: 20px; padding-bottom: 10px; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        table th { background: #f4f4f4; border: 1px solid #ddd; padding: 8px; text-align: left; text-transform: uppercase; }
+        table td { border: 1px solid #ddd; padding: 8px; }
+        
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .total-box { margin-top: 20px; text-align: right; font-size: 14px; }
+        .footer { margin-top: 50px; text-align: center; font-style: italic; font-size: 10px; }
+        
+        @media print {
+            .no-print { display: none; }
+            .invoice-container { border: none; }
+        }
     </style>
 </head>
-<body onload="window.print();">
-    <div class="header">
-        <h1>HÔPITAL DON BOSCO</h1>
-        <p>Service Pharmacie</p>
+<body>
+
+    <div class="no-print" style="margin-bottom: 20px;">
+        <button onclick="window.print()">Imprimer la facture</button>
     </div>
 
-    <div class="details">
-        <p><strong>Facture N°:</strong> PH-{{ facture.id }}</p>
-        <p><strong>Date:</strong> {{ facture.date_facture|date:"d/m/Y H:i" }}</p>
-        <p><strong>Patient:</strong> {% if facture.patient %}{{ facture.patient.noms }}{% else %}{{ facture.nom_client_externe }}{% endif %}</p>
+    <div class="invoice-container">
+        <div class="header">
+            <h1>KITOKO - FACTURE PHARMACIE</h1>
+            <p>Date: {{ date|date:"d/m/Y H:i" }} | Facture N°: #FAC-{{ facture.id }}</p>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <p><strong>Patient :</strong> {% if facture.patient %}{{ facture.patient.noms }}{% else %}{{ facture.nom_client_externe }}{% endif %}</p>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Médicament</th>
+                    <th>Forme</th>
+                    <th>Dosage</th>
+                    <th class="text-center">Qté</th>
+                    <th class="text-right">P.U. (FC)</th>
+                    <th class="text-right">Total (FC)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ligne in lignes %}
+                <tr>
+                    <td><strong>{{ ligne.medicament.designation }}</strong></td>
+                    
+                    <td>{{ ligne.medicament.forme|default:"-" }}</td>
+                    
+                    <td>{{ ligne.medicament.dosage|default:"-" }}</td>
+                    
+                    <td class="text-center">{{ ligne.quantite_payee }}</td>
+                    <td class="text-right">{{ ligne.prix_unitaire }}</td>
+                    <td class="text-right"><strong>{{ ligne.total_ligne }}</strong></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="total-box">
+            <p><strong>TOTAL GÉNÉRAL : {{ facture.montant_total }} FC</strong></p>
+        </div>
+
+        <div class="footer">
+            <p>Merci pour votre confiance. Facture générée par KITOKO ERP.</p>
+        </div>
     </div>
 
-    <table>
-        <thead>
-            <tr>
-                <th>Médicament</th>
-                <th>Quantité</th>
-                <th>Prix Unitaire</th>
-                <th>Sous-total</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for ligne in lignes %}
-            <tr>
-                <td>{{ ligne.medicament.designation }}</td>
-                <td>{{ ligne.quantite }}</td>
-                <td>{{ ligne.prix_unitaire_applique }} FC</td>
-                <td>{{ ligne.sous_total }} FC</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-
-    <div class="total">
-        <p>TOTAL À PAYER : {{ facture.total_a_payer_cdf }} FC</p>
-        <p>PAYÉ : {{ facture.total_paye }} FC</p>
-        <p>RESTE : {{ facture.reste_a_payer }} FC</p>
-    </div>
-
-    <button class="no-print" onclick="window.print();" style="margin-top:20px;">Imprimer</button>
-    <button class="no-print" onclick="window.close();">Fermer</button>
 </body>
 </html>

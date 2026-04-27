@@ -55,11 +55,7 @@
                         <i class="fas fa-plus-circle"></i> Ajouter Matériel
                         </a>
                     </li>
-        <!-- <li>
-            <a href="#" class="text-danger">
-                <i class="fas fa-exclamation-triangle"></i> Matériels en Panne
-            </a>
-        </li> -->
+        
 
                     <li>
                         <a href="{% url 'materiel_en_panne' %}">
@@ -70,7 +66,15 @@
             </ul>
             </li>
 
-                {% elif fonction == 'receptionniste' %}
+            <li>
+                    <a href="{% url 'historique_livraison_pharmacie' %}" class="{% if request.resolver_match.url_name == 'historique_livraison_pharmacie' %}active{% endif %}">
+                        <i class="fa fa-history"></i> Historique Livraisons
+                    </a>
+                </li>
+
+
+
+                {% elif fonction == 'receptionniste' %} 
                 <li>
                     <a href="{% url 'patientAdd' %}"><i class="fas fa-user-plus"></i> <span>Ajouter Patient</span></a>
                 </li>
@@ -91,6 +95,13 @@
                 </li>
 
                 <li class="menu-title">Gestion Hospitalière</li>
+
+                <li>
+                    <a href="{% url 'historique_livraison_pharmacie' %}" class="{% if request.resolver_match.url_name == 'historique_livraison_pharmacie' %}active{% endif %}">
+                        <i class="fa fa-history"></i> Historique Livraisons
+                    </a>
+                </li>
+
                 <li>
                     <a href="{% url 'ajouter_chambre' %}"><i class="fas fa-door-closed"></i> <span>Ajouter Chambre</span></a>
                 </li>
@@ -103,6 +114,8 @@
                 <li>
                     <a href="{% url 'liste_lits' %}"><i class="fas fa-procedures"></i> <span>Liste Lits</span></a>
                 </li>
+
+                
 
                 {% elif fonction == 'infirmier' %}
                 <li class="submenu">
@@ -181,23 +194,29 @@
     </a>
 </li>
 
-<li class="{% if request.resolver_match.url_name == 'historique_ventes' %}active{% endif %}">
-    <a href="{% url 'historique_ventes' %}">
-        <i class="fas fa-history"></i> <span>Historique Ventes</span>
-    </a>
-</li>
-                    </ul>
+        <li class="{% if request.resolver_match.url_name == 'historique_ventes' %}active{% endif %}">
+                <a href="{% url 'historique_ventes' %}">
+                        <i class="fas fa-history"></i> <span>Historique Ventes</span>
+                    </a>
                 </li>
+            </ul>
+        </li>
 
-                <li class="{% if request.resolver_match.url_name == 'livraison_pharmacie' %}active{% endif %}">
-    <a href="{% url 'livraison_pharmacie' %}">
-        <i class="fas fa-boxes"></i> 
-        <span>Livraisons Pharma</span>
-        <span class="badge badge-pill badge-danger float-right">
-            New
-        </span>
-    </a>
-</li>
+        <li class="{% if request.resolver_match.url_name == 'livraison_pharmacie' %}active{% endif %}">
+            <a href="{% url 'livraison_pharmacie' %}">
+            <i class="fas fa-boxes"></i> 
+            <span>Livraisons Pharma</span>
+            <span class="badge badge-pill badge-danger float-right">
+             New
+            </span>
+            </a>
+        </li>
+
+        <li>
+            <a href="{% url 'historique_livraison_pharmacie' %}" class="{% if request.resolver_match.url_name == 'historique_livraison_pharmacie' %}active{% endif %}">
+                <i class="fa fa-history"></i> Historique Livraisons
+            </a>
+        </li>
                 {% else %}
                 {% endif %}
                 

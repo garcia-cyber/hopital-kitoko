@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KITOKO - Vente Comptoir</title>
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/select2.min.css' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css' %}">
+    <style>
+        .total-card { background: #f8f9fa; border-left: 5px solid #28a745; }
+        .total-val { font-size: 28px; font-weight: bold; color: #28a745; }
+        .devise-badge { font-size: 16px; margin-left: 5px; }
+    </style>
+</head>
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="row">
+                    <div class="col-sm-12">
+                        <h4 class="page-title text-uppercase">Pharmacie - Vente au Comptoir</h4>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-lg-5">
+                        <div class="card shadow-sm">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Devise de paiement</label>
+                                            <select id="select_devise" class="form-control" onchange="changerDevise()">
+                                                <option value="CDF">Franc Congolais (FC)</option>
+                                                <option value="USD">Dollar (USD)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Taux : 1 USD =</label>
+                                            <input type="text" class="form-control" id="taux_info" value="{{ taux }}" readonly>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Nom du Client</label>
+                                    <input type="text" id="nom_client" class="form-control" placeholder="Client de passage">
+                                </div>
+                                <hr>
+                                <div class="form-group">
+                                    <label>Sélectionner Médicament</label>
+                                    <select id="select_med" class="form-control select2">
+                                        <option value="">-- Rechercher un produit --</option>
+                                        {% for med in medicaments %}
+                                        <option value="{{ med.id }}" 
+                                                data-nom="{{ med.designation }}" 
+                                                data-prix-cdf="{{ med.prix_unitaire_detail|default:0 }}"
+                                                data-stock="{{ med.quantite_stock_pieces }}"
+                                                data-info="{{ med.forme|default:'' }} | {{ med.dosage|default:'' }}">
+                                            {{ med.designation }} (Stock: {{ med.quantite_stock_pieces }})
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <button type="button" onclick="ajouterAuPanier()" class="btn btn-primary btn-block">
+                                    <i class="fa fa-plus-circle"></i> Ajouter au panier
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-7">
+                        <div class="card shadow-sm">
+                            <div class="card-header bg-white">
+                                <h5 class="mb-0">Détail de la commande</h5>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive" style="min-height: 300px;">
+                                    <table class="table table-hover mb-0">
+                                        <thead class="thead-light">
+                                            <tr>
+                                                <th>Produit</th>
+                                                <th class="text-center" width="100">Qté</th>
+                                                <th class="text-right">P.U</th>
+                                                <th class="text-right">Total</th>
+                                                <th class="text-center">#</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="panier_body">
+                                            </tbody>
+                                    </table>
+                                </div>
+                                <div class="p-3 total-card">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span>TOTAL À PAYER :</span>
+                                        <div>
+                                            <span id="total_val" class="total-val">0</span>
+                                            <span class="devise-badge font-weight-bold" id="devise_label">CDF</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="p-3">
+                                    <button type="button" id="btn_valider" onclick="validerVente()" class="btn btn-success btn-lg btn-block">
+                                        VALIDER ET ENCAISSER
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js' %}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js' %}"></script>
+    <script src="{% static 'back-end/assets/js/select2.min.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        let panier = [];
+        const TAUX = parseFloat("{{ taux }}") || 2800;
+
+        $(document).ready(function() {
+            $('.select2').select2({ width: '100%' });
+        });
+
+        function changerDevise() {
+            // On recalcule les prix affichés dans le panier si on change la devise
+            majTableau();
+        }
+
+        function ajouterAuPanier() {
+            let select = $('#select_med');
+            let option = select.find(':selected');
+            if (!option.val()) return;
+
+            let id = option.val();
+            let prixCDF = parseFloat(option.data('prix-cdf'));
+            let stock = parseInt(option.data('stock'));
+
+            if (prixCDF <= 0) {
+                Swal.fire('Erreur', 'Le prix de ce produit n\'est pas configuré', 'error');
+                return;
+            }
+
+            let existant = panier.find(item => item.id === id);
+            if (existant) {
+                if (existant.quantite + 1 > stock) {
+                    Swal.fire('Stock', 'Quantité max atteinte', 'warning');
+                    return;
+                }
+                existant.quantite++;
+            } else {
+                panier.push({
+                    id: id,
+                    nom: option.data('nom'),
+                    info: option.data('info'),
+                    prixCDF: prixCDF,
+                    stock: stock,
+                    quantite: 1
+                });
+            }
+            majTableau();
+        }
+
+        function majTableau() {
+            let html = '';
+            let totalGlobalAffiche = 0;
+            let devise = $('#select_devise').val();
+
+            panier.forEach((item, index) => {
+                // Conversion du prix selon la devise choisie
+                let prixAffiche = (devise === "USD") ? (item.prixCDF / TAUX) : item.prixCDF;
+                let totalLigne = prixAffiche * item.quantite;
+                totalGlobalAffiche += totalLigne;
+
+                html += `
+                <tr>
+                    <td><strong>${item.nom}</strong><br><small>${item.info}</small></td>
+                    <td class="text-center">
+                        <input type="number" class="form-control form-control-sm text-center" 
+                               value="${item.quantite}" min="1" max="${item.stock}" 
+                               onchange="modifierQte(${index}, this.value)">
+                    </td>
+                    <td class="text-right">${prixAffiche.toFixed(devise === 'USD' ? 2 : 0)}</td>
+                    <td class="text-right font-weight-bold">${totalLigne.toFixed(devise === 'USD' ? 2 : 0)}</td>
+                    <td class="text-center">
+                        <i class="fa fa-trash text-danger" style="cursor:pointer" onclick="retirer(${index})"></i>
+                    </td>
+                </tr>`;
+            });
+
+            $('#panier_body').html(html || '<tr><td colspan="5" class="text-center text-muted">Panier vide</td></tr>');
+            $('#total_val').text(totalGlobalAffiche.toLocaleString());
+            $('#devise_label').text(devise === 'USD' ? 'USD' : 'FC');
+        }
+
+        function modifierQte(index, qte) {
+            let item = panier[index];
+            if (qte > item.stock) {
+                Swal.fire('Stock', 'Maximum en stock : ' + item.stock, 'warning');
+                item.quantite = item.stock;
+            } else {
+                item.quantite = parseInt(qte) || 1;
+            }
+            majTableau();
+        }
+
+        function retirer(index) {
+            panier.splice(index, 1);
+            majTableau();
+        }
+
+        function validerVente() {
+            if (panier.length === 0) return;
+
+            let btn = $('#btn_valider');
+            btn.prop('disabled', true).text('Enregistrement...');
+
+            let payload = {
+                nom_client_externe: $('#nom_client').val(),
+                devise: $('#select_devise').val(),
+                panier: panier.map(i => ({
+                    id: i.id,
+                    quantite: i.quantite,
+                    prix: ( $('#select_devise').val() === 'USD' ) ? (i.prixCDF / TAUX) : i.prixCDF
+                }))
+            };
+
+            fetch("{% url 'effectuer_vente' %}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": "{{ csrf_token }}"
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    Swal.fire('Succès', 'Vente enregistrée', 'success').then(() => {
+                        window.location.href = "/pharmacie/recu/" + data.vente_id;
+                    });
+                } else {
+                    Swal.fire('Erreur', data.message, 'error');
+                    btn.prop('disabled', false).text('VALIDER ET ENCAISSER');
+                }
+            })
+            .catch(() => {
+                btn.prop('disabled', false).text('VALIDER ET ENCAISSER');
+            });
+        }
+    </script>
+</body>
+</html>

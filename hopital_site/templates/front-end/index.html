@@ -34,27 +34,43 @@
 
         h1, h2, h3, .navbar-brand { font-family: 'Montserrat', sans-serif; font-weight: 800; }
 
-        /* --- NAVBAR AJUSTÉE --- */
+        /* --- STYLE DU MENU ALIGNÉ --- */
         .custom-navbar { 
             background: #ffffff !important; 
             border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-            padding: 5px 0; /* Padding réduit pour compenser la taille du logo */
-            transition: all 0.4s ease;
+            padding: 0; /* Réduit pour l'alignement */
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
 
         .navbar-brand { 
             display: flex; 
             align-items: center; 
-            padding: 10px 15px !important; 
-            height: auto;
+            padding: 15px !important; /* Ajusté pour être sur la même ligne que le menu */
+            height: 80px; /* Hauteur fixe pour l'alignement */
         }
 
-        .brand-logo { 
-            height: 80px; /* Logo bien visible */
-            width: auto; 
-            margin-right: 15px; 
-            border-radius: 8px;
+        .brand-container {
+            border-left: 5px solid var(--accent);
+            padding-left: 15px;
+            line-height: 1.2;
+        }
+
+        .brand-main-text {
+            color: var(--deep-blue);
+            font-size: 22px; /* Taille accrue comme demandé */
+            font-weight: 900;
+            display: block;
+            letter-spacing: -0.5px;
+            white-space: nowrap;
+        }
+
+        .brand-sub-text {
+            color: var(--accent);
+            font-size: 16px; /* Taille accrue comme demandé */
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            display: block;
         }
 
         .nav li a { 
@@ -62,24 +78,11 @@
             font-weight: 700; 
             text-transform: uppercase;
             font-size: 13px;
-            padding: 40px 15px !important; /* Augmenté pour centrer verticalement avec le logo de 80px */
-            transition: all 0.3s;
+            padding: 30px 12px !important; /* Ajusté pour l'alignement vertical */
+            transition: 0.3s;
         }
 
         .nav li a:hover { color: var(--accent) !important; }
-
-        .btn-nav-contact {
-            background: var(--deep-blue) !important;
-            color: white !important;
-            padding: 12px 25px !important;
-            border-radius: 50px !important;
-            margin-top: 28px !important; /* Aligné avec le reste du menu */
-            margin-left: 15px;
-            border: none;
-            transition: 0.3s !important;
-        }
-
-        .btn-nav-contact:hover { background: var(--accent) !important; transform: translateY(-2px); }
 
         /* --- SECTIONS --- */
         #home { height: 90vh; position: relative; display: flex; align-items: center; background-color: #000; overflow: hidden; }
@@ -96,18 +99,23 @@
             content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             border: 2px solid var(--accent); border-radius: 20px; transform: translate(-15px, 15px); z-index: 0;
         }
-        .bio-img { border-radius: 20px; position: relative; z-index: 1; width: 100%; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .bio-img { border-radius: 20px; position: relative; z-index: 1; width: 100%; }
 
         .form-control { background: rgba(255, 255, 255, 0.05); border: 1px solid var(--card-border); color: white !important; height: 55px; border-radius: 12px; margin-bottom: 20px; }
         .btn-main { background: var(--accent); color: white; font-weight: 700; padding: 15px 40px; border-radius: 12px; border: none; }
 
         footer { padding: 60px 0; border-top: 1px solid var(--card-border); text-align: center; background: #0a0f1d; }
 
+        @media (max-width: 991px) {
+            .brand-main-text { font-size: 18px; }
+            .brand-sub-text { font-size: 14px; }
+            .nav li a { padding: 30px 8px !important; font-size: 11px; }
+        }
+
         @media (max-width: 768px) {
-            .brand-logo { height: 60px; }
-            .nav li a { padding: 15px 15px !important; }
-            .btn-nav-contact { margin-top: 10px !important; margin-bottom: 20px; }
-            #home { text-align: center; padding-top: 160px; }
+            .navbar-brand { height: auto; }
+            .nav li a { padding: 15px !important; }
+            #home { text-align: center; padding-top: 100px; }
         }
     </style>
 </head>
@@ -123,10 +131,9 @@
                     <span class="icon-bar" style="background-color: var(--deep-blue);"></span>
                 </button>
                 <a href="#" class="navbar-brand">
-                    <img src="{% static 'front-end/assets/images/banner/logo3.jpeg' %}" alt="Logo" class="brand-logo">
-                    <div style="line-height: 1.1;">
-                        <!-- <span style="color:var(--deep-blue); font-size: 16px; display: block; font-weight: 700;">CENTRE HOSPITALIER</span> -->
-                        <!-- <span style="color:var(--accent); font-size: 22px; font-weight: 900;">KITOKO.</span> -->
+                    <div class="brand-container">
+                        <span class="brand-main-text">CENTRE HOSPITALIER</span>
+                        <span class="brand-sub-text">KITOKO.</span>
                     </div>
                 </a>
             </div>
@@ -135,7 +142,7 @@
                     <li><a href="#home">Accueil</a></li>
                     <li><a href="#presentation">L'Institution</a></li>
                     <li><a href="#biographie">Le Promoteur</a></li>
-                    <li><a href="#contact" class="">PRENDRE RDV</a></li>
+                    <li><a href="#contact">PRENDRE RDV</a></li>
                     {% if user.is_authenticated %}
                         <li><a href="{% url 'panel' %}">DASHBOARD</a></li>
                     {% else %}
@@ -211,7 +218,7 @@
                             Originaire de la Province de Tshopo et né à Kinshasa, Lawrence Kitoko vit entre le Congo et la France. Diplômé en kinésithérapie (Bruxelles), ostéopathie (Louvain) et santé publique (UCL).
                         </p>
                         <p style="text-align: justify; color: var(--text-muted); margin-top: 15px;">
-                            Lawrence KITOKO‑LUBULA est un kinésithérapeute internationalement formé, spécialisé en rééducation fonctionnelle, neurologique et sportive, disposant d’une solide expérience clinique acquise en Europe, au Canada et en Afrique. Titulaire d’un Master en Santé Publique et engagé dans un parcours doctoral dans le même domaine, il développe une approche thérapeutique basée sur les standards scientifiques internationaux, l’innovation technologique et l’amélioration continue de la qualité des soins. 
+                            Lawrence KITOKO‑LUBULA est un kinésithérapeute internationalement formé, spécialisé en rééducation fonctionnelle, neurologique et sportive, disposant d’une solide expérience clinique acquise en Europe, au Canada et en Afrique. Titulaire d’un Master en Santé Publique et engagé dans un parcours doctoral dans le même domaine, il développe une approche thérapeutique basée sur les standards scientifiques internationaux, l’innovation technologique et l’amélioration continue de la qualité des soins. 
                             <br><br>
                             Ancien praticien auprès de l’équipe nationale espoir de la RDC et collaborateur de plusieurs structures sportives professionnelles en Belgique, il possède une expertise reconnue dans la prise en charge des pathologies complexes. Entrepreneur du secteur médical, il est également le propriétaire du centre PHYSIOKIN – PARIS.
                         </p>

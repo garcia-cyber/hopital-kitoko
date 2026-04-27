@@ -151,6 +151,21 @@ class LigneOrdonnance(models.Model):
     def prix_total(self):
         return self.quantite_prescrite * self.medicament.prix_vente_detail
 
+    @property
+    def reste_a_payer(self):
+        """Nombre d'unités que le patient n'a pas encore achetées"""
+        return self.quantite_prescrite - self.quantite_payee
+
+    @property
+    def reste_a_livrer(self):
+        """Ce que le pharmacien doit encore donner (Payé mais pas encore délivré)"""
+        return self.quantite_payee - self.quantite_delivree
+
+    @property
+    def est_totalement_livre(self):
+        """Vérifie si le patient a reçu tout ce qu'il a payé"""
+        return self.quantite_delivree >= self.quantite_payee
+
 # 4. FACTURATION ET FINANCES =============================================
 
 class Prestation(models.Model):

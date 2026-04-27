@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+    <title>KITOKO - Historique des Sorties</title>
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css' %}">
+    <style>
+        .table-avatar span { display: block; font-size: 12px; color: #888; }
+        .badge-forme { background-color: #f0f3f7; color: #2c3e50; border: 1px solid #dcdfe3; font-weight: 500; }
+        .qty-box { font-weight: bold; font-size: 14px; color: #1b5a90; background: #ebf4ff; padding: 5px 10px; border-radius: 4px; }
+        /* Style pour la barre de recherche */
+        .search-area { background: #fff; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="row align-items-center mb-4">
+                    <div class="col-md-6">
+                        <h4 class="page-title text-uppercase"><i class="fa fa-history text-primary mr-2"></i> Historique des Médicaments Livrés</h4>
+                        <p class="text-muted mb-0">Archives des produits remis aux patients (Pharmacie KITOKO).</p>
+                    </div>
+                    <div class="col-md-6">
+                        <form method="GET" action="">
+                            <div class="input-group">
+                                <input type="text" name="search" class="form-control" placeholder="Rechercher patient, médicament ou facture..." value="{{ search_query|default:'' }}">
+                                <div class="input-group-append">
+                                    <button class="btn btn-primary" type="submit">
+                                        <i class="fa fa-search"></i>
+                                    </button>
+                                    {% if search_query %}
+                                    <a href="{% url 'historique_livraison_pharmacie' %}" class="btn btn-secondary">
+                                        <i class="fa fa-sync"></i>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                {% if search_query %}
+                <div class="alert alert-info py-2">
+                    <i class="fa fa-info-circle"></i> {{ historique.count }} résultat(s) pour la recherche : "<strong>{{ search_query }}</strong>"
+                </div>
+                {% endif %}
+
+                <div class="card shadow-sm border-0">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover table-center mb-0">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th>Date & Heure</th>
+                                        <th>Patient / Client</th>
+                                        <th>Médicament & Détails</th>
+                                        <th class="text-center">Qté Achetée</th>
+                                        <th class="text-center">Qté Livrée</th>
+                                        <th class="text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for facture in historique %}
+                                        {% for ligne in facture.ordonnance.lignes.all %}
+                                            {% if ligne.quantite_delivree > 0 %}
+                                            <tr>
+                                                <td>
+                                                    <span class="text-dark font-weight-bold">{{ facture.date_facture|date:"d/m/Y" }}</span><br>
+                                                    <small class="text-muted">{{ facture.date_facture|date:"H:i" }}</small>
+                                                </td>
+                                                <td>
+                                                    <div class="table-avatar">
+                                                        <span class="text-primary font-weight-bold" style="font-size: 14px;">
+                                                            {% if facture.patient %}{{ facture.patient.noms }}{% else %}{{ facture.nom_client_externe }}{% endif %}
+                                                        </span>
+                                                        <span>Ref: #FAC-{{ facture.id }}</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="med-info">
+                                                        <strong class="text-dark">{{ ligne.medicament.designation }}</strong><br>
+                                                        <span class="badge badge-forme">
+                                                            {{ ligne.medicament.forme|default:"-" }} | {{ ligne.medicament.dosage|default:"-" }}
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td class="text-center">
+                                                    <span class="qty-box">{{ ligne.quantite_payee }}</span>
+                                                </td>
+                                                <td class="text-center">
+                                                    <span class="badge badge-success-light" style="font-size: 14px; padding: 6px 12px;">
+                                                        <i class="fa fa-check"></i> {{ ligne.quantite_delivree }}
+                                                    </span>
+                                                </td>
+                                                <td class="text-right">
+                                                    <a href="{% url 'imprimer_facture_pharma' facture.id %}" target="_blank" class="btn btn-outline-primary btn-sm">
+                                                        <i class="fa fa-print"></i> Reçu
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="6" class="text-center py-5">
+                                            <i class="fa fa-folder-open fa-3x text-muted mb-3"></i>
+                                            <p class="text-muted">Aucune livraison enregistrée dans l'historique.</p>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js' %}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js' %}"></script>
+    <script src="{% static 'back-end/assets/js/jquery.slimscroll.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/select2.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/app.js'%}"></script>
+</body>
+</html>

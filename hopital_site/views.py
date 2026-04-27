@@ -1535,95 +1535,101 @@ def dashboard_pharmacie(request):
 @login_required
 @transaction.atomic
 def effectuer_vente(request):
+    # On récupère la configuration au début pour le GET et le POST
+    config = ConfigurationHopital.objects.first()
+    # Correction de l'attribut : taux_usd_en_cdf au lieu de taux_change
+    taux_du_jour = config.taux_usd_en_cdf if config else Decimal('2500.00')
+
     if request.method == "POST":
         try:
             data = json.loads(request.body)
             panier = data.get('panier')
-            patient_id = data.get('patient_id')
+            nom_client = data.get('nom_client_externe', 'Client Simple')
+            devise_selectionnee = data.get('devise', 'CDF')
             
             if not panier:
-                return JsonResponse({'status': 'error', 'message': 'Panier vide'})
+                return JsonResponse({'status': 'error', 'message': 'Le panier est vide'})
 
-            # 1. Vérification de la configuration et de la prestation
-            config = ConfigurationHopital.objects.first()
-            prestation_pharma = Prestation.objects.filter(libelle__icontains="PHARMACIE").first()
-            
-            if not config or not prestation_pharma:
-                return JsonResponse({'status': 'error', 'message': 'Configuration ou Prestation PHARMACIE manquante.'})
-
-            # 2. Identification du patient (si fourni)
-            patient = None
-            if patient_id:
-                patient = Patient.objects.get(id=patient_id)
-
-            # 3. Création de la Vente
+            # 1. Création de la Vente
             nouvelle_vente = VentePharmacie.objects.create(
                 vendeur=request.user,
-                patient=patient,
-                total_cdf=0 # Sera mis à jour après
+                nom_client_externe=nom_client,
+                total_cdf=0,
+                est_paye=True
             )
 
-            total_global = 0
+            total_global_cdf = 0
+
             for item in panier:
                 med = Medicament.objects.select_for_update().get(id=item['id'])
                 qte = int(item['quantite'])
                 prix_u = Decimal(str(item['prix']))
                 
-                # Vérification stock de sécurité
+                if prix_u <= 0:
+                    raise ValueError(f"Le prix pour {med.designation} doit être supérieur à 0")
+
                 if med.quantite_stock_pieces < qte:
                     raise ValueError(f"Stock insuffisant pour {med.designation}")
 
-                # Création ligne
+                # Calcul de la conversion vers le CDF pour le stockage en base de données
+                prix_final_cdf = prix_u
+                if devise_selectionnee == 'USD':
+                    prix_final_cdf = prix_u * taux_du_jour
+
+                # 2. Création de la ligne
                 LigneVente.objects.create(
                     vente=nouvelle_vente,
                     medicament=med,
                     quantite=qte,
-                    prix_unitaire_applique=prix_u
+                    prix_unitaire_applique=prix_final_cdf
                 )
 
-                # Mise à jour stock
+                # 3. Mise à jour stock
                 med.quantite_stock_pieces -= qte
                 med.save()
-                total_global += (prix_u * qte)
+                
+                total_global_cdf += (prix_final_cdf * qte)
 
-            # Mise à jour du total final
-            nouvelle_vente.total_cdf = total_global
+            # Mise à jour du total final de la vente
+            nouvelle_vente.total_cdf = total_global_cdf
             nouvelle_vente.save()
 
-            # 4. Création de la Facture (Automatique via ta logique métier)
-            # Note: Si c'est un patient, ton modèle Facture vérifiera la fiche valide
-            try:
-                facture = Facture.objects.create(
-                    patient=patient if patient else Patient.objects.first(), # Ajuste selon ta gestion "Comptoir"
-                    prestation=prestation_pharma,
-                    vente_pharmacie=nouvelle_vente,
-                    prix_fixe_cdf=total_global
-                )
-
-                # 5. Enregistrement du Paiement
-                Paiement.objects.create(
-                    facture=facture,
-                    montant_physique=total_global,
-                    devise='CDF'
-                )
-            except ValidationError as e:
-                return JsonResponse({'status': 'error', 'message': str(e)})
+            # 4. Enregistrement du Paiement
+            # On stocke le montant dans la devise choisie par le client
+            montant_paiement = total_global_cdf if devise_selectionnee == 'CDF' else (total_global_cdf / taux_du_jour)
+            
+            Paiement.objects.create(
+                vente_pharma=nouvelle_vente,
+                montant=montant_paiement,
+                devise=devise_selectionnee,
+                taux_applique=taux_du_jour,
+                mode_paiement='CASH',
+                encaisseur=request.user
+            )
 
             return JsonResponse({
                 'status': 'success', 
-                'message': 'Vente et facturation terminées',
+                'message': 'Vente enregistrée avec succès',
                 'vente_id': nouvelle_vente.id
             })
 
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)})
 
-    # Partie GET
+    # --- Partie GET ---
     medicaments = Medicament.objects.filter(quantite_stock_pieces__gt=0).order_by('designation')
-    patients = Patient.objects.all().order_by('noms')
-    return render(request, 'back-end/nouvelle_vente.html', {
+
+    # Récupération sécurisée du profil et de la fonction
+    try:
+        profil = Profil.objects.filter(userProfil=request.user).first()
+        fonction = profil.fonction.fonction if profil and profil.fonction else "Pharmacien"
+    except:
+        fonction = "Personnel"
+
+    return render(request, 'back-end/pharmacie/nouvelle_vente.html', {
         'medicaments': medicaments,
-        'patients': patients
+        'taux': taux_du_jour, 
+        'fonction': fonction, 
     })
 
 # 43 
@@ -2240,8 +2246,16 @@ def encaisser_reste_pharma(request, facture_id):
 # ====================================================================================================================
 @login_required
 def imprimer_facture_pharma(request, facture_id):
-    facture = get_object_or_404(FacturePharmacie, id=facture_id)
-    lignes = facture.lignes.all()
+    # On récupère la facture avec toutes les relations nécessaires
+    facture = get_object_or_404(
+        FacturePharmacie.objects.select_related('patient', 'ordonnance').prefetch_related(
+            'ordonnance__lignes__medicament'
+        ), 
+        id=facture_id
+    )
+    
+    # On récupère les lignes spécifiquement liées à l'ordonnance de cette facture
+    lignes = facture.ordonnance.lignes.all()
     
     context = {
         'facture': facture,
@@ -2256,18 +2270,46 @@ def imprimer_facture_pharma(request, facture_id):
 # =================================================================================================================
 @login_required
 def tableau_bord_livraison_pharmacie(request):
-    commandes_a_livrer = FacturePharmacie.objects.annotate(
-        total_paye_db=Sum('paiements__montant_comptable_cdf')
-    ).filter(
-        total_paye_db__gte=F('total_a_payer_cdf')
-    ).select_related('patient').prefetch_related('lignes__medicament')
+    # --- LOGIQUE DE VALIDATION ---
+    if request.method == "POST":
+        facture_id = request.POST.get('facture_id')
+        if facture_id:
+            facture = FacturePharmacie.objects.get(id=facture_id)
+            lignes = facture.ordonnance.lignes.all()
+            
+            for ligne in lignes:
+                if ligne.quantite_payee > ligne.quantite_delivree:
+                    reliquat = ligne.quantite_payee - ligne.quantite_delivree
+                    
+                    # Mise à jour du stock KITOKO
+                    medicament = ligne.medicament
+                    medicament.quantite_stock_pieces -= reliquat
+                    medicament.save()
+                    
+                    # Mise à jour de la ligne
+                    ligne.quantite_delivree = ligne.quantite_payee
+                    ligne.save()
+            
+            messages.success(request, f"Livraison effectuée pour la facture #{facture_id}")
+            
+            # --- LA CORRECTION EST ICI ---
+            return redirect('livraison_pharmacie') 
+
+    # --- LOGIQUE D'AFFICHAGE ---
+    commandes_a_livrer = FacturePharmacie.objects.filter(
+        ordonnance__lignes__quantite_payee__gt=F('ordonnance__lignes__quantite_delivree')
+    ).select_related(
+        'patient', 'ordonnance'
+    ).prefetch_related(
+        'ordonnance__lignes__medicament'
+    ).distinct().order_by('-date_facture')
 
     profil = Profil.objects.filter(userProfil=request.user).first()
     fonction = profil.fonction.fonction if profil and profil.fonction else None
 
     return render(request, 'back-end/pharmacie/livraison_queue.html', {
-        'commandes': commandes_a_livrer , 
-        'fonction': fonction
+        'commandes': commandes_a_livrer, 
+        'fonction': fonction,
     })
 
 # 62
@@ -2285,4 +2327,33 @@ def imprimer_recu_pharmacie(request, paiement_id):
         'facture': facture,
         'patient': facture.patient,
         'date_impression': datetime.now(),
+    })
+
+
+
+# 63
+# ======================================================================================================================
+# HISTORIQUE DE MEDICAMENT DEJA LIVRE 
+# ======================================================================================================================
+@login_required
+def historique_livraison_pharmacie(request):
+    """
+    Affiche l'historique des médicaments déjà servis aux patients.
+    """
+    # On récupère les factures où au moins un médicament a été délivré
+    historique = FacturePharmacie.objects.filter(
+        ordonnance__lignes__quantite_delivree__gt=0
+    ).select_related(
+        'patient', 'ordonnance'
+    ).prefetch_related(
+        'ordonnance__lignes__medicament'
+    ).distinct().order_by('-date_facture')
+
+    # Récupération du profil pour l'interface
+    profil = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil.fonction.fonction if profil and profil.fonction else None
+
+    return render(request, 'back-end/pharmacie/historique_livraison.html', {
+        'historique': historique,
+        'fonction': fonction,
     })
