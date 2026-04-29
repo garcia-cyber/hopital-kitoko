@@ -1404,7 +1404,7 @@ def liste_stock(request):
     
     # Logique pour compter les alertes basée sur le seuil de chaque produit
     # On crée une liste des IDs des médicaments en alerte
-    alertes_ids = [s.id for s in stocks if s.est_en_alerte]
+    alertes_ids = [s.id for s in stocks if s.seuil_alerte]
     alertes_count = len(alertes_ids)
 
     profil_connecte = Profil.objects.filter(userProfil=request.user).first()
@@ -1426,7 +1426,7 @@ def liste_stock(request):
 def inventaire_global(request):
     stocks = Medicament.objects.all()
     total_articles = stocks.count()
-    alertes_stock = sum(1 for med in stocks if med.est_en_alerte)
+    alertes_stock = sum(1 for med in stocks if med.seuil_alerte)
     profil_connecte = Profil.objects.filter(userProfil=request.user).first()
     fonction = profil_connecte.fonction.fonction if profil_connecte and profil_connecte.fonction else None
     
@@ -1517,7 +1517,7 @@ def dashboard_pharmacie(request):
 
     context = {
         'total_articles': stocks.count(),
-        'alertes_stock': sum(1 for med in stocks if med.est_en_alerte),
+        'alertes_stock': sum(1 for med in stocks if med.seuil_alerte),
         'valeur_stock_cdf': valeur_stock_cdf,
         'valeur_stock_usd': valeur_stock_usd,
         'ca_jour_cdf': ca_jour_cdf,
