@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>Facture Pharmacie - KITOKO</title>
     <style>
-        body { font-family: 'Arial', sans-serif; font-size: 12px; color: #333; }
+        body { font-family: 'Arial', sans-serif; font-size: 12px; color: #333; line-height: 1.6; }
         .invoice-container { max-width: 800px; margin: auto; padding: 20px; border: 1px solid #eee; }
         .header { text-align: center; border-bottom: 2px solid #333; margin-bottom: 20px; padding-bottom: 10px; }
         
@@ -14,37 +14,44 @@
         
         .text-right { text-align: right; }
         .text-center { text-align: center; }
-        .total-box { margin-top: 20px; text-align: right; font-size: 14px; }
-        .footer { margin-top: 50px; text-align: center; font-style: italic; font-size: 10px; }
+        .total-box { margin-top: 20px; text-align: right; font-size: 16px; border-top: 2px solid #333; padding-top: 10px; }
+        .footer { margin-top: 50px; text-align: center; font-style: italic; font-size: 10px; color: #777; }
         
         @media print {
             .no-print { display: none; }
-            .invoice-container { border: none; }
+            .invoice-container { border: none; width: 100%; padding: 0; }
         }
     </style>
 </head>
 <body>
 
-    <div class="no-print" style="margin-bottom: 20px;">
-        <button onclick="window.print()">Imprimer la facture</button>
+    <div class="no-print" style="margin: 20px text-align:center;">
+        <button onclick="window.print()" style="padding: 10px 20px; cursor: pointer;">🖨️ Imprimer la facture</button>
+        <a href="javascript:history.back()" style="margin-left: 10px;">Retour</a>
     </div>
 
     <div class="invoice-container">
         <div class="header">
-            <h1>KITOKO - FACTURE PHARMACIE</h1>
-            <p>Date: {{ date|date:"d/m/Y H:i" }} | Facture N°: #FAC-{{ facture.id }}</p>
+            <h1>{% if config.nom_hopital %}{{ config.nom_hopital }}{% else %}KITOKO ERP{% endif %}</h1>
+            <p>PHARMACIE CENTRALE</p>
+            <p>Date: {{ date|date:"d/m/Y H:i" }} | <strong>Facture N°: #PH-{{ facture.id }}</strong></p>
         </div>
 
         <div style="margin-bottom: 20px;">
-            <p><strong>Patient :</strong> {% if facture.patient %}{{ facture.patient.noms }}{% else %}{{ facture.nom_client_externe }}{% endif %}</p>
+            <p><strong>Patient :</strong> 
+                {% if facture.patient %}
+                    {{ facture.patient.noms }}
+                {% else %}
+                    {{ facture.nom_client_externe|default:"Client de passage" }}
+                {% endif %}
+            </p>
         </div>
 
         <table>
             <thead>
                 <tr>
                     <th>Médicament</th>
-                    <th>Forme</th>
-                    <th>Dosage</th>
+                    <th>Forme / Dosage</th>
                     <th class="text-center">Qté</th>
                     <th class="text-right">P.U. (FC)</th>
                     <th class="text-right">Total (FC)</th>
@@ -54,24 +61,51 @@
                 {% for ligne in lignes %}
                 <tr>
                     <td><strong>{{ ligne.medicament.designation }}</strong></td>
+                    <td>{{ ligne.medicament.forme|default:"" }} {{ ligne.medicament.dosage|default:"" }}</td>
                     
-                    <td>{{ ligne.medicament.forme|default:"-" }}</td>
+                    <!-- On vérifie si c'est une ligne d'ordonnance ou de facture directe -->
+                    <td class="text-center">
+                        {% if ligne.quantite_prescrite %}{{ ligne.quantite_prescrite }}{% else %}{{ ligne.quantite }}{% endif %}
+                    </td>
                     
-                    <td>{{ ligne.medicament.dosage|default:"-" }}</td>
+                    <td class="text-right">
+                        {% if ligne.prix_unitaire_applique %}
+                            {{ ligne.prix_unitaire_applique }}
+                        {% else %}
+                            {{ ligne.medicament.prix_vente_detail }}
+                        {% endif %}
+                    </td>
                     
-                    <td class="text-center">{{ ligne.quantite_payee }}</td>
-                    <td class="text-right">{{ ligne.prix_unitaire }}</td>
-                    <td class="text-right"><strong>{{ ligne.total_ligne }}</strong></td>
+                    <td class="text-right">
+                        <strong>
+                            {% if ligne.sous_total %}
+                                {{ ligne.sous_total }}
+                            {% elif ligne.prix_total %}
+                                {{ ligne.prix_total }}
+                            {% else %}
+                                {# Calcul manuel si aucune propriété n'est disponible #}
+                                {{ facture.total_a_payer_cdf }} 
+                            {% endif %}
+                        </strong>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center">Aucun médicament sur cette facture.</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
 
         <div class="total-box">
-            <p><strong>TOTAL GÉNÉRAL : {{ facture.montant_total }} FC</strong></p>
+            <p>TOTAL À PAYER : <strong>{{ facture.total_a_payer_cdf }} CDF</strong></p>
+            {% if config.taux_usd_en_cdf %}
+                <p style="font-size: 12px; color: #555;">(Soit : {{ facture.total_a_payer_cdf }} / {{ config.taux_usd_en_cdf }} = <strong>$ {{ facture.total_a_payer_cdf }}</strong>)</p>
+            {% endif %}
         </div>
 
         <div class="footer">
+            <p>Adresse : {{ config.adresse|default:"Kinshasa, RDC" }}</p>
             <p>Merci pour votre confiance. Facture générée par KITOKO ERP.</p>
         </div>
     </div>

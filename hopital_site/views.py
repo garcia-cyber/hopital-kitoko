@@ -2246,20 +2246,24 @@ def encaisser_reste_pharma(request, facture_id):
 # ====================================================================================================================
 @login_required
 def imprimer_facture_pharma(request, facture_id):
-    # On récupère la facture avec toutes les relations nécessaires
-    facture = get_object_or_404(
-        FacturePharmacie.objects.select_related('patient', 'ordonnance').prefetch_related(
-            'ordonnance__lignes__medicament'
-        ), 
-        id=facture_id
-    )
+    # 1. On récupère la facture
+    facture = get_object_or_404(FacturePharmacie, id=facture_id)
     
-    # On récupère les lignes spécifiquement liées à l'ordonnance de cette facture
-    lignes = facture.ordonnance.lignes.all()
+    # 2. On récupère les lignes (Sécurité si l'ordonnance est vide)
+    if facture.ordonnance:
+        # Si la facture vient d'une consultation
+        lignes = facture.ordonnance.lignes.all()
+    else:
+        # Si c'est une vente directe sans ordonnance (LigneFacturePharma)
+        lignes = facture.lignes_facture_set.all()
+    
+    # 3. Récupération du taux et config
+    config = ConfigurationHopital.objects.first()
     
     context = {
         'facture': facture,
         'lignes': lignes,
+        'config': config,
         'date': facture.date_facture,
     }
     return render(request, 'back-end/pharmacie/print_facture.html', context)
@@ -2364,24 +2368,36 @@ def historique_livraison_pharmacie(request):
 # ====================================================================================================================
 @login_required
 def liste_factures_pharmacie(request):
-    # Correction : Utilisation de 'date_vente' au lieu de 'date_facture'
-    # prefetch_related est maintenu pour la performance des détails médicaments
-    factures = FactureClientPharmacie.objects.prefetch_related(
-        'lignes_vente__medicament'
-    ).all().order_by('-date_vente')
+    today = timezone.now()
     
-    # Récupération de la configuration pour le taux de change
+    # Base des factures
+    factures = FactureClientPharmacie.objects.prefetch_related('lignes_vente__medicament').all()
+
+    # Calculs des sommes par période (en CDF)
+    recette_jour = factures.filter(date_vente__date=today.date()).aggregate(Sum('total_a_payer_cdf'))['total_a_payer_cdf__sum'] or 0
+    
+    start_of_week = today - timedelta(days=today.weekday())
+    recette_semaine = factures.filter(date_vente__gte=start_of_week).aggregate(Sum('total_a_payer_cdf'))['total_a_payer_cdf__sum'] or 0
+    
+    recette_mois = factures.filter(date_vente__month=today.month, date_vente__year=today.year).aggregate(Sum('total_a_payer_cdf'))['total_a_payer_cdf__sum'] or 0
+
+    # Taux et conversion
     config = ConfigurationHopital.objects.first()
     taux = config.taux_usd_en_cdf if config else 2500
 
-    # Gestion du profil utilisateur pour l'affichage de l'interface
+    # Récupération du profil pour l'interface
     profil = Profil.objects.filter(userProfil=request.user).first()
     fonction = profil.fonction.fonction if profil and profil.fonction else None
     
     context = {
-        'factures': factures,
+        'factures': factures.order_by('-date_vente'),
         'taux': taux,
-        'fonction': fonction  # Important pour tes conditions d'affichage dans la sidebar
+        'recette_jour': recette_jour,
+        'recette_semaine': recette_semaine,
+        'recette_mois': recette_mois,
+        'recette_jour_usd': round(recette_jour / taux, 2) if taux > 0 else 0,
+        'total_transactions': factures.count(),
+        'fonction' : fonction
     }
     return render(request, 'back-end/pharmacie/historique_ventes_client.html', context)
 
@@ -2392,26 +2408,20 @@ def liste_factures_pharmacie(request):
 # ============================================================================================================
 @login_required
 def imprimer_facture_pharmacie(request, facture_id):
-    # On récupère la facture de type 'Client de passage'
+    # Récupération de la facture ou erreur 404
     facture = get_object_or_404(FactureClientPharmacie, id=facture_id)
     
-    # Dans ton modèle LigneVenteSimple, le related_name est 'lignes_vente'
-    lignes = facture.lignes_vente.all() 
+    # On récupère les lignes de vente associées
+    lignes = facture.lignes_vente.all()
     
-    # Sécurité pour le taux et la config
+    # Infos de l'hôpital pour l'en-tête
     config = ConfigurationHopital.objects.first()
     
-    # Si la config n'existe pas en DB, on crée un objet fictif pour éviter le NoneType
-    if not config:
-        config = {
-            'taux_usd_en_cdf': 2500, # Valeur par défaut
-            'nom_hopital': "KITOKO HOSPITAL",
-            'adresse': "Kinshasa, RDC"
-        }
-
     context = {
         'facture': facture,
         'lignes': lignes,
         'config': config,
     }
-    return render(request, 'back-end/pharmacie/recu_format_ticket.html', context)
+    return render(request, 'back-end/pharmacie/recu_facture_client.html', context)
+
+
