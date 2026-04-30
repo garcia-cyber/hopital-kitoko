@@ -6,81 +6,74 @@
                 <li class="menu-title">Menu Principal</li>
 
                 <li class="active">
-                    <a href="{% url 'panel'%}"><i class="fas fa-th-large"></i> <span>Tableau de Bord</span></a>
+                    <a href="{% url 'panel'%}"><i class="fas fa-chart-line"></i> <span>Tableau de Bord</span></a>
                 </li>
 
                 {% if fonction == 'admin' or fonction == 'sous-admin' %}
                 <li class="submenu">
-                    <a href="#"><i class="fas fa-users-cog"></i> <span> Personnel </span> <span class="menu-arrow"></span></a>
+                    <a href="#"><i class="fas fa-user-shield"></i> <span> Personnel </span> <span class="menu-arrow"></span></a>
                     <ul style="display: none;">
-                        <li><a href="{% url 'employeAdd' %}">Ajouter Employé</a></li>
-                        <li><a href="{% url 'employeRead'%}">Liste Employés</a></li>
-                        <li><a href="{% url 'profilRead'%}">Profils Utilisateurs</a></li>
+                        <li><a href="{% url 'employeAdd' %}"><i class="fas fa-plus"></i> Ajouter Employé</a></li>
+                        <li><a href="{% url 'employeRead'%}"><i class="fas fa-list-ul"></i> Liste Employés</a></li>
+                        <li><a href="{% url 'profilRead'%}"><i class="fas fa-id-card"></i> Profils Utilisateurs</a></li>
                     </ul>
                 </li>
 
                 <li class="submenu">
-                    <a href="#"><i class="fas fa-user-injured"></i> <span> Patients </span> <span class="menu-arrow"></span></a>
+                    <a href="#"><i class="fas fa-hospital-user"></i> <span> Patients </span> <span class="menu-arrow"></span></a>
                     <ul style="display: none;">
-                        <li><a href="{% url 'patientAdd' %}">Ajouter Patient</a></li>
-                        <li><a href="{% url 'patientRead' %}">Liste des Patients</a></li>
-                        <li><a href="{% url 'liste_patients_consultes' %}">Patients Consultés</a></li>
+                        <li><a href="{% url 'patientAdd' %}"><i class="fas fa-user-plus"></i> Ajouter Patient</a></li>
+                        <li><a href="{% url 'patientRead' %}"><i class="fas fa-users"></i> Liste des Patients</a></li>
+                        <li><a href="{% url 'liste_patients_consultes' %}"><i class="fas fa-check-double"></i> Patients Consultés</a></li>
                     </ul>
                 </li>
 
                 <li class="submenu">
-                    <a href="#"><i class="fas fa-file-invoice-dollar"></i> <span> Finance </span> <span class="menu-arrow"></span></a>
+                    <a href="#"><i class="fas fa-coins"></i> <span> Finance </span> <span class="menu-arrow"></span></a>
                     <ul style="display: none;">
-                        <li><a href="{% url 'historique_paiements' %}">Historique Paiements</a></li>
-                        <li><a href="{% url 'tableau_bord_finance' %}">Rapports Financiers</a></li>
-                        <li><a href="{% url 'gestion_depenses' %}">Gestion Dépenses</a></li>
+                        <li><a href="{% url 'historique_paiements' %}"><i class="fas fa-history"></i> Historique Paiements</a></li>
+                        <li><a href="{% url 'tableau_bord_finance' %}"><i class="fas fa-chart-pie"></i> Rapports Financiers</a></li>
+                        <li><a href="{% url 'gestion_depenses' %}"><i class="fas fa-hand-holding-usd"></i> Gestion Dépenses</a></li>
                     </ul>
                 </li>
                 
                 <li>
-                    <a href="{% url 'liste_ordonnances_infirmier' %}"><i class="fas fa-pills"></i> <span>Suivi Traitements</span></a>
+                    <a href="{% url 'liste_ordonnances_infirmier' %}"><i class="fas fa-notes-medical"></i> <span>Suivi Traitements</span></a>
                 </li>
 
                 <li class="submenu">
-                    <a href="#"><i class="fas fa-boxes"></i> <span> Logistique </span> <span class="menu-arrow"></span></a>
-                <ul style="display: none;">
-                    <li>
-                        <a href="{% url 'liste_materiel' %}" class="{% if request.resolver_match.url_name == 'liste_materiel' %}active{% endif %}">
-                        <i class="fas fa-clipboard-list"></i> Inventaire Matériel
-                        </a>
-                    </li>
-        
-                    <li>
-                        <a href="{% url 'ajouter_materiel' %}" class="{% if request.resolver_match.url_name == 'ajouter_materiel' %}active{% endif %}">
-                        <i class="fas fa-plus-circle"></i> Ajouter Matériel
-                        </a>
-                    </li>
-        
+                    <a href="#"><i class="fas fa-truck-loading"></i> <span> Logistique </span> <span class="menu-arrow"></span></a>
+                    <ul style="display: none;">
+                        <li>
+                            <a href="{% url 'liste_materiel' %}" class="{% if request.resolver_match.url_name == 'liste_materiel' %}active{% endif %}">
+                                <i class="fas fa-boxes"></i> Inventaire Matériel
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'ajouter_materiel' %}" class="{% if request.resolver_match.url_name == 'ajouter_materiel' %}active{% endif %}">
+                                <i class="fas fa-plus-square"></i> Ajouter Matériel
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'materiel_en_panne' %}">
+                                <i class="fas fa-tools"></i> Matériels en Panne 
+                                <span class="badge badge-pill bg-danger float-right">{{ en_panne }}</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
 
-                    <li>
-                        <a href="{% url 'materiel_en_panne' %}">
-                        <i class="fas fa-exclamation-triangle"></i> Matériels en Panne 
-                        <span class="badge badge-pill bg-danger float-right">{{ en_panne }}</span>
-                        </a>
-                    </li>
-            </ul>
-            </li>
-
-            <li>
+                <li>
                     <a href="{% url 'historique_livraison_pharmacie' %}" class="{% if request.resolver_match.url_name == 'historique_livraison_pharmacie' %}active{% endif %}">
-                        <i class="fa fa-history"></i> Historique Livraisons
+                        <i class="fas fa-truck-moving"></i> <span>Histo. Livraisons</span>
                     </a>
                 </li>
 
                 <li>
-
-                <a href="{% url 'historique_ventes_client' %}">
-                <i class="fa fa-history"></i> <span>Historique Ventes client</span>
-                </a>
+                    <a href="{% url 'historique_ventes_client' %}">
+                        <i class="fas fa-receipt"></i> <span>Histo. Ventes client</span>
+                    </a>
                 </li> 
-                
-
-
 
                 {% elif fonction == 'receptionniste' %} 
                 <li>
@@ -92,56 +85,59 @@
                 <li>
                     <a href="{% url 'liste_patients_consultes' %}"><i class="fas fa-clipboard-check"></i> <span>Patients Consultés</span></a>
                 </li>
+                <!-- A REMETTRE PLUS TARD -->
+                <!-- <li>
+                    <a href="{% url 'historique_paiements' %}"><i class="fas fa-money-check-alt"></i> <span>Paiements</span></a>
+                </li> -->
                 <li>
-                    <a href="{% url 'historique_paiements' %}"><i class="fas fa-cash-register"></i> <span>Paiements</span></a>
-                </li>
-                <li>
-                    <a href="{% url 'tableau_bord_finance' %}"><i class="fas fa-chart-pie"></i> <span>Finance</span></a>
+                    <a href="{% url 'tableau_bord_finance' %}"><i class="fas fa-chart-line"></i> <span>Finance</span></a>
                 </li>
                 <li>
                     <a href="{% url 'gestion_depenses' %}"><i class="fas fa-wallet"></i> <span>Dépenses</span></a>
                 </li>
-
-                <a href="{% url 'historique_ventes_client' %}">
-        <i class="fa fa-history"></i> <span>Historique Ventes</span>
-    </a>
-</li>
-
+                
                 <li class="menu-title">Gestion Hospitalière</li>
 
                 <li>
                     <a href="{% url 'historique_livraison_pharmacie' %}" class="{% if request.resolver_match.url_name == 'historique_livraison_pharmacie' %}active{% endif %}">
-                        <i class="fa fa-history"></i> Historique Livraisons
+                        <i class="fas fa-box-open"></i> Historique Livraisons
                     </a>
                 </li>
 
                 <li>
-                    <a href="{% url 'ajouter_chambre' %}"><i class="fas fa-door-closed"></i> <span>Ajouter Chambre</span></a>
+                    <a href="{% url 'historique_ventes_client' %}">
+                        <i class="fas fa-file-invoice"></i> <span>Historique Ventes</span>
+                    </a>
                 </li>
+
+                <li>
+                    <a href="{% url 'ajouter_chambre' %}"><i class="fas fa-plus-circle"></i> <span>Ajouter Chambre</span></a>
+                </li>
+
                 <li>
                     <a href="{% url 'ajouter_lit' %}"><i class="fas fa-bed"></i> <span>Ajouter Lit</span></a>
                 </li>
+
                 <li>
-                    <a href="{% url 'liste_chambres' %}"><i class="fas fa-hospital-alt"></i> <span>Liste Chambres</span></a>
+                    <a href="{% url 'liste_chambres' %}"><i class="fas fa-door-open"></i> <span>Liste Chambres</span></a>
                 </li>
+                
                 <li>
                     <a href="{% url 'liste_lits' %}"><i class="fas fa-procedures"></i> <span>Liste Lits</span></a>
                 </li>
 
-                
-
                 {% elif fonction == 'infirmier' %}
                 <li class="submenu">
-                    <a href="#"><i class="fas fa-heartbeat"></i> <span> Soins & Patients </span> <span class="menu-arrow"></span></a>
+                    <a href="#"><i class="fas fa-user-nurse"></i> <span> Soins & Patients </span> <span class="menu-arrow"></span></a>
                     <ul style="display: none;">
-                        <li><a href="{% url 'liste_soldes' %}">Prélever Signes Vitaux</a></li>
-                        <li><a href="{% url 'historique_signes' %}">Historique Signes Vitaux</a></li> 
-                        <li><a href="{% url 'liste_patients_consultes' %}">Patients Consultés</a></li>
+                        <li><a href="{% url 'liste_soldes' %}"><i class="fas fa-heartbeat"></i> Signes Vitaux</a></li>
+                        <li><a href="{% url 'historique_signes' %}"><i class="fas fa-history"></i> Historique Signes</a></li> 
+                        <li><a href="{% url 'liste_patients_consultes' %}"><i class="fas fa-clipboard-list"></i> Patients Consultés</a></li>
                     </ul>
                 </li>
                 <li>
                     <a href="{% url 'liste_ordonnances_generale' %}">
-                        <i class="fas fa-hand-holding-medical"></i> <span>liste Ordonnances</span>
+                        <i class="fas fa-file-prescription"></i> <span>Liste Ordonnances</span>
                     </a>
                 </li>
 
@@ -152,99 +148,75 @@
                
                 {% elif fonction == 'medecin' %}
                 <li class="submenu">
-                    <a href="#"><i class="fas fa-stethoscope"></i> <span> Consultation </span> <span class="menu-arrow"></span></a>
+                    <a href="#"><i class="fas fa-user-md"></i> <span> Consultation </span> <span class="menu-arrow"></span></a>
                     <ul style="display: none;">
-                        <li><a href="{% url 'liste_attente_medecin' %}">File d'attente</a></li>
-                        <li><a href="{% url 'historique_signes' %}">Historique Signes Vitaux</a></li> 
-                        <li><a href="{% url 'liste_patients_consultes' %}">Patients Consultés</a></li>
+                        <li><a href="{% url 'liste_attente_medecin' %}"><i class="fas fa-clock"></i> File d'attente</a></li>
+                        <li><a href="{% url 'historique_signes' %}"><i class="fas fa-stethoscope"></i> Signes Vitaux</a></li> 
+                        <li><a href="{% url 'liste_patients_consultes' %}"><i class="fas fa-history"></i> Patients Consultés</a></li>
                     </ul>
                 </li>
                 <li>
                     <a href="{% url 'resultats_labo_medecin' %}">
-                        <i class="fas fa-microscope"></i> <span>Résultats Labo</span>
+                        <i class="fas fa-vial"></i> <span>Résultats Labo</span>
                     </a>
                 </li>
                 <li>
-                    <a href="{% url 'liste_ordonnances_generale'%}"><i class="fas fa-prescription"></i> <span>liste Ordonnances</span></a>
+                    <a href="{% url 'liste_ordonnances_generale'%}"><i class="fas fa-prescription-bottle-alt"></i> <span>Liste Ordonnances</span></a>
                 </li>
 
                 {% elif fonction == 'laborantin' %}
                 <li>
-                    <a href="{% url 'liste_examens_labo' %}"><i class="fas fa-flask"></i> <span>Examens Labo</span></a>
+                    <a href="{% url 'liste_examens_labo' %}"><i class="fas fa-microscope"></i> <span>Examens Labo</span></a>
                 </li>
+
                 {% elif fonction == 'pharmacien' %}
                 <li class="submenu">
                     <a href="#">
-                        <i class="fas fa-pills"></i> 
+                        <i class="fas fa-capsules"></i> 
                         <span> Pharmacie </span> 
                         <span class="menu-arrow"></span>
                     </a>
                     <ul style="display: none;">
-                        <li>
-                    <a href="{% url 'dashboard_pharmacie' %}"><i class="fas fa-chart-line"></i> <span>Dashboard Pharma</span></a>
-                </li>
-                        <li>
-                            <a href="{% url 'ajouter_medicament' %}">
-                            <i class="fas fa-plus-square"></i> <span>Nouveau Médicament</span>
-                            </a>
-                        </li>
-
-                        <li>
-                            <a href="{% url 'ajouter_stock' %}">
-                                <i class="fas fa-plus-circle"></i> Entrée de Stock
-                            </a>
-                        </li>
-                        <li>
-                            <a href="{% url 'liste_stock' %}">
-                                <i class="fas fa-plus-circle"></i> Liste Stock
-                            </a>
-                        </li>
-
-
+                        <li><a href="{% url 'dashboard_pharmacie' %}"><i class="fas fa-tachometer-alt"></i> Dashboard Pharma</a></li>
+                        <li><a href="{% url 'ajouter_medicament' %}"><i class="fas fa-pills"></i> Nouveau Médicament</a></li>
+                        <li><a href="{% url 'ajouter_stock' %}"><i class="fas fa-dolly-flatbed"></i> Entrée de Stock</a></li>
+                        <li><a href="{% url 'liste_stock' %}"><i class="fas fa-warehouse"></i> Liste Stock</a></li>
                         <li class="{% if request.resolver_match.url_name == 'effectuer_vente' %}active{% endif %}">
-    <a href="{% url 'effectuer_vente' %}">
-        <i class="fas fa-plus-circle"></i> <span>Nouvelle Vente</span>
-    </a>
-</li>
+                            <a href="{% url 'effectuer_vente' %}"><i class="fas fa-cart-plus"></i> <span>Nouvelle Vente</span></a>
+                        </li>
+                        <!-- <li class="{% if request.resolver_match.url_name == 'historique_ventes' %}active{% endif %}">
+                            <a href="{% url 'historique_ventes' %}"><i class="fas fa-history"></i> <span>Historique Ventes</span></a>
+                        </li> -->
+                    </ul>
+                </li>
 
-        <li class="{% if request.resolver_match.url_name == 'historique_ventes' %}active{% endif %}">
-                <a href="{% url 'historique_ventes' %}">
-                        <i class="fas fa-history"></i> <span>Historique Ventes</span>
+                <li class="{% if request.resolver_match.url_name == 'livraison_pharmacie' %}active{% endif %}">
+                    <a href="{% url 'livraison_pharmacie' %}">
+                        <i class="fas fa-shipping-fast"></i> 
+                        <span>Livraisons Pharma</span>
+                        <span class="badge badge-pill badge-danger float-right">New</span>
                     </a>
                 </li>
-            </ul>
-        </li>
 
-        <li class="{% if request.resolver_match.url_name == 'livraison_pharmacie' %}active{% endif %}">
-            <a href="{% url 'livraison_pharmacie' %}">
-            <i class="fas fa-boxes"></i> 
-            <span>Livraisons Pharma</span>
-            <span class="badge badge-pill badge-danger float-right">
-             New
-            </span>
-            </a>
-        </li>
+                <li>
+                    <a href="{% url 'historique_ventes_client' %}">
+                        <i class="fas fa-receipt"></i> <span>Historique Ventes</span>
+                    </a>
+                </li>
 
-        <li>
-    <a href="{% url 'historique_ventes_client' %}">
-        <i class="fa fa-history"></i> <span>Historique Ventes</span>
-    </a>
-</li>
-
-        <li>
-            <a href="{% url 'historique_livraison_pharmacie' %}" class="{% if request.resolver_match.url_name == 'historique_livraison_pharmacie' %}active{% endif %}">
-                <i class="fa fa-history"></i> Historique Livraisons
-            </a>
-        </li>
-                {% else %}
+                <li>
+                    <a href="{% url 'historique_livraison_pharmacie' %}" class="{% if request.resolver_match.url_name == 'historique_livraison_pharmacie' %}active{% endif %}">
+                        <i class="fas fa-history"></i> Historique Livraisons
+                    </a>
+                </li>
                 {% endif %}
                 
-                    <li class="{% if request.resolver_match.url_name == 'modifier_mon_mdp' %}active{% endif %}">
-                            <a href="{% url 'modifier_mon_mdp' %}">
-                                <i class="fas fa-user-lock"></i> 
-                                <span>Changer password</span> 
-                            </a>
-                    </li>
+                <li class="{% if request.resolver_match.url_name == 'modifier_mon_mdp' %}active{% endif %}">
+                    <a href="{% url 'modifier_mon_mdp' %}">
+                        <i class="fas fa-key"></i> 
+                        <span>Changer Password</span> 
+                    </a>
+                </li>
             </ul>
         </div>
     </div>

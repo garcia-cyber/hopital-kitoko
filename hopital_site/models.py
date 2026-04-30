@@ -333,7 +333,8 @@ class Materiel(models.Model):
     nom = models.CharField(max_length=100)
     marque = models.CharField(max_length=100)
     numero_serie = models.CharField(max_length=100, unique=True)
-    service_affecte = models.ForeignKey(Service, on_delete=models.CASCADE)
+    service_affecte = models.ForeignKey(Service, on_delete=models.CASCADE, 
+        related_name='materiels')
     etat_actuel = models.CharField(max_length=20, default='FONCTIONNEL')
 
 class Maintenance(models.Model):
