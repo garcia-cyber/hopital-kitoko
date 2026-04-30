@@ -93,7 +93,6 @@
                                         <tbody>
                                             {% for f in factures %}
                                             <tr>
-                                                <!-- Correction : On utilise f.date_vente ici -->
                                                 <td>
                                                     <span class="font-weight-bold">{{ f.date_vente|date:"d/m/Y" }}</span><br>
                                                     <small class="text-muted"><i class="far fa-clock"></i> {{ f.date_vente|date:"H:i" }}</small>
@@ -122,9 +121,10 @@
                                                     <span class="text-success-bold">{{ f.total_a_payer_cdf }} FC</span>
                                                 </td>
                                                 <td class="text-center">
-                                                    <button class="btn btn-sm btn-outline-secondary" title="Imprimer le reçu">
-                                                        <i class="fa fa-print"></i>
-                                                    </button>
+                                                    <!-- AJOUT DE LA FONCTIONNALITÉ D'IMPRESSION ICI -->
+                                                    <a href="{% url 'imprimer_facture_pharmacie' f.id %}" target="_blank" class="btn btn-sm btn-outline-info" title="Imprimer la facture">
+                                                        <i class="fa fa-print"></i> Imprimer
+                                                    </a>
                                                 </td>
                                             </tr>
                                             {% empty %}
@@ -151,16 +151,22 @@
     <!-- JS Scripts -->
     <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js' %}"></script>
     <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js' %}"></script>
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/jquery.slimscroll.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/select2.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/app.js'%}"></script>
     <!-- DataTables JS -->
     <script src="https://cdn.datatables.net/1.10.24/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.10.24/js/dataTables.bootstrap4.min.js"></script>
+
 
     <script>
         $(document).ready(function() {
             if ($('.datatable').length > 0) {
                 $('.datatable').DataTable({
                     "bFilter": true,
-                    "order": [[0, "desc"]], // Trie par la première colonne (date) de façon descendante
+                    "order": [[0, "desc"]], 
                     "language": {
                         "sEmptyTable":     "Aucune donnée disponible dans le tableau",
                         "sInfo":           "Affichage de l'élément _START_ à _END_ sur _TOTAL_ éléments",

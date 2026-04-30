@@ -10,7 +10,6 @@ from django.db.models import Sum
 class PaiementInline(admin.TabularInline):
     model = Paiement
     extra = 0
-    # On utilise les noms exacts de ton modèle Paiement
     readonly_fields = ['date_paiement', 'montant_comptable_cdf']
     fields = ['montant_physique', 'devise', 'mode_paiement', 'reference_transaction', 'date_paiement', 'montant_comptable_cdf']
     can_delete = False
@@ -22,7 +21,6 @@ class ExamenPrescritInline(admin.TabularInline):
     fields = ['prestation', 'quantite', 'prix_total', 'paye', 'termine']
 
 class LigneVenteInline(admin.TabularInline):
-    # CORRECTION : model = LigneVente qui est lié à FacturePharmacie (via champ 'vente')
     model = LigneVente
     extra = 0
     fields = ('medicament', 'quantite', 'prix_unitaire_applique')
@@ -40,6 +38,17 @@ class LigneFacturePharmaInline(admin.TabularInline):
     readonly_fields = ['sous_total']
     fields = ['medicament', 'quantite', 'prix_unitaire_applique', 'sous_total']
     can_delete = False
+
+# NOUVEAU INLINE : Pour les ventes simples au comptoir
+class LigneVenteSimpleInline(admin.TabularInline):
+    model = LigneVenteSimple
+    extra = 0
+    fields = ['medicament', 'quantite', 'prix_unitaire']
+
+# NOUVEAU INLINE : Pour voir les lits dans une chambre
+class LitInline(admin.TabularInline):
+    model = Lit
+    extra = 1
 
 # ======================================================================
 # 1. PARAMÉTRAGES ET ACTEURS
@@ -84,6 +93,12 @@ class PaiementAdmin(admin.ModelAdmin):
     list_display = ('id', 'facture', 'facture_pharma', 'montant_physique', 'devise', 'montant_comptable_cdf', 'date_paiement')
     readonly_fields = ('montant_comptable_cdf',)
 
+# AJOUT : Modèle Dépense
+@admin.register(Depense)
+class DepenseAdmin(admin.ModelAdmin):
+    list_display = ('motif', 'montant', 'devise', 'valeur_cdf', 'date_depense')
+    readonly_fields = ('valeur_cdf',)
+
 # ======================================================================
 # 3. CLINIQUE ET MÉDICAL
 # ======================================================================
@@ -121,7 +136,6 @@ class MedicamentAdmin(admin.ModelAdmin):
 @admin.register(FacturePharmacie)
 class FacturePharmacieAdmin(admin.ModelAdmin):
     list_display = ('id', 'get_client', 'total_a_payer_cdf', 'get_reste', 'get_statut', 'date_facture')
-    # On met les Inlines liés à FacturePharmacie
     inlines = [LigneVenteInline, LigneFacturePharmaInline, PaiementInline]
 
     def get_client(self, obj):
@@ -137,18 +151,25 @@ class FacturePharmacieAdmin(admin.ModelAdmin):
         color = "green" if s == 'SOLDE' else "orange" if s == 'PARTIEL' else "red"
         return format_html('<b style="color: {};">{}</b>', color, s)
 
-# SOLUTION DE L'ERREUR E202 :
-# On ne peut PAS utiliser LigneVenteInline ici car ton modèle LigneVente 
-# n'a pas de ForeignKey vers VentePharmacie (il est lié à FacturePharmacie).
 @admin.register(VentePharmacie)
 class VentePharmacieAdmin(admin.ModelAdmin):
     list_display = ('id', 'date_vente', 'vendeur', 'total_cdf', 'statut')
-    # inlines = [LigneVenteInline]  <-- C'ÉTAIT CETTE LIGNE LE PROBLÈME. ELLE EST RETIRÉE.
 
 @admin.register(Ordonnance)
 class OrdonnanceAdmin(admin.ModelAdmin):
     list_display = ('id', 'consultation', 'medecin', 'date_creation', 'est_delivré')
     inlines = [LigneOrdonnanceInline]
+
+# AJOUT : Facture Client (Vente au comptoir)
+@admin.register(FactureClientPharmacie)
+class FactureClientPharmacieAdmin(admin.ModelAdmin):
+    list_display = ('id', 'nom_client', 'total_a_payer_cdf', 'date_vente', 'vendeur')
+    inlines = [LigneVenteSimpleInline, PaiementInline]
+
+# AJOUT : Bons d'entrée (Stock)
+@admin.register(BonEntree)
+class BonEntreeAdmin(admin.ModelAdmin):
+    list_display = ('medicament', 'nb_cartons_recus', 'prix_achat_carton', 'date_reception')
 
 # ======================================================================
 # 5. MATÉRIEL ET MAINTENANCE
@@ -183,7 +204,26 @@ class EmployeAdmin(admin.ModelAdmin):
         return f"{obj.user.last_name} {obj.user.first_name}"
 
 # ======================================================================
-# 7. LOGS ET LIGNES
+# 7. HOSPITALISATION (CHAMBRES & LITS) - AJOUTS
+# ======================================================================
+
+@admin.register(Chambre)
+class ChambreAdmin(admin.ModelAdmin):
+    list_display = ('numero', 'type_chambre', 'prix_journalier')
+    inlines = [LitInline]
+
+@admin.register(Lit)
+class LitAdmin(admin.ModelAdmin):
+    list_display = ('nom_lit', 'chambre', 'est_occupe')
+    list_filter = ('est_occupe', 'chambre')
+
+@admin.register(OccupationLit)
+class OccupationLitAdmin(admin.ModelAdmin):
+    list_display = ('patient', 'lit', 'date_admission', 'date_sortie', 'est_paye')
+    list_filter = ('est_paye',)
+
+# ======================================================================
+# 8. LOGS ET LIGNES
 # ======================================================================
 
 @admin.register(LigneFacturePharma)

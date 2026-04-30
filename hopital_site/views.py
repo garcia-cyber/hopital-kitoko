@@ -2386,4 +2386,32 @@ def liste_factures_pharmacie(request):
     return render(request, 'back-end/pharmacie/historique_ventes_client.html', context)
 
 
+# 65 
+# ============================================================================================================
+# imprimer facture client 
+# ============================================================================================================
+@login_required
+def imprimer_facture_pharmacie(request, facture_id):
+    # On récupère la facture de type 'Client de passage'
+    facture = get_object_or_404(FactureClientPharmacie, id=facture_id)
     
+    # Dans ton modèle LigneVenteSimple, le related_name est 'lignes_vente'
+    lignes = facture.lignes_vente.all() 
+    
+    # Sécurité pour le taux et la config
+    config = ConfigurationHopital.objects.first()
+    
+    # Si la config n'existe pas en DB, on crée un objet fictif pour éviter le NoneType
+    if not config:
+        config = {
+            'taux_usd_en_cdf': 2500, # Valeur par défaut
+            'nom_hopital': "KITOKO HOSPITAL",
+            'adresse': "Kinshasa, RDC"
+        }
+
+    context = {
+        'facture': facture,
+        'lignes': lignes,
+        'config': config,
+    }
+    return render(request, 'back-end/pharmacie/recu_format_ticket.html', context)

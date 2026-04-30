@@ -120,6 +120,7 @@ urlpatterns = [
     path('paiement/<int:paiement_id>/imprimer/', views.imprimer_recu_pharmacie, name='imprimer_recu_pharmacie'),
     path('pharmacie/historique-livraison/', views.historique_livraison_pharmacie, name='historique_livraison_pharmacie'),
     path('pharmacie/historique-ventes/', views.liste_factures_pharmacie, name='historique_ventes_client'),
+    path('pharmacie/imprimer-facture/<int:facture_id>/', views.imprimer_facture_pharmacie, name='imprimer_facture_pharmacie'),
 
     # =================================================
     # logistique
