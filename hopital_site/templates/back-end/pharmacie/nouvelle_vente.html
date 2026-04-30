@@ -10,9 +10,11 @@
     <link rel="stylesheet" href="{% static 'back-end/assets/css/select2.min.css' %}">
     <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css' %}">
     <style>
-        .total-card { background: #f8f9fa; border-left: 5px solid #28a745; }
-        .total-val { font-size: 28px; font-weight: bold; color: #28a745; }
-        .devise-badge { font-size: 16px; margin-left: 5px; }
+        .total-card { background: #f8f9fa; border-left: 5px solid #28a745; border-radius: 4px; }
+        .total-val { font-size: 32px; font-weight: bold; color: #28a745; }
+        .devise-badge { font-size: 18px; margin-left: 5px; color: #6c757d; }
+        .table-responsive { max-height: 400px; overflow-y: auto; }
+        .select2-container .select2-selection--single { height: 38px !important; }
     </style>
 </head>
 <body>
@@ -24,19 +26,20 @@
             <div class="content">
                 <div class="row">
                     <div class="col-sm-12">
-                        <h4 class="page-title text-uppercase">Pharmacie - Vente au Comptoir</h4>
+                        <h4 class="page-title text-uppercase"><i class="fa fa-cash-register"></i> Pharmacie - Vente au Comptoir</h4>
                     </div>
                 </div>
 
                 <div class="row">
+                    <!-- Colonne de Gauche : Sélection -->
                     <div class="col-lg-5">
-                        <div class="card shadow-sm">
+                        <div class="card shadow-sm border-0">
                             <div class="card-body">
                                 <div class="row">
                                     <div class="col-md-6">
                                         <div class="form-group">
-                                            <label>Devise de paiement</label>
-                                            <select id="select_devise" class="form-control" onchange="changerDevise()">
+                                            <label class="font-weight-bold">Devise d'encaissement</label>
+                                            <select id="select_devise" class="form-control" onchange="majTableau()">
                                                 <option value="CDF">Franc Congolais (FC)</option>
                                                 <option value="USD">Dollar (USD)</option>
                                             </select>
@@ -44,71 +47,75 @@
                                     </div>
                                     <div class="col-md-6">
                                         <div class="form-group">
-                                            <label>Taux : 1 USD =</label>
-                                            <input type="text" class="form-control" id="taux_info" value="{{ taux }}" readonly>
+                                            <label>Taux appliqué (1$)</label>
+                                            <input type="text" class="form-control bg-light" id="taux_info" value="{{ taux }}" readonly>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="form-group">
-                                    <label>Nom du Client</label>
-                                    <input type="text" id="nom_client" class="form-control" placeholder="Client de passage">
+                                    <label class="font-weight-bold">Nom du Client / Patient</label>
+                                    <input type="text" id="nom_client" class="form-control" placeholder="Ex: Client de passage ou Nom du patient">
                                 </div>
                                 <hr>
                                 <div class="form-group">
-                                    <label>Sélectionner Médicament</label>
+                                    <label class="font-weight-bold">Rechercher un Médicament</label>
                                     <select id="select_med" class="form-control select2">
-                                        <option value="">-- Rechercher un produit --</option>
+                                        <option value="">-- Taper le nom du produit --</option>
                                         {% for med in medicaments %}
                                         <option value="{{ med.id }}" 
                                                 data-nom="{{ med.designation }}" 
-                                                data-prix-cdf="{{ med.prix_unitaire_detail|default:0 }}"
+                                                data-prix-cdf="{{ med.prix_vente_detail|stringformat:".2f" }}"
                                                 data-stock="{{ med.quantite_stock_pieces }}"
-                                                data-info="{{ med.forme|default:'' }} | {{ med.dosage|default:'' }}">
-                                            {{ med.designation }} (Stock: {{ med.quantite_stock_pieces }})
+                                                data-info="{{ med.forme|default:'' }} {{ med.dosage|default:'' }}">
+                                            {{ med.designation }} - [Stock: {{ med.quantite_stock_pieces }}]
                                         </option>
                                         {% endfor %}
                                     </select>
                                 </div>
-                                <button type="button" onclick="ajouterAuPanier()" class="btn btn-primary btn-block">
-                                    <i class="fa fa-plus-circle"></i> Ajouter au panier
+                                <button type="button" onclick="ajouterAuPanier()" class="btn btn-primary btn-block btn-lg shadow-sm">
+                                    <i class="fa fa-cart-plus"></i> Ajouter au panier
                                 </button>
                             </div>
                         </div>
                     </div>
 
+                    <!-- Colonne de Droite : Panier -->
                     <div class="col-lg-7">
-                        <div class="card shadow-sm">
-                            <div class="card-header bg-white">
-                                <h5 class="mb-0">Détail de la commande</h5>
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white border-bottom">
+                                <h5 class="mb-0 font-weight-bold"><i class="fa fa-shopping-basket"></i> Panier actuel</h5>
                             </div>
                             <div class="card-body p-0">
-                                <div class="table-responsive" style="min-height: 300px;">
+                                <div class="table-responsive" style="min-height: 250px;">
                                     <table class="table table-hover mb-0">
                                         <thead class="thead-light">
                                             <tr>
                                                 <th>Produit</th>
-                                                <th class="text-center" width="100">Qté</th>
+                                                <th class="text-center" width="120">Qté</th>
                                                 <th class="text-right">P.U</th>
-                                                <th class="text-right">Total</th>
+                                                <th class="text-right">Sous-total</th>
                                                 <th class="text-center">#</th>
                                             </tr>
                                         </thead>
                                         <tbody id="panier_body">
-                                            </tbody>
+                                            <tr><td colspan="5" class="text-center text-muted py-5">Votre panier est vide</td></tr>
+                                        </tbody>
                                     </table>
                                 </div>
-                                <div class="p-3 total-card">
+                                
+                                <div class="p-4 total-card mx-3 my-3">
                                     <div class="d-flex justify-content-between align-items-center">
-                                        <span>TOTAL À PAYER :</span>
+                                        <span class="h5 mb-0 font-weight-bold">TOTAL À PAYER</span>
                                         <div>
                                             <span id="total_val" class="total-val">0</span>
                                             <span class="devise-badge font-weight-bold" id="devise_label">CDF</span>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="p-3">
-                                    <button type="button" id="btn_valider" onclick="validerVente()" class="btn btn-success btn-lg btn-block">
-                                        VALIDER ET ENCAISSER
+
+                                <div class="px-4 pb-4">
+                                    <button type="button" id="btn_valider" onclick="validerVente()" class="btn btn-success btn-lg btn-block shadow">
+                                        <i class="fa fa-check-circle"></i> CONFIRMER LA VENTE ET IMPRIMER
                                     </button>
                                 </div>
                             </div>
@@ -119,6 +126,7 @@
         </div>
     </div>
 
+    <!-- Scripts -->
     <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js' %}"></script>
     <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js' %}"></script>
     <script src="{% static 'back-end/assets/js/select2.min.js' %}"></script>
@@ -126,16 +134,15 @@
 
     <script>
         let panier = [];
-        const TAUX = parseFloat("{{ taux }}") || 2800;
+        // On remplace la virgule par un point pour que le JS traite bien le taux comme un décimal
+        const TAUX = parseFloat("{{ taux }}".replace(',', '.')) || 2500;
 
         $(document).ready(function() {
-            $('.select2').select2({ width: '100%' });
+            $('.select2').select2({
+                placeholder: "-- Rechercher un produit --",
+                allowClear: true
+            });
         });
-
-        function changerDevise() {
-            // On recalcule les prix affichés dans le panier si on change la devise
-            majTableau();
-        }
 
         function ajouterAuPanier() {
             let select = $('#select_med');
@@ -143,32 +150,33 @@
             if (!option.val()) return;
 
             let id = option.val();
-            let prixCDF = parseFloat(option.data('prix-cdf'));
-            let stock = parseInt(option.data('stock'));
+            let prixCDF = parseFloat(option.attr('data-prix-cdf'));
+            let stock = parseInt(option.attr('data-stock'));
 
-            if (prixCDF <= 0) {
-                Swal.fire('Erreur', 'Le prix de ce produit n\'est pas configuré', 'error');
+            if (isNaN(prixCDF) || prixCDF <= 0) {
+                Swal.fire('Erreur', 'Prix invalide pour ce produit', 'error');
                 return;
             }
 
             let existant = panier.find(item => item.id === id);
             if (existant) {
                 if (existant.quantite + 1 > stock) {
-                    Swal.fire('Stock', 'Quantité max atteinte', 'warning');
+                    Swal.fire('Attention', 'Stock insuffisant !', 'warning');
                     return;
                 }
                 existant.quantite++;
             } else {
                 panier.push({
                     id: id,
-                    nom: option.data('nom'),
-                    info: option.data('info'),
+                    nom: option.attr('data-nom'),
+                    info: option.attr('data-info'),
                     prixCDF: prixCDF,
                     stock: stock,
                     quantite: 1
                 });
             }
             majTableau();
+            select.val(null).trigger('change');
         }
 
         function majTableau() {
@@ -176,41 +184,57 @@
             let totalGlobalAffiche = 0;
             let devise = $('#select_devise').val();
 
+            if (panier.length === 0) {
+                $('#panier_body').html('<tr><td colspan="5" class="text-center text-muted py-5">Votre panier est vide</td></tr>');
+                $('#total_val').text('0');
+                $('#devise_label').text(devise);
+                return;
+            }
+
             panier.forEach((item, index) => {
-                // Conversion du prix selon la devise choisie
                 let prixAffiche = (devise === "USD") ? (item.prixCDF / TAUX) : item.prixCDF;
                 let totalLigne = prixAffiche * item.quantite;
                 totalGlobalAffiche += totalLigne;
 
                 html += `
                 <tr>
-                    <td><strong>${item.nom}</strong><br><small>${item.info}</small></td>
-                    <td class="text-center">
-                        <input type="number" class="form-control form-control-sm text-center" 
-                               value="${item.quantite}" min="1" max="${item.stock}" 
-                               onchange="modifierQte(${index}, this.value)">
+                    <td>
+                        <span class="font-weight-bold d-block">${item.nom}</span>
+                        <small class="text-muted text-uppercase">${item.info}</small>
                     </td>
-                    <td class="text-right">${prixAffiche.toFixed(devise === 'USD' ? 2 : 0)}</td>
-                    <td class="text-right font-weight-bold">${totalLigne.toFixed(devise === 'USD' ? 2 : 0)}</td>
                     <td class="text-center">
-                        <i class="fa fa-trash text-danger" style="cursor:pointer" onclick="retirer(${index})"></i>
+                        <div class="input-group input-group-sm">
+                            <input type="number" class="form-control text-center" 
+                                   value="${item.quantite}" min="1" max="${item.stock}" 
+                                   onchange="modifierQte(${index}, this.value)">
+                        </div>
+                    </td>
+                    <td class="text-right">${prixAffiche.toLocaleString(undefined, {minimumFractionDigits: devise === 'USD' ? 2 : 0})}</td>
+                    <td class="text-right font-weight-bold">${totalLigne.toLocaleString(undefined, {minimumFractionDigits: devise === 'USD' ? 2 : 0})}</td>
+                    <td class="text-center">
+                        <button class="btn btn-outline-danger btn-sm border-0" onclick="retirer(${index})">
+                            <i class="fa fa-times"></i>
+                        </button>
                     </td>
                 </tr>`;
             });
 
-            $('#panier_body').html(html || '<tr><td colspan="5" class="text-center text-muted">Panier vide</td></tr>');
-            $('#total_val').text(totalGlobalAffiche.toLocaleString());
-            $('#devise_label').text(devise === 'USD' ? 'USD' : 'FC');
+            $('#panier_body').html(html);
+            $('#total_val').text(totalGlobalAffiche.toLocaleString(undefined, {
+                minimumFractionDigits: devise === 'USD' ? 2 : 0,
+                maximumFractionDigits: devise === 'USD' ? 2 : 0
+            }));
+            $('#devise_label').text(devise);
         }
 
         function modifierQte(index, qte) {
-            let item = panier[index];
-            if (qte > item.stock) {
-                Swal.fire('Stock', 'Maximum en stock : ' + item.stock, 'warning');
-                item.quantite = item.stock;
-            } else {
-                item.quantite = parseInt(qte) || 1;
+            let n = parseInt(qte);
+            if (isNaN(n) || n < 1) n = 1;
+            if (n > panier[index].stock) {
+                Swal.fire('Stock', 'Quantité limitée à ' + panier[index].stock, 'warning');
+                n = panier[index].stock;
             }
+            panier[index].quantite = n;
             majTableau();
         }
 
@@ -220,18 +244,37 @@
         }
 
         function validerVente() {
-            if (panier.length === 0) return;
+            if (panier.length === 0) {
+                Swal.fire('Panier vide', 'Veuillez ajouter au moins un produit.', 'warning');
+                return;
+            }
 
+            Swal.fire({
+                title: 'Confirmer la vente ?',
+                text: "Cette action va déduire les produits du stock.",
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#28a745',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Oui, valider',
+                cancelButtonText: 'Annuler'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    processFetch();
+                }
+            });
+        }
+
+        function processFetch() {
             let btn = $('#btn_valider');
-            btn.prop('disabled', true).text('Enregistrement...');
+            btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Traitement en cours...');
 
             let payload = {
-                nom_client_externe: $('#nom_client').val(),
+                nom_client_externe: $('#nom_client').val() || "Client de passage",
                 devise: $('#select_devise').val(),
                 panier: panier.map(i => ({
                     id: i.id,
-                    quantite: i.quantite,
-                    prix: ( $('#select_devise').val() === 'USD' ) ? (i.prixCDF / TAUX) : i.prixCDF
+                    quantite: i.quantite
                 }))
             };
 
@@ -243,19 +286,20 @@
                 },
                 body: JSON.stringify(payload)
             })
-            .then(res => res.json())
+            .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
-                    Swal.fire('Succès', 'Vente enregistrée', 'success').then(() => {
-                        window.location.href = "/pharmacie/recu/" + data.vente_id;
+                    Swal.fire('Réussi !', data.message, 'success').then(() => {
+                        window.location.reload(); 
                     });
                 } else {
                     Swal.fire('Erreur', data.message, 'error');
-                    btn.prop('disabled', false).text('VALIDER ET ENCAISSER');
+                    btn.prop('disabled', false).html('<i class="fa fa-check-circle"></i> CONFIRMER LA VENTE ET IMPRIMER');
                 }
             })
-            .catch(() => {
-                btn.prop('disabled', false).text('VALIDER ET ENCAISSER');
+            .catch(err => {
+                Swal.fire('Erreur Système', 'Impossible de contacter le serveur.', 'error');
+                btn.prop('disabled', false).html('<i class="fa fa-check-circle"></i> CONFIRMER LA VENTE ET IMPRIMER');
             });
         }
     </script>

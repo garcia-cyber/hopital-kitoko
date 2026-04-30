@@ -10,6 +10,7 @@ from django.db.models import Sum
 class PaiementInline(admin.TabularInline):
     model = Paiement
     extra = 0
+    # On utilise les noms exacts de ton modèle Paiement
     readonly_fields = ['date_paiement', 'montant_comptable_cdf']
     fields = ['montant_physique', 'devise', 'mode_paiement', 'reference_transaction', 'date_paiement', 'montant_comptable_cdf']
     can_delete = False
@@ -21,9 +22,11 @@ class ExamenPrescritInline(admin.TabularInline):
     fields = ['prestation', 'quantite', 'prix_total', 'paye', 'termine']
 
 class LigneVenteInline(admin.TabularInline):
+    # CORRECTION : model = LigneVente qui est lié à FacturePharmacie (via champ 'vente')
     model = LigneVente
     extra = 0
     fields = ('medicament', 'quantite', 'prix_unitaire_applique')
+    readonly_fields = ('prix_unitaire_applique',)
 
 class LigneOrdonnanceInline(admin.TabularInline):
     model = LigneOrdonnance
@@ -35,6 +38,7 @@ class LigneFacturePharmaInline(admin.TabularInline):
     model = LigneFacturePharma
     extra = 0
     readonly_fields = ['sous_total']
+    fields = ['medicament', 'quantite', 'prix_unitaire_applique', 'sous_total']
     can_delete = False
 
 # ======================================================================
@@ -117,23 +121,29 @@ class MedicamentAdmin(admin.ModelAdmin):
 @admin.register(FacturePharmacie)
 class FacturePharmacieAdmin(admin.ModelAdmin):
     list_display = ('id', 'get_client', 'total_a_payer_cdf', 'get_reste', 'get_statut', 'date_facture')
-    inlines = [LigneFacturePharmaInline, PaiementInline]
+    # On met les Inlines liés à FacturePharmacie
+    inlines = [LigneVenteInline, LigneFacturePharmaInline, PaiementInline]
 
     def get_client(self, obj):
         return obj.patient.noms if obj.patient else obj.nom_client_externe
-    
+    get_client.short_description = "Client/Patient"
+
     def get_reste(self, obj):
         return f"{obj.reste_a_payer} CDF"
+    get_reste.short_description = "Reste"
 
     def get_statut(self, obj):
         s = obj.statut_paiement
         color = "green" if s == 'SOLDE' else "orange" if s == 'PARTIEL' else "red"
         return format_html('<b style="color: {};">{}</b>', color, s)
 
+# SOLUTION DE L'ERREUR E202 :
+# On ne peut PAS utiliser LigneVenteInline ici car ton modèle LigneVente 
+# n'a pas de ForeignKey vers VentePharmacie (il est lié à FacturePharmacie).
 @admin.register(VentePharmacie)
 class VentePharmacieAdmin(admin.ModelAdmin):
     list_display = ('id', 'date_vente', 'vendeur', 'total_cdf', 'statut')
-    inlines = [LigneVenteInline]
+    # inlines = [LigneVenteInline]  <-- C'ÉTAIT CETTE LIGNE LE PROBLÈME. ELLE EST RETIRÉE.
 
 @admin.register(Ordonnance)
 class OrdonnanceAdmin(admin.ModelAdmin):
@@ -141,12 +151,11 @@ class OrdonnanceAdmin(admin.ModelAdmin):
     inlines = [LigneOrdonnanceInline]
 
 # ======================================================================
-# 5. MATÉRIEL ET MAINTENANCE (CORRIGÉ)
+# 5. MATÉRIEL ET MAINTENANCE
 # ======================================================================
 
 @admin.register(Materiel)
 class MaterielAdmin(admin.ModelAdmin):
-    # 'categorie' a été retiré car absent de ton modèle
     list_display = ('numero_serie', 'nom', 'marque', 'service_affecte', 'etat_actuel')
     list_filter = ('service_affecte', 'etat_actuel')
     search_fields = ('nom', 'numero_serie')
@@ -154,7 +163,6 @@ class MaterielAdmin(admin.ModelAdmin):
 
 @admin.register(Maintenance)
 class MaintenanceAdmin(admin.ModelAdmin):
-    # Retrait de 'date_signalement' et 'cout_reparation' car absents du modèle
     list_display = ('materiel', 'description_panne', 'est_repare', 'date_reparation')
     list_filter = ('est_repare', 'date_reparation')
 

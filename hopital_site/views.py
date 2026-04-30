@@ -1533,103 +1533,100 @@ def dashboard_pharmacie(request):
 # nouvelle vente 
 # ==============================================================================================
 @login_required
-@transaction.atomic
 def effectuer_vente(request):
-    # On récupère la configuration au début pour le GET et le POST
+    # Récupération du taux de change depuis la config
     config = ConfigurationHopital.objects.first()
-    # Correction de l'attribut : taux_usd_en_cdf au lieu de taux_change
     taux_du_jour = config.taux_usd_en_cdf if config else Decimal('2500.00')
 
     if request.method == "POST":
         try:
-            data = json.loads(request.body)
-            panier = data.get('panier')
-            nom_client = data.get('nom_client_externe', 'Client Simple')
-            devise_selectionnee = data.get('devise', 'CDF')
-            
-            if not panier:
-                return JsonResponse({'status': 'error', 'message': 'Le panier est vide'})
+            # Utilisation d'une transaction pour garantir que si le paiement échoue, 
+            # le stock n'est pas décompté pour rien.
+            with transaction.atomic():
+                data = json.loads(request.body)
+                panier = data.get('panier')
+                nom_client = data.get('nom_client_externe', 'Client de passage')
+                devise_p = data.get('devise', 'CDF')
 
-            # 1. Création de la Vente
-            nouvelle_vente = VentePharmacie.objects.create(
-                vendeur=request.user,
-                nom_client_externe=nom_client,
-                total_cdf=0,
-                est_paye=True
-            )
+                if not panier:
+                    return JsonResponse({'status': 'error', 'message': 'Le panier est vide.'})
 
-            total_global_cdf = 0
-
-            for item in panier:
-                med = Medicament.objects.select_for_update().get(id=item['id'])
-                qte = int(item['quantite'])
-                prix_u = Decimal(str(item['prix']))
-                
-                if prix_u <= 0:
-                    raise ValueError(f"Le prix pour {med.designation} doit être supérieur à 0")
-
-                if med.quantite_stock_pieces < qte:
-                    raise ValueError(f"Stock insuffisant pour {med.designation}")
-
-                # Calcul de la conversion vers le CDF pour le stockage en base de données
-                prix_final_cdf = prix_u
-                if devise_selectionnee == 'USD':
-                    prix_final_cdf = prix_u * taux_du_jour
-
-                # 2. Création de la ligne
-                LigneVente.objects.create(
-                    vente=nouvelle_vente,
-                    medicament=med,
-                    quantite=qte,
-                    prix_unitaire_applique=prix_final_cdf
+                # 1. Création de la Facture de Comptoir (Modèle simplifié)
+                facture_comptoir = FactureClientPharmacie.objects.create(
+                    vendeur=request.user,
+                    nom_client=nom_client,
+                    total_a_payer_cdf=0, # Sera mis à jour après la boucle
+                    taux_fixe=taux_du_jour
                 )
 
-                # 3. Mise à jour stock
-                med.quantite_stock_pieces -= qte
-                med.save()
-                
-                total_global_cdf += (prix_final_cdf * qte)
+                total_global_cdf = Decimal('0.00')
 
-            # Mise à jour du total final de la vente
-            nouvelle_vente.total_cdf = total_global_cdf
-            nouvelle_vente.save()
+                # 2. Boucle sur le panier pour les lignes de vente et le stock
+                for item in panier:
+                    med = Medicament.objects.select_for_update().get(id=item['id'])
+                    qte = int(item['quantite'])
+                    
+                    # Vérification de sécurité pour le stock
+                    if med.quantite_stock_pieces < qte:
+                        raise ValueError(f"Stock insuffisant pour {med.designation} (Disponible: {med.quantite_stock_pieces})")
+                    
+                    # Création de la ligne de vente simple
+                    LigneVenteSimple.objects.create(
+                        facture=facture_comptoir,
+                        medicament=med,
+                        quantite=qte,
+                        prix_unitaire=med.prix_vente_detail
+                    )
 
-            # 4. Enregistrement du Paiement
-            # On stocke le montant dans la devise choisie par le client
-            montant_paiement = total_global_cdf if devise_selectionnee == 'CDF' else (total_global_cdf / taux_du_jour)
-            
-            Paiement.objects.create(
-                vente_pharma=nouvelle_vente,
-                montant=montant_paiement,
-                devise=devise_selectionnee,
-                taux_applique=taux_du_jour,
-                mode_paiement='CASH',
-                encaisseur=request.user
-            )
+                    # Mise à jour du stock
+                    med.quantite_stock_pieces -= qte
+                    med.save()
 
-            return JsonResponse({
-                'status': 'success', 
-                'message': 'Vente enregistrée avec succès',
-                'vente_id': nouvelle_vente.id
-            })
+                    # Calcul du total
+                    total_global_cdf += (med.prix_vente_detail * qte)
+
+                # 3. Mise à jour du total final de la facture
+                facture_comptoir.total_a_payer_cdf = total_global_cdf
+                facture_comptoir.save()
+
+                # 4. Enregistrement du Paiement
+                # Calcul du montant physique selon la devise choisie
+                if devise_p == 'USD':
+                    m_physique = total_global_cdf / taux_du_jour
+                else:
+                    m_physique = total_global_cdf
+
+                # Création de l'entrée dans la table Paiement globale
+                Paiement.objects.create(
+                    facture_comptoir=facture_comptoir, # Lien vers le nouveau modèle
+                    facture_pharma=None,               # On laisse vide les anciens liens
+                    facture=None,
+                    montant_physique=m_physique,
+                    devise=devise_p,
+                    mode_paiement='CASH'
+                    # Le montant_comptable_cdf est géré par le .save() du modèle Paiement
+                )
+
+                return JsonResponse({
+                    'status': 'success', 
+                    'message': f'Vente réussie ! Facture n°{facture_comptoir.id}'
+                })
 
         except Exception as e:
+            # Affiche l'erreur complète dans la console pour le débogage
+            print(traceback.format_exc())
             return JsonResponse({'status': 'error', 'message': str(e)})
 
-    # --- Partie GET ---
+    # Chargement initial des médicaments en stock
     medicaments = Medicament.objects.filter(quantite_stock_pieces__gt=0).order_by('designation')
 
-    # Récupération sécurisée du profil et de la fonction
-    try:
-        profil = Profil.objects.filter(userProfil=request.user).first()
-        fonction = profil.fonction.fonction if profil and profil.fonction else "Pharmacien"
-    except:
-        fonction = "Personnel"
+    profil = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil.fonction.fonction if profil and profil.fonction else None
 
     return render(request, 'back-end/pharmacie/nouvelle_vente.html', {
-        'medicaments': medicaments,
-        'taux': taux_du_jour, 
-        'fonction': fonction, 
+        'medicaments': medicaments, 
+        'taux': taux_du_jour , 
+        'fonction': fonction
     })
 
 # 43 
@@ -2360,3 +2357,33 @@ def historique_livraison_pharmacie(request):
         'historique': historique,
         'fonction': fonction,
     })
+
+# 64 
+# ====================================================================================================================
+# liste de facture pharmacie cote client 
+# ====================================================================================================================
+@login_required
+def liste_factures_pharmacie(request):
+    # Correction : Utilisation de 'date_vente' au lieu de 'date_facture'
+    # prefetch_related est maintenu pour la performance des détails médicaments
+    factures = FactureClientPharmacie.objects.prefetch_related(
+        'lignes_vente__medicament'
+    ).all().order_by('-date_vente')
+    
+    # Récupération de la configuration pour le taux de change
+    config = ConfigurationHopital.objects.first()
+    taux = config.taux_usd_en_cdf if config else 2500
+
+    # Gestion du profil utilisateur pour l'affichage de l'interface
+    profil = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil.fonction.fonction if profil and profil.fonction else None
+    
+    context = {
+        'factures': factures,
+        'taux': taux,
+        'fonction': fonction  # Important pour tes conditions d'affichage dans la sidebar
+    }
+    return render(request, 'back-end/pharmacie/historique_ventes_client.html', context)
+
+
+    

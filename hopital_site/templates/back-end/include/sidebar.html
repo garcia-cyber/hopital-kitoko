@@ -72,6 +72,11 @@
                     </a>
                 </li>
 
+                <a href="{% url 'historique_ventes_client' %}">
+        <i class="fa fa-history"></i> <span>Historique Ventes</span>
+    </a>
+</li>
+
 
 
                 {% elif fonction == 'receptionniste' %} 
@@ -93,6 +98,11 @@
                 <li>
                     <a href="{% url 'gestion_depenses' %}"><i class="fas fa-wallet"></i> <span>Dépenses</span></a>
                 </li>
+
+                <a href="{% url 'historique_ventes_client' %}">
+        <i class="fa fa-history"></i> <span>Historique Ventes</span>
+    </a>
+</li>
 
                 <li class="menu-title">Gestion Hospitalière</li>
 
@@ -211,6 +221,12 @@
             </span>
             </a>
         </li>
+
+        <li>
+    <a href="{% url 'historique_ventes_client' %}">
+        <i class="fa fa-history"></i> <span>Historique Ventes</span>
+    </a>
+</li>
 
         <li>
             <a href="{% url 'historique_livraison_pharmacie' %}" class="{% if request.resolver_match.url_name == 'historique_livraison_pharmacie' %}active{% endif %}">

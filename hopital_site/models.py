@@ -25,7 +25,7 @@ class Fonction(models.Model):
 class Service(models.Model):
     nomService = models.CharField(max_length=40) 
     def __str__(self):
-        return self.nomService  
+        return self.nomService   
 
 class Profil(models.Model):
     nomComplet = models.CharField(max_length=50, null=True) 
@@ -56,6 +56,7 @@ class Patient(models.Model):
         return self.noms 
 
     def a_une_fiche_valide(self):
+        # Import local pour éviter l'import circulaire si nécessaire
         un_an_en_arriere = timezone.now().date() - timedelta(days=365)
         return Facture.objects.filter(
             patient=self, 
@@ -153,31 +154,17 @@ class LigneOrdonnance(models.Model):
 
     @property
     def reste_a_payer(self):
-        """Nombre d'unités que le patient n'a pas encore achetées"""
         return self.quantite_prescrite - self.quantite_payee
 
     @property
     def reste_a_livrer(self):
-        """Ce que le pharmacien doit encore donner (Payé mais pas encore délivré)"""
         return self.quantite_payee - self.quantite_delivree
 
     @property
     def est_totalement_livre(self):
-        """Vérifie si le patient a reçu tout ce qu'il a payé"""
         return self.quantite_delivree >= self.quantite_payee
 
-# 4. FACTURATION ET FINANCES =============================================
-
-class Prestation(models.Model):
-    CATEGORIES = [
-        ('ADM', 'Administratif'), ('CONS', 'Consultation'),
-        ('LABO', 'Laboratoire'), ('SOIN', 'Soins'), ('PHARMA', 'Pharmacie'),
-    ]
-    libelle = models.CharField(max_length=200)
-    categorie = models.CharField(max_length=10, choices=CATEGORIES)
-    prix_cdf = models.DecimalField(max_digits=15, decimal_places=2)
-    def __str__(self):
-        return f"{self.libelle} - {self.prix_cdf} CDF"
+# 4. FACTURES ET COMPTOIR (Avant Paiement) ===============================
 
 class FacturePharmacie(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, null=True, blank=True, related_name='factures_pharma')
@@ -204,6 +191,37 @@ class FacturePharmacie(models.Model):
         if paye < self.total_a_payer_cdf: return 'PARTIEL'
         return 'SOLDE'
 
+class FactureClientPharmacie(models.Model):
+    vendeur = models.ForeignKey(User, on_delete=models.CASCADE)
+    nom_client = models.CharField(max_length=200, default="Client de passage")
+    total_a_payer_cdf = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    taux_fixe = models.DecimalField(max_digits=10, decimal_places=2)
+    date_vente = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Vente {self.id} - {self.nom_client}"
+
+class Prestation(models.Model):
+    CATEGORIES = [
+        ('ADM', 'Administratif'), ('CONS', 'Consultation'),
+        ('LABO', 'Laboratoire'), ('SOIN', 'Soins'), ('PHARMA', 'Pharmacie'),
+    ]
+    libelle = models.CharField(max_length=200)
+    categorie = models.CharField(max_length=10, choices=CATEGORIES)
+    prix_cdf = models.DecimalField(max_digits=15, decimal_places=2)
+    def __str__(self):
+        return f"{self.libelle} - {self.prix_cdf} CDF"
+
+class VentePharmacie(models.Model):
+    vendeur = models.ForeignKey(User, on_delete=models.CASCADE)
+    patient = models.ForeignKey(Patient, on_delete=models.SET_NULL, null=True, blank=True)
+    nom_client_externe = models.CharField(max_length=255, null=True, blank=True)
+    est_paye = models.BooleanField(default=False)
+    ordonnance = models.OneToOneField(Ordonnance, on_delete=models.CASCADE, null=True, blank=True, related_name='vente')
+    date_vente = models.DateTimeField(auto_now_add=True)
+    total_cdf = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    statut = models.CharField(max_length=10, default='VALIDE')
+
 class Facture(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
     prestation = models.ForeignKey(Prestation, on_delete=models.CASCADE)
@@ -211,7 +229,7 @@ class Facture(models.Model):
     date_emission = models.DateTimeField(auto_now_add=True)
     prix_fixe_cdf = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     taux_fixe = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    vente_pharmacie = models.OneToOneField('VentePharmacie', on_delete=models.CASCADE, null=True, blank=True)
+    vente_pharmacie = models.OneToOneField(VentePharmacie, on_delete=models.CASCADE, null=True, blank=True)
 
     def save(self, *args, **kwargs):
         if not self.id:
@@ -238,10 +256,14 @@ class Facture(models.Model):
     def reste_a_payer(self):
         return self.prix_fixe_cdf - self.total_paye
 
+# 5. FINANCES (Paiement centralisé) =======================================
+
 class Paiement(models.Model):
     CHOIX_MODE = [('CASH', 'Espèces (Cash)'), ('MPESA', 'M-Pesa')]
     facture = models.ForeignKey(Facture, on_delete=models.CASCADE, null=True, blank=True, related_name='paiements')
     facture_pharma = models.ForeignKey(FacturePharmacie, on_delete=models.CASCADE, null=True, blank=True, related_name='paiements')
+    facture_comptoir = models.ForeignKey(FactureClientPharmacie, on_delete=models.SET_NULL, null=True, blank=True, related_name='paiements')
+    
     montant_physique = models.DecimalField(max_digits=15, decimal_places=2)
     devise = models.CharField(max_length=3, choices=[('CDF', 'CDF'), ('USD', 'USD')])
     mode_paiement = models.CharField(max_length=10, choices=CHOIX_MODE, default='CASH')
@@ -253,6 +275,8 @@ class Paiement(models.Model):
         taux = Decimal("2500") 
         if self.facture: taux = self.facture.taux_fixe
         elif self.facture_pharma: taux = self.facture_pharma.taux_fixe
+        elif self.facture_comptoir: taux = self.facture_comptoir.taux_fixe
+        
         self.montant_comptable_cdf = (self.montant_physique * taux) if self.devise == 'USD' else self.montant_physique
         super().save(*args, **kwargs)
 
@@ -268,7 +292,7 @@ class Depense(models.Model):
         self.valeur_cdf = (self.montant * taux) if self.devise == 'USD' else self.montant
         super().save(*args, **kwargs)
 
-# 5. LABO, CHAMBRES ET MATÉRIEL ==========================================
+# 6. LABO ET CHAMBRES ====================================================
 
 class ExamenPrescrit(models.Model):
     consultation = models.ForeignKey(Consultation, on_delete=models.CASCADE, related_name='examens_prescrits')
@@ -303,6 +327,8 @@ class OccupationLit(models.Model):
     date_sortie = models.DateTimeField(null=True, blank=True)
     est_paye = models.BooleanField(default=False)
 
+# 7. MATÉRIEL ET RH ======================================================
+
 class Materiel(models.Model):
     nom = models.CharField(max_length=100)
     marque = models.CharField(max_length=100)
@@ -315,8 +341,6 @@ class Maintenance(models.Model):
     description_panne = models.TextField()
     est_repare = models.BooleanField(default=False)
     date_reparation = models.DateTimeField(null=True, blank=True)
-
-# 6. RESSOURCES HUMAINES =================================================
 
 class Employe(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='fiche_employe')
@@ -334,33 +358,17 @@ class Employe(models.Model):
             self.matricule = f"HOSP-{annee}-{nouveau_num:03d}"
         super().save(*args, **kwargs)
 
-# 7. VENTES DIRECTES ET LOGS =============================================
-
-class VentePharmacie(models.Model):
-    vendeur = models.ForeignKey(User, on_delete=models.CASCADE)
-    patient = models.ForeignKey(Patient, on_delete=models.SET_NULL, null=True, blank=True)
-    ordonnance = models.OneToOneField(Ordonnance, on_delete=models.CASCADE, null=True, blank=True, related_name='vente')
-    date_vente = models.DateTimeField(auto_now_add=True)
-    total_cdf = models.DecimalField(max_digits=15, decimal_places=2, default=0)
-    statut = models.CharField(max_length=10, default='VALIDE')
+# 8. LIGNES DE VENTE ET LOGS (Après Factures) =============================
 
 class LigneVente(models.Model):
-    vente = models.ForeignKey(VentePharmacie, related_name='lignes', on_delete=models.CASCADE)
+    vente = models.ForeignKey(FacturePharmacie, related_name='lignes_vente_set', on_delete=models.CASCADE)
     medicament = models.ForeignKey(Medicament, on_delete=models.CASCADE)
     quantite = models.PositiveIntegerField()
     prix_unitaire_applique = models.DecimalField(max_digits=12, decimal_places=2)
 
-class LogPharmacie(models.Model):
-    utilisateur = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
-    action = models.CharField(max_length=50)
-    details = models.TextField()
-    date_action = models.DateTimeField(auto_now_add=True)
-
-
-# Dans models.py
 class LigneFacturePharma(models.Model):
-    facture = models.ForeignKey(FacturePharmacie, related_name='lignes', on_delete=models.CASCADE)
-    medicament = models.ForeignKey('Medicament', on_delete=models.CASCADE)
+    facture = models.ForeignKey(FacturePharmacie, related_name='lignes_facture_set', on_delete=models.CASCADE)
+    medicament = models.ForeignKey(Medicament, on_delete=models.CASCADE)
     quantite = models.PositiveIntegerField()
     prix_unitaire_applique = models.DecimalField(max_digits=12, decimal_places=2)
     
@@ -368,5 +376,14 @@ class LigneFacturePharma(models.Model):
     def sous_total(self):
         return self.quantite * self.prix_unitaire_applique
 
-    def __str__(self):
-        return f"{self.medicament.designation} x {self.quantite}"
+class LigneVenteSimple(models.Model):
+    facture = models.ForeignKey(FactureClientPharmacie, on_delete=models.CASCADE, related_name='lignes_vente')
+    medicament = models.ForeignKey(Medicament, on_delete=models.CASCADE)
+    quantite = models.PositiveIntegerField()
+    prix_unitaire = models.DecimalField(max_digits=12, decimal_places=2)
+
+class LogPharmacie(models.Model):
+    utilisateur = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    action = models.CharField(max_length=50)
+    details = models.TextField()
+    date_action = models.DateTimeField(auto_now_add=True)
