@@ -2425,3 +2425,58 @@ def imprimer_facture_pharmacie(request, facture_id):
     return render(request, 'back-end/pharmacie/recu_facture_client.html', context)
 
 
+# 66 
+# ===========================================================================================================
+# formulaire pour enregistre la prestation de l'hopital
+# ===========================================================================================================
+@login_required
+def ajouter_prestation(request):
+    if request.method == 'POST':
+        form = PrestationForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('liste_prestations')
+    else:
+        form = PrestationForm()
+    # Récupération du profil pour l'interface
+    profil = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil.fonction.fonction if profil and profil.fonction else None
+
+    return render(request, 'back-end/logistique/prestations.html', {'form': form , 'fonction':fonction})
+
+
+# 67
+# ==========================================================================================================
+# liste de prestation 
+# ==========================================================================================================
+@login_required
+def liste_prestations(request):
+    # Récupérer les paramètres de recherche et de filtre
+    query = request.GET.get('search', '')
+    categorie_filter = request.GET.get('categorie', '')
+
+    # Correction de l'espace entre order_ et by
+    prestations = Prestation.objects.all().order_by('categorie', 'libelle')
+
+    # Appliquer la recherche si elle existe
+    if query:
+        prestations = prestations.filter(
+            Q(libelle__icontains=query)
+        )
+
+    # Appliquer le filtre de catégorie
+    if categorie_filter:
+        prestations = prestations.filter(categorie=categorie_filter)
+
+    # Récupération du profil pour l'interface
+    profil = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil.fonction.fonction if profil and profil.fonction else None
+
+    context = {
+        'prestations': prestations,
+        'categories': Prestation.CATEGORIES,
+        'query': query,
+        'categorie_filter': categorie_filter,
+        'fonction' : fonction
+    }
+    return render(request, 'back-end/logistique/liste_prestations.html', context)

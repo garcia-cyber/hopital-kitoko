@@ -75,6 +75,24 @@
                     </a>
                 </li> 
 
+                <li class="{% if '/prestations/ajouter/' in request.path %}active{% endif %}">
+    <a href="{% url 'ajouter_prestation' %}">
+        <i class="fas fa-plus-circle"></i> 
+        <span>Ajouter Prestation</span>
+    </a>
+</li>
+
+                
+
+                <li class="{% if request.path == '/prestations/' %}active{% endif %}">
+    <a href="{% url 'liste_prestations' %}">
+        <i class="fas fa-clipboard-list"></i> 
+        <span>Liste Prestations</span>
+    </a>
+</li>
+
+
+
                 {% elif fonction == 'receptionniste' %} 
                 <li>
                     <a href="{% url 'patientAdd' %}"><i class="fas fa-user-plus"></i> <span>Ajouter Patient</span></a>
@@ -209,6 +227,8 @@
                         <i class="fas fa-history"></i> Historique Livraisons
                     </a>
                 </li>
+                {% elif fonction == 'echographe' %}
+                
                 {% endif %}
                 
                 <li class="{% if request.resolver_match.url_name == 'modifier_mon_mdp' %}active{% endif %}">

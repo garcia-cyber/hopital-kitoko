@@ -203,14 +203,20 @@ class FactureClientPharmacie(models.Model):
 
 class Prestation(models.Model):
     CATEGORIES = [
-        ('ADM', 'Administratif'), ('CONS', 'Consultation'),
-        ('LABO', 'Laboratoire'), ('SOIN', 'Soins'), ('PHARMA', 'Pharmacie'),
+        ('ADM', 'Administratif'), 
+        ('CONS', 'Consultation'),
+        ('LABO', 'Laboratoire'), 
+        ('SOIN', 'Soins'), 
+        ('PHARMA', 'Pharmacie'),
+        ('ECHO', 'Échographie'),  # Ajout de la catégorie Échographie
+        ('RADIO', 'Radiologie'),  # Optionnel : pour anticiper les autres imageries
     ]
     libelle = models.CharField(max_length=200)
     categorie = models.CharField(max_length=10, choices=CATEGORIES)
     prix_cdf = models.DecimalField(max_digits=15, decimal_places=2)
+
     def __str__(self):
-        return f"{self.libelle} - {self.prix_cdf} CDF"
+        return f"{self.libelle} ({self.get_categorie_display()}) - {self.prix_cdf} CDF"
 
 class VentePharmacie(models.Model):
     vendeur = models.ForeignKey(User, on_delete=models.CASCADE)

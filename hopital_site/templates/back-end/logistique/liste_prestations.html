@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+    <title>Liste des Prestations - HMS KITOKO</title>
+
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'back-end/assets/img/favicon.ico'%}">
+    <link href="https://fonts.googleapis.com/css?family=Fira+Sans:400,500,600,700" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css'%}" >
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/fontawesome.min.css'%}" >
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/select2.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css'%}">
+</head>
+
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <!-- En-tête de page -->
+                <div class="row">
+                    <div class="col-sm-8 col-5">
+                        <h4 class="page-title">Catalogue des Prestations</h4>
+                    </div>
+                    <div class="col-sm-4 col-7 text-right m-b-30">
+                        <a href="{% url 'ajouter_prestation' %}" class="btn btn-primary btn-rounded float-right">
+                            <i class="fa fa-plus"></i> Ajouter une Prestation
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Barre de recherche et filtrage selon ta logique -->
+                <form method="get">
+                    <div class="row filter-row">
+                        <div class="col-sm-6 col-md-4">
+                            <div class="form-group form-focus">
+                                <label class="focus-label">Rechercher un libellé...</label>
+                                <input type="text" name="search" class="form-control floating" value="{{ query }}">
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-md-4">
+                            <div class="form-group form-focus select-focus">
+                                <label class="focus-label">Filtrer par Catégorie</label>
+                                <select class="select floating" name="categorie">
+                                    <option value="">Toutes les catégories</option>
+                                    {% for code, nom in categories %}
+                                        <option value="{{ code }}" {% if categorie_filter == code %}selected{% endif %}>{{ nom }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-md-4">
+                            <button type="submit" class="btn btn-success btn-block uppercase"> 
+                                <i class="fas fa-search"></i> Appliquer le filtre 
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Tableau des résultats -->
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="table-responsive shadow-sm">
+                            <table class="table table-striped custom-table mb-0 datatable">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 20%;">Catégorie</th>
+                                        <th style="width: 45%;">Désignation de la Prestation</th>
+                                        <th style="width: 20%;">Prix (CDF)</th>
+                                        <th class="text-right" style="width: 15%;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for p in prestations %}
+                                    <tr>
+                                        <td>
+                                            {% if p.categorie == 'ECHO' %}
+                                                <span class="custom-badge status-blue">Échographie</span>
+                                            {% elif p.categorie == 'LABO' %}
+                                                <span class="custom-badge status-orange">Laboratoire</span>
+                                            {% elif p.categorie == 'CONS' %}
+                                                <span class="custom-badge status-green">Consultation</span>
+                                            {% elif p.categorie == 'PHARMA' %}
+                                                <span class="custom-badge status-red">Pharmacie</span>
+                                            {% else %}
+                                                <span class="custom-badge status-grey">{{ p.get_categorie_display }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="text-dark font-weight-bold">{{ p.libelle }}</span>
+                                        </td>
+                                        <td>
+                                            <span class="text-primary font-weight-bold">{{ p.prix_cdf }} CDF</span>
+                                        </td>
+                                        <td class="text-right">
+                                            <div class="dropdown dropdown-action">
+                                                <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+                                                    <i class="fa fa-ellipsis-v"></i>
+                                                </a>
+                                                <div class="dropdown-menu dropdown-menu-right">
+                                                    <a class="dropdown-item" href="#"><i class="fa fa-pencil m-r-5"></i> Modifier</a>
+                                                    <a class="dropdown-item text-danger" href="#" data-toggle="modal" data-target="#delete_modal_{{ p.id }}">
+                                                        <i class="fa fa-trash-o m-r-5"></i> Supprimer
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="4" class="text-center py-5">
+                                            <div class="text-muted">
+                                                <i class="fa fa-folder-open fa-3x mb-3"></i><br>
+                                                Aucune prestation enregistrée pour le moment.
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pied de page : Scripts JS identiques à ta page matériel -->
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/jquery.slimscroll.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/select2.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/app.js'%}"></script>
+</body>
+</html>

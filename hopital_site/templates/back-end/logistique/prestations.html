@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+    <title>Ajouter une Prestation - KITOKO HMS</title>
+
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'back-end/assets/img/favicon.ico'%}">
+    <link href="https://fonts.googleapis.com/css?family=Fira+Sans:400,500,600,700" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css'%}" >
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/fontawesome.min.css'%}" >
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/select2.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css'%}">
+</head>
+
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="row">
+                    <div class="col-md-8 offset-md-2">
+                        <h4 class="page-title">Nouvelle Prestation Médicale</h4>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-8 offset-md-2">
+                        <div class="card shadow-sm">
+                            <div class="card-body">
+                                <!-- Gestion des messages d'erreur (Doublons, etc.) -->
+                                {% if form.errors %}
+                                    <div class="alert alert-danger alert-dismissible fade show">
+                                        <strong>Erreur :</strong> Veuillez vérifier les champs ci-dessous.
+                                        {% for field, errors in form.errors.items %}
+                                            {% for error in errors %}<br>- {{ error }}{% endfor %}
+                                        {% endfor %}
+                                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
+                                {% endif %}
+
+                                <form method="post">
+                                    {% csrf_token %}
+                                    
+                                    <div class="row">
+                                        <div class="col-sm-12">
+                                            <div class="form-group">
+                                                <label>Libellé / Désignation <span class="text-danger">*</span></label>
+                                                {{ form.libelle }}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-sm-6">
+                                            <div class="form-group">
+                                                <label>Catégorie de soin <span class="text-danger">*</span></label>
+                                                {{ form.categorie }}
+                                            </div>
+                                        </div>
+                                        <div class="col-sm-6">
+                                            <div class="form-group">
+                                                <label>Prix (CDF) <span class="text-danger">*</span></label>
+                                                {{ form.prix_cdf }}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="m-t-20 text-center">
+                                        <a href="{% url 'liste_prestations' %}" class="btn btn-secondary submit-btn m-r-10">Annuler</a>
+                                        <button class="btn btn-primary submit-btn" type="submit">Enregistrer la prestation</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts JS -->
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/jquery.slimscroll.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/select2.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/app.js'%}"></script>
+</body>
+</html>

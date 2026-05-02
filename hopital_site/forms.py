@@ -92,7 +92,7 @@ class ProfilAddForm(forms.ModelForm):
             nomService__in=[
                 'secretariat', 'sous-administration', 'administration', 
                 'pediatrie', 'medecine interne', 'gyneco', 
-                'laboratoire', 'pharmacie'
+                'laboratoire', 'pharmacie' , 'echographie'
             ]
         )
 
@@ -131,7 +131,7 @@ class PatientAddForm(forms.ModelForm):
 
     def __init__(self , *args , **kwargs):
         super(PatientAddForm,self).__init__(*args,**kwargs)
-        self.fields['service'].queryset = Service.objects.filter(nomService__in = ['pediatrie','gyneco','medecine interne'])
+        self.fields['service'].queryset = Service.objects.filter(nomService__in = ['pediatrie','gyneco','medecine interne','echographie'])
 
 # 5 
 # ====================================================
@@ -248,3 +248,31 @@ class ProfilForm(forms.ModelForm):
             'fonction': forms.Select(attrs={'class': 'form-control select'}),
             'service': forms.Select(attrs={'class': 'form-control select'}),
         }
+
+
+# 10 
+# ===========================================================
+#  prestation form
+# ===========================================================
+class PrestationForm(forms.ModelForm):
+    class Meta:
+        model = Prestation
+        fields = ['libelle', 'categorie', 'prix_cdf']
+        widgets = {
+            'libelle': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Échographie Abdominale'}),
+            'categorie': forms.Select(attrs={'class': 'form-control'}),
+            'prix_cdf': forms.NumberInput(attrs={'class': 'form-control'}),
+        }
+
+    def clean_libelle(self):
+        # On récupère le libellé saisi
+        libelle = self.cleaned_data.get('libelle')
+        
+        # On vérifie si un objet avec ce libellé existe déjà (en ignorant la casse)
+        # .exclude(pk=self.instance.pk) permet de ne pas bloquer la modification d'un objet existant
+        if Prestation.objects.filter(libelle__iexact=libelle).exclude(pk=self.instance.pk).exists():
+            raise forms.ValidationError(
+                f"La prestation '{libelle}' existe déjà dans le système."
+            )
+        
+        return libelle

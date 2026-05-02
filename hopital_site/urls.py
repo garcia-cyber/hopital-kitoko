@@ -129,6 +129,8 @@ urlpatterns = [
     path('logistique/materiel/ajouter/', views.ajouter_materiel, name='ajouter_materiel'),
     path('logistique/materiel/panne/<int:materiel_id>/', views.signaler_panne_materiel, name='signaler_panne'),
     path('logistique/materiel/en-panne/', views.materiel_en_panne, name='materiel_en_panne'),
+    path('prestations/', views.liste_prestations, name='liste_prestations'),
+    path('prestations/ajouter/', views.ajouter_prestation, name='ajouter_prestation'),
 
     
 ]
