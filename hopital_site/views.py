@@ -574,13 +574,18 @@ def liste_attente_medecin(request):
 # =============================================================================================================
 # preparation du consultaion par le medecin tout en recuperant le signe vitaux
 # =============================================================================================================
-@login_required()
+@login_required
 def effectuer_consultation(request, sv_id):
     signes = get_object_or_404(SignesVitaux, id=sv_id)
     patient = signes.patient
     
+    # 1. On sépare les prestations par catégorie pour le choix du médecin
     prestations_labo = Prestation.objects.filter(
         Q(categorie__iexact='LABO') | Q(categorie__iexact='Laboratoire')
+    )
+    
+    prestations_echo = Prestation.objects.filter(
+        Q(categorie__iexact='ECHO') | Q(categorie__iexact='Échographie')
     )
 
     if request.method == 'POST':
@@ -588,7 +593,6 @@ def effectuer_consultation(request, sv_id):
         
         if form.is_valid():
             try:
-                # Maintenant que 'transaction' est importé, ceci va marcher :
                 with transaction.atomic():
                     consultation = form.save(commit=False)
                     consultation.patient = patient
@@ -596,6 +600,7 @@ def effectuer_consultation(request, sv_id):
                     consultation.medecin = request.user
                     consultation.save()
 
+                    # On récupère tous les examens cochés (Labo + Echo)
                     examens_ids = request.POST.getlist('examens_choisis')
                     for e_id in examens_ids:
                         prestation = Prestation.objects.get(id=e_id)
@@ -620,13 +625,16 @@ def effectuer_consultation(request, sv_id):
     profil = Profil.objects.filter(userProfil=request.user).first()
     fonction = profil.fonction.fonction if profil else None
 
+    # On envoie les deux listes au template
     return render(request, 'back-end/faire_consultation.html', {
         'form': form,
         'signes': signes,
         'patient': patient,
-        'prestations': prestations_labo ,
+        'prestations_labo': prestations_labo, # Liste Labo
+        'prestations_echo': prestations_echo, # Liste Echo
         'fonction' : fonction 
     })
+
 
 # 20 
 # ==============================================================================================
@@ -681,6 +689,7 @@ def liste_patients_consultes(request):
 def payer_examen(request, patient_id):
     # 1. Contexte et Sécurité
     patient = get_object_or_404(Patient, id=patient_id)
+
     profil = Profil.objects.filter(userProfil=request.user).first()
     fonction = profil.fonction.fonction if profil else None
     
@@ -778,20 +787,40 @@ def payer_examen(request, patient_id):
 # =============================================================================================
 @login_required
 def liste_examens_labo(request):
-    """Affiche uniquement les examens payés qui attendent une analyse"""
-    # On filtre : paye=True ET termine=False
-    examens_a_faire = ExamenPrescrit.objects.filter(
+    """
+    Affiche les examens payés et non terminés, filtrés par la fonction 
+    de l'utilisateur (Laborantin vs Échographe)
+    """
+    # 1. Récupérer le profil et la fonction
+    profil = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil.fonction.fonction.upper() if profil and profil.fonction else ""
+
+    # 2. Base du QuerySet (Payé et non terminé)
+    queryset = ExamenPrescrit.objects.filter(
         paye=True, 
         termine=False
     ).select_related('consultation__patient', 'prestation').order_by('-date_prescription')
-    
 
-    profil = Profil.objects.filter(userProfil=request.user).first()
-    fonction = profil.fonction.fonction if profil else None
+    # 3. Filtrage dynamique selon la fonction
+    if "LABO" in fonction or "LABORANTIN" in fonction:
+        # Filtre pour le laboratoire
+        examens_a_faire = queryset.filter(
+            Q(prestation__categorie__iexact='LABO') | 
+            Q(prestation__categorie__iexact='Laboratoire')
+        )
+    elif "ECHO" in fonction or "ECHOGRAPHE" in fonction:
+        # Filtre pour l'échographie
+        examens_a_faire = queryset.filter(
+            Q(prestation__categorie__iexact='ECHO') | 
+            Q(prestation__categorie__iexact='Échographie')
+        )
+    else:
+        # Si c'est un admin ou une autre fonction, on peut soit tout montrer, soit rien
+        examens_a_faire = queryset
 
     return render(request, 'back-end/labo_liste.html', {
-        'examens': examens_a_faire , 
-        'fonction' : fonction 
+        'examens': examens_a_faire, 
+        'fonction': fonction 
     })
 
 # 24 
@@ -1776,13 +1805,13 @@ def delivrer_ordonnance(request, ordonnance_id):
         # automatiquement les quantités du stock si ce n'est pas déjà fait via les signaux.
         
         messages.success(request, f"L'ordonnance #{ordonnance.id} a été marquée comme délivrée avec succès.")
-        return redirect('liste_ordonnances')
+        return redirect('liste_ordonnances_generale')
 
     # Si on y accède par erreur en GET, on redirige vers la liste
     profil = Profil.objects.filter(userProfil=request.user).first()
     fonction = profil.fonction.fonction if profil and profil.fonction else None
 
-    return redirect('liste_ordonnances' , {'fonction':fonction})
+    return redirect('liste_ordonnances_generale' , {'fonction':fonction})
 
 # 49 
 # =====================================================================
@@ -2480,3 +2509,42 @@ def liste_prestations(request):
         'fonction' : fonction
     }
     return render(request, 'back-end/logistique/liste_prestations.html', context)
+
+# 68
+# ===========================================================================================================
+# historique des examen cosulter soit labo soit ecographie
+# ===========================================================================================================
+@login_required
+def historique_examens(request):
+    """Affiche l'historique des examens terminés selon la fonction de l'utilisateur"""
+    
+    profil = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil.fonction.fonction.upper() if profil and profil.fonction else ""
+
+    # On récupère uniquement les examens terminés
+    queryset = ExamenPrescrit.objects.filter(
+        termine=True
+    ).select_related('consultation__patient', 'prestation').order_by('-date_prescription')
+
+    # Filtrage par service
+    if "LABO" in fonction or "LABORANTIN" in fonction:
+        historique = queryset.filter(
+            Q(prestation__categorie__iexact='LABO') | 
+            Q(prestation__categorie__iexact='Laboratoire')
+        )
+        titre = "Historique des Analyses Laboratoire"
+    elif "ECHO" in fonction or "ECHOGRAPHE" in fonction:
+        historique = queryset.filter(
+            Q(prestation__categorie__iexact='ECHO') | 
+            Q(prestation__categorie__iexact='Échographie')
+        )
+        titre = "Historique des Échographies"
+    else:
+        historique = queryset
+        titre = "Historique Global des Examens"
+
+    return render(request, 'back-end/labo_historique.html', {
+        'historique': historique,
+        'fonction': fonction,
+        'titre': titre
+    })

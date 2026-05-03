@@ -94,10 +94,11 @@ urlpatterns = [
     path('lits/liste/', views.liste_lits, name='liste_lits'),
 
     # ===============================================
-    # laboratoire
+    # laboratoire et echographie
     # 
     path('labo/liste/', views.liste_examens_labo, name='liste_examens_labo'),
     path('labo/saisir-resultat/<int:examen_id>/', views.saisir_resultat_labo, name='saisir_resultat_labo'),
+    path('examens/historique/', views.historique_examens, name='historique_examens'),
 
     # ==============================================
     # pharmacien 

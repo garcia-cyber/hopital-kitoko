@@ -187,6 +187,22 @@
                     <a href="{% url 'liste_examens_labo' %}"><i class="fas fa-microscope"></i> <span>Examens Labo</span></a>
                 </li>
 
+                <li class="submenu">
+    <a href="#"><i class="fas fa-history"></i> <span> Archives </span> <span class="menu-arrow"></span></a>
+    <ul style="display: none;">
+        <li>
+            <a href="{% url 'historique_examens' %}">
+                <i class="fas fa-clipboard-list"></i> 
+                {% if "ECHO" in fonction %}
+                    Historique Écho
+                {% else %}
+                    Historique Labo
+                {% endif %}
+            </a>
+        </li>
+    </ul>
+</li>
+
                 {% elif fonction == 'pharmacien' %}
                 <li class="submenu">
                     <a href="#">
@@ -228,7 +244,27 @@
                     </a>
                 </li>
                 {% elif fonction == 'echographe' %}
-                
+
+                    <li>
+                    <a href="{% url 'liste_examens_labo' %}"><i class="fas fa-microscope"></i> <span>Examens echographie</span></a>
+                    </li>
+
+                    <li class="submenu">
+    <a href="#"><i class="fas fa-history"></i> <span> Archives </span> <span class="menu-arrow"></span></a>
+    <ul style="display: none;">
+        <li>
+            <a href="{% url 'historique_examens' %}">
+                <i class="fas fa-clipboard-list"></i> 
+                {% if "ECHO" in fonction %}
+                    Historique Écho
+                {% else %}
+                    Historique Labo
+                {% endif %}
+            </a>
+        </li>
+    </ul>
+</li>
+
                 {% endif %}
                 
                 <li class="{% if request.resolver_match.url_name == 'modifier_mon_mdp' %}active{% endif %}">

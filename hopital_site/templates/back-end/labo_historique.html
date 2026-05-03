@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+    <title>{{ titre }} - KITOKO</title>
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'back-end/assets/img/favicon.ico'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css'%}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css'%}">
+    <style>
+        .result-box {
+            max-height: 80px;
+            overflow-y: auto;
+            font-size: 13px;
+            background: #fcfcfc;
+            border: 1px inset #eee;
+            padding: 8px;
+            border-radius: 4px;
+            color: #555;
+            line-height: 1.4;
+        }
+        .result-box::-webkit-scrollbar {
+            width: 4px;
+        }
+        .result-box::-webkit-scrollbar-thumb {
+            background: #ddd;
+            border-radius: 10px;
+        }
+        .table-history thead th {
+            background-color: #f8f9fa;
+            border-top: none;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+        }
+        .badge-examen {
+            font-size: 11px;
+            padding: 5px 10px;
+        }
+    </style>
+</head>
+
+<body> 
+    <div class="main-wrapper">
+        <!-- Inclusions des composants KITOKO -->
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <!-- En-tête de page -->
+                <div class="row align-items-center mb-4">
+                    <div class="col">
+                        <h4 class="page-title">{{ titre }}</h4>
+                        <nav aria-label="breadcrumb">
+                            <ol class="breadcrumb" style="background:none; padding:0;">
+                                <li class="breadcrumb-item"><a href="#">Accueil</a></li>
+                                <li class="breadcrumb-item active">Historique</li>
+                            </ol>
+                        </nav>
+                    </div>
+                    <div class="col-auto">
+                        <div class="search-box">
+                            <div class="input-group">
+                                <div class="input-group-prepend">
+                                    <span class="input-group-text bg-white border-right-0"><i class="fas fa-search"></i></span>
+                                </div>
+                                <input type="text" id="filterInput" class="form-control border-left-0" placeholder="Rechercher un patient ou un examen...">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tableau de l'historique -->
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover table-history mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th width="12%">Date / Heure</th>
+                                                <th width="20%">Patient</th>
+                                                <th width="15%">Examen</th>
+                                                <th width="38%">Résultat de l'analyse</th>
+                                                <th width="15%" class="text-center">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="historyTable">
+                                            {% for item in historique %}
+                                            <tr class="searchable-row">
+                                                <td>
+                                                    <span class="text-dark font-weight-bold">{{ item.date_prescription|date:"d M Y" }}</span><br>
+                                                    <small class="text-muted">{{ item.date_prescription|date:"H:i" }}</small>
+                                                </td>
+                                                <td class="patient-data">
+                                                    <div class="d-flex align-items-center">
+                                                        <i class="fas fa-user-circle fa-2x text-light mr-2"></i>
+                                                        <strong>{{ item.consultation.patient.noms }}</strong>
+                                                    </div>
+                                                </td>
+                                                <td class="examen-data">
+                                                    <span class="badge badge-pill badge-outline-primary badge-examen">
+                                                        {{ item.prestation.libelle }}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    {% if item.resultat %}
+                                                        <div class="result-box">
+                                                            {{ item.resultat|linebreaksbr }}
+                                                        </div>
+                                                    {% else %}
+                                                        <span class="text-muted font-italic small">Aucun détail enregistré</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td class="text-center">
+                                                    <div class="btn-group">
+                                                        <button type="button" class="btn btn-sm btn-outline-secondary" title="Imprimer le rapport">
+                                                            <i class="fas fa-print"></i>
+                                                        </button>
+                                                        <button type="button" class="btn btn-sm btn-outline-info" title="Voir fiche patient">
+                                                            <i class="fas fa-eye"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {% empty %}
+                                            <tr>
+                                                <td colspan="5" class="text-center py-5">
+                                                    <img src="{% static 'back-end/assets/img/empty-state.png' %}" alt="Vide" style="width: 80px; opacity: 0.5;">
+                                                    <p class="mt-3 text-muted">Aucun examen terminé n'a été trouvé dans vos archives.</p>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts obligatoires -->
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js'%}"></script>
+    <script src="{% static 'back-end/assets/js/app.js'%}"></script>
+
+    <!-- Script de filtrage en temps réel -->
+    <script>
+        $(document).ready(function(){
+            $("#filterInput").on("keyup", function() {
+                var value = $(this).val().toLowerCase();
+                $("#historyTable .searchable-row").filter(function() {
+                    var patientName = $(this).find(".patient-data").text().toLowerCase();
+                    var examenName = $(this).find(".examen-data").text().toLowerCase();
+                    $(this).toggle(patientName.indexOf(value) > -1 || examenName.indexOf(value) > -1);
+                });
+            });
+        });
+    </script>
+</body>
+</html>
