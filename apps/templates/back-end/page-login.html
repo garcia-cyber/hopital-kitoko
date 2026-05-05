@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html class="h-100" lang="fr">
+{% load static %}
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Portail Médical | Authentification Sécurisée</title>
+
+    <link href="{% static 'back-end/css/style.css'%}" rel="stylesheet">
+    <!-- Ajout de FontAwesome pour les icônes pro -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+    <style>
+        :root {
+            --medical-blue: #004a99;
+            --medical-cyan: #00a8cc;
+            --soft-bg: #f4f7f6;
+        }
+
+        .login-form-bg {
+            background: linear-gradient(135deg, #000 0%, rgba(0, 168, 204, 0.7) 100%),
+                        url("{% static 'front-end/assets/dr/2.jpg' %}");
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            height: 100vh;
+        }
+
+        .login-form {
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+            border-top: 5px solid var(--medical-cyan); /* Liseré médical en haut */
+            overflow: hidden;
+        }
+
+        .header-hospital {
+            background: #f8f9fa;
+            padding: 30px;
+            text-align: center;
+            border-bottom: 1px solid #eee;
+        }
+
+        .hospital-icon {
+            font-size: 40px;
+            color: var(--medical-blue);
+            margin-bottom: 10px;
+        }
+
+        .brand-logo h4 {
+            color: var(--medical-blue);
+            font-weight: 700;
+            margin: 0;
+            letter-spacing: -0.5px;
+        }
+
+        .login-input {
+            padding: 40px;
+        }
+
+        /* Style spécifique pour les inputs Django {{form.as_p}} */
+        .login-input p {
+            position: relative;
+            margin-bottom: 25px;
+        }
+
+        .login-input input {
+            width: 100%;
+            height: 50px;
+            padding: 10px 15px 10px 45px; /* Espace pour l'icône à gauche */
+            border: 2px solid #e1e8ed;
+            border-radius: 10px;
+            font-size: 15px;
+            transition: all 0.3s ease;
+            background: #fcfdfe;
+        }
+
+        .login-input input:focus {
+            border-color: var(--medical-cyan);
+            background: #fff;
+            box-shadow: 0 0 10px rgba(0, 168, 204, 0.1);
+            outline: none;
+        }
+
+        /* Simulation d'icônes sur les champs (nécessite que l'ordre soit Email puis Password) */
+        .login-input p:first-of-type::before {
+            content: "\f0e0"; font-family: "Font Awesome 5 Free"; font-weight: 900;
+            position: absolute; left: 18px; top: 15px; color: #adb5bd;
+        }
+        .login-input p:nth-of-type(2)::before {
+            content: "\f023"; font-family: "Font Awesome 5 Free"; font-weight: 900;
+            position: absolute; left: 18px; top: 15px; color: #adb5bd;
+        }
+
+        .btn-hospital {
+            background: linear-gradient(to right, var(--medical-blue), var(--medical-cyan));
+            border: none;
+            border-radius: 10px;
+            padding: 14px;
+            font-weight: 600;
+            font-size: 16px;
+            color: white;
+            text-transform: uppercase;
+            box-shadow: 0 4px 15px rgba(0, 74, 153, 0.3);
+            transition: 0.4s;
+        }
+
+        .btn-hospital:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0, 74, 153, 0.4);
+            color: white;
+        }
+
+        .footer-hospital {
+            padding: 20px;
+            background: #fff;
+            text-align: center;
+            font-size: 13px;
+        }
+
+        label { display: none; } /* On garde les labels cachés pour le design épuré */
+
+        .alert-hospital {
+            border-radius: 10px;
+            border-left: 5px solid #dc3545;
+            margin: 0 40px;
+        }
+    </style>
+</head>
+
+<body class="h-100">
+
+    <div id="preloader">
+        <div class="loader">
+            <svg class="circular" viewBox="25 25 50 50">
+                <circle class="path" cx="50" cy="50" r="20" fill="none" stroke-width="3" stroke-miterlimit="10" />
+            </svg>
+        </div>
+    </div>
+
+    <div class="login-form-bg h-100">
+        <div class="container h-100">
+            <div class="row justify-content-center align-items-center h-100">
+                <div class="col-xl-5 col-md-7">
+                    <div class="form-input-content">
+                        <div class="card login-form mb-0">
+
+                            <!-- En-tête Médical -->
+                            <div class="header-hospital">
+                                <div class="hospital-icon">
+                                    <i class="fas fa-hospital-user"></i>
+                                </div>
+                                <div class="brand-logo">
+                                    <h4>MEDICAL MOYANOLI</h4>
+                                </div>
+                                <p class="text-muted small mt-2">Gestion Hospitalière Intégrée</p>
+                            </div>
+
+                            {% if msg %}
+                            <div class="alert alert-danger alert-hospital fade show mt-3">
+                                <i class="fas fa-exclamation-circle mr-2"></i> {{msg}}
+                            </div>
+                            {% endif %}
+
+                            <!-- Formulaire -->
+                            <form class="login-input" method="POST">
+                                {% csrf_token %}
+
+                                <div class="form-group-custom">
+                                    {{ form.as_p }}
+                                </div>
+
+                                <div class="mt-4 mb-2">
+                                    <button type="submit" class="btn btn-hospital w-100">
+                                        Accéder au tableau de bord
+                                    </button>
+                                </div>
+                            </form>
+
+                            <div class="footer-hospital border-top">
+                                <p class="text-muted mb-0">Session sécurisée par cryptage SSL</p>
+                                <a href="#" class="text-primary small">Identifiants perdus ? Contactez l'administrateur</a>
+                            </div>
+                        </div>
+
+                        <!-- Petit texte sous le cadre -->
+                        <div class="text-center mt-4">
+                            <p class="text-white-50 small">&copy; 2026 Mukoko dev ERP - Systèmes de Santé</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="{% static 'back-end/plugins/common/common.min.js'%}"></script>
+    <script src="{% static 'back-end/js/custom.min.js'%}"></script>
+    <script src="{% static 'back-end/js/settings.js'%}"></script>
+    <script src="{% static 'back-end/js/gleek.js'%}"></script>
+    <script src="{% static 'back-end/js/styleSwitcher.js'%}"></script>
+</body>
+</html>

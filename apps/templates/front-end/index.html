@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Medical-Moyanoli |santé numérisée</title>
+  <meta name="title" content="Medical-Moyanoli">
+  <meta name="description" content="Plateforme de suivi médical et gestion de santé en ligne">
+
+  <link href="{% static 'assets/dr/logo.jpg' %}" rel="icon">
+  <link rel="stylesheet" href="{% static 'front-end/assets/css/style.css' %}">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@400;500;600;700;800&family=Poppins:wght@400;500&display=swap" rel="stylesheet">
+
+  <style>
+    /* --- RÉGLAGES LOGO (Correction visibilité) --- */
+    .logo {
+      display: flex !important;
+      align-items: center !important;
+      gap: 15px;
+      text-decoration: none;
+      min-width: 250px; /* Évite que le logo soit écrasé */
+    }
+
+    .logo-img {
+      width: 55px !important;
+      height: 55px !important;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--st-patriots-blue, #003366);
+      background-color: #f0f0f0; /* Fond de secours si l'image manque */
+    }
+
+    .logo-text {
+      font-family: 'League Spartan', sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+      color: #1d2a4d;
+      line-height: 1;
+    }
+
+    /* --- DISPOSITION DES 7 IMAGES DANS LE HERO --- */
+    .hero-banner {
+      position: relative;
+      height: 550px;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .hero-banner .img-holder {
+      position: absolute;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      background: white;
+    }
+
+    .hero-banner .img-holder:hover {
+      transform: scale(1.1) z-index: 20;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Coordonnées précises pour les 7 photos */
+    .hero-banner .one { top: 10%; left: 0; z-index: 7; width: 220px; }
+    .hero-banner .two { top: 0; right: 5%; z-index: 5; width: 200px; }
+    .hero-banner .three { bottom: 5%; left: 10%; z-index: 8; width: 180px; border: 5px solid white; }
+    .hero-banner .four { top: -5%; right: 35%; z-index: 4; width: 140px; opacity: 0.8; }
+    .hero-banner .five { bottom: 15%; right: 0; z-index: 6; width: 190px; }
+    .hero-banner .six { top: 35%; left: 35%; z-index: 3; width: 210px; opacity: 0.5; filter: grayscale(30%); }
+    .hero-banner .seven { top: 15%; left: 25%; z-index: 4; width: 130px; opacity: 0.7; }
+
+    /* Adaptabilité Mobile */
+    @media (max-width: 992px) {
+      .hero-banner { height: auto; padding: 40px 0; }
+      .hero-banner .one { position: relative; width: 100%; top: 0; left: 0; transform: none; }
+      .hero-banner .two, .hero-banner .three, .hero-banner .four,
+      .hero-banner .five, .hero-banner .six, .hero-banner .seven { display: none; }
+      .logo-text { font-size: 20px; }
+    }
+  </style>
+</head>
+
+<body id="top">
+
+  <!-- HEADER -->
+  <header class="header" data-header>
+    <div class="container">
+      <a href="#" class="logo">
+        <img src="{% static 'front-end/assets/dr/logo.jpg' %}" alt="Logo" class="logo-img">
+        <span class="logo-text">Medical-Moyanoli</span>
+      </a>
+
+      <nav class="navbar" data-navbar>
+        <div class="wrapper">
+          <a href="#" class="logo">Moyanoli</a>
+          <button class="nav-close-btn" aria-label="close menu" data-nav-toggler>
+            <ion-icon name="close-outline" aria-hidden="true"></ion-icon>
+          </button>
+        </div>
+        <ul class="navbar-list">
+          <li><a href="#home" class="navbar-link" data-nav-link>Accueil</a></li>
+          <li><a href="#about" class="navbar-link" data-nav-link>À propos</a></li>
+          <li><a href="#services" class="navbar-link" data-nav-link>Services</a></li>
+          <li><a href="#contact" class="navbar-link" data-nav-link>Contact</a></li>
+          <!-- <li><a href="#contact" class="navbar-link" data-nav-link>Connexion</a></li> -->
+        </ul>
+      </nav>
+
+      <div class="header-actions">
+        <button class="header-action-btn" title="Recherche"><ion-icon name="search-outline"></ion-icon></button>
+        <a href="{% url 'login' %}" class="btn has-before">
+          <span class="span">Authentification</span>
+          <ion-icon name="person-outline" aria-hidden="true"></ion-icon>
+        </a>
+        <button class="header-action-btn" data-nav-toggler><ion-icon name="menu-outline"></ion-icon></button>
+      </div>
+      <div class="overlay" data-nav-toggler data-overlay></div>
+    </div>
+  </header>
+
+  <main>
+    <article>
+
+      <!-- HERO SECTION -->
+      <section class="section hero has-bg-image" id="home" aria-label="home">
+        <div class="container">
+          <div class="hero-content">
+            <h1 class="h1 section-title">Numérisez le suivi médical de votre famille</h1>
+            <p class="hero-text">
+              Recevez vos résultats, ordonnances et rappels de vaccins instantanément via SMS ou notification. La santé connectée en RDC.
+            </p>
+            <a href="#services" class="btn has-before">
+              <span class="span">Découvrir nos centres</span>
+              <ion-icon name="arrow-forward-outline" aria-hidden="true"></ion-icon>
+            </a>
+          </div>
+
+          <figure class="hero-banner">
+            <div class="img-holder one"><img src="{% static 'front-end/assets/dr/1.jpg' %}" alt="Photo 1" class="img-cover"></div>
+            <div class="img-holder two"><img src="{% static 'front-end/assets/dr/2.jpg' %}" alt="Photo 2" class="img-cover"></div>
+            <div class="img-holder three"><img src="{% static 'front-end/assets/dr/3.jpg' %}" alt="Photo 3" class="img-cover"></div>
+            <div class="img-holder four"><img src="{% static 'front-end/assets/dr/4.jpg' %}" alt="Photo 4" class="img-cover"></div>
+            <div class="img-holder five"><img src="{% static 'front-end/assets/dr/5.jpg' %}" alt="Photo 5" class="img-cover"></div>
+            <div class="img-holder six"><img src="{% static 'front-end/assets/dr/6.jpg' %}" alt="Photo 6" class="img-cover"></div>
+            <div class="img-holder seven"><img src="{% static 'front-end/assets/dr/7.jpg' %}" alt="Photo 7" class="img-cover"></div>
+          </figure>
+        </div>
+      </section>
+
+      <!-- SERVICES SECTION -->
+      <section class="section category" id="services" aria-label="category">
+        <div class="container">
+          <p class="section-subtitle">Nos Services Digitaux</p>
+          <h2 class="h2 section-title">Tout votre parcours santé en un clic</h2>
+          <ul class="grid-list">
+            <li>
+              <div class="category-card" style="--color: 170, 75%, 41%">
+                <div class="card-icon"><ion-icon name="phone-portrait-outline" size="large"></ion-icon></div>
+                <h3 class="h3"><a href="#" class="card-title">Dossier Médical</a></h3>
+                <p class="card-text">Historique de santé accessible partout, même hors ligne.</p>
+              </div>
+            </li>
+            <li>
+              <div class="category-card" style="--color: 351, 83%, 61%">
+                <div class="card-icon"><ion-icon name="card-outline" size="large"></ion-icon></div>
+                <h3 class="h3"><a href="#" class="card-title">Paiement Mobile</a></h3>
+                <p class="card-text">Payez vos factures médicales en toute sécurité en ligne.</p>
+              </div>
+            </li>
+            <li>
+              <div class="category-card" style="--color: 229, 75%, 58%">
+                <div class="card-icon"><ion-icon name="videocam-outline" size="large"></ion-icon></div>
+                <h3 class="h3"><a href="#" class="card-title">Téléconsultation</a></h3>
+                <p class="card-text">Échangez avec un spécialiste sans vous déplacer.</p>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ABOUT SECTION -->
+      <section class="section about" id="about" aria-label="about">
+        <div class="container">
+          <figure class="about-banner">
+            <div class="img-holder" style="--width: 520; --height: 500;">
+              <img src="{% static 'front-end/assets/dr/3.jpg' %}" width="520" height="500" loading="lazy" alt="Hôpital" class="img-cover">
+            </div>
+          </figure>
+          <div class="about-content">
+            <p class="section-subtitle">Pourquoi nous choisir ?</p>
+            <h2 class="h2 section-title">Le digital au service de la <span class="span">Santé pour tous</span></h2>
+            <p class="section-text">
+              Medical-Moyanoli réduit les délais de prise en charge grâce à un identifiant unique facilitant le suivi entre établissements.
+            </p>
+            <ul class="about-list">
+              <li class="about-item"><ion-icon name="checkmark-circle-outline"></ion-icon><span>Médecins certifiés</span></li>
+              <li class="about-item"><ion-icon name="checkmark-circle-outline"></ion-icon><span>Données 100% sécurisées</span></li>
+              <li class="about-item"><ion-icon name="checkmark-circle-outline"></ion-icon><span>Disponible 24h/7j</span></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+    </article>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="footer" id="contact">
+    <div class="footer-top section">
+      <div class="container grid-list">
+        <div class="footer-brand">
+          <a href="#" class="logo">Medical-Moyanoli</a>
+          <p class="footer-brand-text">Innover pour la santé en République Démocratique du Congo.</p>
+          <div class="wrapper"><span class="span">Email:</span><a href="mailto:contact@moyanoli.com" class="footer-link">contact@moyanoli.com</a></div>
+        </div>
+        <ul class="footer-list">
+          <li><p class="footer-list-title">Liens rapides</p></li>
+          <li><a href="#about" class="footer-link">À propos</a></li>
+          <li><a href="#services" class="footer-link">Nos Services</a></li>
+          <li><a href="#" class="footer-link">Support Patient</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="container">
+        <p class="copyright">&copy; 2026 Medical-Moyanoli. Tous droits réservés.</p>
+      </div>
+    </div>
+  </footer>
+
+  <a href="#top" class="back-top-btn" aria-label="back to top" data-back-top-btn>
+    <ion-icon name="chevron-up" aria-hidden="true"></ion-icon>
+  </a>
+
+  <!-- SCRIPTS -->
+  <script src="{% static 'front-end/assets/js/index.js' %}" defer></script>
+  <script type="module" src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.esm.js"></script>
+  <script nomodule src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.js"></script>
+
+</body>
+</html>
