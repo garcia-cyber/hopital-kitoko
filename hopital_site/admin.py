@@ -233,3 +233,33 @@ class LigneFacturePharmaAdmin(admin.ModelAdmin):
 @admin.register(LogPharmacie)
 class LogPharmacieAdmin(admin.ModelAdmin):
     list_display = ('date_action', 'utilisateur', 'action')
+
+# =====================================================================
+# PARTIE HOSPITALISATIONS
+# =====================================================================
+
+@admin.register(SoinHospitalisation)
+class SoinHospitalisationAdmin(admin.ModelAdmin):
+    # Colonnes affichées
+    list_display = ('date_soin', 'get_patient', 'get_service', 'libelle_soin', 'infirmier', 'cout_soin')
+    
+    # Filtres corrigés
+    # On filtre sur l'occupation et l'infirmier. 
+    # Pour le service, on s'arrête au niveau de la chambre ou du lit si le chemin est trop complexe.
+    list_filter = ('date_soin', 'infirmier', 'occupation__lit') 
+    
+    search_fields = ('occupation__patient__noms', 'libelle_soin')
+    ordering = ('-date_soin',)
+
+    # Méthodes pour l'affichage des colonnes
+    def get_patient(self, obj):
+        return obj.occupation.patient.noms
+    get_patient.short_description = 'Patient'
+
+    def get_service(self, obj):
+        try:
+            # On remonte la chaîne : Soin -> Occupation -> Lit -> Chambre -> Service
+            return obj.occupation.lit.chambre.service.nom_service
+        except AttributeError:
+            return "N/A"
+    get_service.short_description = 'Service Médical'

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="fr">
+{% load static %}
+<head>
+    <meta charset="utf-8">
+    <title>Hôpital | Soins Infirmiers</title>
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css' %}">
+</head>
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="row">
+                    <div class="col-sm-8">
+                        <h4 class="page-title">Tableau de Bord Infirmier</h4>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="card-title mb-0">Patients en Hospitalisation</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-striped custom-table datatable">
+                                        <thead>
+                                            <tr>
+                                                <th>Patient</th>
+                                                <th>Sexe / Age</th>
+                                                <th>Localisation</th>
+                                                <th>Entrée</th>
+                                                <th>Derniers Soins</th>
+                                                <th class="text-right">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for hosp in hospitalisations %}
+                                            <tr>
+                                                <td>
+                                                    <strong>{{ hosp.patient.noms }}</strong>
+                                                </td>
+                                                <td>
+                                                    {{ hosp.patient.sexeP }} | {{ hosp.patient.ageP }} ans
+                                                </td>
+                                                <td>
+                                                    <span class="badge badge-info">Lit : {{ hosp.lit.nom_lit }}</span><br>
+                                                    <small>{{ hosp.lit.chambre.numero }} - {{ hosp.lit.chambre.get_type_chambre_display }}</small>
+                                                </td>
+                                                <td>{{ hosp.date_admission|date:"d/m/Y H:i" }}</td>
+                                                <td>
+                                                    <small class="text-muted">
+                                                        {{ hosp.soins.count }} acte(s) enregistré(s)
+                                                    </small>
+                                                </td>
+                                                <td class="text-right">
+                                                    <a href="{% url 'ajouter_soin' hosp.id %}" class="btn btn-primary btn-sm">
+                                                        <i class="fa fa-plus"></i> Administrer Soin
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                            {% empty %}
+                                            <tr>
+                                                <td colspan="6" class="text-center">Aucun patient hospitalisé actuellement.</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js' %}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js' %}"></script>
+    <script src="{% static 'back-end/assets/js/app.js' %}"></script>
+</body>
+</html>

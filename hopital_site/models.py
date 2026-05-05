@@ -326,12 +326,60 @@ class Lit(models.Model):
     nom_lit = models.CharField(max_length=10)
     est_occupe = models.BooleanField(default=False)
 
+# =======================================================================================
+# occupation de lit
+
 class OccupationLit(models.Model):
-    patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
-    lit = models.ForeignKey(Lit, on_delete=models.CASCADE)
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='hospitalisations')
+    lit = models.ForeignKey(Lit, on_delete=models.CASCADE, related_name='occupations')
     date_admission = models.DateTimeField(default=timezone.now)
     date_sortie = models.DateTimeField(null=True, blank=True)
+    motif_admission = models.TextField(null=True, blank=True)
     est_paye = models.BooleanField(default=False)
+    termine = models.BooleanField(default=False) # Utile pour savoir si le séjour est fini
+
+    def save(self, *args, **kwargs):
+        # Utilisation de transaction.atomic pour garantir la cohérence des données
+        with transaction.atomic():
+            # Cas 1 : Création d'une nouvelle hospitalisation
+            if not self.pk: 
+                self.lit.est_occupe = True
+                self.lit.save()
+            
+            # Cas 2 : Libération du lit lors de la sortie (on enregistre la date et on libère le lit)
+            if self.date_sortie and not self.termine:
+                self.lit.est_occupe = False
+                self.lit.save()
+                self.termine = True
+            
+            super().save(*args, **kwargs)
+
+    @property
+    def nombre_jours(self):
+        """Calcule la durée du séjour (minimum 1 jour)"""
+        fin = self.date_sortie if self.date_sortie else timezone.now()
+        delta = fin - self.date_admission
+        return delta.days if delta.days > 0 else 1
+
+    @property
+    def total_soins(self):
+        """Calcule la somme de tous les soins liés à cette hospitalisation"""
+        # On utilise aggregate pour être plus performant que sum() en Python
+        resultat = self.soins.aggregate(total=models.Sum('cout_soin'))['total']
+        return Decimal(resultat) if resultat else Decimal('0.00')
+
+    @property
+    def total_frais_sejour(self):
+        """Total général : (Jours x Prix Lit) + Total des soins"""
+        frais_lit = Decimal(self.nombre_jours) * self.lit.chambre.prix_journalier
+        return frais_lit + self.total_soins
+
+    def __str__(self):
+        return f"{self.patient.noms} - Lit {self.lit.nom_lit} ({self.date_admission.strftime('%d/%m/%Y')})"
+
+
+
+
 
 # 7. MATÉRIEL ET RH ======================================================
 
@@ -394,3 +442,14 @@ class LogPharmacie(models.Model):
     action = models.CharField(max_length=50)
     details = models.TextField()
     date_action = models.DateTimeField(auto_now_add=True)
+
+class SoinHospitalisation(models.Model):
+    occupation = models.ForeignKey(OccupationLit, on_delete=models.CASCADE, related_name='soins')
+    libelle_soin = models.CharField(max_length=200)
+    date_soin = models.DateTimeField(default=timezone.now)
+    infirmier = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    # Une seule déclaration ici avec default=0
+    cout_soin = models.DecimalField(max_digits=10, decimal_places=2, default=0) 
+
+    def __str__(self):
+        return f"{self.libelle_soin} pour {self.occupation.patient.noms}"

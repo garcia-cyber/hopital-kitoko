@@ -1103,7 +1103,7 @@ def liste_lits(request):
     return render(request, 'back-end/liste_lits.html', {
         'lits': lits,
         'fonction': fonction
-    })
+    }) 
 
 # 32
 # =====================================================================================================
@@ -2547,4 +2547,136 @@ def historique_examens(request):
         'historique': historique,
         'fonction': fonction,
         'titre': titre
+    })
+
+# 69
+# ==========================================================================================================
+# attribution de lit au patient
+# ==========================================================================================================
+@login_required
+def attribuer_lit(request, lit_id):
+    lit = get_object_or_404(Lit, id=lit_id)
+    
+    if request.method == 'POST':
+        patient_id = request.POST.get('patient')
+        motif = request.POST.get('motif')
+        patient = get_object_or_404(Patient, id=patient_id)
+        
+        # Création de l'occupation
+        OccupationLit.objects.create(
+            patient=patient,
+            lit=lit,
+            motif_admission=motif
+        )
+        
+        # Le lit passera en 'est_occupe=True' automatiquement via le save() du modèle
+        messages.success(request, f"Le lit {lit.nom_lit} a été attribué à {patient.noms}")
+        return redirect('liste_lits') # Remplace par le nom de ta vue de liste
+
+    # Récupération du profil pour l'interface
+    profil = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil.fonction.fonction if profil and profil.fonction else None
+
+    patients = Patient.objects.all() # Tu peux filtrer ceux qui ne sont pas déjà hospitalisés   
+    return render(request, 'back-end/hospitalisation/attribuer_lit.html', {
+        'lit': lit,
+        'patients': patients , 
+        'fonction' : fonction 
+    })
+
+# 70
+# ==========================================================================================================
+# voir le patient
+# ==========================================================================================================
+@login_required
+def voir_patient_lit(request, lit_id):
+    # On récupère le lit
+    lit = get_object_or_404(Lit, id=lit_id)
+    
+    # On récupère l'occupation active (celle qui n'est pas terminée)
+    # On utilise .select_related('patient') pour optimiser la requête
+    occupation = OccupationLit.objects.filter(lit=lit, termine=False).last()
+
+    # Récupération du profil pour l'interface
+    profil = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil.fonction.fonction if profil and profil.fonction else None
+    
+    return render(request, 'back-end/hospitalisation/voir_patient_lit.html', {
+        'lit': lit,
+        'occupation': occupation ,
+        'fonction' : fonction 
+    })
+
+# 71 
+# =======================================================================================================
+# ajouter soin 
+# ========================================================================================================
+
+@login_required
+def ajouter_soin(request, occupation_id):
+    occupation = get_object_or_404(OccupationLit, id=occupation_id)
+    
+    # Récupération des médicaments payés
+    medicaments_achetes = LigneOrdonnance.objects.filter(
+        ordonnance__consultation__patient=occupation.patient,
+        quantite_payee__gt=0
+    ).select_related('medicament', 'ordonnance')
+
+    if request.method == "POST":
+        libelle = request.POST.get('libelle_soin')
+        
+        # --- RÉSOLUTION DE L'ERREUR DE COÛT ---
+        # On définit le coût à 0 par défaut si le champ est absent ou vide
+        # On ne récupère plus 'cout' depuis le POST car il n'est plus dans le HTML
+        
+        try:
+            # 1. Création du rapport de soin (l'observation principale)
+            soin_rapport = SoinHospitalisation.objects.create(
+                occupation=occupation,
+                libelle_soin=libelle,
+                cout_soin=0, # On force 0 pour éviter l'IntegrityError
+                infirmier=request.user
+            )
+
+            # 2. Logique pour déduire les médicaments (Si tu veux gérer le stock patient)
+            # On récupère les listes envoyées par le JavaScript (addRow)
+            med_ids = request.POST.getlist('medicament[]')
+            quantites = request.POST.getlist('quantite[]')
+            moments = request.POST.getlist('moment[]')
+
+            # Ici tu peux ajouter une logique pour mettre à jour la quantité payée
+            # ou simplement enregistrer ces détails dans un modèle de suivi d'administration
+            
+            messages.success(request, "Le rapport de suivi a été enregistré avec succès.")
+            return redirect('liste_soins_infirmiers') # Vérifie que ce nom de l'URL est correct
+            
+        except Exception as e:
+            messages.error(request, f"Erreur lors de l'enregistrement : {e}")
+
+    # Récupération du profil pour l'interface
+    profil = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil.fonction.fonction if profil and profil.fonction else None
+
+    return render(request, 'back-end/hospitalisation/ajouter_soin.html', {
+        'occupation': occupation,
+        'medicaments_achetes': medicaments_achetes,
+        'fonction': fonction 
+    })
+
+# 72 
+# ==========================================================================================================
+# hospitalisation patien suive de soin par l'infirmier
+# ==========================================================================================================
+@login_required
+def liste_soins_infirmiers(request):
+    # On récupère toutes les occupations qui ne sont pas encore terminées
+    # select_related permet de récupérer le patient et le lit en une seule requête (performance)
+    hospitalisations_actives = OccupationLit.objects.filter(termine=False).select_related('patient', 'lit', 'lit__chambre')
+
+    profil = Profil.objects.filter(userProfil=request.user).first()
+    fonction = profil.fonction.fonction if profil and profil.fonction else None
+
+    return render(request, 'back-end/hospitalisation/liste_soins_infirmiers.html', {
+        'hospitalisations': hospitalisations_actives,
+        'fonction': fonction
     })

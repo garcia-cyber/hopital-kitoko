@@ -133,5 +133,13 @@ urlpatterns = [
     path('prestations/', views.liste_prestations, name='liste_prestations'),
     path('prestations/ajouter/', views.ajouter_prestation, name='ajouter_prestation'),
 
+    # ==================================================
+    # hospitalisations 
+    #
+    path('hospitaliser/<int:lit_id>/', views.attribuer_lit, name='attribuer_lit'),
+    path('voir-patient-lit/<int:lit_id>/', views.voir_patient_lit, name='voir_patient_lit'),
+    path('hospitalisation/ajouter-soin/<int:occupation_id>/', views.ajouter_soin, name='ajouter_soin'),
+    path('soins-infirmiers/', views.liste_soins_infirmiers, name='liste_soins_infirmiers'),
+
     
 ]

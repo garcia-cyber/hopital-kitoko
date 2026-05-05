@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="fr">
+{% load static %}
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+    <title>KITOKO - Suivi Clinique Infirmier</title>
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css' %}">
+    <style>
+        .timeline-evolution { border-left: 3px solid #009efb; padding-left: 20px; position: relative; }
+        .timeline-item { margin-bottom: 25px; position: relative; }
+        .timeline-item::before { content: ""; position: absolute; left: -27px; top: 5px; width: 12px; height: 12px; border-radius: 50%; background: #009efb; }
+        .med-format { font-size: 0.85em; color: #6c757d; font-style: italic; }
+    </style>
+</head>
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="row">
+                    <div class="col-sm-12">
+                        <h4 class="page-title">Rapport de Suivi & Administration : <strong>{{ occupation.patient.noms }}</strong></h4>
+                        <p class="text-muted"><i class="fa fa-hospital"></i> {{ occupation.lit.chambre.service.nom_service }} | Lit : {{ occupation.lit.nom_lit }}</p>
+                    </div>
+                </div>
+
+                <div class="row mt-3">
+                    <!-- GAUCHE : RAPPORT D'ADMINISTRATION -->
+                    <div class="col-lg-8">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white">
+                                <h5 class="card-title mb-0 text-primary"><i class="fas fa-file-medical"></i> Rapport de l'Infirmier de Garde</h5>
+                            </div>
+                            <div class="card-body">
+                                <form method="POST">
+                                    {% csrf_token %}
+                                    
+                                    <!-- Observation -->
+                                    <div class="form-group">
+                                        <label class="font-weight-bold">Évolution Clinique du Patient</label>
+                                        <textarea name="libelle_soin" class="form-control" rows="3" 
+                                            placeholder="Comment va le patient ? (ex: État stable, reprise de la marche, douleurs persistantes...)"></textarea>
+                                    </div>
+
+                                    <!-- Administration Multiples avec Formats -->
+                                    <div class="form-group">
+                                        <label class="font-weight-bold text-success"><i class="fas fa-check-circle"></i> Médicaments administrés</label>
+                                        <div id="medication-rows">
+                                            <div class="row mb-3 bg-light p-2 rounded">
+                                                <div class="col-md-5">
+                                                    <label class="small">Médicament (Format)</label>
+                                                    <select name="medicament[]" class="form-control select">
+                                                        <option value="">-- Choisir --</option>
+                                                        {% for ligne in medicaments_achetes %}
+                                                        <option value="{{ ligne.medicament.id }}">
+                                                            {{ ligne.medicament.designation }} 
+                                                            ({% if ligne.medicament.format_pharmaceutique %}{{ ligne.medicament.format_pharmaceutique }}{% else %}N/A{% endif %}) 
+                                                            - Dispo: {{ ligne.quantite_payee }}
+                                                        </option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="small">Quantité / Dose</label>
+                                                    <input type="text" name="quantite[]" class="form-control" placeholder="ex: 2 tabs, 1 amp">
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="small">Moment / Type</label>
+                                                    <select name="moment[]" class="form-control">
+                                                        <option value="Matin">Matin</option>
+                                                        <option value="Midi">Midi</option>
+                                                        <option value="Soir">Soir</option>
+                                                        <option value="Secours">Secours / Urgent</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button type="button" onclick="addRow()" class="btn btn-outline-primary btn-sm">
+                                            <i class="fas fa-plus-circle"></i> Ajouter un autre médicament dans ce rapport
+                                        </button>
+                                    </div>
+
+                                    <div class="text-right border-top pt-3">
+                                        <button type="submit" class="btn btn-success btn-lg">Enregistrer le Suivi du Patient</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- HISTORIQUE DES RAPPORTS -->
+                        <div class="card mt-4">
+                            <div class="card-header bg-white">
+                                <h5 class="card-title mb-0"><i class="fas fa-history"></i> Journal d'Évolution</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="timeline-evolution">
+                                    {% for rapport in occupation.soins.all|dictsortreversed:"date_soin" %}
+                                    <div class="timeline-item">
+                                        <div class="d-flex justify-content-between">
+                                            <span class="text-primary font-weight-bold">{{ rapport.date_soin|date:"d M Y à H:i" }}</span>
+                                            <small class="badge badge-light">Par : {{ rapport.infirmier.username }}</small>
+                                        </div>
+                                        <div class="mt-2 p-3 bg-light rounded border-left">
+                                            {{ rapport.libelle_soin|linebreaks }}
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- DROITE : INFOS MÉDICALES & FORMATS -->
+                    <div class="col-lg-4">
+                        <!-- POINT DE VUE MÉDECIN -->
+                        <div class="card border-warning">
+                            <div class="card-header bg-warning text-dark">
+                                <h5 class="card-title mb-0"><i class="fas fa-user-md"></i> Avis & Diagnostic</h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-danger font-weight-bold">{{ occupation.patient.consultation_set.last.diagnostic|default:"Aucun diagnostic" }}</p>
+                                <hr>
+                                <h6>Prescription Médicale :</h6>
+                                <p class="small text-muted">{{ occupation.patient.consultation_set.last.ordonnances.last.instructions_posologie|linebreaks }}</p>
+                            </div>
+                        </div>
+
+                        <!-- STOCK AVEC FORMAT PHARMACEUTIQUE -->
+                        <div class="card mt-4 shadow-sm">
+                            <div class="card-header bg-info text-white">
+                                <h5 class="card-title mb-0"><i class="fas fa-pills"></i> Stock Patient (Acheté)</h5>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover mb-0">
+                                        <thead>
+                                            <tr class="small">
+                                                <th>Médicament & Format</th>
+                                                <th class="text-center">Restant</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for ligne in medicaments_achetes %}
+                                            <tr>
+                                                <td class="small">
+                                                    <strong>{{ ligne.medicament.designation }}</strong><br>
+                                                    <span class="med-format">{{ ligne.medicament.format_pharmaceutique|default:"Format non précisé" }}</span>
+                                                </td>
+                                                <td class="text-center align-middle">
+                                                    <span class="badge badge-pill {% if ligne.quantite_payee <= 1 %}badge-danger{% else %}badge-success{% endif %}">
+                                                        {{ ligne.quantite_payee }}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js' %}"></script>
+    <script>
+        function addRow() {
+            var row = `
+            <div class="row mb-3 bg-light p-2 rounded">
+                <div class="col-md-5">
+                    <select name="medicament[]" class="form-control">
+                        <option value="">-- Choisir --</option>
+                        {% for ligne in medicaments_achetes %}
+                        <option value="{{ ligne.medicament.id }}">
+                            {{ ligne.medicament.designation }} ({{ ligne.medicament.format_pharmaceutique|default:"N/A" }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <input type="text" name="quantite[]" class="form-control" placeholder="Qté">
+                </div>
+                <div class="col-md-4">
+                    <select name="moment[]" class="form-control">
+                        <option value="Matin">Matin</option>
+                        <option value="Midi">Midi</option>
+                        <option value="Soir">Soir</option>
+                        <option value="Secours">Secours / Urgent</option>
+                    </select>
+                </div>
+            </div>`;
+            $('#medication-rows').append(row);
+        }
+    </script>
+</body>
+</html>

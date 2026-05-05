@@ -55,11 +55,15 @@
                                                         <span class="badge badge-success">Libre / Disponible</span>
                                                     {% endif %}
                                                 </td>
+                                                
                                                 <td class="text-right">
                                                     {% if not lit.est_occupe %}
-                                                        <a href="#" class="btn btn-sm btn-outline-primary">Hospitaliser</a>
+                                                        <a href="{% url 'attribuer_lit' lit.id %}" class="btn btn-sm btn-outline-primary">Hospitaliser</a>
                                                     {% else %}
-                                                        <a href="#" class="btn btn-sm btn-outline-info">Voir Patient</a>
+                                                    
+                                                    <a href="{% url 'voir_patient_lit' lit.id %}" class="btn btn-sm btn-outline-info">
+                                                        <i class="fa fa-user"></i> Voir Patient
+                                                    </a>
                                                     {% endif %}
                                                 </td>
                                             </tr>

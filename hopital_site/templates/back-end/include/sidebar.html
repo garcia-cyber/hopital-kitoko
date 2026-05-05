@@ -91,6 +91,18 @@
     </a>
 </li>
 
+<li class="menu-title">Hospitalisation</li>
+
+<!-- Vue Administrative : Gestion des Lits et Facturation -->
+<li class="{% if request.resolver_match.url_name == 'liste_lits' %}active{% endif %}">
+    <a href="{% url 'liste_lits' %}">
+        <i class="fas fa-bed"></i> 
+        <span>Gestion des Lits</span>
+    </a>
+</li>
+
+
+
 
 
                 {% elif fonction == 'receptionniste' %} 
@@ -162,6 +174,18 @@
                 <li>
                     <a href="{% url 'liste_ordonnances_infirmier' %}"><i class="fas fa-pills"></i> <span>Suivi Traitements</span></a>
                 </li>
+
+                <li class="menu-title">Hospitalisation</li>
+
+
+
+<!-- Vue Infirmière : Administration des Soins -->
+<li class="{% if request.resolver_match.url_name == 'liste_soins_infirmiers' or request.resolver_match.url_name == 'ajouter_soin' %}active{% endif %}">
+    <a href="{% url 'liste_soins_infirmiers' %}">
+        <i class="fas fa-hand-holding-medical"></i> 
+        <span>Soins Infirmiers</span>
+    </a>
+</li>
 
                
                 {% elif fonction == 'medecin' %}

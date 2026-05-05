@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="fr">
+{% load static %}
+<head>
+    <meta charset="utf-8">
+    <title>Hôpital | Attribution de Lit</title>
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css' %}">
+    <!-- Pour un sélecteur de patient plus élégant -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
+</head>
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="row">
+                    <div class="col-sm-12">
+                        <h4 class="page-title">Hospitalisation : {{ lit.nom_lit }}</h4>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-lg-8 offset-lg-2">
+                        <div class="card shadow-sm">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="card-title mb-0">Attribuer ce lit à un patient</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row mb-4">
+                                    <div class="col-md-6">
+                                        <p><strong>Chambre :</strong> {{ lit.chambre.numero }}</p>
+                                        <p><strong>Type :</strong> {{ lit.chambre.get_type_chambre_display }}</p>
+                                    </div>
+                                    <div class="col-md-6 text-right">
+                                        <p><strong>Prix Journalier :</strong> <span class="text-danger">{{ lit.chambre.prix_journalier|floatformat:0 }} CDF</span></p>
+                                    </div>
+                                </div>
+                                <hr>
+
+                                <form method="POST">
+                                    {% csrf_token %}
+                                    <div class="form-group">
+                                        <label>Sélectionner le Patient <span class="text-danger">*</span></label>
+                                        <select class="form-control select2" name="patient" required>
+                                            <option value="">-- Rechercher un patient --</option>
+                                            {% for patient in patients %}
+                                                <option value="{{ patient.id }}">{{ patient.noms }} ({{ patient.ageP }} ans)</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label>Motif de l'admission / Diagnostic initial</label>
+                                        <textarea class="form-control" name="motif" rows="4" placeholder="Saisir la raison de l'hospitalisation..."></textarea>
+                                    </div>
+
+                                    <div class="m-t-20 text-center">
+                                        <button type="submit" class="btn btn-primary submit-btn">Confirmer l'Hospitalisation</button>
+                                        <a href="{% url 'liste_lits' %}" class="btn btn-secondary submit-btn">Annuler</a>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js' %}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js' %}"></script>
+    <script src="{% static 'back-end/assets/js/jquery.slimscroll.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="{% static 'back-end/assets/js/app.js' %}"></script>
+
+    <script>
+        $(document).ready(function() {
+            // Initialisation de Select2 pour faciliter la recherche de patients dans une longue liste
+            $('.select2').select2({
+                width: '100%',
+                placeholder: "Rechercher un patient..."
+            });
+        });
+    </script>
+</body>
+</html>

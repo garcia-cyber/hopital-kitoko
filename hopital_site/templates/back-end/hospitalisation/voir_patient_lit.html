@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="fr">
+{% load static %}
+<head>
+    <meta charset="utf-8">
+    <title>Hôpital | Détails Hospitalisation</title>
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/plugins/fontawesome/css/all.min.css' %}">
+    <link rel="stylesheet" href="{% static 'back-end/assets/css/style.css' %}">
+</head>
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/include/header.html' %}
+        {% include 'back-end/include/sidebar.html' %}
+
+        <div class="page-wrapper">
+            <div class="content">
+                <div class="row">
+                    <div class="col-sm-12">
+                        <h4 class="page-title">Suivi Hospitalisation : <strong>{{ lit.nom_lit }}</strong></h4>
+                    </div>
+                </div>
+
+                <!-- Section Profil Patient -->
+                <div class="card-box profile-header shadow-sm">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="profile-view">
+                                <div class="profile-basic">
+                                    <div class="row">
+                                        <div class="col-md-5">
+                                            <div class="profile-info-left">
+                                                <h3 class="user-name m-t-0 mb-0">{{ occupation.patient.noms }}</h3>
+                                                <div class="staff-id">Sexe : {{ occupation.patient.sexeP }}</div>
+                                                <div class="staff-id">Age : {{ occupation.patient.ageP }} ans</div>
+                                                <div class="m-t-10">
+                                                    <span class="badge badge-primary">Patient Hospitalisé</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-7">
+                                            <ul class="personal-info">
+                                                <li>
+                                                    <span class="title">Admis le:</span>
+                                                    <span class="text">{{ occupation.date_admission|date:"d/m/Y à H:i" }}</span>
+                                                </li>
+                                                <li>
+                                                    <span class="title">Motif:</span>
+                                                    <span class="text">{{ occupation.motif_admission|default:"Non précisé" }}</span>
+                                                </li>
+                                                <li>
+                                                    <span class="title">Chambre:</span>
+                                                    <span class="text">{{ lit.chambre.numero }} ({{ lit.chambre.get_type_chambre_display }})</span>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <!-- Section Calculs Automatiques -->
+                    <div class="col-md-6">
+                        <div class="card shadow-sm border-info">
+                            <div class="card-header bg-info text-white">
+                                <h5 class="card-title mb-0"><i class="fas fa-calculator"></i> Estimation des Frais</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered">
+                                        <tbody>
+                                            <tr>
+                                                <td>Prix par jour</td>
+                                                <td class="text-right"><strong>{{ lit.chambre.prix_journalier|floatformat:0 }} CDF</strong></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Durée du séjour</td>
+                                                <td class="text-right"><span class="badge badge-warning">{{ occupation.nombre_jours }} jour(s)</span></td>
+                                            </tr>
+                                            <tr class="table-secondary">
+                                                <td><h5 class="mb-0">Total Provisoire</h5></td>
+                                                <td class="text-right text-danger"><h5 class="mb-0"><strong>{{ occupation.total_frais_sejour|floatformat:0 }} CDF</strong></h5></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <p class="small text-muted mt-2">
+                                    <i class="fa fa-info-circle"></i> Le total est calculé automatiquement sur la base du prix de la chambre et du nombre de jours écoulés.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section Actions -->
+                    <div class="col-md-6 text-center d-flex align-items-center justify-content-center">
+                        <div class="btn-group-vertical w-75">
+                            <a href="{% url 'liste_lits' %}" class="btn btn-secondary btn-lg mb-2">
+                                <i class="fa fa-arrow-left"></i> Retour à la liste
+                            </a>
+                            <!-- <button class="btn btn-primary btn-lg mb-2">
+                                <a href="{% url 'ajouter_soin' occupation.id %}" class="btn btn-primary btn-lg mb-2">
+    <i class="fa fa-notes-medical"></i> Ajouter un Soin
+</a>
+                            </button> -->
+                            <button class="btn btn-danger btn-lg">
+                                <i class="fa fa-sign-out-alt"></i> Enregistrer Sortie & Facturer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tes Scripts JS conservés -->
+    <script src="{% static 'back-end/assets/js/jquery-3.6.0.min.js' %}"></script>
+    <script src="{% static 'back-end/assets/js/bootstrap.bundle.min.js' %}"></script>
+    <script src="{% static 'back-end/assets/js/jquery.slimscroll.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="{% static 'back-end/assets/js/app.js' %}"></script>
+</body>
+</html>
