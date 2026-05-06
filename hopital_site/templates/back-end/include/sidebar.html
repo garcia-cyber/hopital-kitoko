@@ -9,7 +9,7 @@
                     <a href="{% url 'panel'%}"><i class="fas fa-chart-line"></i> <span>Tableau de Bord</span></a>
                 </li>
 
-                {% if fonction == 'admin' or fonction == 'sous-admin' %}
+                {% if fonction == 'admin' or fonction == 'sous-admin' or fonction == 'medecin directeur' %}
                 <li class="submenu">
                     <a href="#"><i class="fas fa-user-shield"></i> <span> Personnel </span> <span class="menu-arrow"></span></a>
                     <ul style="display: none;">
@@ -119,26 +119,9 @@
                 <!-- <li>
                     <a href="{% url 'historique_paiements' %}"><i class="fas fa-money-check-alt"></i> <span>Paiements</span></a>
                 </li> -->
-                <li>
-                    <a href="{% url 'tableau_bord_finance' %}"><i class="fas fa-chart-line"></i> <span>Finance</span></a>
-                </li>
-                <li>
-                    <a href="{% url 'gestion_depenses' %}"><i class="fas fa-wallet"></i> <span>Dépenses</span></a>
-                </li>
                 
-                <li class="menu-title">Gestion Hospitalière</li>
-
-                <li>
-                    <a href="{% url 'historique_livraison_pharmacie' %}" class="{% if request.resolver_match.url_name == 'historique_livraison_pharmacie' %}active{% endif %}">
-                        <i class="fas fa-box-open"></i> Historique Livraisons
-                    </a>
-                </li>
-
-                <li>
-                    <a href="{% url 'historique_ventes_client' %}">
-                        <i class="fas fa-file-invoice"></i> <span>Historique Ventes</span>
-                    </a>
-                </li>
+                
+                
 
                 <li>
                     <a href="{% url 'ajouter_chambre' %}"><i class="fas fa-plus-circle"></i> <span>Ajouter Chambre</span></a>
@@ -154,6 +137,27 @@
                 
                 <li>
                     <a href="{% url 'liste_lits' %}"><i class="fas fa-procedures"></i> <span>Liste Lits</span></a>
+                </li>
+                {% elif fonction == 'gestionnaire' %}
+                <li>
+                    <a href="{% url 'tableau_bord_finance' %}"><i class="fas fa-chart-line"></i> <span>Finance</span></a>
+                </li>
+                <li>
+                    <a href="{% url 'gestion_depenses' %}"><i class="fas fa-wallet"></i> <span>Dépenses</span></a>
+                </li>
+
+                <li class="menu-title">Gestion Hospitalière</li>
+
+                <li>
+                    <a href="{% url 'historique_livraison_pharmacie' %}" class="{% if request.resolver_match.url_name == 'historique_livraison_pharmacie' %}active{% endif %}">
+                        <i class="fas fa-box-open"></i> Historique Livraisons
+                    </a>
+                </li>
+
+                <li>
+                    <a href="{% url 'historique_ventes_client' %}">
+                        <i class="fas fa-file-invoice"></i> <span>Historique Ventes</span>
+                    </a>
                 </li>
 
                 {% elif fonction == 'infirmier' %}
@@ -186,7 +190,7 @@
         <span>Soins Infirmiers</span>
     </a>
 </li>
-
+                
                
                 {% elif fonction == 'medecin' %}
                 <li class="submenu">
