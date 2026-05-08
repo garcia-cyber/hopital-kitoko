@@ -110,3 +110,5 @@ def employeRead(request):
         'lst_user'    : lst_user ,
     }
     return render(request , 'back-end/employeRead.html' , context)
+
+# 7 

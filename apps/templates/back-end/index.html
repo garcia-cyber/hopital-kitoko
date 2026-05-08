@@ -1,28 +1,27 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 {% load static %}
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Moyanoli | {{user.username}}</title>
-    <!-- Favicon icon -->
-    <link rel="icon" type="image/png" sizes="16x16" href="images/favicon.png">
-    <!-- Pignose Calender -->
-    <link href="{% static 'back-end/plugins/pg-calendar/css/pignose.calendar.min.css'%}" rel="stylesheet">
-    <!-- Chartist -->
-    <link rel="stylesheet" href="{% static 'back-end/plugins/chartist/css/chartist.min.css'%}">
-    <link rel="stylesheet" href="{% static 'back-end/plugins/chartist-plugin-tooltips/css/chartist-plugin-tooltip.css'%}">
-    <!-- Custom Stylesheet -->
-    <link href="{% static 'back-end/css/style.css'%}" rel="stylesheet">
+    <title>Moyanoli ERP | {{ user.username }}</title>
 
+    <!-- Favicon icon -->
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'back-end/images/favicon.png' %}">
+
+    <!-- Pignose Calender -->
+    <link href="{% static 'back-end/plugins/pg-calendar/css/pignose.calendar.min.css' %}" rel="stylesheet">
+    <!-- Chartist -->
+    <link rel="stylesheet" href="{% static 'back-end/plugins/chartist/css/chartist.min.css' %}">
+    <link rel="stylesheet" href="{% static 'back-end/plugins/chartist-plugin-tooltips/css/chartist-plugin-tooltip.css' %}">
+    <!-- Custom Stylesheet -->
+    <link href="{% static 'back-end/css/style.css' %}" rel="stylesheet">
 </head>
 
 <body>
 
-    <!--*******************
-        Preloader start
-    ********************-->
+    <!-- Preloader start -->
     <div id="preloader">
         <div class="loader">
             <svg class="circular" viewBox="25 25 50 50">
@@ -30,135 +29,106 @@
             </svg>
         </div>
     </div>
-    <!--*******************
-        Preloader end
-    ********************-->
 
-
-    <!--**********************************
-        Main wrapper start
-    ***********************************-->
     <div id="main-wrapper">
 
-        <!--**********************************
-            Nav header start
-        ***********************************-->
+        <!-- Nav header start -->
         <div class="nav-header">
             <div class="brand-logo">
-                <a href="index.html">
-                    <b class="logo-abbr"><img src="images/logo.png" alt=""> </b>
-                    <span class="logo-compact"><img src="./images/logo-compact.png" alt=""></span>
+                <a href="{% url 'dashboard' %}">
+                    <b class="logo-abbr"><img src="{% static 'back-end/images/logo.png' %}" alt="M"> </b>
+                    <span class="logo-compact"><img src="{% static 'back-end/images/logo-compact.png' %}" alt=""></span>
                     <span class="brand-title">
-                        <img src="images/logo-text.png" alt="">
+                        <strong class="text-white">MOYANOLI</strong>
                     </span>
                 </a>
             </div>
         </div>
-        <!--**********************************
-            Nav header end
-        ***********************************-->
 
-        <!--**********************************
-            Header start
-        ***********************************-->
-        {% include 'back-end/query/header.html'%}
-        <!--**********************************
-            Header end ti-comment-alt
-        ***********************************-->
+        <!-- Header start -->
+        {% include 'back-end/query/header.html' %}
 
-        <!--**********************************
-            Sidebar start
-        ***********************************-->
-      {% include 'back-end/query/sidebar.html'%}
-        <!--**********************************
-            Sidebar end
-        ***********************************-->
+        <!-- Sidebar start -->
+        {% include 'back-end/query/sidebar.html' %}
 
-        <!--**********************************
-            Content body start
-        ***********************************-->
+        <!-- Content body start -->
         <div class="content-body">
-
             <div class="container-fluid mt-3">
-                <div class="row">
-                  {% if fonctionKey == 'admin' or fonctionKey == 'sous-admin' %}
-                    <div class="col-lg-3 col-sm-6">
-                        <div class="card gradient-1">
-                            <div class="card-body">
-                              {% if utilisateurs > 1 %}
-                                <h3 class="card-title text-white">Utilisateurs</h3>
-                              {%else%}
-                              <h3 class="card-title text-white">Utilisateur</h3>
-                              {% endif %}
-                                <div class="d-inline-block">
-                                    <h2 class="text-white">{{utilisateurs}}</h2>
 
+                <div class="row">
+                    {% if fonctionKey == 'admin' or fonctionKey == 'sous-admin' %}
+                    <!-- Carte Utilisateurs / Personnel -->
+                    <div class="col-lg-3 col-sm-6">
+                        <div class="card gradient-3">
+                            <div class="card-body">
+                                <h3 class="card-title text-white">Personnel Actif</h3>
+                                <div class="d-inline-block">
+                                    <h2 class="text-white">{{ utilisateurs }}</h2>
+                                    <p class="text-white mb-0">Comptes enregistrés</p>
                                 </div>
-                                <span class="float-right display-5 opacity-5"><i class="fa fa-shopping-cart"></i></span>
+                                <span class="float-right display-5 opacity-5"><i class="fa fa-user-md"></i></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Carte Patients (Exemple d'ajout futur) -->
+                    <div class="col-lg-3 col-sm-6">
+                        <div class="card gradient-4">
+                            <div class="card-body">
+                                <h3 class="card-title text-white">Patients</h3>
+                                <div class="d-inline-block">
+                                    <h2 class="text-white">{{ total_patients|default:"0" }}</h2>
+                                    <p class="text-white mb-0">Dossiers médicaux</p>
+                                </div>
+                                <span class="float-right display-5 opacity-5"><i class="fa fa-wheelchair"></i></span>
                             </div>
                         </div>
                     </div>
                     {% endif %}
-
                 </div>
 
-
+                <!-- Section principale pour les graphiques ou tableaux -->
+                <div class="row">
+                    <div class="col-lg-12">
+                        <div class="card">
+                            <div class="card-body">
+                                <h4 class="card-title">Activité de l'hôpital</h4>
+                                <div id="activity-chart">
+                                    <!-- Tes graphiques Chartist iront ici -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
             </div>
-            <!-- #/ container -->
         </div>
-        <!--**********************************
-            Content body end
-        ***********************************-->
 
-
-        <!--**********************************
-            Footer start
-        ***********************************-->
+        <!-- Footer start -->
         <div class="footer">
             <div class="copyright">
-                <p>Copyright &copy; Designed & Developed by <a href="https://themeforest.net/user/quixlab">Quixlab</a> 2018</p>
+                <p>Copyright &copy; <strong>Moyanoli ERP</strong> 2026 | Système de Gestion Hospitalière</p>
             </div>
         </div>
-        <!--**********************************
-            Footer end
-        ***********************************-->
     </div>
-    <!--**********************************
-        Main wrapper end
-    ***********************************-->
 
-    <!--**********************************
-        Scripts
-    ***********************************-->
-    <script src="{% static 'back-end/plugins/common/common.min.js'%}"></script>
-    <script src="{% static 'back-end/js/custom.min.js'%}"></script>
-    <script src="{% static 'back-end/js/settings.js'%}"></script>
-    <script src="{% static 'back-end/js/gleek.js'%}"></script>
-    <script src="{% static 'back-end/js/styleSwitcher.js'%}"></script>
+    <!-- Scripts -->
+    <script src="{% static 'back-end/plugins/common/common.min.js' %}"></script>
+    <script src="{% static 'back-end/js/custom.min.js' %}"></script>
+    <script src="{% static 'back-end/js/settings.js' %}"></script>
+    <script src="{% static 'back-end/js/gleek.js' %}"></script>
+    <script src="{% static 'back-end/js/styleSwitcher.js' %}"></script>
 
     <!-- Chartjs -->
-    <script src="{% static 'back-end/plugins/chart.js/Chart.bundle.min.js'%}"></script>
-    <!-- Circle progress -->
-    <script src="{% static 'back-end/plugins/circle-progress/circle-progress.min.js'%}"></script>
-    <!-- Datamap -->
-    <script src="{% static 'back-end/plugins/d3v3/index.js'%}"></script>
-    <script src="{% static 'back-end/plugins/topojson/topojson.min.js'%}"></script>
-    <script src="{% static 'back-end/plugins/datamaps/datamaps.world.min.js'%}"></script>
-    <!-- Morrisjs -->
-    <script src="{% static 'back-end/plugins/raphael/raphael.min.js'%}"></script>
-    <script src="{% static 'back-end/plugins/morris/morris.min.js'%}"></script>
+    <script src="{% static 'back-end/plugins/chart.js/Chart.bundle.min.js' %}"></script>
     <!-- Pignose Calender -->
-    <script src="{% static 'back-end/plugins/moment/moment.min.js'%}"></script>
-    <script src="{% static 'back-end/plugins/pg-calendar/js/pignose.calendar.min.js'%}"></script>
+    <script src="{% static 'back-end/plugins/moment/moment.min.js' %}"></script>
+    <script src="{% static 'back-end/plugins/pg-calendar/js/pignose.calendar.min.js' %}"></script>
     <!-- ChartistJS -->
-    <script src="{% static 'back-end/plugins/chartist/js/chartist.min.js'%}"></script>
-    <script src="{% static 'back-end/plugins/chartist-plugin-tooltips/js/chartist-plugin-tooltip.min.js'%}"></script>
+    <script src="{% static 'back-end/plugins/chartist/js/chartist.min.js' %}"></script>
+    <script src="{% static 'back-end/plugins/chartist-plugin-tooltips/js/chartist-plugin-tooltip.min.js' %}"></script>
 
-
-
-    <script src="{% static 'back-end/js/dashboard/dashboard-1.js'%}"></script>
+    <script src="{% static 'back-end/js/dashboard/dashboard-1.js' %}"></script>
 
 </body>
-
 </html>
