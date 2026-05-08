@@ -13,8 +13,10 @@ urlpatterns =[
      path('dashboard/', dashboard , name="dashboard") ,
 
 
-     # enregistrement des employes
+     # employe CRUD
      #
      path('employeAdd/', employeAdd , name = 'employeAdd'),
+     path('employeRead/', employeRead , name = 'employeRead') ,
      
+
  ]

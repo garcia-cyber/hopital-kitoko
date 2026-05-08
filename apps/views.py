@@ -104,5 +104,9 @@ def employeRead(request):
     fonctionKey = role.fonctionKey.roleName if role else None
 
     # listes des utilisateurs
-    
-    return render(request , 'back-end/employeRead.html')
+    lst_user = User.objects.all()
+    context = {
+        'fonctionKey' : fonctionKey ,
+        'lst_user'    : lst_user ,
+    }
+    return render(request , 'back-end/employeRead.html' , context)
