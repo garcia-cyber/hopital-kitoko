@@ -2,11 +2,17 @@ import os
 from pathlib import Path
 
 # --- CHEMINS ---
+# BASE_DIR pointe vers la racine de ton projet (là où se trouve manage.py)
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # --- SÉCURITÉ ---
+# Sur Render, ajoute une variable d'environnement SECRET_KEY
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-dev-temporary-key')
+
+# DEBUG est False sur Render pour la sécurité
 DEBUG = os.environ.get('DEBUG', 'True').lower() == 'true'
+
+# Autorise ton site Render et le local
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '.onrender.com']
 
 # --- APPLICATIONS ---
@@ -17,13 +23,13 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'apps',
+    'apps',  # Ton application Medical-Moyanoli
 ]
 
 # --- MIDDLEWARE ---
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Pour gérer les fichiers statiques sur Render
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -34,6 +40,7 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'conf.urls'
 
+# --- TEMPLATES ---
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -52,18 +59,12 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'conf.wsgi.application'
 
-# --- BASE DE DONNÉES (Version dossier Local 'data') ---
-# On crée le chemin vers le dossier data à la racine
-DATA_DIR = BASE_DIR / 'data'
-
-# On s'assure que le dossier existe (pour éviter l'erreur "unable to open database")
-if not os.path.exists(DATA_DIR):
-    os.makedirs(DATA_DIR)
-
+# --- BASE DE DONNÉES (À LA RACINE) ---
+# Le fichier db.sqlite3 sera créé directement à côté de manage.py
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': DATA_DIR / 'db.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 
@@ -81,17 +82,17 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# --- FICHIERS STATIQUES ---
+# --- FICHIERS STATIQUES (CSS, JS) ---
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
+# Whitenoise pour la compression en production
 if not DEBUG:
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# --- FICHIERS MÉDIAS ---
-# On les met aussi dans le dossier data pour tout regrouper
-MEDIA_ROOT = DATA_DIR / 'media'
+# --- FICHIERS MÉDIAS (Photos, Uploads) ---
+MEDIA_ROOT = BASE_DIR / 'media'
 MEDIA_URL = '/media/'
 
 # --- AUTHENTIFICATION ---
@@ -99,7 +100,7 @@ LOGIN_REDIRECT_URL = '/dashboard/'
 LOGIN_URL = '/login/'
 LOGOUT_REDIRECT_URL = '/home/'
 
-# --- SÉCURITÉ SUPPLÉMENTAIRE ---
+# --- SÉCURITÉ PROD ---
 if not DEBUG:
     CSRF_COOKIE_SECURE = True
     SESSION_COOKIE_SECURE = True
