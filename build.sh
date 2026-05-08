@@ -5,8 +5,12 @@ set -o errexit
 # Installer les dépendances
 pip install -r requirements.txt
 
-# Collecter les fichiers statiques (CSS, images)
+# --- AJOUTE CETTE LIGNE ICI ---
+# Créer le dossier pour la base de données s'il n'existe pas
+mkdir -p data
+
+# Collecter les fichiers statiques
 python manage.py collectstatic --no-input
 
-# Appliquer les migrations sur le disque persistant
+# Appliquer les migrations
 python manage.py migrate

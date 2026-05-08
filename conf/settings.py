@@ -5,13 +5,8 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # --- SÉCURITÉ ---
-# Sur Render, génère une clé complexe et mets-la dans les variables d'environnement
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-dev-temporary-key')
-
-# DEBUG est True en local, mais doit être False sur Render (via la variable d'env DEBUG=False)
 DEBUG = os.environ.get('DEBUG', 'True').lower() == 'true'
-
-# Autorise localhost et ton domaine Render
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '.onrender.com']
 
 # --- APPLICATIONS ---
@@ -22,13 +17,13 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'apps',  # Ton application principale
+    'apps',
 ]
 
 # --- MIDDLEWARE ---
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # Indispensable pour les fichiers statiques
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -39,7 +34,6 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'conf.urls'
 
-# --- TEMPLATES ---
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -58,15 +52,18 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'conf.wsgi.application'
 
-# --- BASE DE DONNÉES (SQLite Persistant) ---
-# En local : utilise db.sqlite3 à la racine
-# Sur Render : utilise le chemin vers le Persistent Disk (ex: /var/data/db.sqlite3)
-DATABASE_PATH = os.environ.get('DATABASE_PATH', BASE_DIR / 'db.sqlite3')
+# --- BASE DE DONNÉES (Version dossier Local 'data') ---
+# On crée le chemin vers le dossier data à la racine
+DATA_DIR = BASE_DIR / 'data'
+
+# On s'assure que le dossier existe (pour éviter l'erreur "unable to open database")
+if not os.path.exists(DATA_DIR):
+    os.makedirs(DATA_DIR)
 
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': DATABASE_PATH,
+        'NAME': DATA_DIR / 'db.sqlite3',
     }
 }
 
@@ -79,27 +76,22 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 # --- INTERNATIONALISATION ---
-LANGUAGE_CODE = 'fr-fr' # Mis en français
+LANGUAGE_CODE = 'fr-fr'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# --- FICHIERS STATIQUES (CSS, JS, Images) ---
+# --- FICHIERS STATIQUES ---
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# WhiteNoise : compression et mise en cache longue durée en production
 if not DEBUG:
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# --- FICHIERS MÉDIAS (Uploads) ---
-# On utilise aussi le Persistent Disk pour les médias sur Render
-if not DEBUG:
-    MEDIA_ROOT = os.path.join('/var/data', 'media')
-else:
-    MEDIA_ROOT = BASE_DIR / 'media'
-
+# --- FICHIERS MÉDIAS ---
+# On les met aussi dans le dossier data pour tout regrouper
+MEDIA_ROOT = DATA_DIR / 'media'
 MEDIA_URL = '/media/'
 
 # --- AUTHENTIFICATION ---
@@ -107,13 +99,13 @@ LOGIN_REDIRECT_URL = '/dashboard/'
 LOGIN_URL = '/login/'
 LOGOUT_REDIRECT_URL = '/home/'
 
-# --- SÉCURITÉ SUPPLÉMENTAIRE POUR LA PROD ---
+# --- SÉCURITÉ SUPPLÉMENTAIRE ---
 if not DEBUG:
     CSRF_COOKIE_SECURE = True
     SESSION_COOKIE_SECURE = True
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
-    SECURE_SSL_REDIRECT = True # Redirige HTTP vers HTTPS
+    SECURE_SSL_REDIRECT = True
     X_FRAME_OPTIONS = 'DENY'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
