@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="fr">
+{% load static %}
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Moyanoli | Attribution de Rôle</title>
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'back-end/images/favicon.png' %}">
+    <link href="{% static 'back-end/css/style.css' %}" rel="stylesheet">
+</head>
+
+<body>
+    <div id="preloader"><div class="loader"><svg class="circular" viewBox="25 25 50 50"><circle class="path" cx="50" cy="50" r="20" fill="none" stroke-width="3" stroke-miterlimit="10" /></svg></div></div>
+
+    <div id="main-wrapper">
+        <!-- Nav header -->
+        <div class="nav-header">
+            <div class="brand-logo">
+                <a href="#">
+                    <span class="brand-title" style="color: white; font-weight: bold;">MOYANOLI</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- On inclut tes menus comme sur tes autres pages -->
+        {% include 'back-end/query/header.html' %}
+        {% include 'back-end/query/sidebar.html' %}
+
+        <div class="content-body">
+            <div class="row page-titles mx-0">
+                <div class="col p-md-0">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="javascript:void(0)">Personnel</a></li>
+                        <li class="breadcrumb-item active">Attribution de rôle</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="container-fluid">
+                <div class="row justify-content-center">
+                    <div class="col-lg-8">
+                        <div class="card shadow">
+                            <div class="card-body">
+                                <!-- LE CODE QUE TU AS DEMANDÉ EST ICI -->
+                                <div class="card-hospital-header mb-4" style="border-left: 4px solid #007bff; padding-left: 15px;">
+                                    <h4 class="card-title mb-0" style="color: #007bff;">
+                                        <i class="fa fa-user-shield mr-2"></i> Attribution de rôle
+                                    </h4>
+                                    <small class="text-muted">Configuration des accès pour l'employé : <strong>{{ employe.username }}</strong></small>
+                                </div>
+
+                                <form method="post" class="mt-4">
+                                    {% csrf_token %}
+                                    
+                                    <div class="form-group">
+                                        {{ form.as_p }} <!-- Respect de la sécurité Django -->
+                                    </div>
+
+                                    <hr>
+                                    <div class="d-flex justify-content-between">
+                                        <a href="{% url 'employeRead' %}" class="btn btn-light">Annuler</a>
+                                        <button type="submit" class="btn btn-primary px-5 shadow">
+                                            <i class="fa fa-save mr-2"></i> Confirmer l'accès
+                                        </button>
+                                    </div>
+                                </form>
+                                <!-- FIN DU CODE -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <div class="copyright">
+                <p>Copyright &copy; Moyanoli 2026</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="{% static 'back-end/plugins/common/common.min.js' %}"></script>
+    <script src="{% static 'back-end/js/custom.min.js' %}"></script>
+    <script src="{% static 'back-end/js/settings.js' %}"></script>
+    <script src="{% static 'back-end/js/gleek.js' %}"></script>
+    <script src="{% static 'back-end/js/styleSwitcher.js' %}"></script>
+</body>
+</html>

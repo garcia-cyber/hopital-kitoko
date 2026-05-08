@@ -1,4 +1,4 @@
-from django.shortcuts import render , redirect
+from django.shortcuts import render , redirect , get_object_or_404
 from .forms import *
 from .models import *
 from django.contrib.auth import authenticate , login as auth , logout ,update_session_auth_hash
@@ -112,3 +112,64 @@ def employeRead(request):
     return render(request , 'back-end/employeRead.html' , context)
 
 # 7 
+# ============================================================================
+# ATTRIBUE POSTE OU ROLE
+# ============================================================================
+@login_required
+def attribuer_fonction(request, user_id):
+    employe = get_object_or_404(User, id=user_id)
+    msg = None
+
+    if request.method == 'POST':
+        form = FonctionForm(request.POST)
+        if form.is_valid():
+            fonction_instance = form.save(commit=False) # Changé le nom pour éviter les confusions
+            fonction_instance.userKey = employe 
+            fonction_instance.save()
+            return redirect('employeRead') 
+    else:
+        form = FonctionForm()
+
+    # Vérification de la fonction de l'utilisateur connecté
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role else None
+
+    context = {
+        'form': form,
+        'employe': employe,
+        'msg': msg, 
+        'fonctionKey': fonctionKey # On passe la clé de fonction pour ton sidebar/droits
+    }
+    # J'ai retiré 'fonction': fonction qui causait l'erreur
+    return render(request, 'back-end/employePoste.html', context)
+# 8
+# =================================================================================
+#
+# =================================================================================
+@login_required
+def liste_employe_poste(request):
+    # Pour ton menu (récupère le rôle de l'utilisateur connecté)
+    role_user = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role_user.fonctionKey.roleName if role_user else None
+
+    # On récupère la liste de tous les employés ayant une fonction
+    # select_related permet d'éviter les requêtes répétitives en base de données
+    liste_postes = Fonction.objects.all().select_related('userKey', 'fonctionKey')
+
+    context = {
+        'liste_postes': liste_postes,
+        'fonctionKey': fonctionKey,
+    }
+    return render(request, 'back-end/liste_fonctions.html', context)
+
+
+# 9
+# =================================================================================
+# SUPPRIMER POSTE
+# =================================================================================
+@login_required
+def supprimer_poste(request, fonction_id):
+    # Supprime l'attribution du poste
+    poste = get_object_or_404(Fonction, id=fonction_id)
+    poste.delete()
+    return redirect('liste_employe_poste')

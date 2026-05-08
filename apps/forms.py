@@ -65,3 +65,17 @@ class EmployeForm(forms.ModelForm):
         if commit:
             user.save()
         return user
+
+
+# formulaire pour attribue role 
+class FonctionForm(forms.ModelForm):
+    class Meta:
+        model = Fonction
+        fields = ['fonctionKey']
+        labels = {
+            'fonctionKey': 'Rôle / Poste',
+                    }
+        widgets = {
+            'fonctionKey': forms.Select(attrs={'class': 'form-control'}),
+            
+        }
