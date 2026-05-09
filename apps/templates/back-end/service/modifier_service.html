@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="fr">
+{% load static %}
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Moyanoli | Modifier Service</title>
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'back-end/images/favicon.png' %}">
+    <link href="{% static 'back-end/css/style.css' %}" rel="stylesheet">
+
+    <style>
+        .card-title-hospital { font-weight: 700; color: #333; border-left: 4px solid #ffc107; padding-left: 15px; }
+        .form-group label { font-weight: 600; color: #555; }
+    </style>
+</head>
+
+<body>
+    <div id="preloader"><div class="loader"><svg class="circular" viewBox="25 25 50 50"><circle class="path" cx="50" cy="50" r="20" fill="none" stroke-width="3" stroke-miterlimit="10" /></svg></div></div>
+
+    <div id="main-wrapper">
+        <div class="nav-header">
+            <div class="brand-logo">
+                <a href="{% url 'dashboard' %}">
+                    <b class="logo-abbr"><img src="{% static 'back-end/images/logo.png' %}" alt=""> </b>
+                    <span class="brand-title" style="color: white; font-weight: bold; font-size: 1.2rem;">MOYANOLI</span>
+                </a>
+            </div>
+        </div>
+
+        {% include 'back-end/query/header.html' %}
+        {% include 'back-end/query/sidebar.html' %}
+
+        <div class="content-body">
+            <div class="row page-titles mx-0">
+                <div class="col p-md-0">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                        <li class="breadcrumb-item"><a href="{% url 'gestion_services' %}">Services</a></li>
+                        <li class="breadcrumb-item active">Modification</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="container-fluid">
+                <div class="row justify-content-center">
+                    <div class="col-lg-6">
+                        <div class="card shadow-sm">
+                            <div class="card-body">
+                                <h4 class="card-title-hospital mb-4">Modifier le Département</h4>
+                                
+                                <form method="POST">
+                                    {% csrf_token %}
+                                    
+                                    <div class="alert alert-info">
+                                        <i class="fa fa-info-circle mr-2"></i> 
+                                        Vous modifiez actuellement le service : <strong>{{ service.nom }}</strong>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label>Nouveau nom du service</label>
+                                        {{ form.nom }}
+                                    </div>
+
+                                    <div class="mt-4 d-flex justify-content-between">
+                                        <a href="{% url 'gestion_services' %}" class="btn btn-light shadow-sm">
+                                            <i class="fa fa-arrow-left mr-1"></i> Retour
+                                        </a>
+                                        <button type="submit" class="btn btn-warning text-white shadow-sm">
+                                            <i class="fa fa-refresh mr-1"></i> Mettre à jour
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <div class="copyright">
+                <p>Copyright &copy; <strong>Moyanoli ERP</strong> 2026</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/plugins/common/common.min.js' %}"></script>
+    <script src="{% static 'back-end/js/custom.min.js' %}"></script>
+    <script src="{% static 'back-end/js/settings.js' %}"></script>
+    <script src="{% static 'back-end/js/gleek.js' %}"></script>
+    <script src="{% static 'back-end/js/styleSwitcher.js' %}"></script>
+</body>
+</html>

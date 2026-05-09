@@ -75,3 +75,49 @@ class PrestationAdmin(admin.ModelAdmin):
     def get_categorie_display(self, obj):
         return obj.get_categorie_display()
     get_categorie_display.short_description = 'Catégorie'
+
+@admin.register(Service)
+class ServiceAdmin(admin.ModelAdmin):
+    # Affichage en colonnes dans la liste
+    list_display = ('id', 'nom', 'date_creation')
+    # Permet de chercher un service par son nom
+    search_fields = ('nom',)
+    # Tri par défaut (le plus récent en premier)
+    ordering = ('-date_creation',)
+
+@admin.register(Patient)
+class PatientAdmin(admin.ModelAdmin):
+    # Configuration de la liste des patients
+    list_display = ('code_patient', 'noms', 'sexe', 'age', 'service', 'created_by', 'date_creation')
+    
+    # Filtres sur le côté droit pour trier rapidement
+    list_filter = ('service', 'sexe', 'date_creation', 'created_by')
+    
+    # Barre de recherche (recherche par nom ou par code matricule)
+    search_fields = ('noms', 'code_patient', 'telephone')
+    
+    # Champs en lecture seule (le code est généré auto, donc on ne doit pas le toucher)
+    readonly_fields = ('code_patient', 'date_creation', 'date_modification', 'created_by')
+
+    # Organisation des champs dans le formulaire d'édition
+    fieldsets = (
+        ('Identité du Patient', {
+            'fields': ('code_patient', 'noms', 'sexe', 'age', 'telephone', 'adresse')
+        }),
+        ('Orientation Médicale', {
+            'fields': ('service',)
+        }),
+        ('Traçabilité', {
+            'fields': ('created_by', 'date_creation', 'date_modification'),
+            'classes': ('collapse',), # Cache cette section par défaut
+        }),
+    )
+
+    def save_model(self, request, obj, form, change):
+        """
+        Si on crée le patient via l'admin, on enregistre automatiquement 
+        l'administrateur connecté comme créateur.
+        """
+        if not obj.pk: # Si c'est une création (pas de clé primaire encore)
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)

@@ -28,12 +28,17 @@
                 </ul>
             </li>
 
-            <!-- Nouvelle section Configuration -->
+            <!-- Section Configuration mise à jour -->
             <li>
                 <a class="has-arrow" href="javascript:void()" aria-expanded="false">
                     <i class="fa fa-gears menu-icon"></i><span class="nav-text">Configuration</span>
                 </a>
                 <ul aria-expanded="false">
+                    <li>
+                        <a href="{% url 'gestion_services' %}">
+                            <i class="fa fa-building-o mr-2"></i>Services
+                        </a>
+                    </li>
                     <li>
                         <a href="{% url 'gestion_prestations' %}">
                             <i class="fa fa-list-alt mr-2"></i>Prestations

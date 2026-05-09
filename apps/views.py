@@ -315,3 +315,60 @@ def modifier_prestation(request, pk):
             messages.error(request, f"Modification échouée : {error_msg}")
     
     return redirect('gestion_prestations')
+
+# 15
+# ==================================================================================================
+#  ENREGISTREMENT DES SERVICES
+# ==================================================================================================
+@login_required
+def gestion_services(request):
+    """Affiche la liste et gère l'ajout de nouveaux services"""
+    services = Service.objects.all().order_by('-date_creation')
+    
+    if request.method == 'POST':
+        form = ServiceForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Service '{form.cleaned_data['nom']}' ajouté avec succès.")
+            return redirect('gestion_services')
+    else:
+        form = ServiceForm()
+
+    # verification de la fonction
+    role = Fonction.objects.filter(userKey = request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role else None
+
+    return render(request, 'back-end/service/gestion_services.html', {
+        'services': services,
+        'form': form ,
+        'fonctionKey': fonctionKey
+    })
+
+# 16
+# ==================================================================================================
+#  MODIFICATION DES SERVICES
+# ==================================================================================================
+
+@login_required
+def modifier_service(request, pk):
+    """Modifie un service existant"""
+    service = get_object_or_404(Service, pk=pk)
+    
+    if request.method == 'POST':
+        form = ServiceForm(request.POST, instance=service)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Service mis à jour avec succès.")
+            return redirect('gestion_services')
+    else:
+        form = ServiceForm(instance=service)
+    
+    # verification de la fonction
+    role = Fonction.objects.filter(userKey = request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role else None
+
+    return render(request, 'back-end/service/modifier_service.html', {
+        'form': form,
+        'service': service ,
+        'fonctionKey' : fonctionKey
+    })

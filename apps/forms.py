@@ -127,3 +127,63 @@ class ConfigurationHopitalForm(forms.ModelForm):
         if taux <= 0:
             raise forms.ValidationError("Le taux de change doit être supérieur à zéro.")
         return taux
+
+
+
+class ServiceForm(forms.ModelForm):
+    class Meta:
+        model = Service
+        fields = ['nom']
+        widgets = {
+            'nom': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Ex: Gynécologie, Radiographie...'
+            }),
+        }
+
+    def clean_nom(self):
+        nom = self.cleaned_data.get('nom')
+        # On vérifie si un service avec ce nom existe déjà (en ignorant la casse si tu veux)
+        if Service.objects.filter(nom__iexact=nom).exists():
+            raise forms.ValidationError("Ce service existe déjà dans le système.")
+        return nom
+
+# ====================================================
+#
+
+class PatientForm(forms.ModelForm):
+    class Meta:
+        model = Patient
+        # On exclut code_patient et created_by car ils sont gérés automatiquement
+        fields = ['noms', 'sexe', 'age', 'adresse', 'telephone', 'service']
+        
+        widgets = {
+            'noms': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Nom, Post-nom et Prénom'
+            }),
+            'sexe': forms.Select(attrs={
+                'class': 'form-control custom-select'
+            }),
+            'age': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Ex: 25 ans ou 6 mois'
+            }),
+            'telephone': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Ex: +243...'
+            }),
+            'adresse': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Adresse complète du patient'
+            }),
+            'service': forms.Select(attrs={
+                'class': 'form-control custom-select'
+            }),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super(PatientForm, self).__init__(*args, **kwargs)
+        # On peut personnaliser le libellé vide du menu déroulant des services
+        self.fields['service'].empty_label = "Choisir le service d'orientation"
