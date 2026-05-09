@@ -233,6 +233,67 @@ def modifier_utilisateur(request, user_id):
         'form': form,
         'u': u ,
         'fonctionKey': fonctionKey
-    })
+    }) 
 
+# 12
+# ==================================================================================================
+# PRESTATION ET LISTE DES PRESTATIONS 
+# ==================================================================================================
+@login_required
+def gestion_prestations(request):
+    # CORRECTION : Utilisation de order_by au lieu de order_name
+    prestations = Prestation.objects.all().order_by('libelle')
+    
+    # Récupération de la configuration du taux
+    config = ConfigurationHopital.objects.first()
+    taux = config.taux_usd_en_cdf if config else 2500.00  # Valeur par défaut plus réaliste
+    
+    if request.method == 'POST':
+        form = PrestationForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "La prestation a été ajoutée avec succès.")
+            return redirect('gestion_prestations')
+        else:
+            # Affiche l'erreur spécifique du formulaire (ex: le doublon)
+            messages.error(request, "Erreur : " + form.errors.as_text())
+    else:
+        form = PrestationForm()
+
+    # Vérification du rôle pour la sidebar (Moyanoli Médicale)
+    role = Fonction.objects.filter(userKey=request.user).first()
+    # On récupère le roleName pour alimenter fonctionKey dans le template
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    context = {
+        'prestations': prestations,
+        'form': form,
+        'taux': taux,
+        'fonctionKey': fonctionKey
+    }
+    return render(request, 'back-end/prestation/list_prestation.html', context)
+
+# 13
+# ==================================================================================================
+#  VUE CONFIGURATION TAUX (Modification unique) ---
+# ==================================================================================================
+@login_required
+def modifier_taux(request):
+    # On récupère le premier (et unique) objet, ou on en crée un s'il n'existe pas
+    config, created = ConfigurationHopital.objects.get_or_create(id=1)
+    
+    if request.method == 'POST':
+        form = ConfigurationHopitalForm(request.POST, instance=config)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Le taux de change a été mis à jour : 1 USD = {config.taux_usd_en_cdf} CDF")
+            return redirect('modifier_taux')
+    else:
+        form = ConfigurationHopitalForm(instance=config)
+
+    # verification de la fonction
+    role = Fonction.objects.filter(userKey = request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role else None
+
+    return render(request, 'back-end/prestation/config_taux.html', {'form': form, 'config': config ,'fonctionKey':fonctionKey})
 

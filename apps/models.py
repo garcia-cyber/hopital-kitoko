@@ -32,3 +32,37 @@ class Fonction(models.Model):
 
     def __str__(self):
         return self.autorisation 
+
+# 4 prestations
+
+class Prestation(models.Model):
+    CATEGORIES = [
+        ('ADM', 'Administratif'), 
+        # ('CONS', 'Consultation'),
+        ('LABO', 'Laboratoire'), 
+        ('SOIN', 'Soins'), 
+        ('ECHO', 'Échographie'), 
+        ('RADIO', 'Radiologie'), 
+    ]
+    
+    libelle = models.CharField(max_length=200, verbose_name="Libellé")
+    categorie = models.CharField(
+        max_length=10, 
+        choices=CATEGORIES, 
+        verbose_name="Catégorie"
+    )
+    
+    # Prix par défaut en Dollars (USD)
+    prix = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        default=0.00,
+        verbose_name="Prix (USD)"
+    )
+
+    def __str__(self):
+        return f"{self.libelle} - {self.prix} USD"
+
+    class Meta:
+        verbose_name = "Prestation"
+        verbose_name_plural = "Prestations"

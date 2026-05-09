@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="fr">
+{% load static %}
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Moyanoli | Gestion des Prestations</title>
+    <!-- Favicon icon -->
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'back-end/images/favicon.png' %}">
+    
+    <!-- Custom Stylesheet -->
+    <link href="{% static 'back-end/plugins/tables/css/datatable/dataTables.bootstrap4.min.css' %}" rel="stylesheet">
+    <link href="{% static 'back-end/css/style.css' %}" rel="stylesheet">
+
+    <style>
+        .card-title-hospital {
+            font-weight: 700;
+            color: #333;
+            border-left: 4px solid #007bff;
+            padding-left: 15px;
+        }
+        .table-hospital thead th {
+            background-color: #f8f9fa;
+            color: #007bff;
+            text-transform: uppercase;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+        .badge-prix-cdf {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            font-weight: 600;
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="preloader">
+        <div class="loader">
+            <svg class="circular" viewBox="25 25 50 50">
+                <circle class="path" cx="50" cy="50" r="20" fill="none" stroke-width="3" stroke-miterlimit="10" />
+            </svg>
+        </div>
+    </div>
+
+    <div id="main-wrapper">
+        <div class="nav-header">
+            <div class="brand-logo">
+                <a href="{% url 'dashboard' %}">
+                    <b class="logo-abbr"><img src="{% static 'back-end/images/logo.png' %}" alt=""> </b>
+                    <span class="brand-title" style="color: white; font-weight: bold; font-size: 1.2rem;">MOYANOLI</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Tes includes habituels -->
+        {% include 'back-end/query/header.html' %}
+        {% include 'back-end/query/sidebar.html' %}
+
+        <div class="content-body">
+            <div class="row page-titles mx-0">
+                <div class="col p-md-0">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                        <li class="breadcrumb-item active">Prestations</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="container-fluid">
+                <div class="row">
+                    <!-- Formulaire d'Ajout -->
+                    <div class="col-lg-4">
+                        <div class="card shadow-sm">
+                            <div class="card-body">
+                                <h4 class="card-title-hospital mb-4">Nouvel Acte</h4>
+                                <form method="POST">
+                                    {% csrf_token %}
+                                    <div class="form-group">
+                                        <label>Libellé de l'examen/service</label>
+                                        {{ form.libelle }}
+                                        {% if form.libelle.errors %}
+                                            <small class="text-danger">{{ form.libelle.errors.0 }}</small>
+                                        {% endif %}
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Catégorie</label>
+                                        {{ form.categorie }}
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Prix (USD)</label>
+                                        {{ form.prix }}
+                                        <small class="form-text text-muted mt-2">
+                                            Equivalent : <span id="label-cdf" class="font-weight-bold text-success">0</span> CDF
+                                        </small>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary btn-block shadow-sm">
+                                        <i class="fa fa-save mr-1"></i> Enregistrer
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Liste des Prestations -->
+                    <div class="col-lg-8">
+                        <div class="card shadow-sm">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center mb-4">
+                                    <h4 class="card-title-hospital mb-0">Catalogue des Prestations</h4>
+                                    <span class="badge badge-outline-primary">Taux : 1$ = {{ taux }} CDF</span>
+                                </div>
+                                
+                                <div class="table-responsive">
+                                    <table class="table table-hover table-hospital zero-configuration">
+                                        <thead>
+                                            <tr>
+                                                <th>Catégorie</th>
+                                                <th>Libellé</th>
+                                                <th class="text-right">Prix (USD)</th>
+                                                <th class="text-right">Prix (CDF)</th>
+                                                <th class="text-center">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for p in prestations %}
+                                            <tr>
+                                                <td class="align-middle">
+                                                    <span class="badge badge-light px-3">{{ p.get_categorie_display }}</span>
+                                                </td>
+                                                <td class="align-middle"><strong>{{ p.libelle }}</strong></td>
+                                                <td class="text-right align-middle text-primary font-weight-bold">{{ p.prix }} $</td>
+                                                <td class="text-right align-middle">
+                                                    <span class="badge-prix-cdf">{% widthratio p.prix 1 taux %} CDF</span>
+                                                </td>
+                                                <td class="text-center align-middle">
+                                                    <a href="#" class="btn btn-sm btn-info shadow-sm" title="Modifier">
+                                                        <i class="fa fa-pencil"></i>
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <div class="copyright">
+                <p>Copyright &copy; <strong>Moyanoli ERP</strong> 2026</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="{% static 'back-end/plugins/common/common.min.js' %}"></script>
+    <script src="{% static 'back-end/js/custom.min.js' %}"></script>
+    <script src="{% static 'back-end/js/settings.js' %}"></script>
+    <script src="{% static 'back-end/js/gleek.js' %}"></script>
+    <script src="{% static 'back-end/js/styleSwitcher.js' %}"></script>
+
+    <script src="{% static 'back-end/plugins/tables/js/jquery.dataTables.min.js' %}"></script>
+    <script src="{% static 'back-end/plugins/tables/js/datatable/dataTables.bootstrap4.min.js' %}"></script>
+    <script src="{% static 'back-end/plugins/tables/js/datatable-init/datatable-basic.min.js' %}"></script>
+
+    <script>
+        // Calcul du taux en temps réel dans le formulaire
+        document.querySelector('input[name="prix"]').addEventListener('input', function() {
+            const taux = parseFloat("{{ taux }}".replace(',', '.'));
+            const cdf = (parseFloat(this.value) || 0) * taux;
+            document.getElementById('label-cdf').innerText = cdf.toLocaleString();
+        });
+    </script>
+</body>
+</html>

@@ -90,3 +90,40 @@ class ModifierUserForm(forms.ModelForm):
         # On ajoute les classes Bootstrap pour garder ton beau design
         for field in self.fields:
             self.fields[field].widget.attrs.update({'class': 'form-control'})
+
+class PrestationForm(forms.ModelForm):
+    class Meta:
+        model = Prestation
+        fields = ['libelle', 'categorie', 'prix']
+        widgets = {
+            'libelle': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Goutte Épaisse'}),
+            'categorie': forms.Select(attrs={'class': 'form-control'}),
+            'prix': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+        }
+
+    def clean_libelle(self):
+        """ Vérifie si une prestation avec ce libellé existe déjà (insensible à la casse) """
+        libelle = self.cleaned_data.get('libelle')
+        # On vérifie si un objet existe avec le même nom (en ignorant les majuscules/minuscules)
+        # .exclude(pk=self.instance.pk) permet d'ignorer l'objet actuel si on est en train de le modifier
+        if Prestation.objects.filter(libelle__iexact=libelle).exclude(pk=self.instance.pk).exists():
+            raise forms.ValidationError("Cette prestation existe déjà dans votre catalogue.")
+        return libelle
+
+
+class ConfigurationHopitalForm(forms.ModelForm):
+    class Meta:
+        model = ConfigurationHopital
+        fields = ['taux_usd_en_cdf']
+        widgets = {
+            'taux_usd_en_cdf': forms.NumberInput(attrs={
+                'class': 'form-control', 
+                'placeholder': 'Ex: 2850.00'
+            }),
+        }
+
+    def clean_taux_usd_en_cdf(self):
+        taux = self.cleaned_data.get('taux_usd_en_cdf')
+        if taux <= 0:
+            raise forms.ValidationError("Le taux de change doit être supérieur à zéro.")
+        return taux
