@@ -4,7 +4,8 @@ from .models import *
 from django.contrib.auth import authenticate , login as auth , logout ,update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
-
+from django.contrib.auth.forms import SetPasswordForm
+from django.contrib import messages
 # Create your views here.
 
 # 1
@@ -173,3 +174,10 @@ def supprimer_poste(request, fonction_id):
     poste = get_object_or_404(Fonction, id=fonction_id)
     poste.delete()
     return redirect('liste_employe_poste')
+
+# 10
+# =================================================================================
+# SUPPRESSION MOT DE PASSE 
+# =================================================================================
+
+
