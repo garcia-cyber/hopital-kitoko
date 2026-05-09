@@ -4,9 +4,10 @@ from .models import *
 from django.contrib.auth import authenticate , login as auth , logout ,update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
-from django.contrib.auth.forms import SetPasswordForm
+from django.contrib.auth.forms import SetPasswordForm ,UserChangeForm
 from django.contrib import messages
 # Create your views here.
+
 
 # 1
 # ======================================================================================
@@ -177,7 +178,61 @@ def supprimer_poste(request, fonction_id):
 
 # 10
 # =================================================================================
-# SUPPRESSION MOT DE PASSE 
+# CHANGEMENT DU MOT DE PASSE SANS CONNAITRE LE MOT DE PASSE  
 # =================================================================================
+@login_required
+def force_reinitialiser_pass(request, user_id):
+    # On récupère l'utilisateur cible (soit soi-même, soit un employé par un admin)
+    u = get_object_or_404(User, id=user_id)
+    
+    if request.method == 'POST':
+        # On passe l'utilisateur au formulaire
+        form = SetPasswordForm(user=u, data=request.POST)
+        if form.is_valid():
+            user = form.save()
+            # Important : évite de déconnecter l'utilisateur si c'est son propre compte
+            update_session_auth_hash(request, user)
+            messages.success(request, f"Le mot de passe de {u.username} a été mis à jour.")
+            return redirect('employeRead')
+    else:
+        form = SetPasswordForm(user=u)
+
+    # verification de la fonction
+    role = Fonction.objects.filter(userKey = request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role else None
+
+    return render(request, 'back-end/reinitialiser_pass.html', {
+        'form': form,
+        'u': u ,
+        'fonctionKey' : fonctionKey
+    })
+# 11
+# ==================================================================================================
+# MODIFICATION USER 
+# ==================================================================================================
+@login_required
+def modifier_utilisateur(request, user_id):
+    u = get_object_or_404(User, id=user_id)
+    
+    if request.method == 'POST':
+        # On lie le formulaire à l'utilisateur existant (instance=u)
+        form = ModifierUserForm(request.POST, instance=u)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Profil mis à jour avec succès !")
+            return redirect('employeRead')
+    else:
+        # Affiche le formulaire pré-rempli avec username et email uniquement
+        form = ModifierUserForm(instance=u)
+
+    # verification de la fonction
+    role = Fonction.objects.filter(userKey = request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role else None
+
+    return render(request, 'back-end/modifier_user.html', {
+        'form': form,
+        'u': u ,
+        'fonctionKey': fonctionKey
+    })
 
 

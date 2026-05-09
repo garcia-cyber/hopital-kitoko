@@ -46,10 +46,26 @@
             border: none;
             transition: all 0.2s;
         }
-        .btn-view:hover {
-            background-color: #007bff;
-            color: white;
+        .btn-view:hover { background-color: #007bff; color: white; }
+
+        /* Style pour le bouton Edit */
+        .btn-edit-user {
+            background-color: #e1f5fe;
+            color: #01579b;
+            border: none;
+            transition: all 0.2s;
         }
+        .btn-edit-user:hover { background-color: #0288d1; color: white; }
+
+        /* Style spécifique pour le bouton Reset */
+        .btn-reset-pass {
+            background-color: #fff3cd;
+            color: #856404;
+            border: none;
+            transition: all 0.2s;
+        }
+        .btn-reset-pass:hover { background-color: #ffc107; color: black; }
+
         .card-title-hospital {
             font-weight: 700;
             color: #333;
@@ -69,7 +85,6 @@
     </div>
 
     <div id="main-wrapper">
-        <!-- Nav header -->
         <div class="nav-header">
             <div class="brand-logo">
                 <a href="{% url 'dashboard' %}">
@@ -99,8 +114,7 @@
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center mb-4">
                                     <h4 class="card-title-hospital mb-0">Registre des Employés</h4>
-                                    <!-- Si tu as une vue pour ajouter un employé -->
-                                    <a href="/ajouter-employe/" class="btn btn-primary btn-sm rounded-pill shadow-sm">
+                                    <a href="{% url 'employeAdd' %}" class="btn btn-primary btn-sm rounded-pill shadow-sm">
                                         <i class="fa fa-plus mr-1"></i> Nouveau membre
                                     </a>
                                 </div>
@@ -137,9 +151,22 @@
                                                     {% endif %}
                                                 </td>
                                                 <td class="text-center align-middle">
-                                                    <a href="{% url 'ajouter_fonction' lst.id %}" class="btn btn-sm btn-view shadow-sm" title="Voir le profil">
-                                                        <i class="fa fa-eye"></i> Profil
-                                                    </a>
+                                                    <div class="btn-group">
+                                                        <!-- 1. Profil -->
+                                                        <a href="{% url 'ajouter_fonction' lst.id %}" class="btn btn-sm btn-view shadow-sm mr-1" title="Voir le profil">
+                                                            <i class="fa fa-eye"></i>
+                                                        </a>
+
+                                                        <!-- 2. NOUVEAU BOUTON : Modifier User -->
+                                                        <a href="{% url 'modifier_user' lst.id %}" class="btn btn-sm btn-edit-user shadow-sm mr-1" title="Modifier l'utilisateur">
+                                                            <i class="fa fa-pencil"></i> Edit
+                                                        </a>
+
+                                                        <!-- 3. Password -->
+                                                        <a href="{% url 'force_pass' lst.id %}" class="btn btn-sm btn-reset-pass shadow-sm" title="Réinitialiser le mot de passe">
+                                                            <i class="fa fa-key"></i> Pass
+                                                        </a>
+                                                    </div>
                                                 </td>
                                             </tr>
                                             {% endfor %}
@@ -160,6 +187,7 @@
         </div>
     </div>
 
+    <!-- Scripts -->
     <script src="{% static 'back-end/plugins/common/common.min.js' %}"></script>
     <script src="{% static 'back-end/js/custom.min.js' %}"></script>
     <script src="{% static 'back-end/js/settings.js' %}"></script>
@@ -169,6 +197,5 @@
     <script src="{% static 'back-end/plugins/tables/js/jquery.dataTables.min.js' %}"></script>
     <script src="{% static 'back-end/plugins/tables/js/datatable/dataTables.bootstrap4.min.js' %}"></script>
     <script src="{% static 'back-end/plugins/tables/js/datatable-init/datatable-basic.min.js' %}"></script>
-
 </body>
 </html>

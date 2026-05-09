@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="fr">
+{% load static %}
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Moyanoli | Sécurité Personnel</title>
+    <link href="{% static 'back-end/css/style.css' %}" rel="stylesheet">
+    <style>
+        .password-card {
+            border-radius: 15px;
+            border: none;
+            overflow: hidden;
+        }
+        .password-card .card-header {
+            background: linear-gradient(to right, #007bff, #0056b3);
+            padding: 20px;
+        }
+        /* Style pour les champs du formulaire Django form.as_p */
+        .password-card p {
+            margin-bottom: 20px;
+        }
+        .password-card input {
+            display: block;
+            width: 100%;
+            height: calc(1.5em + .75rem + 2px);
+            padding: .375rem .75rem;
+            font-size: 0.875rem;
+            font-weight: 400;
+            line-height: 1.5;
+            color: #495057;
+            background-color: #fff;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+        }
+        .helptext {
+            display: block;
+            font-size: 11px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="preloader"><div class="loader"><svg class="circular" viewBox="25 25 50 50"><circle class="path" cx="50" cy="50" r="20" fill="none" stroke-width="3" stroke-miterlimit="10" /></svg></div></div>
+
+    <div id="main-wrapper">
+        <div class="nav-header">
+            <div class="brand-logo">
+                <a href="{% url 'dashboard' %}">
+                    <span class="brand-title" style="color: white; font-weight: bold; font-size: 1.2rem;">MOYANOLI</span>
+                </a>
+            </div>
+        </div>
+
+        {% include 'back-end/query/header.html' %}
+        {% include 'back-end/query/sidebar.html' %}
+
+        <div class="content-body">
+            <div class="container-fluid">
+                <div class="row justify-content-center">
+                    <div class="col-lg-8 col-xl-6">
+                        <div class="card password-card shadow-lg">
+                            <div class="card-header">
+                                <h4 class="text-white m-0">
+                                    <i class="fa fa-lock mr-2"></i> Réinitialiser le mot de passe
+                                </h4>
+                            </div>
+                            <div class="card-body p-4">
+                                <div class="text-center mb-4">
+                                    <div class="avatar-circle bg-light d-inline-flex align-items-center justify-content-center mb-3" style="width: 70px; height: 70px; border-radius: 50%;">
+                                        <i class="fa fa-user-shield text-primary fa-2x"></i>
+                                    </div>
+                                    <h5>Utilisateur : <strong>{{ u.username }}</strong></h5>
+                                    <p class="text-muted small">Définissez un nouveau mot de passe sécurisé pour cet employé.</p>
+                                </div>
+
+                                <form method="POST" class="mt-4">
+                                    {% csrf_token %}
+                                    
+                                    <!-- Respect de la contrainte {{ form.as_p }} -->
+                                    <div class="form-container">
+                                        {{ form.as_p }}
+                                    </div>
+
+                                    <div class="row mt-5">
+                                        <div class="col-6">
+                                            <a href="{% url 'employeRead' %}" class="btn btn-light btn-block" style="border-radius: 50px;">
+                                                Annuler
+                                            </a>
+                                        </div>
+                                        <div class="col-6">
+                                            <button type="submit" class="btn btn-primary btn-block" style="border-radius: 50px; font-weight: 600;">
+                                                Mettre à jour
+                                            </button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <div class="copyright">
+                <p>Copyright &copy; Moyanoli ERP 2026</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/plugins/common/common.min.js' %}"></script>
+    <script src="{% static 'back-end/js/custom.min.js' %}"></script>
+    <script src="{% static 'back-end/js/settings.js' %}"></script>
+    <script src="{% static 'back-end/js/gleek.js' %}"></script>
+</body>
+</html>

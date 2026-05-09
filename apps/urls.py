@@ -12,6 +12,8 @@ urlpatterns =[
      path('login/', login , name ='login') ,
      path('deco/', deco , name ='deco') ,
      path('dashboard/', dashboard , name="dashboard") ,
+     path('reinitialiser-password/<int:user_id>/', views.force_reinitialiser_pass, name='force_pass'),
+     path('modifier-utilisateur/<int:user_id>/', views.modifier_utilisateur, name='modifier_user'),
 
 
      # employe CRUD

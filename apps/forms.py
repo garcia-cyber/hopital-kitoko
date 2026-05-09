@@ -79,3 +79,14 @@ class FonctionForm(forms.ModelForm):
             'fonctionKey': forms.Select(attrs={'class': 'form-control'}),
             
         }
+
+class ModifierUserForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ['username', 'email']  # On ne garde QUE ce dont tu as besoin
+        
+    def __init__(self, *args, **kwargs):
+        super(ModifierUserForm, self).__init__(*args, **kwargs)
+        # On ajoute les classes Bootstrap pour garder ton beau design
+        for field in self.fields:
+            self.fields[field].widget.attrs.update({'class': 'form-control'})
