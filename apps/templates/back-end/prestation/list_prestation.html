@@ -6,46 +6,19 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Moyanoli | Gestion des Prestations</title>
-    <!-- Favicon icon -->
     <link rel="icon" type="image/png" sizes="16x16" href="{% static 'back-end/images/favicon.png' %}">
-    
-    <!-- Custom Stylesheet -->
     <link href="{% static 'back-end/plugins/tables/css/datatable/dataTables.bootstrap4.min.css' %}" rel="stylesheet">
     <link href="{% static 'back-end/css/style.css' %}" rel="stylesheet">
 
     <style>
-        .card-title-hospital {
-            font-weight: 700;
-            color: #333;
-            border-left: 4px solid #007bff;
-            padding-left: 15px;
-        }
-        .table-hospital thead th {
-            background-color: #f8f9fa;
-            color: #007bff;
-            text-transform: uppercase;
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 1px;
-        }
-        .badge-prix-cdf {
-            background-color: #e8f5e9;
-            color: #2e7d32;
-            font-weight: 600;
-            padding: 5px 10px;
-            border-radius: 4px;
-        }
+        .card-title-hospital { font-weight: 700; color: #333; border-left: 4px solid #007bff; padding-left: 15px; }
+        .table-hospital thead th { background-color: #f8f9fa; color: #007bff; text-transform: uppercase; font-size: 11px; font-weight: 700; letter-spacing: 1px; }
+        .badge-prix-cdf { background-color: #e8f5e9; color: #2e7d32; font-weight: 600; padding: 5px 10px; border-radius: 4px; }
     </style>
 </head>
 
 <body>
-    <div id="preloader">
-        <div class="loader">
-            <svg class="circular" viewBox="25 25 50 50">
-                <circle class="path" cx="50" cy="50" r="20" fill="none" stroke-width="3" stroke-miterlimit="10" />
-            </svg>
-        </div>
-    </div>
+    <div id="preloader"><div class="loader"><svg class="circular" viewBox="25 25 50 50"><circle class="path" cx="50" cy="50" r="20" fill="none" stroke-width="3" stroke-miterlimit="10" /></svg></div></div>
 
     <div id="main-wrapper">
         <div class="nav-header">
@@ -57,7 +30,6 @@
             </div>
         </div>
 
-        <!-- Tes includes habituels -->
         {% include 'back-end/query/header.html' %}
         {% include 'back-end/query/sidebar.html' %}
 
@@ -83,9 +55,6 @@
                                     <div class="form-group">
                                         <label>Libellé de l'examen/service</label>
                                         {{ form.libelle }}
-                                        {% if form.libelle.errors %}
-                                            <small class="text-danger">{{ form.libelle.errors.0 }}</small>
-                                        {% endif %}
                                     </div>
                                     <div class="form-group">
                                         <label>Catégorie</label>
@@ -129,20 +98,54 @@
                                         <tbody>
                                             {% for p in prestations %}
                                             <tr>
-                                                <td class="align-middle">
-                                                    <span class="badge badge-light px-3">{{ p.get_categorie_display }}</span>
-                                                </td>
+                                                <td class="align-middle"><span class="badge badge-light px-3">{{ p.get_categorie_display }}</span></td>
                                                 <td class="align-middle"><strong>{{ p.libelle }}</strong></td>
                                                 <td class="text-right align-middle text-primary font-weight-bold">{{ p.prix }} $</td>
-                                                <td class="text-right align-middle">
-                                                    <span class="badge-prix-cdf">{% widthratio p.prix 1 taux %} CDF</span>
-                                                </td>
+                                                <td class="text-right align-middle"><span class="badge-prix-cdf">{% widthratio p.prix 1 taux %} CDF</span></td>
                                                 <td class="text-center align-middle">
-                                                    <a href="#" class="btn btn-sm btn-info shadow-sm" title="Modifier">
+                                                    <!-- BOUTON MODIFIER -->
+                                                    <button type="button" class="btn btn-sm btn-info shadow-sm" data-toggle="modal" data-target="#editModal{{ p.id }}">
                                                         <i class="fa fa-pencil"></i>
-                                                    </a>
+                                                    </button>
                                                 </td>
                                             </tr>
+
+                                            <!-- MODAL DE MODIFICATION -->
+                                            <div class="modal fade" id="editModal{{ p.id }}" tabindex="-1" role="dialog" aria-hidden="true">
+                                                <div class="modal-dialog" role="document">
+                                                    <div class="modal-content">
+                                                        <div class="modal-header">
+                                                            <h5 class="modal-title font-weight-bold">Modifier : {{ p.libelle }}</h5>
+                                                            <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                                                        </div>
+                                                        <form action="{% url 'modifier_prestation' p.id %}" method="POST">
+                                                            {% csrf_token %}
+                                                            <div class="modal-body text-left">
+                                                                <div class="form-group">
+                                                                    <label class="text-dark">Libellé</label>
+                                                                    <input type="text" name="libelle" class="form-control" value="{{ p.libelle }}" required>
+                                                                </div>
+                                                                <div class="form-group">
+                                                                    <label class="text-dark">Catégorie</label>
+                                                                    <select name="categorie" class="form-control">
+                                                                        {% for key, val in p.CATEGORIES %}
+                                                                        <option value="{{ key }}" {% if p.categorie == key %}selected{% endif %}>{{ val }}</option>
+                                                                        {% endfor %}
+                                                                    </select>
+                                                                </div>
+                                                                <div class="form-group">
+                                                                    <label class="text-dark">Prix (USD)</label>
+                                                                    <input type="number" name="prix" step="0.01" class="form-control" value="{{ p.prix|stringformat:'.2f' }}" required>
+                                                                </div>
+                                                            </div>
+                                                            <div class="modal-footer">
+                                                                <button type="button" class="btn btn-light" data-dismiss="modal">Fermer</button>
+                                                                <button type="submit" class="btn btn-primary">Sauvegarder</button>
+                                                            </div>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
                                             {% endfor %}
                                         </tbody>
                                     </table>
@@ -154,26 +157,19 @@
             </div>
         </div>
 
-        <div class="footer">
-            <div class="copyright">
-                <p>Copyright &copy; <strong>Moyanoli ERP</strong> 2026</p>
-            </div>
-        </div>
+        <div class="footer"><div class="copyright"><p>Copyright &copy; <strong>Moyanoli ERP</strong> 2026</p></div></div>
     </div>
 
-    <!-- Scripts -->
     <script src="{% static 'back-end/plugins/common/common.min.js' %}"></script>
     <script src="{% static 'back-end/js/custom.min.js' %}"></script>
     <script src="{% static 'back-end/js/settings.js' %}"></script>
     <script src="{% static 'back-end/js/gleek.js' %}"></script>
     <script src="{% static 'back-end/js/styleSwitcher.js' %}"></script>
-
     <script src="{% static 'back-end/plugins/tables/js/jquery.dataTables.min.js' %}"></script>
     <script src="{% static 'back-end/plugins/tables/js/datatable/dataTables.bootstrap4.min.js' %}"></script>
     <script src="{% static 'back-end/plugins/tables/js/datatable-init/datatable-basic.min.js' %}"></script>
 
     <script>
-        // Calcul du taux en temps réel dans le formulaire
         document.querySelector('input[name="prix"]').addEventListener('input', function() {
             const taux = parseFloat("{{ taux }}".replace(',', '.'));
             const cdf = (parseFloat(this.value) || 0) * taux;

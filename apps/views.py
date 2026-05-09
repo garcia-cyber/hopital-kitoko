@@ -241,12 +241,11 @@ def modifier_utilisateur(request, user_id):
 # ==================================================================================================
 @login_required
 def gestion_prestations(request):
-    # CORRECTION : Utilisation de order_by au lieu de order_name
+    # Tri par libellé pour Moyanoli Médicale
     prestations = Prestation.objects.all().order_by('libelle')
     
-    # Récupération de la configuration du taux
     config = ConfigurationHopital.objects.first()
-    taux = config.taux_usd_en_cdf if config else 2500.00  # Valeur par défaut plus réaliste
+    taux = config.taux_usd_en_cdf if config else 2500.00
     
     if request.method == 'POST':
         form = PrestationForm(request.POST)
@@ -255,14 +254,12 @@ def gestion_prestations(request):
             messages.success(request, "La prestation a été ajoutée avec succès.")
             return redirect('gestion_prestations')
         else:
-            # Affiche l'erreur spécifique du formulaire (ex: le doublon)
-            messages.error(request, "Erreur : " + form.errors.as_text())
+            messages.error(request, "Erreur lors de l'ajout. Vérifiez les doublons.")
     else:
         form = PrestationForm()
 
-    # Vérification du rôle pour la sidebar (Moyanoli Médicale)
+    # Gestion du rôle pour la sidebar
     role = Fonction.objects.filter(userKey=request.user).first()
-    # On récupère le roleName pour alimenter fonctionKey dans le template
     fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
 
     context = {
@@ -297,3 +294,24 @@ def modifier_taux(request):
 
     return render(request, 'back-end/prestation/config_taux.html', {'form': form, 'config': config ,'fonctionKey':fonctionKey})
 
+# 14
+# ==================================================================================================
+#  MODIFICATION PRESTATION
+# ==================================================================================================
+@login_required
+def modifier_prestation(request, pk):
+    # Récupère la prestation ou renvoie une 404 si elle n'existe pas
+    prestation = get_object_or_404(Prestation, pk=pk)
+    
+    if request.method == 'POST':
+        # On passe 'instance=prestation' pour modifier l'existant au lieu d'en créer un nouveau
+        form = PrestationForm(request.POST, instance=prestation)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"La prestation '{prestation.libelle}' a été mise à jour.")
+        else:
+            # Récupère l'erreur du formulaire (comme le doublon) pour l'afficher
+            error_msg = form.errors.as_text()
+            messages.error(request, f"Modification échouée : {error_msg}")
+    
+    return redirect('gestion_prestations')

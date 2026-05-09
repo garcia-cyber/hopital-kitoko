@@ -16,6 +16,7 @@ urlpatterns =[
      path('modifier-utilisateur/<int:user_id>/', views.modifier_utilisateur, name='modifier_user'),
      path('prestations/', views.gestion_prestations, name='gestion_prestations'),
      path('config/taux/', views.modifier_taux, name='modifier_taux'),
+     path('prestations/modifier/<int:pk>/', views.modifier_prestation, name='modifier_prestation'),
 
 
      # employe CRUD
