@@ -44,6 +44,10 @@ urlpatterns =[
      path('patients/enregistrement/', views.enregistrement_patient, name='enregistrement_patient'),
      path('patients/modifier/<int:pk>/', views.modifier_patient, name='modifier_patient'),
      path('patients/liste/', views.liste_patients, name='liste_patients'),
+
+     # ====================================
+     # FINANCE
+     path('patient/<int:patient_id>/payer-fiche/', views.payer_fiche, name='payer_fiche'),
      
 
  ]

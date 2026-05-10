@@ -51,9 +51,11 @@
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center mb-4">
                                     <h4 class="card-title-hospital">Registre Global des Patients</h4>
+                                    {% if fonctionKey == 'receptionniste'%}
                                     <a href="{% url 'enregistrement_patient' %}" class="btn btn-primary btn-sm shadow-sm">
                                         <i class="fa fa-plus-circle mr-1"></i> Nouveau Patient
                                     </a>
+                                    {% endif %}
                                 </div>
                                 
                                 <div class="table-responsive">
@@ -66,6 +68,7 @@
                                                 <th>Téléphone</th>
                                                 <th>Service</th>
                                                 <th>Date Enr.</th>
+                                                <th>par</th>
                                                 <th class="text-center">Actions</th>
                                             </tr>
                                         </thead>
@@ -82,11 +85,20 @@
                                                     <span class="badge-service">{{ p.service.nom }}</span>
                                                 </td>
                                                 <td class="align-middle">{{ p.date_creation|date:"d/m/Y" }}</td>
+                                                <td class="align-middle">{{ p.created_by }}</td>
                                                 <td class="text-center align-middle">
                                                     <div class="btn-group">
-                                                        <a href="{% url 'modifier_patient' p.id %}" class="btn btn-sm btn-info shadow-sm mr-1" title="Modifier">
-                                                            <i class="fa fa-pencil"></i>
-                                                        </a>
+                                                        {% if fonctionKey == 'receptionniste' %}
+                                                            <!-- Bouton de paiement de la fiche -->
+                                                            <a href="{% url 'payer_fiche' p.id %}" class="btn btn-sm btn-success shadow-sm mr-1" title="Payer la Fiche">
+                                                                <i class="fa fa-dollar"></i>
+                                                            </a>
+                                                            
+                                                            <a href="{% url 'modifier_patient' p.id %}" class="btn btn-sm btn-info shadow-sm mr-1" title="Modifier">
+                                                                <i class="fa fa-pencil"></i>
+                                                            </a>
+                                                        {% endif %}
+                                                        
                                                         <a href="#" class="btn btn-sm btn-secondary shadow-sm" title="Voir Fiche">
                                                             <i class="fa fa-eye"></i>
                                                         </a>
@@ -107,14 +119,22 @@
         <div class="footer"><div class="copyright"><p>Copyright &copy; <strong>Moyanoli ERP</strong> 2026</p></div></div>
     </div>
 
+     <!-- Scripts -->
     <script src="{% static 'back-end/plugins/common/common.min.js' %}"></script>
     <script src="{% static 'back-end/js/custom.min.js' %}"></script>
     <script src="{% static 'back-end/js/settings.js' %}"></script>
     <script src="{% static 'back-end/js/gleek.js' %}"></script>
     <script src="{% static 'back-end/js/styleSwitcher.js' %}"></script>
-    <!-- Scripts Table -->
-    <script src="{% static 'back-end/plugins/tables/js/jquery.dataTables.min.js' %}"></script>
-    <script src="{% static 'back-end/plugins/tables/js/datatable/dataTables.bootstrap4.min.js' %}"></script>
-    <script src="{% static 'back-end/plugins/tables/js/datatable-init/datatable-basic.min.js' %}"></script>
+
+    <!-- Chartjs -->
+    <script src="{% static 'back-end/plugins/chart.js/Chart.bundle.min.js' %}"></script>
+    <!-- Pignose Calender -->
+    <script src="{% static 'back-end/plugins/moment/moment.min.js' %}"></script>
+    <script src="{% static 'back-end/plugins/pg-calendar/js/pignose.calendar.min.js' %}"></script>
+    <!-- ChartistJS -->
+    <script src="{% static 'back-end/plugins/chartist/js/chartist.min.js' %}"></script>
+    <script src="{% static 'back-end/plugins/chartist-plugin-tooltips/js/chartist-plugin-tooltip.min.js' %}"></script>
+
+    <script src="{% static 'back-end/js/dashboard/dashboard-1.js' %}"></script>
 </body>
 </html>

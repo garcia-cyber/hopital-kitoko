@@ -121,3 +121,51 @@ class PatientAdmin(admin.ModelAdmin):
         if not obj.pk: # Si c'est une création (pas de clé primaire encore)
             obj.created_by = request.user
         super().save_model(request, obj, form, change)
+
+# Configuration de la Facture en "Inline" pour la voir directement dans le Paiement
+class FactureInline(admin.StackedInline):
+    model = Facture
+    extra = 0
+    readonly_fields = ('numero_facture', 'date_emission')
+    can_delete = False
+
+@admin.register(Paiement)
+class PaiementAdmin(admin.ModelAdmin):
+    # Colonnes affichées dans la liste
+    list_display = ('id', 'numero_facture_affiche', 'patient', 'service', 'montant_verse', 'devise', 'date_paiement', 'caissier')
+    
+    # Filtres latéraux (très utile pour ta caisse)
+    list_filter = ('devise', 'service', 'date_paiement', 'caissier')
+    
+    # Barre de recherche (recherche par nom du patient ou numéro de facture)
+    search_fields = ('patient__nom', 'patient__prenom', 'facture_liee__numero_facture')
+    
+    # On affiche la facture directement à l'intérieur du détail du paiement
+    inlines = [FactureInline]
+
+    # Méthode pour afficher le numéro de facture directement dans la liste des paiements
+    def numero_facture_affiche(self, obj):
+        try:
+            return obj.facture_liee.numero_facture
+        except:
+            return "Aucune facture"
+    numero_facture_affiche.short_description = 'N° Facture'
+
+@admin.register(Facture)
+class FactureAdmin(admin.ModelAdmin):
+    list_display = ('numero_facture', 'get_patient', 'get_service', 'get_montant', 'date_emission')
+    search_fields = ('numero_facture', 'paiement__patient__nom')
+    readonly_fields = ('paiement', 'numero_facture', 'date_emission')
+
+    # Fonctions pour récupérer les infos du paiement lié dans la liste des factures
+    def get_patient(self, obj):
+        return obj.paiement.patient
+    get_patient.short_description = 'Patient'
+
+    def get_service(self, obj):
+        return obj.paiement.service
+    get_service.short_description = 'Service'
+
+    def get_montant(self, obj):
+        return f"{obj.paiement.montant_verse} {obj.paiement.devise}"
+    get_montant.short_description = 'Montant'

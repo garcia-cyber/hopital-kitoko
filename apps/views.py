@@ -6,7 +6,9 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import SetPasswordForm ,UserChangeForm
 from django.contrib import messages
-from django.db.models import Q
+from django.db.models import Q , Sum 
+from decimal import Decimal
+
 # Create your views here.
 
 
@@ -60,12 +62,15 @@ def dashboard(request):
     # compte les nombres des utilisateurs
     utilisateurs = User.objects.count()
 
+    total_patients = Patient.objects.count()
+
 
 
     return render(request , 'back-end/index.html',
                   {
                   'fonctionKey': fonctionKey,
-                  'utilisateurs' : utilisateurs
+                  'utilisateurs' : utilisateurs ,
+                  'total_patients' : total_patients
                   }
                   )
 # 5
@@ -464,3 +469,76 @@ def modifier_patient(request, pk):
         'patient': patient ,
         'fonctionKey' : fonctionKey
     })
+
+# 20
+# ==================================================================================================
+# PAIEMENT DE LA FICHE
+# ==================================================================================================
+@login_required
+def payer_fiche(request, patient_id):
+    patient = get_object_or_404(Patient, id=patient_id)
+    
+    # 0. Récupérer le taux de change
+    config = ConfigurationHopital.objects.first()
+    taux = config.taux_usd_en_cdf if config else Decimal('2800.00') # Fallback au cas où
+
+    # 1. Récupérer la prestation "Fiche"
+    try:
+        prestation_fiche = Prestation.objects.get(categorie='ADM', libelle__icontains="Fiche")
+        prix_fiche_fixe = prestation_fiche.prix
+    except (Prestation.DoesNotExist, Prestation.MultipleObjectsReturned):
+        prestation_fiche = Prestation.objects.filter(categorie='ADM', libelle__icontains="Fiche").first()
+        if not prestation_fiche:
+            messages.error(request, "Erreur : La prestation 'Fiche' n'est pas configurée.")
+            return redirect('detail_patient', patient_id=patient.id)
+        prix_fiche_fixe = prestation_fiche.prix
+
+    # 2. Calcul du cumul et reste à payer (en USD)
+    deja_paye = Paiement.objects.filter(
+        patient=patient, 
+        service='FICHE'
+    ).aggregate(Sum('montant_verse'))['montant_verse__sum'] or 0
+    
+    reste_a_payer_usd = Decimal(str(prix_fiche_fixe)) - Decimal(str(deja_paye))
+
+    if request.method == 'POST':
+        montant_saisi = Decimal(request.POST.get('montant', 0))
+        devise = request.POST.get('devise')
+
+        # Conversion du montant saisi en USD pour la vérification
+        montant_en_usd = montant_saisi
+        if devise == 'CDF':
+            montant_en_usd = montant_saisi / taux
+
+        # Vérification : Ne pas payer plus que le reste dû
+        if montant_en_usd > (reste_a_payer_usd + Decimal('0.01')): # +0.01 pour éviter les erreurs d'arrondi
+            messages.error(request, f"Erreur : Le montant ({montant_en_usd:.2f} USD) dépasse le reste à payer ({reste_a_payer_usd:.2f} USD).")
+        elif montant_saisi > 0:
+            Paiement.objects.create(
+                patient=patient,
+                service='FICHE',
+                montant_verse=montant_en_usd, # On stocke toujours en USD pour la cohérence
+                devise=devise,
+                caissier=request.user
+            )
+            messages.success(request, f"Paiement de {montant_saisi} {devise} enregistré avec succès.")
+            # return redirect('detail_patient', patient_id=patient.id)
+            return redirect('liste_patients')
+
+    # Préparation des infos pour le template (Conversion pour affichage)
+    reste_a_payer_cdf = reste_a_payer_usd * taux
+    
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role else None
+
+    context = {
+        'patient': patient,
+        'deja_paye': deja_paye,
+        'reste_a_payer': reste_a_payer_usd,
+        'reste_a_payer_cdf': reste_a_payer_cdf,
+        'taux': taux,
+        'prix_fiche': prix_fiche_fixe,
+        'libelle_prestation': prestation_fiche.libelle,
+        'fonctionKey': fonctionKey 
+    }
+    return render(request, 'back-end/finance/payer_fiche.html', context)

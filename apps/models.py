@@ -2,7 +2,8 @@ from django.db import models
 from django.contrib.auth.models import User
 import uuid
 from datetime import datetime
-
+from django.utils import timezone 
+from django.db.models import Sum
 # Create your models here.
 
 
@@ -127,3 +128,47 @@ class Patient(models.Model):
 
     def __str__(self):
         return f"{self.noms} ({self.code_patient})"
+
+# =================================================================================================
+class Paiement(models.Model):
+    """ Journal de caisse : chaque entrée d'argent physique """
+    CURRENCY = [('USD', 'USD'), ('CDF', 'CDF')]
+    SERVICES = [
+        ('FICHE', 'Fiche'), 
+        ('LABO', 'Labo'), 
+        ('PHARMA', 'Pharmacie'),
+        ('ECHOGRAPHIE', 'Échographie'),  # Ajout de l'échographie
+    ]
+
+    patient = models.ForeignKey('Patient', on_delete=models.CASCADE)
+    service = models.CharField(max_length=20, choices=SERVICES)
+    montant_verse = models.DecimalField(max_digits=15, decimal_places=2)
+    devise = models.CharField(max_length=3, choices=CURRENCY, default='USD')
+    date_paiement = models.DateTimeField(auto_now_add=True)
+    caissier = models.ForeignKey('auth.User', on_delete=models.PROTECT)
+
+    def save(self, *args, **kwargs):
+        # On sauvegarde d'abord le paiement
+        is_new = self.pk is None
+        super().save(*args, **kwargs)
+        
+        # Si c'est un nouveau paiement, on crée la facture liée immédiatement
+        if is_new:
+            Facture.objects.create(
+                paiement=self,
+                numero_facture=f"FAC-{timezone.now().strftime('%y%m%d')}-{self.id}"
+            )
+
+    def __str__(self):
+        return f"Paiement {self.id} - {self.montant_verse} {self.devise}"
+
+# =================================================================================================
+
+class Facture(models.Model):
+    """ Document lié à chaque paiement pour la traçabilité """
+    paiement = models.OneToOneField(Paiement, on_delete=models.CASCADE, related_name='facture_liee')
+    numero_facture = models.CharField(max_length=50, unique=True)
+    date_emission = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Facture {self.numero_facture} ({self.paiement.service})"
