@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="fr">
+{% load static %}
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Historique Triage | Kitoko ERP</title>
+    <!-- Custom Stylesheet -->
+    <link href="{% static 'back-end/css/style.css' %}" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        .patient-info-box {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            border-left: 5px solid #7571f9;
+        }
+        .table-history thead th {
+            background-color: #f1f3f9;
+            color: #333;
+            text-transform: uppercase;
+            font-size: 12px;
+        }
+        .temp-hot { color: #ff5e5e; font-weight: bold; }
+        .temp-normal { color: #2dbf7e; font-weight: bold; }
+    </style>
+</head>
+
+<body>
+    <div id="preloader"><div class="loader"><svg class="circular" viewBox="25 25 50 50"><circle class="path" cx="50" cy="50" r="20" fill="none" stroke-width="3" stroke-miterlimit="10" /></svg></div></div>
+
+    <div id="main-wrapper">
+        {% include 'back-end/query/header.html' %}
+        {% include 'back-end/query/sidebar.html' %}
+
+        <div class="content-body">
+            <div class="container-fluid">
+                <div class="row page-titles mx-0">
+                    <div class="col p-md-0">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="javascript:void(0)">Infirmerie</a></li>
+                            <li class="breadcrumb-item active"><a href="javascript:void(0)">Historique Individuel</a></li>
+                        </ol>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card shadow-sm">
+                            <div class="card-body">
+                                <!-- En-tête avec infos du patient -->
+                                <div class="patient-info-box mb-4 d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h3 class="text-dark mb-1">{{ patient.noms|upper }}</h3>
+                                        <p class="mb-0">
+                                            <span class="mr-3"><strong>ID:</strong> {{ patient.code_patient|default:patient.id }}</span>
+                                            <span class="mr-3"><strong>Sexe:</strong> {{ patient.sexe }}</span>
+                                            <span><strong>Service:</strong> {{ patient.service.nom }}</span>
+                                        </p>
+                                    </div>
+                                    <div class="text-right">
+                                        <a href="{% url 'liste_globale_triage' %}" class="btn btn-outline-dark btn-sm shadow-sm">
+                                            <i class="fa fa-arrow-left"></i> Registre Global
+                                        </a>
+                                    </div>
+                                </div>
+
+                                <h4 class="card-title mb-4">Journal des prélèvements</h4>
+
+                                <div class="table-responsive">
+                                    <table class="table table-history table-bordered table-hover">
+                                        <thead class="text-center">
+                                            <tr>
+                                                <th>Date & Heure</th>
+                                                <th>Température</th>
+                                                <th>Poids</th>
+                                                <th>Tension Art.</th>
+                                                <th>Pouls</th>
+                                                <th>SpO2</th>
+                                                <th>Infirmier</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="text-center">
+                                            {% for signe in historique %}
+                                            <tr>
+                                                <td class="font-weight-bold">{{ signe.date_prelevement|date:"d/m/Y" }} <small class="text-muted d-block">{{ signe.date_prelevement|date:"H:i" }}</small></td>
+                                                <td>
+                                                    <span class="{% if signe.temperature >= 38 %}temp-hot{% else %}temp-normal{% endif %}">
+                                                        {{ signe.temperature }} °C
+                                                    </span>
+                                                </td>
+                                                <td>{{ signe.poids }} Kg</td>
+                                                <td>{{ signe.tension_arterielle }}</td>
+                                                <td>{{ signe.frequence_cardiaque }} <small>bpm</small></td>
+                                                <td>{{ signe.saturation_oxygene|default:"--" }} %</td>
+                                                <td class="text-left">
+                                                    <i class="fa fa-user-md text-primary mr-1"></i> 
+                                                    {{ signe.infirmier.get_full_name|default:signe.infirmier.username }}
+                                                </td>
+                                            </tr>
+                                            {% empty %}
+                                            <tr>
+                                                <td colspan="7" class="text-center py-5">
+                                                    <div class="text-muted">
+                                                        <i class="fa fa-info-circle fa-2x mb-2"></i>
+                                                        <p>Aucun signe vital n'a encore été enregistré pour ce patient.</p>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div class="mt-4">
+                                    <button onclick="window.print()" class="btn btn-light shadow-sm">
+                                        <i class="fa fa-print mr-1"></i> Imprimer le carnet
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <div class="copyright">
+                <p>Copyright &copy; Kitoko ERP - Moyanoli 2026</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="{% static 'back-end/plugins/common/common.min.js' %}"></script>
+    <script src="{% static 'back-end/js/custom.min.js' %}"></script>
+    <script src="{% static 'back-end/js/settings.js' %}"></script>
+    <script src="{% static 'back-end/js/gleek.js' %}"></script>
+</body>
+</html>

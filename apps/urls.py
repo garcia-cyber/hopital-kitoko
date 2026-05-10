@@ -53,11 +53,11 @@ urlpatterns =[
 
      # ====================================
      # INFIRMIER
-     # 1. Vue pour la LISTE D'ATTENTE (Filtre date + paiement + fonctionKey)
+     
     path('infirmerie/attente/', views.liste_attente_triage, name='liste_attente_triage'),
-
-    # 3. Vue pour la SAISIE des signes vitaux (Formulaire)
     path('infirmerie/saisir/<int:patient_id>/', views.saisir_signes, name='saisir_signes'),
+    path('infirmerie/registre-global/', views.liste_globale_triage, name='liste_globale_triage'),
+    path('infirmerie/historique/<int:patient_id>/', views.historique_signes_vitaux, name='historique_signes_vitaux'),
      
 
  ]

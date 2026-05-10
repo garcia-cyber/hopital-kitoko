@@ -715,3 +715,43 @@ def saisir_signes(request, patient_id):
 
     # Si c'est une requête GET (quand on arrive sur la page), on affiche juste le formulaire
     return render(request, 'back-end/infirmerie/form_triage.html', {'patient': patient, 'fonctionKey': fonctionKey})
+
+# 25
+# ==================================================================================================
+# PATIENT SIGNE VITAUX  HISTORIQUE
+# ==================================================================================================
+@login_required
+def liste_globale_triage(request):
+    # On récupère tous les signes vitaux, mais on ne garde qu'un seul exemplaire par patient
+    # On trie par date pour avoir les derniers prélèvements en haut
+    historique_global = SigneVital.objects.select_related('patient', 'infirmier').all().order_by('-date_prelevement')
+
+    # Gestion du rôle pour le sidebar
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role else None
+
+    context = {
+        'fonctionKey': fonctionKey,
+        'historique': historique_global,
+    }
+    return render(request, 'back-end/infirmerie/liste_globale_triage.html', context)
+
+@login_required
+def historique_signes_vitaux(request, patient_id):
+    # On récupère le patient spécifique ou erreur 404
+    patient = get_object_or_404(Patient, id=patient_id)
+    
+    # On récupère tout l'historique des prélèvements pour ce patient
+    # trié du plus récent au plus ancien
+    historique = SigneVital.objects.filter(patient=patient).order_by('-date_prelevement')
+    
+    # Récupération du rôle pour le sidebar (ton système habituel)
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role else None
+
+    context = {
+        'patient': patient,
+        'historique': historique,
+        'fonctionKey': fonctionKey,
+    }
+    return render(request, 'back-end/infirmerie/historique_signes.html', context)
