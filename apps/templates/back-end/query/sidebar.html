@@ -11,52 +11,59 @@
                 </ul>
             </li>
 
+            <!-- DEBUT BLOC ADMIN -->
             {% if fonctionKey == 'admin' %}
-            <li class="mega-menu mega-menu-sm">
-                <a class="has-arrow" href="javascript:void()" aria-expanded="false">
-                    <i class="fa fa-users menu-icon"></i><span class="nav-text">Utilisateurs</span>
-                </a>
-                <ul aria-expanded="false">
-                    <li><a href="{% url 'employeAdd'%}"><i class="fa fa-plus-circle mr-2"></i>Ajouter</a></li>
-                    <li><a href="{% url 'employeRead'%}"><i class="fa fa-list-ul mr-2"></i>Liste globale</a></li>
-                    <li>
-                        <a href="{% url 'liste_employe_poste' %}">
-                            <i class="fa fa-id-badge mr-2"></i>Registre des Postes
-                        </a>
-                    </li>
-                    <li><a href="#"><i class="fa fa-user-circle-o mr-2"></i>Mon Profil</a></li>
-                </ul>
-            </li>
+                <!-- Utilisateurs -->
+                <li class="mega-menu mega-menu-sm">
+                    <a class="has-arrow" href="javascript:void()" aria-expanded="false">
+                        <i class="fa fa-users menu-icon"></i><span class="nav-text">Utilisateurs</span>
+                    </a>
+                    <ul aria-expanded="false">
+                        <li><a href="{% url 'employeAdd'%}"><i class="fa fa-plus-circle mr-2"></i>Ajouter</a></li>
+                        <li><a href="{% url 'employeRead'%}"><i class="fa fa-list-ul mr-2"></i>Liste globale</a></li>
+                        <li><a href="{% url 'liste_employe_poste' %}"><i class="fa fa-id-badge mr-2"></i>Registre des Postes</a></li>
+                        <li><a href="#"><i class="fa fa-user-circle-o mr-2"></i>Mon Profil</a></li>
+                    </ul>
+                </li>
 
-            <!-- Section Configuration mise à jour -->
-            <li>
-                <a class="has-arrow" href="javascript:void()" aria-expanded="false">
-                    <i class="fa fa-gears menu-icon"></i><span class="nav-text">Configuration</span>
-                </a>
-                <ul aria-expanded="false">
-                    <li>
-                        <a href="{% url 'gestion_services' %}">
-                            <i class="fa fa-building-o mr-2"></i>Services
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{% url 'gestion_prestations' %}">
-                            <i class="fa fa-list-alt mr-2"></i>Prestations
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{% url 'modifier_taux' %}">
-                            <i class="fa fa-money mr-2"></i>Taux de change
-                        </a>
-                    </li>
-                </ul>
-            </li>
-            {% elif fonctionKey == 'receptionniste'%}
-                <!-- Tes futurs liens de réception ici -->
+                
+
+                <!-- Configuration pour l'Admin -->
+                <li>
+                    <a class="has-arrow" href="javascript:void()" aria-expanded="false">
+                        <i class="fa fa-gears menu-icon"></i><span class="nav-text">Configuration</span>
+                    </a>
+                    <ul aria-expanded="false">
+                        <li><a href="{% url 'gestion_services' %}"><i class="fa fa-building-o mr-2"></i>Services</a></li>
+                        <li><a href="{% url 'gestion_prestations' %}"><i class="fa fa-list-alt mr-2"></i>Prestations</a></li>
+                        <li><a href="{% url 'modifier_taux' %}"><i class="fa fa-money mr-2"></i>Taux de change</a></li>
+                    </ul>
+                </li>
+
+                
+                <!-- Patients pour l'Admin -->
+                <li>
+                    <a class="has-arrow" href="javascript:void()" aria-expanded="false">
+                        <i class="fa fa-user-md menu-icon"></i><span class="nav-text">Patients</span>
+                    </a>
+                    <ul aria-expanded="false">
+                        <li><a href="{% url 'liste_patients' %}"><i class="fa fa-list-ul mr-2"></i>Liste des patients</a></li>
+                    </ul>
+                </li>
+            <!-- DEBUT BLOC RECEPTIONNISTE -->
+            
+            {% elif fonctionKey == 'receptionniste' %}
+                <li>
+                    <a class="has-arrow" href="javascript:void()" aria-expanded="false">
+                        <i class="fa fa-user-md menu-icon"></i><span class="nav-text">Patients</span>
+                    </a>
+                    <ul aria-expanded="false">
+                        <li><a href="{% url 'enregistrement_patient' %}"><i class="fa fa-plus-circle mr-2"></i>Enregistrement</a></li>
+                        <li><a href="{% url 'liste_patients' %}"><i class="fa fa-list-ul mr-2"></i>Liste des patients</a></li>
+                    </ul>
+                </li>
             {% endif %}
 
-            <!-- Sections commentées conservées -->
-            <!-- <li class="nav-label">Apps</li> ... -->
         </ul>
     </div>
 </div>

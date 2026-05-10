@@ -14,6 +14,9 @@ urlpatterns =[
      path('dashboard/', dashboard , name="dashboard") ,
      path('reinitialiser-password/<int:user_id>/', views.force_reinitialiser_pass, name='force_pass'),
      path('modifier-utilisateur/<int:user_id>/', views.modifier_utilisateur, name='modifier_user'),
+     path('reinitialiser-password/<int:user_id>/', views.force_reinitialiser_pass
+, name='force_pass'),
+
 
      # ================================
      # PRESTATION 
@@ -34,6 +37,13 @@ urlpatterns =[
      path('ajouter-fonction/<int:user_id>/', views.attribuer_fonction, name='ajouter_fonction'),
      path('employe-poste/', views.liste_employe_poste, name='liste_employe_poste'),
      path('supprimer-poste/<int:fonction_id>/', views.supprimer_poste, name='supprimer_poste'),
+
+
+     # ===================================
+     # PATIENT
+     path('patients/enregistrement/', views.enregistrement_patient, name='enregistrement_patient'),
+     path('patients/modifier/<int:pk>/', views.modifier_patient, name='modifier_patient'),
+     path('patients/liste/', views.liste_patients, name='liste_patients'),
      
 
  ]

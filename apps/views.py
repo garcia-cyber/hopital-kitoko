@@ -6,6 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import SetPasswordForm ,UserChangeForm
 from django.contrib import messages
+from django.db.models import Q
 # Create your views here.
 
 
@@ -370,5 +371,96 @@ def modifier_service(request, pk):
     return render(request, 'back-end/service/modifier_service.html', {
         'form': form,
         'service': service ,
+        'fonctionKey' : fonctionKey
+    })
+
+
+# 17
+# ==================================================================================================
+#  ENREGISTREMENT DES PATIENT(E)S 
+# ==================================================================================================
+@login_required
+def enregistrement_patient(request):
+    # Récupération de tous les patients pour le tableau
+    patients = Patient.objects.all().order_by('-date_creation')
+    
+    if request.method == 'POST':
+        form = PatientForm(request.POST)
+        if form.is_valid():
+            # On enregistre mais on ne commit pas encore pour pouvoir lier l'utilisateur
+            patient = form.save(commit=False)
+            patient.created_by = request.user
+            patient.save()
+            
+            messages.success(request, f"Patient {patient.noms} enregistré avec succès. Matricule : {patient.code_patient}")
+            return redirect('enregistrement_patient')
+        else:
+            messages.error(request, "Erreur lors de l'enregistrement. Vérifiez les informations.")
+    else:
+        form = PatientForm()
+
+    # verification de la fonction
+    role = Fonction.objects.filter(userKey = request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role else None
+
+    context = {
+        'patients': patients,
+        'form': form,
+        'segment': 'enregistrement_patient', 
+        'fonctionKey' : fonctionKey
+    }
+
+    return render(request, 'back-end/patient/enregistrement_patient.html', context)
+# 18
+# ==================================================================================================
+#  LISTE DES PATIENT(E)S 
+# ==================================================================================================
+@login_required
+def liste_patients(request):
+    query = request.GET.get('search')
+    
+    if query:
+        # Recherche par nom ou par matricule (code_patient)
+        patients = Patient.objects.filter(
+            Q(noms__icontains=query) | 
+            Q(code_patient__icontains=query)
+        ).order_by('-date_creation')
+    else:
+        patients = Patient.objects.all().order_by('-date_creation')
+    # verification de la fonction
+    role = Fonction.objects.filter(userKey = request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role else None
+
+    context = {
+        'patients': patients,
+        'search_query': query,
+        'fonctionKey' : fonctionKey
+    }
+    return render(request, 'back-end/patient/liste_patients.html', context)
+
+# 19
+# ==================================================================================================
+#  MODIFICATION DES PATIENT(E)S 
+# ==================================================================================================
+@login_required
+def modifier_patient(request, pk):
+    patient = get_object_or_404(Patient, pk=pk)
+    
+    if request.method == 'POST':
+        form = PatientForm(request.POST, instance=patient)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"La fiche de {patient.noms} a été mise à jour.")
+            return redirect('enregistrement_patient')
+    else:
+        form = PatientForm(instance=patient)
+    
+    # verification de la fonction
+    role = Fonction.objects.filter(userKey = request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role else None
+
+    return render(request, 'back-end/patient/modifier_patient.html', {
+        'form': form,
+        'patient': patient ,
         'fonctionKey' : fonctionKey
     })

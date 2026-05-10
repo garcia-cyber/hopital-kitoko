@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="fr">
+{% load static %}
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Moyanoli | Modifier Patient</title>
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'back-end/images/favicon.png' %}">
+    <link href="{% static 'back-end/css/style.css' %}" rel="stylesheet">
+
+    <style>
+        .card-title-hospital { font-weight: 700; color: #333; border-left: 4px solid #ffc107; padding-left: 15px; }
+        .form-group label { font-weight: 600; color: #555; margin-bottom: 5px; }
+        .info-matricule { background-color: #fff9db; border: 1px dashed #fab005; padding: 10px; border-radius: 5px; margin-bottom: 20px; }
+    </style>
+</head>
+
+<body>
+    <div id="preloader"><div class="loader"><svg class="circular" viewBox="25 25 50 50"><circle class="path" cx="50" cy="50" r="20" fill="none" stroke-width="3" stroke-miterlimit="10" /></svg></div></div>
+
+    <div id="main-wrapper">
+        <div class="nav-header">
+            <div class="brand-logo">
+                <a href="{% url 'dashboard' %}">
+                    <b class="logo-abbr"><img src="{% static 'back-end/images/logo.png' %}" alt=""> </b>
+                    <span class="brand-title" style="color: white; font-weight: bold; font-size: 1.2rem;">MOYANOLI</span>
+                </a>
+            </div>
+        </div>
+
+        {% include 'back-end/query/header.html' %}
+        {% include 'back-end/query/sidebar.html' %}
+
+        <div class="content-body">
+            <div class="row page-titles mx-0">
+                <div class="col p-md-0">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                        <li class="breadcrumb-item"><a href="{% url 'enregistrement_patient' %}">Patients</a></li>
+                        <li class="breadcrumb-item active">Modification</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="container-fluid">
+                <div class="row justify-content-center">
+                    <div class="col-lg-8">
+                        <div class="card shadow-sm">
+                            <div class="card-body">
+                                <h4 class="card-title-hospital mb-4">Modifier la fiche Patient</h4>
+                                
+                                <div class="info-matricule text-center">
+                                    <span class="text-dark">Dossier N° : </span>
+                                    <strong class="text-warning" style="font-size: 1.1rem;">{{ patient.code_patient }}</strong>
+                                </div>
+
+                                <form method="POST">
+                                    {% csrf_token %}
+                                    
+                                    <div class="row">
+                                        <div class="col-md-12">
+                                            <div class="form-group">
+                                                <label>Noms complets</label>
+                                                {{ form.noms }}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="form-group">
+                                                <label>Sexe</label>
+                                                {{ form.sexe }}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-group">
+                                                <label>Âge</label>
+                                                {{ form.age }}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-group">
+                                                <label>Téléphone</label>
+                                                {{ form.telephone }}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-12">
+                                            <div class="form-group">
+                                                <label>Service d'Orientation</label>
+                                                {{ form.service }}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label>Adresse de résidence</label>
+                                        {{ form.adresse }}
+                                    </div>
+
+                                    <div class="mt-4 d-flex justify-content-between">
+                                        <a href="{% url 'enregistrement_patient' %}" class="btn btn-light shadow-sm">
+                                            <i class="fa fa-arrow-left mr-1"></i> Annuler
+                                        </a>
+                                        <button type="submit" class="btn btn-warning text-white shadow-sm">
+                                            <i class="fa fa-check-circle mr-1"></i> Enregistrer les modifications
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <div class="copyright">
+                <p>Copyright &copy; <strong>Moyanoli ERP</strong> 2026</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'back-end/plugins/common/common.min.js' %}"></script>
+    <script src="{% static 'back-end/js/custom.min.js' %}"></script>
+    <script src="{% static 'back-end/js/settings.js' %}"></script>
+    <script src="{% static 'back-end/js/gleek.js' %}"></script>
+    <script src="{% static 'back-end/js/styleSwitcher.js' %}"></script>
+</body>
+</html>
