@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="fr">
+{% load static %}
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Moyanoli | Saisie Signes Vitaux</title>
+    <link href="{% static 'back-end/css/style.css' %}" rel="stylesheet">
+    <style>
+        .form-validation .form-control { border: 1px solid #ced4da; border-radius: 5px; }
+        .patient-header { background: #f8f9fa; padding: 15px; border-radius: 10px; border-left: 5px solid #4338ca; }
+        .unit-label { background: #eef2ff; border: none; font-weight: bold; color: #4338ca; }
+    </style>
+</head>
+
+<body>
+    <div id="preloader"><div class="loader"><svg class="circular" viewBox="25 25 50 50"><circle class="path" cx="50" cy="50" r="20" fill="none" stroke-width="3" stroke-miterlimit="10" /></svg></div></div>
+
+    <div id="main-wrapper">
+        <!-- ON UTILISE TES DOSSIERS REELS ICI -->
+        {% include 'back-end/query/header.html' %}
+        {% include 'back-end/query/sidebar.html' %}
+
+        <div class="content-body">
+            <div class="container-fluid">
+                <div class="row mt-4">
+                    <div class="col-lg-12">
+                        <div class="card shadow-sm" style="border-radius: 15px;">
+                            <div class="card-body">
+                                <h4 class="card-title mb-4">Prélèvement des Signes Vitaux</h4>
+                                
+                                <div class="patient-header mb-4">
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <small class="text-muted d-block">Patient</small>
+                                            <strong style="font-size: 1.1rem; color: #32325d;">{{ patient.noms|upper }}</strong>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <small class="text-muted d-block">Code</small>
+                                            <strong>{{ patient.code_patient }}</strong>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <small class="text-muted d-block">Service</small>
+                                            <span class="badge badge-primary">{{ patient.service.nom }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <form action="." method="POST" class="form-validation">
+                                    {% csrf_token %}
+                                    <div class="row">
+                                        <!-- Température -->
+                                        <div class="form-group col-md-4">
+                                            <label>Température <span class="text-danger">*</span></label>
+                                            <div class="input-group">
+                                                <input type="number" step="0.1" name="temp" class="form-control" placeholder="37.0" required>
+                                                <div class="input-group-append"><span class="input-group-text unit-label">°C</span></div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Poids -->
+                                        <div class="form-group col-md-4">
+                                            <label>Poids <span class="text-danger">*</span></label>
+                                            <div class="input-group">
+                                                <input type="number" step="0.1" name="poids" class="form-control" placeholder="70.0" required>
+                                                <div class="input-group-append"><span class="input-group-text unit-label">Kg</span></div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Tension -->
+                                        <div class="form-group col-md-4">
+                                            <label>Tension Artérielle <span class="text-danger">*</span></label>
+                                            <input type="text" name="tension" class="form-control" placeholder="12/8" required>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <!-- Pouls -->
+                                        <div class="form-group col-md-4">
+                                            <label>Pouls (Fréq. Cardiaque) <span class="text-danger">*</span></label>
+                                            <div class="input-group">
+                                                <input type="number" name="pouls" class="form-control" placeholder="75" required>
+                                                <div class="input-group-append"><span class="input-group-text unit-label">bpm</span></div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Fréq Respiratoire -->
+                                        <div class="form-group col-md-4">
+                                            <label>Fréq. Respiratoire</label>
+                                            <div class="input-group">
+                                                <input type="number" name="f_resp" class="form-control" placeholder="18">
+                                                <div class="input-group-append"><span class="input-group-text unit-label">mvt/m</span></div>
+                                            </div>
+                                        </div>
+
+                                        <!-- SpO2 -->
+                                        <div class="form-group col-md-4">
+                                            <label>Saturation (SpO2)</label>
+                                            <div class="input-group">
+                                                <input type="number" name="spo2" class="form-control" placeholder="98">
+                                                <div class="input-group-append"><span class="input-group-text unit-label">%</span></div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <hr>
+                                    <div class="text-right mt-4">
+                                        <a href="{% url 'liste_attente_triage' %}" class="btn btn-light px-4 mr-2">Annuler</a>
+                                        <button type="submit" class="btn btn-primary px-5 shadow-sm">
+                                            <i class="fa fa-save mr-1"></i> Enregistrer les constantes
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer"><div class="copyright"><p>Copyright &copy; Moyanoli 2026</p></div></div>
+    </div>
+
+    <script src="{% static 'back-end/plugins/common/common.min.js' %}"></script>
+<script src="{% static 'back-end/js/custom.min.js' %}"></script>
+<script src="{% static 'back-end/js/settings.js' %}"></script>
+<script src="{% static 'back-end/js/gleek.js' %}"></script>
+<script src="{% static 'back-end/js/styleSwitcher.js' %}"></script>
+
+<!-- Scripts spécifiques aux tables -->
+<script src="{% static 'back-end/plugins/tables/js/jquery.dataTables.min.js' %}"></script>
+<script src="{% static 'back-end/plugins/tables/js/datatable/dataTables.bootstrap4.min.js' %}"></script>
+<script src="{% static 'back-end/plugins/tables/js/datatable-init/datatable-basic.min.js' %}"></script>
+</body>
+</html>

@@ -169,3 +169,32 @@ class FactureAdmin(admin.ModelAdmin):
     def get_montant(self, obj):
         return f"{obj.paiement.montant_verse} {obj.paiement.devise}"
     get_montant.short_description = 'Montant'
+
+
+@admin.register(SigneVital)
+class SigneVitalAdmin(admin.ModelAdmin):
+    # Liste des colonnes affichées dans l'administration
+    list_display = (
+        'patient', 
+        'temperature', 
+        'tension_arterielle', 
+        'frequence_cardiaque', 
+        'saturation_oxygene', 
+        'date_prelevement', 
+        'infirmier'
+    )
+    
+    # Filtres sur le côté droit pour trier rapidement
+    list_filter = ('date_prelevement', 'infirmier')
+    
+    # Barre de recherche (permet de chercher par le nom du patient)
+    search_fields = ('patient__noms', 'infirmier__username')
+    
+    # Tri par défaut : du plus récent au plus ancien
+    ordering = ('-date_prelevement',)
+    
+    # Rend la date en lecture seule car elle est générée automatiquement
+    readonly_fields = ('date_prelevement',)
+
+    # Pour faciliter la sélection du patient s'il y en a beaucoup
+    autocomplete_fields = ['patient']

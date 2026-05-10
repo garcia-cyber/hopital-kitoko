@@ -78,8 +78,9 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # --- INTERNATIONALISATION ---
 LANGUAGE_CODE = 'fr-fr'
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Africa/Kinshasa'  # <--- Très important pour avoir l'heure de Kinshasa
 USE_I18N = True
+USE_L10N = True
 USE_TZ = True
 
 # --- FICHIERS STATIQUES (CSS, JS) ---

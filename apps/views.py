@@ -7,7 +7,9 @@ from django.contrib.auth.models import User
 from django.contrib.auth.forms import SetPasswordForm ,UserChangeForm
 from django.contrib import messages
 from django.db.models import Q , Sum 
-from decimal import Decimal
+from decimal import Decimal , ROUND_HALF_UP
+import pytz
+from datetime import timedelta
 
 # Create your views here.
 
@@ -478,67 +480,238 @@ def modifier_patient(request, pk):
 def payer_fiche(request, patient_id):
     patient = get_object_or_404(Patient, id=patient_id)
     
-    # 0. Récupérer le taux de change
+    # 0. Récupérer le taux de change depuis la config
     config = ConfigurationHopital.objects.first()
-    taux = config.taux_usd_en_cdf if config else Decimal('2800.00') # Fallback au cas où
+    taux = config.taux_usd_en_cdf if config else Decimal('2800.00')
 
-    # 1. Récupérer la prestation "Fiche"
+    # 1. Récupérer la prestation "Fiche" pour avoir le prix de référence (en USD)
     try:
         prestation_fiche = Prestation.objects.get(categorie='ADM', libelle__icontains="Fiche")
-        prix_fiche_fixe = prestation_fiche.prix
     except (Prestation.DoesNotExist, Prestation.MultipleObjectsReturned):
         prestation_fiche = Prestation.objects.filter(categorie='ADM', libelle__icontains="Fiche").first()
-        if not prestation_fiche:
-            messages.error(request, "Erreur : La prestation 'Fiche' n'est pas configurée.")
-            return redirect('detail_patient', patient_id=patient.id)
-        prix_fiche_fixe = prestation_fiche.prix
-
-    # 2. Calcul du cumul et reste à payer (en USD)
-    deja_paye = Paiement.objects.filter(
-        patient=patient, 
-        service='FICHE'
-    ).aggregate(Sum('montant_verse'))['montant_verse__sum'] or 0
+        
+    if not prestation_fiche:
+        messages.error(request, "La prestation 'Fiche' n'est pas configurée dans les paramètres.")
+        return redirect('liste_patients')
     
-    reste_a_payer_usd = Decimal(str(prix_fiche_fixe)) - Decimal(str(deja_paye))
+    prix_fiche_usd = Decimal(str(prestation_fiche.prix))
+
+    # 2. Calcul du cumul déjà payé (Conversion virtuelle en USD pour la comparaison)
+    paiements_existants = Paiement.objects.filter(patient=patient, service='FICHE')
+    total_deja_paye_usd = Decimal('0.00')
+    
+    for p in paiements_existants:
+        if p.devise == 'CDF':
+            total_deja_paye_usd += p.montant_verse / taux
+        else:
+            total_deja_paye_usd += p.montant_verse
+
+    reste_a_payer_usd = prix_fiche_usd - total_deja_paye_usd
 
     if request.method == 'POST':
         montant_saisi = Decimal(request.POST.get('montant', 0))
         devise = request.POST.get('devise')
 
-        # Conversion du montant saisi en USD pour la vérification
-        montant_en_usd = montant_saisi
+        # Conversion temporaire pour vérifier si on ne dépasse pas le prix de la fiche
+        montant_test_usd = montant_saisi
         if devise == 'CDF':
-            montant_en_usd = montant_saisi / taux
+            montant_test_usd = montant_saisi / taux
 
-        # Vérification : Ne pas payer plus que le reste dû
-        if montant_en_usd > (reste_a_payer_usd + Decimal('0.01')): # +0.01 pour éviter les erreurs d'arrondi
-            messages.error(request, f"Erreur : Le montant ({montant_en_usd:.2f} USD) dépasse le reste à payer ({reste_a_payer_usd:.2f} USD).")
+        # Vérification avec une petite marge d'erreur pour les arrondis (0.01)
+        if montant_test_usd > (reste_a_payer_usd + Decimal('0.01')):
+            messages.error(request, f"Le montant dépasse le reste à payer ({reste_a_payer_usd:.2f} USD).")
         elif montant_saisi > 0:
+            # ENREGISTREMENT RÉEL : On garde la valeur telle qu'elle a été saisie
             Paiement.objects.create(
                 patient=patient,
                 service='FICHE',
-                montant_verse=montant_en_usd, # On stocke toujours en USD pour la cohérence
-                devise=devise,
+                montant_verse=montant_saisi,  # Ici on aura bien 13000
+                devise=devise,               # Ici on aura bien 'CDF'
                 caissier=request.user
             )
-            messages.success(request, f"Paiement de {montant_saisi} {devise} enregistré avec succès.")
-            # return redirect('detail_patient', patient_id=patient.id)
+            messages.success(request, f"Paiement de {montant_saisi} {devise} enregistré.")
             return redirect('liste_patients')
 
-    # Préparation des infos pour le template (Conversion pour affichage)
-    reste_a_payer_cdf = reste_a_payer_usd * taux
-    
-    role = Fonction.objects.filter(userKey=request.user).first()
+    # verification de la fonction
+    role = Fonction.objects.filter(userKey = request.user).first()
     fonctionKey = role.fonctionKey.roleName if role else None
 
     context = {
         'patient': patient,
-        'deja_paye': deja_paye,
         'reste_a_payer': reste_a_payer_usd,
-        'reste_a_payer_cdf': reste_a_payer_cdf,
+        'reste_a_payer_cdf': reste_a_payer_usd * taux,
         'taux': taux,
-        'prix_fiche': prix_fiche_fixe,
+        'prix_fiche': prix_fiche_usd,
         'libelle_prestation': prestation_fiche.libelle,
-        'fonctionKey': fonctionKey 
+        'fonctionKey' : fonctionKey
     }
     return render(request, 'back-end/finance/payer_fiche.html', context)
+
+# 21
+# ==================================================================================================
+# HISTORIQUE DE PAIEMENT
+# ==================================================================================================
+@login_required
+def historique_paiements(request, patient_id):
+    patient = get_object_or_404(Patient, id=patient_id)
+    
+    # 1. RÉCUPÉRATION DU TAUX DEPUIS TON MODÈLE ConfigurationHopital
+    config = ConfigurationHopital.objects.first()
+    # Si la config n'existe pas en DB, on prend 2500 par défaut
+    taux = config.taux_usd_en_cdf if config else Decimal('2500.00')
+    
+    # 2. RÉCUPÉRATION DU PRIX DE LA FICHE (6 USD)
+    # On essaie de prendre le prix du service lié au patient
+    try:
+        cout_total_usd = Decimal(str(patient.service.prix))
+    except (AttributeError, ValueError, TypeError):
+        # Si le service n'a pas de prix, on cherche la prestation "Fiche" en admin
+        from .models import Prestation # Adapte l'import selon ton fichier
+        prestation = Prestation.objects.filter(libelle__icontains="Fiche").first()
+        cout_total_usd = Decimal(str(prestation.prix)) if prestation else Decimal('0.00')
+
+    # 3. CALCUL PRÉCIS DES PAIEMENTS
+    paiements = Paiement.objects.filter(patient=patient).order_by('date_paiement')
+    
+    cumul_usd = Decimal('0.00')
+    historique_detaille = []
+    
+    for p in paiements:
+        # Conversion : Montant / Taux (ex: 10000 / 2500 = 4.00 USD)
+        if p.devise == 'CDF':
+            montant_equivalent_usd = (p.montant_verse / taux).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        else:
+            montant_equivalent_usd = p.montant_verse
+            
+        cumul_usd += montant_equivalent_usd
+        
+        # Calcul du reste après ce versement précis
+        reste_ligne_usd = cout_total_usd - cumul_usd
+        
+        historique_detaille.append({
+            'date': p.date_paiement,
+            'service': p.get_service_display(),
+            'montant': p.montant_verse,
+            'devise': p.devise,
+            'caissier': p.caissier.username if p.caissier else "Système",
+            'reste_usd': reste_ligne_usd if reste_ligne_usd > 0 else Decimal('0.00'),
+            'id': p.id
+        })
+
+    # Inverser pour voir le plus récent en haut
+    historique_detaille.reverse()
+
+    # Rôles
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role else None
+
+    # Totaux finaux pour les cartes
+    reste_final_usd = max(0, cout_total_usd - cumul_usd)
+
+    context = {
+        'patient': patient,
+        'paiements_liste': historique_detaille,
+        'cout_total_usd': cout_total_usd,
+        'total_paye_usd': cumul_usd,
+        'reste_a_payer_usd': reste_final_usd,
+        'reste_a_payer_cdf': (reste_final_usd * taux).quantize(Decimal('1'), rounding=ROUND_HALF_UP),
+        'taux': taux,
+        'fonctionKey': fonctionKey
+    }
+    return render(request, 'back-end/finance/historique.html', context)
+
+
+# 22
+# ==================================================================================================
+# IMPRIMER FACTURE
+# ==================================================================================================
+@login_required
+def imprimer_recu_direct(request, paiement_id):
+    paiement = get_object_or_404(Paiement, id=paiement_id)
+    
+    # Si le serveur affiche 19:56 au lieu de 04:00, il y a environ 8h de décalage
+    # On force la conversion locale de Django
+    date_paiement_vraie = timezone.localtime(paiement.date_paiement)
+    
+    # Pour l'impression, on prend l'heure exacte de ton Mac à cet instant
+    date_impression = timezone.localtime(timezone.now())
+    
+    context = {
+        'paiement': paiement,
+        'date_paiement_fix': date_paiement_vraie,
+        'date_impression': date_impression,
+    }
+    return render(request, 'back-end/finance/recu_format_ticket.html', context)
+
+# 23
+# ==================================================================================================
+# PATIENT LISTE D'ATTENTE TRIAGE
+# ==================================================================================================
+@login_required
+def liste_attente_triage(request):
+    # On récupère le taux de 2300 que tu as défini
+    config = ConfigurationHopital.objects.first()
+    taux = config.taux_usd_en_cdf if config else 2300.00
+    
+    patients_liste = Patient.objects.all().order_by('-date_creation')
+    
+    for patient in patients_liste:
+        # On filtre les paiements du patient pour le service 'FICHE' uniquement
+        paiements = Paiement.objects.filter(patient=patient, service='FICHE')
+        
+        total_usd = 0
+        for p in paiements:
+            if p.devise == 'USD':
+                total_usd += p.montant_verse
+            else:
+                # Conversion stricte : montant CDF / 2300
+                total_usd += (p.montant_verse / taux)
+        
+        patient.total_fiche_usd = total_usd
+        # Seuil strict de 6.00 USD (soit 13 800 FC)
+        patient.a_solde_fiche = total_usd >= 6.00
+
+    # Rôles
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role else None
+
+    return render(request, 'back-end/infirmerie/liste_attente.html', {
+        'patients': patients_liste, 
+        'taux': taux ,
+        'fonctionKey' : fonctionKey
+    })
+
+
+
+# 24
+# ==================================================================================================
+# PATIENT SIGNE VITAUX
+# ==================================================================================================
+@login_required
+def saisir_signes(request, patient_id):
+    patient = get_object_or_404(Patient, id=patient_id)
+    
+    if request.method == 'POST':
+        # On enregistre les données envoyées par le formulaire
+        SigneVital.objects.create(
+            patient=patient,
+            temperature=request.POST.get('temp'),
+            poids=request.POST.get('poids'),
+            # Assure-toi que 'taille' est dans ton modèle, sinon retire cette ligne
+            tension_arterielle=request.POST.get('tension'),
+            frequence_cardiaque=request.POST.get('pouls'),
+            # Ajoute ces deux-là si tu veux remplir tout ton modèle :
+            frequence_respiratoire=request.POST.get('f_resp'),
+            saturation_oxygene=request.POST.get('spo2'),
+            infirmier=request.user
+        )
+        messages.success(request, f"Signes vitaux de {patient.noms} enregistrés avec succès.")
+        # Après l'enregistrement, on retourne à la liste d'attente
+        return redirect('liste_attente_triage')
+
+    # Rôles
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role else None
+
+    # Si c'est une requête GET (quand on arrive sur la page), on affiche juste le formulaire
+    return render(request, 'back-end/infirmerie/form_triage.html', {'patient': patient, 'fonctionKey': fonctionKey})

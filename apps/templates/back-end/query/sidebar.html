@@ -64,7 +64,19 @@
                 </li>
 
             {% elif fonctionKey == 'infirmier' %}
-                
+                <li>
+                    <a class="has-arrow" href="javascript:void()" aria-expanded="false">
+                        <i class="fa fa-stethoscope menu-icon"></i><span class="nav-text">Infirmerie</span>
+                    </a>
+                    <ul aria-expanded="false">
+                        <li>
+                            <a href="{% url 'liste_attente_triage' %}">
+                                <i class="fa fa-clock-o mr-2"></i>Liste d'attente
+                            </a>
+                        </li>
+                        
+                    </ul>
+                </li>
             {% endif %}
 
         </ul>

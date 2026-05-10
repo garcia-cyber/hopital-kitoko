@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="fr">
+{% load static %}
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Moyanoli | Historique Financier</title>
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'back-end/images/favicon.png' %}">
+    <link href="{% static 'back-end/css/style.css' %}" rel="stylesheet">
+    <style>
+        .stat-card { padding: 20px; border-radius: 10px; color: white; margin-bottom: 20px; position: relative; min-height: 110px; }
+        .bg-total { background: linear-gradient(45deg, #4e73df, #224abe); }
+        .bg-paye { background: linear-gradient(45deg, #1cc88a, #13855c); }
+        .bg-reste { background: linear-gradient(45deg, #e74a3b, #be2617); }
+        .stat-card h3 { font-weight: 700; margin-bottom: 0; }
+        .stat-card h5 { opacity: 0.9; font-weight: 400; font-size: 1.1rem; }
+        .badge-reste { font-size: 0.85rem; padding: 5px 10px; border-radius: 20px; }
+        .bg-danger-light { background-color: #ffe5e5; color: #e74a3b; }
+        .bg-success-light { background-color: #e5f9f0; color: #1cc88a; }
+    </style>
+</head>
+
+<body>
+    <div id="main-wrapper">
+        {% include 'back-end/query/header.html' %}
+        {% include 'back-end/query/sidebar.html' %}
+
+        <div class="content-body">
+            <div class="container-fluid">
+                
+                <!-- RÉSUMÉ GÉNÉRAL -->
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="stat-card bg-total shadow-sm">
+                            <span>Coût Total Service</span>
+                            <h3>{{ cout_total_usd|floatformat:2 }} USD</h3>
+                            <i class="fa fa-file-invoice"></i>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="stat-card bg-paye shadow-sm">
+                            <span>Total déjà Versé</span>
+                            <h3>{{ total_paye_usd|floatformat:2 }} USD</h3>
+                            <i class="fa fa-check-circle"></i>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="stat-card bg-reste shadow-sm">
+                            <span>Reste à percevoir</span>
+                            <h3>{{ reste_a_payer_usd|floatformat:2 }} USD</h3>
+                            <h5>soit {{ reste_a_payer_cdf|floatformat:0 }} CDF</h5>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <div class="card shadow-sm" style="border-radius: 15px;">
+                            <div class="card-header bg-white py-3 d-flex justify-content-between">
+                                <h4 class="text-primary font-weight-bold">Historique de : {{ patient.noms }}</h4>
+                                <a href="javascript:history.back()" class="btn btn-sm btn-light border">Retour</a>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead class="bg-light">
+                                            <tr>
+                                                <th>Date & Heure</th>
+                                                <th>Libellé</th>
+                                                <th>Versé</th>
+                                                <th>Devise</th>
+                                                <th>Reste après Paiement</th>
+                                                <th>Caissier</th>
+                                                <th class="text-right">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for item in paiements_liste %}
+                                            <tr>
+                                                <!-- Date et Heure locale de Kinshasa -->
+                                                <td class="align-middle">{{ item.date|date:"d/m/Y H:i" }}</td>
+                                                <td class="align-middle">{{ item.service }}</td>
+                                                <td class="align-middle text-success font-weight-bold">{{ item.montant }}</td>
+                                                <td class="align-middle"><span class="badge border text-dark">{{ item.devise }}</span></td>
+                                                
+                                                <td class="align-middle">
+                                                    {% if item.reste_usd > 0 %}
+                                                        <span class="badge bg-danger-light font-weight-bold">{{ item.reste_usd|floatformat:2 }} USD</span>
+                                                    {% else %}
+                                                        <span class="badge bg-success-light text-success font-weight-bold">SOLDÉ</span>
+                                                    {% endif %}
+                                                </td>
+
+                                                <td class="align-middle"><small>{{ item.caissier }}</small></td>
+                                                
+                                                <td class="text-right align-middle">
+                                                    <!-- BOUTON IMPRIMER (Toujours disponible) -->
+                                                    <a href="{% url 'imprimer_recu_direct' item.id %}" target="_blank" class="btn btn-info btn-sm mr-1">
+                                                        <i class="fa fa-print"></i> Reçu
+                                                    </a>
+
+                                                    <!-- BOUTON PAYER DETTE (Seulement s'il reste une dette) -->
+                                                    {% if item.reste_usd > 0.01 %}
+                                                        <a href="{% url 'payer_fiche' patient.id %}" class="btn btn-danger btn-sm">
+                                                            <i class="fa fa-money"></i> Payer Dette
+                                                        </a>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="{% static 'back-end/plugins/common/common.min.js' %}"></script>
+    <script src="{% static 'back-end/js/custom.min.js' %}"></script>
+</body>
+</html>
