@@ -23,7 +23,9 @@
                 </span>
             </a>
             <div class="dropdown-menu">
+                {% if fonction == 'admin'%}
                 <a class="dropdown-item" href="{% url 'profilRead' %}">Mon Profil</a>
+                {%endif%}
                 <a class="dropdown-item" href="{% url 'deconnexion' %}">Déconnexion</a>
             </div>
         </li>
