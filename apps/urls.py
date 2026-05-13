@@ -14,8 +14,7 @@ urlpatterns =[
      path('dashboard/', dashboard , name="dashboard") ,
      path('reinitialiser-password/<int:user_id>/', views.force_reinitialiser_pass, name='force_pass'),
      path('modifier-utilisateur/<int:user_id>/', views.modifier_utilisateur, name='modifier_user'),
-     path('reinitialiser-password/<int:user_id>/', views.force_reinitialiser_pass
-, name='force_pass'),
+     path('reinitialiser-password/<int:user_id>/', views.force_reinitialiser_pass, name='force_pass'),
 
 
      # ================================
