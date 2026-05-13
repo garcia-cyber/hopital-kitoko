@@ -10,6 +10,7 @@ from django.db.models import Q , Sum
 from decimal import Decimal , ROUND_HALF_UP
 import pytz
 from datetime import timedelta
+from django.db import transaction
 
 # Create your views here.
 
@@ -718,7 +719,7 @@ def saisir_signes(request, patient_id):
 
 # 25
 # ==================================================================================================
-# PATIENT SIGNE VITAUX  HISTORIQUE
+# PATIENT LISTE GLOBALE SIGNE VITAUX 
 # ==================================================================================================
 @login_required
 def liste_globale_triage(request):
@@ -736,6 +737,10 @@ def liste_globale_triage(request):
     }
     return render(request, 'back-end/infirmerie/liste_globale_triage.html', context)
 
+# 26
+# ==================================================================================================
+# PATIENT SIGNE VITAUX  HISTORIQUE
+# ==================================================================================================
 @login_required
 def historique_signes_vitaux(request, patient_id):
     # On récupère le patient spécifique ou erreur 404
@@ -755,3 +760,164 @@ def historique_signes_vitaux(request, patient_id):
         'fonctionKey': fonctionKey,
     }
     return render(request, 'back-end/infirmerie/historique_signes.html', context)
+
+
+# 27
+# ==================================================================================================
+# MEDECIN LISTE CONSULTATION VOIR SIGNE VITAUX
+# ==================================================================================================
+@login_required
+def liste_consultation_medecin(request):
+    # On affiche uniquement les patients dont les signes vitaux 
+    # n'ont pas encore été traités par le médecin
+    patients_prets = SigneVital.objects.filter(
+        est_consulte=False
+    ).select_related('patient', 'infirmier').order_by('date_prelevement')
+
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role else None
+
+    context = {
+        'fonctionKey': fonctionKey,
+        'patients_prets': patients_prets,
+    }
+    return render(request, 'back-end/medecin/liste_consultation.html', context)
+
+# 28
+# ==================================================================================================
+# MEDECIN MARQUER CONSULTER POUR N'EST PLUS VOIR DANS LA LISTE
+# ==================================================================================================
+@login_required
+def marquer_consulte(request, sv_id):
+    # 1. On récupère le prélèvement spécifique
+    signe = get_object_or_404(SigneVital, id=sv_id)
+    
+    # 2. On marque comme consulté (Optionnel ici)
+    # Note : Il est souvent préférable de marquer "est_consulte" 
+    # seulement quand le médecin ENREGISTRE la consultation (dans la vue POST).
+    # Mais si tu veux le faire au clic du bouton, garde cette ligne :
+    signe.est_consulte = True
+    signe.save()
+    
+    # 3. LA REDIRECTION CRUCIALE :
+    # Tu dois passer l'ID du signe vital (sv_id) à la vue de destination
+    return redirect('consultation_medicale', triage_id=sv_id)
+
+# 29
+# ==================================================================================================
+# MEDECIN 
+# ==================================================================================================
+@login_required
+def consultation_medicale(request, triage_id):
+    # 1. Récupération des données de base
+    triage = get_object_or_404(SigneVital, id=triage_id)
+    consultation = Consultation.objects.filter(triage=triage).first()
+
+    if request.method == 'POST':
+        # Initialisation du formulaire avec les données POST
+        form = ConsultationForm(request.POST, instance=consultation)
+        
+        # Récupération des données manuelles (Tableaux dynamiques)
+        examens_ids = request.POST.getlist('examens_ids')
+        noms_medocs = request.POST.getlist('nom_medicament')
+        posologies = request.POST.getlist('posologie')
+        durees = request.POST.getlist('duree')
+
+        # 2. Validation
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    # A. Sauvegarde de la consultation clinique
+                    consultation_obj = form.save(commit=False)
+                    consultation_obj.triage = triage
+                    consultation_obj.medecin = request.user
+                    consultation_obj.save()
+
+                    # B. Gestion des Examens Paracliniques
+                    # Nettoyage des anciennes demandes non traitées pour mise à jour
+                    DemandeExamen.objects.filter(consultation=consultation_obj, statut='EN_ATTENTE').delete()
+                    
+                    for e_id in examens_ids:
+                        prestation = get_object_or_404(Prestation, id=e_id)
+                        # Récupération de la quantité spécifique via l'ID de la prestation
+                        qty_value = request.POST.get(f'qty_{e_id}', 1)
+                        
+                        DemandeExamen.objects.create(
+                            consultation=consultation_obj,
+                            prestation=prestation,
+                            quantite=qty_value, # Ton nouveau champ ajouté au modèle
+                            statut='EN_ATTENTE'
+                        )
+
+                    # C. Gestion de l'Ordonnance d'Urgence
+                    # On vérifie s'il y a au moins un médicament dont le nom n'est pas vide
+                    if any(n.strip() for n in noms_medocs if n):
+                        ordonnance, _ = Ordonnance.objects.get_or_create(
+                            consultation=consultation_obj,
+                            type_ordonnance='URGENCE'
+                        )
+                        # On remplace les anciennes lignes par les nouvelles
+                        LigneMedicament.objects.filter(ordonnance=ordonnance).delete()
+                        
+                        for i, nom in enumerate(noms_medocs):
+                            if nom and nom.strip():
+                                # Sécurité sur les index des listes parallèles
+                                poso = posologies[i] if i < len(posologies) else ""
+                                dur = durees[i] if i < len(durees) else ""
+                                
+                                LigneMedicament.objects.create(
+                                    ordonnance=ordonnance,
+                                    nom_medicament=nom,
+                                    posologie=poso,
+                                    duree=dur,
+                                    statut='EN_COURS'
+                                )
+
+                    # D. Mise à jour du statut du Triage
+                    triage.est_consulte = True
+                    triage.save()
+
+                messages.success(request, f"Consultation de {triage.patient.noms} enregistrée avec succès !")
+                return redirect('consultation_medicale', triage_id=triage.id)
+
+            except Exception as e:
+                # En cas d'erreur, transaction.atomic() annule tout
+                messages.error(request, f"Une erreur technique est survenue : {str(e)}")
+        else:
+            messages.error(request, "Veuillez vérifier les erreurs dans le formulaire clinique.")
+    
+    else:
+        # Mode GET : affichage
+        form = ConsultationForm(instance=consultation)
+
+    # 3. Préparation du contexte
+    examens_disponibles = Prestation.objects.filter(
+        categorie__in=['LABO', 'ECHO', 'RADIO']
+    ).order_by('categorie', 'libelle')
+    
+    # Gestion du rôle utilisateur (spécifique à ta structure Moyanoli)
+    role = None
+    try:
+        from .models import Fonction # Ajuste l'import selon ton app
+        role_obj = Fonction.objects.filter(userKey=request.user).first()
+        role = role_obj.fonctionKey.roleName if role_obj else None
+    except:
+        pass
+    
+    context = {
+        'triage': triage,
+        'form': form,
+        'examens_disponibles': examens_disponibles,
+        'consultation': consultation,
+        'fonctionKey': role
+    }
+    return render(request, 'back-end/medecin/consultation_medecin.html', context)
+
+
+
+
+
+# 30
+# ==================================================================================================
+# MEDECIN 
+# ==================================================================================================

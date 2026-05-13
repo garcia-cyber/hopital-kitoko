@@ -1,200 +1,110 @@
 from django.contrib import admin
+from django.shortcuts import redirect
 from .models import *
 
-# Register your models here.
-
+# ==========================================
+# 1. CONFIGURATION GÉNÉRALE
+# ==========================================
 @admin.register(Role)
 class RoleAdmin(admin.ModelAdmin):
     list_display = ['roleName']
 
-
-# -------------------------------
-# fonction
 @admin.register(Fonction)
 class FonctionAdmin(admin.ModelAdmin):
-    list_display = ['fonctionKey','userKey','autorisation',] 
+    list_display = ['fonctionKey', 'userKey', 'autorisation']
 
-
-# =================================
-# taux 
 @admin.register(ConfigurationHopital)
 class ConfigurationHopitalAdmin(admin.ModelAdmin):
-    # On empêche l'ajout d'un nouvel enregistrement si un existe déjà
-    def has_add_permission(self, request):
-        if ConfigurationHopital.objects.exists():
-            return False
-        return True
-
-    # On empêche la suppression pour ne pas casser le système
-    def has_delete_permission(self, request, obj=None):
-        return False
-
-    # Configuration de l'affichage dans la liste
     list_display = ('taux_usd_en_cdf', 'derniere_mise_a_jour')
-    
-    # On rend le champ de date de mise à jour visible mais non modifiable (puisqu'il est auto_now)
-    readonly_fields = ('derniere_mise_a_jour',)
+    def has_add_permission(self, request):
+        return not ConfigurationHopital.objects.exists()
 
-    # Petite astuce : rediriger directement vers la modification s'il y a un objet
-    def changelist_view(self, request, extra_context=None):
-        if ConfigurationHopital.objects.count() == 1:
-            obj = ConfigurationHopital.objects.first()
-            from django.shortcuts import redirect
-            return redirect(f'/admin/{obj._meta.app_label}/{obj._meta.model_name}/{obj.id}/change/')
-        return super().changelist_view(request, extra_context=extra_context)
-
-# =======================================
-# prestation
-
-@admin.register(Prestation)
-class PrestationAdmin(admin.ModelAdmin):
-    # Colonnes affichées dans la liste
-    list_display = ('libelle', 'get_categorie_display', 'prix')
-    
-    # Filtres sur le côté droit pour trier par type de soin
-    list_filter = ('categorie',)
-    
-    # Barre de recherche pour chercher par nom de prestation
-    search_fields = ('libelle',)
-    
-    # Permet de modifier le prix directement depuis la liste sans ouvrir l'objet
-    list_editable = ('prix',)
-    
-    # Organisation de l'affichage dans le formulaire d'ajout
-    fieldsets = (
-        ('Informations Générales', {
-            'fields': ('libelle', 'categorie')
-        }),
-        ('Tarification', {
-            'fields': ('prix',),
-            'description': 'Le prix doit être saisi en Dollars (USD)'
-        }),
-    )
-
-    # Pour personnaliser l'affichage de la catégorie dans list_display
-    def get_categorie_display(self, obj):
-        return obj.get_categorie_display()
-    get_categorie_display.short_description = 'Catégorie'
+# ==========================================
+# 2. PATIENTS & SERVICES
+# ==========================================
+@admin.register(Patient)
+class PatientAdmin(admin.ModelAdmin):
+    list_display = ('code_patient', 'noms', 'sexe', 'age', 'service', 'date_creation')
+    search_fields = ('noms', 'code_patient', 'telephone')
+    list_filter = ('service', 'sexe')
+    readonly_fields = ('code_patient', 'date_creation')
 
 @admin.register(Service)
 class ServiceAdmin(admin.ModelAdmin):
-    # Affichage en colonnes dans la liste
-    list_display = ('id', 'nom', 'date_creation')
-    # Permet de chercher un service par son nom
-    search_fields = ('nom',)
-    # Tri par défaut (le plus récent en premier)
-    ordering = ('-date_creation',)
+    list_display = ('nom', 'date_creation')
 
-@admin.register(Patient)
-class PatientAdmin(admin.ModelAdmin):
-    # Configuration de la liste des patients
-    list_display = ('code_patient', 'noms', 'sexe', 'age', 'service', 'created_by', 'date_creation')
-    
-    # Filtres sur le côté droit pour trier rapidement
-    list_filter = ('service', 'sexe', 'date_creation', 'created_by')
-    
-    # Barre de recherche (recherche par nom ou par code matricule)
-    search_fields = ('noms', 'code_patient', 'telephone')
-    
-    # Champs en lecture seule (le code est généré auto, donc on ne doit pas le toucher)
-    readonly_fields = ('code_patient', 'date_creation', 'date_modification', 'created_by')
+# ==========================================
+# 3. CLINIQUE (GESTION DE L'ERREUR ATTRIBUTE ERROR)
+# ==========================================
 
-    # Organisation des champs dans le formulaire d'édition
-    fieldsets = (
-        ('Identité du Patient', {
-            'fields': ('code_patient', 'noms', 'sexe', 'age', 'telephone', 'adresse')
-        }),
-        ('Orientation Médicale', {
-            'fields': ('service',)
-        }),
-        ('Traçabilité', {
-            'fields': ('created_by', 'date_creation', 'date_modification'),
-            'classes': ('collapse',), # Cache cette section par défaut
-        }),
-    )
-
-    def save_model(self, request, obj, form, change):
-        """
-        Si on crée le patient via l'admin, on enregistre automatiquement 
-        l'administrateur connecté comme créateur.
-        """
-        if not obj.pk: # Si c'est une création (pas de clé primaire encore)
-            obj.created_by = request.user
-        super().save_model(request, obj, form, change)
-
-# Configuration de la Facture en "Inline" pour la voir directement dans le Paiement
-class FactureInline(admin.StackedInline):
-    model = Facture
+class DemandeExamenInline(admin.TabularInline):
+    model = DemandeExamen
     extra = 0
-    readonly_fields = ('numero_facture', 'date_emission')
-    can_delete = False
+    # On affiche bien le nouveau champ 'quantite'
+    fields = ('prestation', 'quantite', 'indication', 'statut')
 
-@admin.register(Paiement)
-class PaiementAdmin(admin.ModelAdmin):
-    # Colonnes affichées dans la liste
-    list_display = ('id', 'numero_facture_affiche', 'patient', 'service', 'montant_verse', 'devise', 'date_paiement', 'caissier')
+class OrdonnanceInline(admin.StackedInline):
+    model = Ordonnance
+    extra = 0
+    show_change_link = True
+
+@admin.register(Consultation)
+class ConsultationAdmin(admin.ModelAdmin):
+    # On utilise 'get_total_examens' défini plus bas au lieu de la propriété du modèle
+    list_display = ('get_patient', 'medecin', 'get_total_examens', 'date_creation')
+    list_filter = ('date_creation', 'medecin')
+    search_fields = ('triage__patient__noms', 'hypothese_diagnostique')
     
-    # Filtres latéraux (très utile pour ta caisse)
-    list_filter = ('devise', 'service', 'date_paiement', 'caissier')
-    
-    # Barre de recherche (recherche par nom du patient ou numéro de facture)
-    search_fields = ('patient__nom', 'patient__prenom', 'facture_liee__numero_facture')
-    
-    # On affiche la facture directement à l'intérieur du détail du paiement
-    inlines = [FactureInline]
+    inlines = [DemandeExamenInline, OrdonnanceInline]
 
-    # Méthode pour afficher le numéro de facture directement dans la liste des paiements
-    def numero_facture_affiche(self, obj):
-        try:
-            return obj.facture_liee.numero_facture
-        except:
-            return "Aucune facture"
-    numero_facture_affiche.short_description = 'N° Facture'
-
-@admin.register(Facture)
-class FactureAdmin(admin.ModelAdmin):
-    list_display = ('numero_facture', 'get_patient', 'get_service', 'get_montant', 'date_emission')
-    search_fields = ('numero_facture', 'paiement__patient__nom')
-    readonly_fields = ('paiement', 'numero_facture', 'date_emission')
-
-    # Fonctions pour récupérer les infos du paiement lié dans la liste des factures
     def get_patient(self, obj):
-        return obj.paiement.patient
-    get_patient.short_description = 'Patient'
+        return obj.triage.patient.noms
+    get_patient.short_description = "Patient"
 
-    def get_service(self, obj):
-        return obj.paiement.service
-    get_service.short_description = 'Service'
-
-    def get_montant(self, obj):
-        return f"{obj.paiement.montant_verse} {obj.paiement.devise}"
-    get_montant.short_description = 'Montant'
-
+    def get_total_examens(self, obj):
+        """
+        Calcul dynamique du total sans modifier models.py.
+        Gère l'erreur 'demandeexamen_set' vs 'examens'
+        """
+        try:
+            # On cherche d'abord via le related_name 'examens'
+            examens_lies = obj.examens.all()
+        except AttributeError:
+            # Si absent, on utilise le nom par défaut de Django
+            examens_lies = obj.demandeexamen_set.all()
+        
+        total = sum((ex.prestation.prix * ex.quantite) for ex in examens_lies if ex.prestation and ex.prestation.prix)
+        return f"{total} USD"
+    
+    get_total_examens.short_description = "Total Prescrit"
 
 @admin.register(SigneVital)
 class SigneVitalAdmin(admin.ModelAdmin):
-    # Liste des colonnes affichées dans l'administration
-    list_display = (
-        'patient', 
-        'temperature', 
-        'tension_arterielle', 
-        'frequence_cardiaque', 
-        'saturation_oxygene', 
-        'date_prelevement', 
-        'infirmier'
-    )
-    
-    # Filtres sur le côté droit pour trier rapidement
-    list_filter = ('date_prelevement', 'infirmier')
-    
-    # Barre de recherche (permet de chercher par le nom du patient)
-    search_fields = ('patient__noms', 'infirmier__username')
-    
-    # Tri par défaut : du plus récent au plus ancien
-    ordering = ('-date_prelevement',)
-    
-    # Rend la date en lecture seule car elle est générée automatiquement
-    readonly_fields = ('date_prelevement',)
+    list_display = ('patient', 'temperature', 'tension_arterielle', 'date_prelevement')
+    search_fields = ('patient__noms',)
 
-    # Pour faciliter la sélection du patient s'il y en a beaucoup
-    autocomplete_fields = ['patient']
+# ==========================================
+# 4. EXAMENS & ORDONNANCES
+# ==========================================
+@admin.register(Prestation)
+class PrestationAdmin(admin.ModelAdmin):
+    list_display = ('libelle', 'categorie', 'prix')
+    list_editable = ('prix',)
+    search_fields = ('libelle',)
+
+@admin.register(DemandeExamen)
+class DemandeExamenAdmin(admin.ModelAdmin):
+    list_display = ('prestation', 'quantite', 'get_patient_name', 'statut')
+    list_filter = ('statut', 'prestation__categorie')
+    
+    def get_patient_name(self, obj):
+        return obj.consultation.triage.patient.noms
+    get_patient_name.short_description = "Patient"
+
+@admin.register(Ordonnance)
+class OrdonnanceAdmin(admin.ModelAdmin):
+    list_display = ('consultation', 'date_prescrite')
+
+@admin.register(LigneMedicament)
+class LigneMedicamentAdmin(admin.ModelAdmin):
+    list_display = ('nom_medicament', 'posologie', 'statut')

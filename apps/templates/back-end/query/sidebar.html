@@ -82,6 +82,12 @@
                         </li>
                     </ul>
                 </li>
+            {% elif fonctionKey == 'medecin'%}
+                <li>
+                    <a href="{% url 'liste_consultation_medecin' %}">
+                        <i class="icon-user-follow menu-icon"></i><span class="nav-text">Consultations Prêtes</span>
+                    </a>
+                </li>
             {% endif %}
 
         </ul>

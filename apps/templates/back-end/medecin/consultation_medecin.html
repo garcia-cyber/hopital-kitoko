@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="fr">
+{% load static %}
+<head>
+    <meta charset="utf-8">
+    <title>Consultation Médicale | Moyanoli</title>
+    <link href="{% static 'back-end/css/style.css' %}" rel="stylesheet">
+    <style>
+        body { background-color: #f3f3f9; }
+        .section-med { background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 25px; }
+        .title-blue { border-left: 5px solid #7571f9; padding-left: 15px; color: #7571f9; font-weight: bold; }
+        .table-scroll { max-height: 400px; overflow-y: auto; }
+        .selected-row { background-color: #f0f0ff !important; border-left: 4px solid #7571f9; }
+        .filter-btn.active { background-color: #7571f9 !important; color: white !important; }
+        .ordonnance-urgente { border: 2px dashed #ffc107; background-color: #fffdf5; display: none; }
+        .btn-remove-med { cursor: pointer; transition: 0.2s; color: #ccc; }
+        .btn-remove-med:hover { color: #ff5e5e !important; }
+    </style>
+</head>
+
+<body>
+    <div id="main-wrapper">
+        {% include 'back-end/query/header.html' %}
+        {% include 'back-end/query/sidebar.html' %}
+
+        <div class="content-body">
+            <div class="container-fluid mt-3">
+                
+                <!-- GESTION DES MESSAGES -->
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                            <button type="button" class="close" data-dismiss="alert">&times;</button>
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+                
+                <form method="POST" id="consultationForm">
+                    {% csrf_token %}
+                    
+                    <div class="section-med d-flex justify-content-between align-items-center">
+                        <div>
+                            <h2 class="text-primary mb-0">{{ triage.patient.noms }}</h2>
+                            <p class="text-muted mb-0">Sexe: {{ triage.patient.sexe }} | Age: {{ triage.patient.age }} ans</p>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-lg rounded-pill shadow px-5">
+                            <i class="fa fa-save"></i> ENREGISTRER LA CONSULTATION
+                        </button>
+                    </div>
+
+                    <div class="row">
+                        <!-- GAUCHE : CLINIQUE -->
+                        <div class="col-xl-7">
+                            <div class="section-med">
+                                <h5 class="title-blue mb-4">EXAMEN CLINIQUE</h5>
+                                
+                                <div class="form-group">
+                                    <label><strong>Motif de consultation</strong></label>
+                                    {{ form.motif_consultation }}
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label><strong>Histoire de la maladie</strong></label>
+                                            {{ form.histoire_maladie }}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label><strong>Examen Physique</strong></label>
+                                            {{ form.examen_physique }}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label><strong>Hypothèse Diagnostique</strong></label>
+                                    {{ form.hypothese_diagnostique }}
+                                </div>
+
+                                <hr>
+                                <div class="text-center">
+                                    <button type="button" class="btn btn-outline-warning btn-sm" id="btnShowOrdo">
+                                        <i class="fa fa-pills"></i> + Prescrire Traitement d'Urgence
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- SECTION ORDONNANCE D'URGENCE -->
+                            <div class="section-med ordonnance-urgente" id="section-ordonnance">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h5 class="text-warning font-weight-bold mb-0">
+                                        <i class="fa fa-bolt"></i> ORDONNANCE D'URGENCE
+                                    </h5>
+                                    <button type="button" class="btn btn-success btn-sm rounded-pill" id="add-med-row">
+                                        <i class="fa fa-plus"></i> Ajouter une ligne
+                                    </button>
+                                </div>
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Médicament</th>
+                                            <th>Posologie</th>
+                                            <th>Durée</th>
+                                            <th style="width: 40px;"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="med-tbody">
+                                        <tr class="med-row">
+                                            <td><input type="text" name="nom_medicament" class="form-control form-control-sm med-input" placeholder="Produit"></td>
+                                            <td><input type="text" name="posologie" class="form-control form-control-sm med-input" placeholder="Posologie"></td>
+                                            <td><input type="text" name="duree" class="form-control form-control-sm med-input" placeholder="Durée"></td>
+                                            <td class="text-center align-middle">
+                                                <i class="fa fa-trash btn-remove-med" style="display: none;" onclick="removeMedRow(this)"></i>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- DROITE : EXAMENS -->
+                        <div class="col-xl-5">
+                            <div class="section-med">
+                                <h5 class="text-primary font-weight-bold">DEMANDE D'EXAMENS PARACLINIQUES</h5>
+                                <div class="btn-group w-100 my-2">
+                                    <button type="button" class="btn btn-outline-primary filter-btn active" data-filter="ALL">Tous</button>
+                                    <button type="button" class="btn btn-outline-primary filter-btn" data-filter="LABO">Labo</button>
+                                    <button type="button" class="btn btn-outline-primary filter-btn" data-filter="ECHO">Écho</button>
+                                    <button type="button" class="btn btn-outline-primary filter-btn" data-filter="RADIO">Radio</button>
+                                </div>
+                                <input type="text" id="searchExamen" class="form-control my-3" placeholder="Filtrer les examens...">
+                                <div class="table-scroll">
+                                    <table class="table table-hover">
+                                        <tbody>
+                                            {% for examen in examens_disponibles %}
+                                            <tr class="examen-row" data-category="{{ examen.categorie }}">
+                                                <td style="width: 40px;">
+                                                    <input type="checkbox" name="examens_ids" value="{{ examen.id }}" class="examen-check">
+                                                </td>
+                                                <td class="examen-name">{{ examen.libelle }}</td>
+                                                <td><span class="badge badge-light">{{ examen.categorie }}</span></td>
+                                                <td style="width: 80px;">
+                                                    <input type="number" name="qty_{{ examen.id }}" value="1" min="1" class="form-control form-control-sm">
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPTS -->
+    <script src="{% static 'back-end/plugins/common/common.min.js' %}"></script>
+    <script src="{% static 'back-end/js/custom.min.js' %}"></script>
+
+    <script>
+        // Toggle Ordonnance avec validation dynamique
+        document.getElementById('btnShowOrdo').addEventListener('click', function() {
+            const div = document.getElementById('section-ordonnance');
+            const inputs = div.querySelectorAll('.med-input');
+            const isHidden = (window.getComputedStyle(div).display === 'none');
+            
+            if (isHidden) {
+                div.style.display = 'block';
+                // On rend le premier médicament obligatoire si on affiche la section
+                inputs.forEach(i => i.required = true);
+                this.innerHTML = '<i class="fa fa-times"></i> Masquer Ordonnance';
+                this.className = 'btn btn-outline-danger btn-sm';
+            } else {
+                div.style.display = 'none';
+                // On retire l'obligation de saisie pour pouvoir envoyer le formulaire sans ordonnance
+                inputs.forEach(i => {
+                    i.required = false;
+                    i.value = ''; // Optionnel: vide les champs si on masque
+                });
+                this.innerHTML = '<i class="fa fa-pills"></i> + Prescrire Traitement d\'Urgence';
+                this.className = 'btn btn-outline-warning btn-sm';
+            }
+        });
+
+        // Add Med Row
+        document.getElementById('add-med-row').addEventListener('click', function() {
+            const tbody = document.getElementById('med-tbody');
+            const firstRow = tbody.querySelector('.med-row');
+            const newRow = firstRow.cloneNode(true);
+            
+            // Réinitialiser les inputs de la nouvelle ligne
+            newRow.querySelectorAll('input').forEach(i => {
+                i.value = '';
+                i.required = true; 
+            });
+            
+            // Afficher le bouton supprimer sur la nouvelle ligne
+            const trashBtn = newRow.querySelector('.btn-remove-med');
+            trashBtn.style.display = 'inline-block';
+            
+            tbody.appendChild(newRow);
+        });
+
+        // Fonction pour supprimer une ligne
+        function removeMedRow(btn) {
+            const tbody = document.getElementById('med-tbody');
+            if (tbody.querySelectorAll('.med-row').length > 1) {
+                btn.closest('tr').remove();
+            }
+        }
+
+        // Filter Examens
+        const searchInput = document.getElementById('searchExamen');
+        const filterBtns = document.querySelectorAll('.filter-btn');
+        const rows = document.querySelectorAll('.examen-row');
+
+        function applyFilter() {
+            const text = searchInput.value.toLowerCase();
+            const activeCat = document.querySelector('.filter-btn.active').dataset.filter;
+            rows.forEach(row => {
+                const name = row.querySelector('.examen-name').textContent.toLowerCase();
+                const cat = row.dataset.category;
+                const matchCat = (activeCat === 'ALL' || cat === activeCat);
+                const matchText = name.includes(text);
+                row.style.display = (matchCat && matchText) ? '' : 'none';
+            });
+        }
+
+        searchInput.addEventListener('input', applyFilter);
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                filterBtns.forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                applyFilter();
+            });
+        });
+
+        // Checkbox row highlight
+        document.querySelectorAll('.examen-check').forEach(check => {
+            check.addEventListener('change', function() {
+                this.closest('tr').classList.toggle('selected-row', this.checked);
+            });
+        });
+    </script>
+</body>
+</html>

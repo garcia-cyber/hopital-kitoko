@@ -2,6 +2,7 @@ from django import forms
 from django.contrib.auth.models import User
 from .models import *
 from django.core.exceptions import ValidationError
+from django.forms import inlineformset_factory
 
 
 # creation du formulaire d'authentification
@@ -240,3 +241,40 @@ class PatientForm(forms.ModelForm):
         if len(noms) < 3:
             raise forms.ValidationError("Le nom complet est trop court.")
         return noms.upper() # On force le nom en majuscule pour l'uniformité
+
+# 1. Formulaire principal de la Consultation
+class ConsultationForm(forms.ModelForm):
+    class Meta:
+        model = Consultation
+        fields = ['motif_consultation', 'histoire_maladie', 'examen_physique', 'hypothese_diagnostique']
+        widgets = {
+            # On ajoute 'required': 'required' dans les attributs HTML
+            'motif_consultation': forms.Textarea(attrs={
+                'class': 'form-control', 
+                'rows': 2, 
+                'placeholder': 'Pourquoi le patient consulte ?',
+                'required': 'required'
+            }),
+            'histoire_maladie': forms.Textarea(attrs={
+                'class': 'form-control', 
+                'rows': 3,
+                'required': 'required'
+            }),
+            'examen_physique': forms.Textarea(attrs={
+                'class': 'form-control', 
+                'rows': 3,
+                'required': 'required'
+            }),
+            'hypothese_diagnostique': forms.Textarea(attrs={
+                'class': 'form-control', 
+                'rows': 2, 
+                'placeholder': 'Votre diagnostic provisoire',
+                'required': 'required'
+            }),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # On s'assure que TOUS les champs du formulaire sont obligatoires au niveau de Django
+        for field_name in self.fields:
+            self.fields[field_name].required = True

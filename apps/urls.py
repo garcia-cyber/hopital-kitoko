@@ -58,6 +58,12 @@ urlpatterns =[
     path('infirmerie/saisir/<int:patient_id>/', views.saisir_signes, name='saisir_signes'),
     path('infirmerie/registre-global/', views.liste_globale_triage, name='liste_globale_triage'),
     path('infirmerie/historique/<int:patient_id>/', views.historique_signes_vitaux, name='historique_signes_vitaux'),
+
+    # ==================================
+    # MEDECIN
+    path('medecin/consultations-en-attente/', views.liste_consultation_medecin, name='liste_consultation_medecin'),
+    path('medecin/marquer-consulte/<int:sv_id>/', views.marquer_consulte, name='marquer_consulte'),
+    path('consultation/<int:triage_id>/', views.consultation_medicale, name='consultation_medicale'),
      
 
  ]

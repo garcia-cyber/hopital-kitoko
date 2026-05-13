@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime
 from django.utils import timezone 
 from django.db.models import Sum
+from django.conf import settings
 # Create your models here.
 
 
@@ -188,6 +189,92 @@ class SigneVital(models.Model):
     saturation_oxygene = models.IntegerField(null=True, blank=True) 
     date_prelevement = models.DateTimeField(auto_now_add=True)
     infirmier = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    est_consulte = models.BooleanField(default=False)
 
     def __str__(self):
         return f"Signes vitaux de {self.patient.noms} le {self.date_prelevement}"
+
+# ==================================================================================================
+class Consultation(models.Model):
+    # Correction : On pointe vers 'SigneVital' au lieu de 'Triage'
+    triage = models.OneToOneField('SigneVital', db_index=True, on_delete=models.CASCADE)
+    medecin = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    
+    motif_consultation = models.TextField(verbose_name="Motif")
+    histoire_maladie = models.TextField(verbose_name="Histoire de la maladie")
+    examen_physique = models.TextField(verbose_name="Examen physique")
+    hypothese_diagnostique = models.TextField(verbose_name="Hypothèse diagnostique")
+    
+    date_creation = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        # Correction du chemin vers le patient
+        return f"Consultation de {self.triage.patient.noms} le {self.date_creation.strftime('%d/%m/%Y')}"
+
+    @property
+    def total_examens_a_payer(self):
+        # On calcule la somme des prix de toutes les prestations demandées
+        examens = self.demandeexamen_set.all()
+        return sum(ex.prestation.prix for ex in examens)
+
+
+# ==================================================================================================
+class DemandeExamen(models.Model):
+    STATUT = [
+        ('EN_ATTENTE', 'En attente'),
+        ('TERMINE', 'Terminé'),
+        ('ANNULE', 'Annulé'),
+    ]
+    
+    consultation = models.ForeignKey(Consultation, related_name='examens', on_delete=models.CASCADE)
+    prestation = models.ForeignKey('Prestation', on_delete=models.PROTECT)
+    indication = models.TextField(blank=True, help_text="Note du médecin pour le technicien")
+    
+    # Résultat rempli par le laborantin/radiologue/échographiste
+    resultat = models.TextField(blank=True, null=True)
+    image_resultat = models.ImageField(upload_to='resultats_examens/', blank=True, null=True)
+    technicien = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='examens_realises', 
+                                  on_delete=models.SET_NULL, null=True, blank=True)
+    
+    statut = models.CharField(max_length=20, choices=STATUT, default='EN_ATTENTE')
+    date_demande = models.DateTimeField(auto_now_add=True)
+    date_realisation = models.DateTimeField(null=True, blank=True)
+    quantite = models.PositiveIntegerField(default=1)
+
+    def __str__(self):
+        return f"{self.prestation.libelle} pour {self.consultation.triage.patient.noms}"
+
+# ===================================================================================================
+class Ordonnance(models.Model):
+    TYPE_CHOICES = [
+        ('URGENCE', 'Ordonnance d’Urgence'),
+        ('DEFINITIVE', 'Ordonnance Définitive'),
+    ]
+    
+    consultation = models.ForeignKey(Consultation, on_delete=models.CASCADE)
+    date_prescrite = models.DateTimeField(auto_now_add=True)
+    # AJOUT DU TYPE ICI
+    type_ordonnance = models.CharField(max_length=20, choices=TYPE_CHOICES, default='URGENCE')
+    observation = models.TextField(blank=True, help_text="Note générale sur l'ordonnance")
+
+    def __str__(self):
+        return f"Ordonnance {self.get_type_ordonnance_display()} du {self.date_prescrite.strftime('%d/%m/%Y')}"
+# ===================================================================================================
+class LigneMedicament(models.Model):
+    STATUT_MEDOC = [
+        ('EN_COURS', 'En cours'),
+        ('STOPPE', 'Stoppé / Changé'),
+    ]
+    
+    ordonnance = models.ForeignKey(Ordonnance, related_name='medicaments', on_delete=models.CASCADE)
+    nom_medicament = models.CharField(max_length=200)
+    posologie = models.CharField(max_length=200, help_text="ex: 1 tab 3 fois par jour")
+    duree = models.CharField(max_length=100, help_text="ex: 5 jours")
+    
+    # Gestion de l'évolution du traitement
+    statut = models.CharField(max_length=20, choices=STATUT_MEDOC, default='EN_COURS')
+    motif_arret = models.TextField(blank=True, null=True, help_text="Pourquoi le médecin a changé ce médicament")
+    date_modification = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.nom_medicament} - {self.statut}"
