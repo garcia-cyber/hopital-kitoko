@@ -1,7 +1,7 @@
 from django.shortcuts import render , redirect , get_object_or_404
 from .forms import *
 from .models import *
-from django.contrib.auth import authenticate , login as auth , logout ,update_session_auth_hash
+from django.contrib.auth import authenticate , login as auth_login , logout ,update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import SetPasswordForm ,UserChangeForm
@@ -27,21 +27,33 @@ def home(request):
 # CONNEXION DANS LE SYSTEME
 # =====================================================================
 def login(request):
+    # Si l'utilisateur est déjà connecté, on le redirige directement
+    if request.user.is_authenticated:
+         return redirect('dashboard')
+
     msg = None
     if request.method == 'POST':
         form = LoginForm(request.POST)
         if form.is_valid():
-            username = form.cleaned_data['username']
-            password = form.cleaned_data['password']
+            username = form.cleaned_data.get('username')
+            password = form.cleaned_data.get('password')
 
-            user = authenticate(username = username , password = password)
-            if user :
-                auth(request,user)
-                return redirect('dashboard')
+            user = authenticate(request, username=username, password=password)
+            
+            if user is not None:
+                if user.is_active:
+                    auth_login(request, user)
+                    return redirect('dashboard')
+                else:
+                    msg = "Votre compte est désactivé."
             else:
-                msg = "mot de passe erronne !!!:🤞"
-    form = LoginForm()
-    return render(request , 'back-end/page-login.html',{'form':form ,'msg':msg})
+                msg = "Identifiants invalides. Veuillez réessayer. 🤞"
+    else:
+        form = LoginForm()
+
+    # Note : On passe 'form' tel quel. Si c'est un POST invalide, 
+    # il contiendra les erreurs et les données saisies.
+    return render(request, 'back-end/login.html', {'form': form, 'msg': msg})
 
 # 3
 # ==========================================================================
@@ -919,5 +931,32 @@ def consultation_medicale(request, triage_id):
 
 # 30
 # ==================================================================================================
-# MEDECIN 
+# MEDECIN  LISTE DES EXAMENS CONSULTER
 # ==================================================================================================
+@login_required
+def liste_consultations_terminees(request):
+    # 'examens' est le related_name dans ton modèle DemandeExamen
+    # 'prestation' est chargé pour avoir accès au libelle du test (ex: Hémogramme)
+    consultations = Consultation.objects.select_related(
+        'triage__patient', 
+        'medecin'
+    ).prefetch_related(
+        'examens__prestation'
+    ).order_by('-date_creation')
+    
+    context = {
+        'consultations': consultations,
+    }
+    return render(request, 'back-end/medecin/liste_consultations.html', context)
+
+# 31
+# ==================================================================================================
+# MEDECIN  DETAILS CONSULTATION 
+# ==================================================================================================
+def detail_consultation(request, pk):
+    # On récupère la consultation avec ses relations pour éviter trop de requêtes SQL
+    consultation = get_object_or_404(
+        Consultation.objects.select_related('triage__patient', 'medecin').prefetch_related('examens__prestation'), 
+        pk=pk
+    )
+    return render(request, 'back-end/medecin/detail_consultation.html', {'c': consultation})

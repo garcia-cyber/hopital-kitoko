@@ -1,0 +1,94 @@
+<div class="sidebar" id="sidebar" style="background-color: #f8fafc;">
+    <div class="sidebar-inner slimscroll">
+        <div id="sidebar-menu" class="sidebar-menu">
+            <ul>
+                <li class="menu-title"> 
+                    <span>MENU PRINCIPAL</span>
+                </li>
+                
+                <!-- Dashboard Médical -->
+                <li class="submenu">
+                    <a href="#"><i class="la la-hospital"></i> <span> Dashboard</span> <span class="menu-arrow"></span></a>
+                    <ul style="display: none;">
+                        <li><a class="active" href="{% url 'dashboard' %}">Vue d'ensemble</a></li>
+                    </ul>
+                </li>
+
+                {% if fonctionKey == 'admin' %}
+                <li class="menu-title"> 
+                    <span>ADMINISTRATION</span>
+                </li>
+
+                <!-- Gestion du Personnel / Utilisateurs -->
+                <li class="submenu">
+                    <a href="#"><i class="la la-user-md"></i> <span> Personnel Médical</span> <span class="menu-arrow"></span></a>
+                    <ul style="display: none;">
+                        <li>
+                            <a href="#"><i class="la la-user-plus"></i> Inscrire un Agent</a>
+                        </li>
+                        <li>
+                            <a href="#"><i class="la la-users"></i> Liste du Personnel</a>
+                        </li>
+                        <li>
+                            <a href="#"><i class="la la-vcard"></i> Profil Utilisateur</a>
+                        </li>
+                    </ul>
+                </li>
+
+                <!-- Outils de Communication -->
+                <li class="submenu">
+                    <a href="#"><i class="la la-stethoscope"></i> <span> Services Internes</span> <span class="menu-arrow"></span></a>
+                    <ul style="display: none;">
+                        <li><a href="events.html"><i class="la la-calendar"></i> Planning Gardes</a></li>
+                        <li><a href="chat.html"><i class="la la-comments"></i> Chat Praticiens</a></li>
+                        <li><a href="inbox.html"><i class="la la-envelope"></i> Messagerie Labo</a></li>
+                        <li><a href="file-manager.html"><i class="la la-folder-open"></i> Dossiers Patients</a></li>
+                    </ul>
+                </li>
+
+                {% elif fonctionKey == 'receptionniste' %}
+                <li class="menu-title"> 
+                    <span>ACCUEIL & PATIENTS</span>
+                </li>
+                <li>
+                    <a href="#"><i class="la la-wheelchair"></i> <span>Admissions</span></a>
+                </li>
+                <li>
+                    <a href="#"><i class="la la-calendar-check-o"></i> <span>Rendez-vous</span></a>
+                </li>
+                {% endif %}
+
+                <li class="menu-title"> 
+                    <span>PARAMÈTRES</span>
+                </li>
+                <li> 
+                    <a href="#"><i class="la la-cogs"></i> <span>Configuration ERP</span></a>
+                </li>
+                <li> 
+                    <a href="{% url 'deco' %}" class="text-danger"><i class="la la-power-off"></i> <span>Déconnexion</span></a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Ajustement subtil pour un look plus propre/médical */
+    .sidebar-menu li a {
+        font-weight: 500;
+        transition: all 0.3s;
+    }
+    .sidebar-menu li a i {
+        font-size: 20px; /* Icônes plus lisibles */
+    }
+    .sidebar-menu ul ul a {
+        font-size: 14px;
+        padding-left: 50px !important;
+    }
+    .menu-title span {
+        color: #007bff !important; /* Bleu médical pour les titres de section */
+        font-weight: 700;
+        font-size: 11px;
+        letter-spacing: 1px;
+    }
+</style>

@@ -1,131 +1,163 @@
 <!DOCTYPE html>
-<html lang="fr">
 {% load static %}
-<head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Moyanoli ERP | {{ user.username }}</title>
+<html lang="fr">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+        <title>Tableau de Bord - Moyanoli ERP</title>
+        
+        {% include 'back-end/includes/css.html'%}
 
-    <!-- Favicon icon -->
-    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'back-end/images/favicon.png' %}">
+        <style>
+            /* Couleurs médicales personnalisées */
+            :root {
+                --hospital-blue: #007bff;
+                --hospital-green: #10b981;
+                --hospital-red: #ef4444;
+                --hospital-orange: #f59e0b;
+            }
 
-    <!-- Pignose Calender -->
-    <link href="{% static 'back-end/plugins/pg-calendar/css/pignose.calendar.min.css' %}" rel="stylesheet">
-    <!-- Chartist -->
-    <link rel="stylesheet" href="{% static 'back-end/plugins/chartist/css/chartist.min.css' %}">
-    <link rel="stylesheet" href="{% static 'back-end/plugins/chartist-plugin-tooltips/css/chartist-plugin-tooltip.css' %}">
-    <!-- Custom Stylesheet -->
-    <link href="{% static 'back-end/css/style.css' %}" rel="stylesheet">
-</head>
+            .page-wrapper { background-color: #f4f7fe; }
+            
+            /* Style des widgets hospitaliers */
+            .dash-widget {
+                border-radius: 15px;
+                border: none;
+                transition: transform 0.2s;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+            }
+            .dash-widget:hover { transform: translateY(-5px); }
 
-<body>
+            /* Icônes spécifiques */
+            .icon-patient { background-color: rgba(0, 123, 255, 0.1); color: var(--hospital-blue) !important; }
+            .icon-appointment { background-color: rgba(16, 185, 129, 0.1); color: var(--hospital-green) !important; }
+            .icon-lab { background-color: rgba(245, 158, 11, 0.1); color: var(--hospital-orange) !important; }
+            .icon-pharmacy { background-color: rgba(239, 68, 68, 0.1); color: var(--hospital-red) !important; }
 
-    <!-- Preloader start -->
-    <div id="preloader">
-        <div class="loader">
-            <svg class="circular" viewBox="25 25 50 50">
-                <circle class="path" cx="50" cy="50" r="20" fill="none" stroke-width="3" stroke-miterlimit="10" />
-            </svg>
-        </div>
-    </div>
-
-    <div id="main-wrapper">
-
-        <!-- Nav header start -->
-        <div class="nav-header">
-            <div class="brand-logo">
-                <a href="{% url 'dashboard' %}">
-                    <b class="logo-abbr"><img src="{% static 'back-end/images/logo.png' %}" alt="M"> </b>
-                    <span class="logo-compact"><img src="{% static 'back-end/images/logo-compact.png' %}" alt=""></span>
-                    <span class="brand-title">
-                        <strong class="text-white">MOYANOLI</strong>
-                    </span>
-                </a>
-            </div>
-        </div>
-
-        <!-- Header start -->
-        {% include 'back-end/query/header.html' %}
-
-        <!-- Sidebar start -->
-        {% include 'back-end/query/sidebar.html' %}
-
-        <!-- Content body start -->
-        <div class="content-body">
-            <div class="container-fluid mt-3">
-
-                <div class="row">
-                    {% if fonctionKey == 'admin' or fonctionKey == 'sous-admin' %}
-                    <!-- Carte Utilisateurs / Personnel -->
-                    <div class="col-lg-3 col-sm-6">
-                        <div class="card gradient-3">
-                            <div class="card-body">
-                                <h3 class="card-title text-white">Personnel Actif</h3>
-                                <div class="d-inline-block">
-                                    <h2 class="text-white">{{ utilisateurs }}</h2>
-                                    <p class="text-white mb-0">Comptes enregistrés</p>
-                                </div>
-                                <span class="float-right display-5 opacity-5"><i class="fa fa-user-md"></i></span>
+            .dash-widget-icon {
+                width: 60px;
+                height: 60px;
+                line-height: 60px;
+                border-radius: 12px;
+            }
+            
+            .medical-welcome {
+                background: linear-gradient(to right, #007bff, #00d2ff);
+                color: white;
+                padding: 25px;
+                border-radius: 15px;
+                margin-bottom: 30px;
+            }
+        </style>
+    </head>
+    
+    <body>
+        <div class="main-wrapper">
+            {% include 'back-end/includes/header.html'%}
+            {% include 'back-end/includes/sidebar.html'%}
+            
+            <div class="page-wrapper">
+                <div class="content container-fluid">
+                
+                    <!-- Bienvenue Médical -->
+                    <div class="medical-welcome">
+                        <div class="row align-items-center">
+                            <div class="col-sm-8">
+                                <h3 class="font-weight-bold">Bonjour, {{user.username}} !</h3>
+                                <p class="mb-0">Voici l'état actuel des services de l'hôpital pour aujourd'hui.</p>
+                            </div>
+                            <div class="col-sm-4 text-right d-none d-md-block">
+                                <i class="fa fa-hospital-o fa-3x opacity-50"></i>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Carte Patients (Exemple d'ajout futur) -->
-                    <div class="col-lg-3 col-sm-6">
-                        <div class="card gradient-4">
-                            <div class="card-body">
-                                <h3 class="card-title text-white">Patients</h3>
-                                <div class="d-inline-block">
-                                    <h2 class="text-white">{{ total_patients|default:"0" }}</h2>
-                                    <p class="text-white mb-0">Dossiers médicaux</p>
+                    <!-- Statistiques Hospitalières -->
+                    <div class="row">
+                        <!-- user -->
+                        {% if fonctionKey == 'admin' %}
+                        <div class="col-md-6 col-sm-6 col-lg-6 col-xl-3">
+                            <div class="card dash-widget">
+                                <div class="card-body">
+                                    <span class="dash-widget-icon icon-patient"><i class="fa fa-user-plus"></i></span>
+                                    <div class="dash-widget-info">
+                                        <h3>{{utilisateurs}}</h3>
+                                        <span>Utilisateurs</span>
+                                    </div>
                                 </div>
-                                <span class="float-right display-5 opacity-5"><i class="fa fa-wheelchair"></i></span>
+                            </div>
+                        </div>
+                        <!-- patient -->
+                        <div class="col-md-6 col-sm-6 col-lg-6 col-xl-3">
+                            <div class="card dash-widget">
+                                <div class="card-body">
+                                    <span class="dash-widget-icon icon-patient"><i class="fa fa-user-plus"></i></span>
+                                    <div class="dash-widget-info">
+                                        <h3>{{total_patients}}</h3>
+                                        <span>Patient(e)s</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Consultations -->
+                        <div class="col-md-6 col-sm-6 col-lg-6 col-xl-3">
+                            <div class="card dash-widget">
+                                <div class="card-body">
+                                    <span class="dash-widget-icon icon-appointment"><i class="fa fa-calendar-check-o"></i></span>
+                                    <div class="dash-widget-info">
+                                        <h3>28</h3>
+                                        <span>Rendez-vous</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Laboratoire -->
+                        <div class="col-md-6 col-sm-6 col-lg-6 col-xl-3">
+                            <div class="card dash-widget">
+                                <div class="card-body">
+                                    <span class="dash-widget-icon icon-lab"><i class="fa fa-flask"></i></span>
+                                    <div class="dash-widget-info">
+                                        <h3>12</h3>
+                                        <span>Analyses Labo</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Pharmacie / Stock -->
+                        <div class="col-md-6 col-sm-6 col-lg-6 col-xl-3">
+                            <div class="card dash-widget">
+                                <div class="card-body">
+                                    <span class="dash-widget-icon icon-pharmacy"><i class="fa fa-medkit"></i></span>
+                                    <div class="dash-widget-info">
+                                        <h3 class="text-danger">5</h3>
+                                        <span>Ruptures Stock</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    {% elif fonctionKey == 'receptionniste' %}
-                    <div class="col-lg-3 col-sm-6">
-                        <div class="card gradient-4">
-                            <div class="card-body">
-                                <h3 class="card-title text-white">Patients</h3>
-                                <div class="d-inline-block">
-                                    <h2 class="text-white">{{ total_patients|default:"0" }}</h2>
-                                    <p class="text-white mb-0">Dossiers médicaux</p>
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="card shadow-sm border-0" style="border-radius: 15px;">
+                                <div class="card-body">
+                                    <h4 class="card-title">Flux des Urgences (Dernières 24h)</h4>
+                                    <div style="height: 300px; background: #f9f9f9; display: flex; align-items: center; justify-content: center; border-radius: 10px; border: 1px dashed #ddd;">
+                                        <p class="text-muted"><i class="fa fa-line-chart"></i> Graphique d'activité hospitalière ici</p>
+                                    </div>
                                 </div>
-                                <span class="float-right display-5 opacity-5"><i class="fa fa-wheelchair"></i></span>
                             </div>
                         </div>
                     </div>
-                    {% endif %}
+                
                 </div>
-
-                <!-- Section principale pour les graphiques ou tableaux -->
-                <div class="row">
-                    <div class="col-lg-12">
-                        <div class="card">
-                            <div class="card-body">
-                                <h4 class="card-title">Activité de l'hôpital</h4>
-                                <div id="activity-chart">
-                                    <!-- Tes graphiques Chartist iront ici -->
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
             </div>
         </div>
-
-        <!-- Footer start -->
-        <div class="footer">
-            <div class="copyright">
-                <p>Copyright &copy; <strong>Moyanoli ERP</strong> 2026 | Système de Gestion Hospitalière</p>
-            </div>
-        </div>
-    </div>
-
-   {% include 'back-end/query/js.html' %}
-
-</body>
+        
+        {% include 'back-end/includes/js.html'%}
+    </body>
 </html>
