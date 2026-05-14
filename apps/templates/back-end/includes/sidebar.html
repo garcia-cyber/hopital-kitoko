@@ -62,27 +62,62 @@
                 <i class="la la-money-bill"></i> Taux de change
             </a>
         </li>
+
+        <li class="{% if request.resolver_match.url_name == 'gestion_services' %}active{% endif %}">
+    <a href="{% url 'gestion_services' %}">
+        <i class="fa fa-hospital-o"></i> 
+        <span>Services</span>
+    </a>
+</li>
     </ul>
 </li>
 
+ <li class="submenu">
+    <a href="#"><i class="la la-user-injured"></i> <span> Patients </span> <span class="menu-arrow"></span></a>
+    <ul style="display: none;">
+        <li>
+            <a class="{% if segment == 'enregistrement_patient' %}active{% endif %}" 
+               href="{% url 'enregistrement_patient' %}">
+               patient all
+            </a>
+        </li>
+        <!-- <li>
+            <a class="{% if segment == 'liste_patients' %}active{% endif %}" 
+               href="{% url 'liste_patients' %}">
+               Liste des Patients
+            </a>
+        </li> -->
+    </ul>
+</li>
+
+
+
                 {% elif fonctionKey == 'receptionniste' %}
-                <li class="menu-title"> 
-                    <span>ACCUEIL & PATIENTS</span>
-                </li>
-                <li>
-                    <a href="#"><i class="la la-wheelchair"></i> <span>Admissions</span></a>
-                </li>
-                <li>
-                    <a href="#"><i class="la la-calendar-check-o"></i> <span>Rendez-vous</span></a>
-                </li>
+                <li class="submenu">
+    <a href="#"><i class="la la-user-injured"></i> <span> Patients </span> <span class="menu-arrow"></span></a>
+    <ul style="display: none;">
+        <li>
+            <a class="{% if segment == 'enregistrement_patient' %}active{% endif %}" 
+               href="{% url 'enregistrement_patient' %}">
+               patient all
+            </a>
+        </li>
+        <!-- <li>
+            <a class="{% if segment == 'liste_patients' %}active{% endif %}" 
+               href="{% url 'liste_patients' %}">
+               Liste des Patients
+            </a>
+        </li> -->
+    </ul>
+</li>
                 {% endif %}
 
-                <li class="menu-title"> 
+               <!--  <li class="menu-title"> 
                     <span>PARAMÈTRES</span>
                 </li>
                 <li> 
                     <a href="#"><i class="la la-cogs"></i> <span>Configuration ERP</span></a>
-                </li>
+                </li> -->
                 <li> 
                     <a href="{% url 'deco' %}" class="text-danger"><i class="la la-power-off"></i> <span>Déconnexion</span></a>
                 </li>
