@@ -46,6 +46,25 @@
                     </ul>
                 </li>
 
+    <!--             <li class="menu-title"> 
+    <span>Administration</span> 
+</li> -->
+<li class="submenu">
+    <a href="#"><i class="la la-cog"></i> <span> Configuration </span> <span class="menu-arrow"></span></a>
+    <ul style="display: none;">
+        <li>
+            <a href="{% url 'gestion_prestations' %}" class="{% if request.resolver_match.url_name == 'gestion_prestations' %}active{% endif %}">
+                <i class="la la-list-alt"></i> Prestations
+            </a>
+        </li>
+        <li>
+            <a href="{% url 'modifier_taux' %}" class="{% if request.resolver_match.url_name == 'modifier_taux' %}active{% endif %}">
+                <i class="la la-money-bill"></i> Taux de change
+            </a>
+        </li>
+    </ul>
+</li>
+
                 {% elif fonctionKey == 'receptionniste' %}
                 <li class="menu-title"> 
                     <span>ACCUEIL & PATIENTS</span>

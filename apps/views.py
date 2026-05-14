@@ -11,6 +11,8 @@ from decimal import Decimal , ROUND_HALF_UP
 import pytz
 from datetime import timedelta
 from django.db import transaction
+from django.core.paginator import Paginator
+
 
 # Create your views here.
 
@@ -262,32 +264,52 @@ def modifier_utilisateur(request, user_id):
 # ==================================================================================================
 @login_required
 def gestion_prestations(request):
-    # Tri par libellé pour Moyanoli Médicale
-    prestations = Prestation.objects.all().order_by('libelle')
-    
+    # 1. Gestion de la recherche (Query)
+    query = request.GET.get('q')
+    if query:
+        prestations_list = Prestation.objects.filter(
+            Q(libelle__icontains=query) | Q(categorie__icontains=query)
+        ).order_by('libelle')
+    else:
+        prestations_list = Prestation.objects.all().order_by('libelle')
+
+    # 2. Récupération du taux de change
     config = ConfigurationHopital.objects.first()
     taux = config.taux_usd_en_cdf if config else 2500.00
-    
+
+    # 3. Pagination (10 éléments par page)
+    paginator = Paginator(prestations_list, 10)
+    page_number = request.GET.get('page')
+    prestations_obj = paginator.get_page(page_number)
+
+    # 4. Calcul du prix en CDF pour les éléments de la page actuelle
+    for item in prestations_obj:
+        item.prix_cdf = item.prix * taux
+
+    # 5. Gestion de l'ajout (POST)
     if request.method == 'POST':
         form = PrestationForm(request.POST)
         if form.is_valid():
             form.save()
             messages.success(request, "La prestation a été ajoutée avec succès.")
             return redirect('gestion_prestations')
-        else:
-            messages.error(request, "Erreur lors de l'ajout. Vérifiez les doublons.")
     else:
         form = PrestationForm()
 
-    # Gestion du rôle pour la sidebar
+    # 6. Gestion du rôle utilisateur
     role = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
 
+    # 7. Préparation des catégories pour le modal de modification
+    # On récupère les tuples (code, nom) définis dans les CHOICES du modèle
+    categories_list = Prestation._meta.get_field('categorie').choices
+
     context = {
-        'prestations': prestations,
+        'prestations': prestations_obj, # On passe l'objet paginé
         'form': form,
         'taux': taux,
-        'fonctionKey': fonctionKey
+        'fonctionKey': fonctionKey,
+        'categories_list': categories_list, # Indispensable pour la boucle dans le modal
     }
     return render(request, 'back-end/prestation/list_prestation.html', context)
 
@@ -321,20 +343,17 @@ def modifier_taux(request):
 # ==================================================================================================
 @login_required
 def modifier_prestation(request, pk):
-    # Récupère la prestation ou renvoie une 404 si elle n'existe pas
     prestation = get_object_or_404(Prestation, pk=pk)
     
     if request.method == 'POST':
-        # On passe 'instance=prestation' pour modifier l'existant au lieu d'en créer un nouveau
+        # L'instance permet de mettre à jour l'objet existant au lieu d'en créer un nouveau
         form = PrestationForm(request.POST, instance=prestation)
         if form.is_valid():
             form.save()
             messages.success(request, f"La prestation '{prestation.libelle}' a été mise à jour.")
         else:
-            # Récupère l'erreur du formulaire (comme le doublon) pour l'afficher
-            error_msg = form.errors.as_text()
-            messages.error(request, f"Modification échouée : {error_msg}")
-    
+            messages.error(request, "Erreur lors de la mise à jour. Vérifiez les données.")
+            
     return redirect('gestion_prestations')
 
 # 15
