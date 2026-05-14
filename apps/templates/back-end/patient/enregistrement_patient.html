@@ -97,19 +97,41 @@
                                             <td>{{ patient.date_creation|date:"d/m/Y" }}</td>
                                             <td>{{ patient.created_by.username }}</td>
                                             <td class="text-right">
-                                                <div class="dropdown dropdown-action">
-                                                    <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
-                                                        <i class="material-icons">more_vert</i>
-                                                    </a>
-                                                    <div class="dropdown-menu dropdown-menu-right">
-                                                        <a class="dropdown-item" href="{% url 'modifier_patient' patient.id %}">
-                                                            <i class="fa fa-pencil m-r-5"></i> Modifier
-                                                        </a>
-                                                        <a class="dropdown-item" href="#"><i class="fa fa-eye m-r-5"></i> Dossier</a>
-                                                        <a class="dropdown-item" href="#" style="color: red;"><i class="fa fa-trash-o m-r-5"></i> Supprimer</a>
-                                                    </div>
-                                                </div>
-                                            </td>
+    <div class="dropdown dropdown-action">
+        <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+            <i class="material-icons">more_vert</i>
+        </a>
+        <div class="dropdown-menu dropdown-menu-right">
+            <!-- Lien Payer la Fiche -->
+            {% if not patient.fiche_payee %}
+                <a class="dropdown-item text-success" href="{% url 'payer_fiche' patient.id %}">
+                    <i class="fa fa-money m-r-5"></i> <strong>Payer la Fiche</strong>
+                </a>
+            {% else %}
+                <a class="dropdown-item text-muted disabled" href="#">
+                    <i class="fa fa-check text-success m-r-5"></i> Fiche déjà réglée
+                </a>
+            {% endif %}
+
+            <!-- Lien Historique -->
+            <a class="dropdown-item" href="{% url 'historique_paiements' patient.id %}">
+                <i class="fa fa-history m-r-5"></i> Historique Paiements
+            </a>
+
+            <div class="dropdown-divider"></div>
+
+            <!-- Liens d'origine -->
+            <a class="dropdown-item" href="{% url 'modifier_patient' patient.id %}">
+                <i class="fa fa-pencil m-r-5"></i> Modifier
+            </a>
+            <a class="dropdown-item" href="#"><i class="fa fa-eye m-r-5"></i> Dossier</a>
+            
+            <a class="dropdown-item" href="#" style="color: red;">
+                <i class="fa fa-trash-o m-r-5"></i> Supprimer
+            </a>
+        </div>
+    </div>
+</td>
                                         </tr>
                                         {% empty %}
                                         <tr>

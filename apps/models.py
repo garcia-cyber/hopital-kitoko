@@ -105,6 +105,7 @@ class Patient(models.Model):
     age = models.CharField(max_length=30)
     adresse = models.TextField()
     telephone = models.CharField(max_length=20)
+    fiche_payee = models.BooleanField(default=False)
     
     # Traçabilité
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='patients_crees')

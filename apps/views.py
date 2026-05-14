@@ -512,23 +512,23 @@ def modifier_patient(request, pk):
 def payer_fiche(request, patient_id):
     patient = get_object_or_404(Patient, id=patient_id)
     
-    # 0. Récupérer le taux de change depuis la config
+    # 0. Récupérer le taux de change
     config = ConfigurationHopital.objects.first()
     taux = config.taux_usd_en_cdf if config else Decimal('2800.00')
 
-    # 1. Récupérer la prestation "Fiche" pour avoir le prix de référence (en USD)
+    # 1. Récupérer la prestation "Fiche"
     try:
         prestation_fiche = Prestation.objects.get(categorie='ADM', libelle__icontains="Fiche")
     except (Prestation.DoesNotExist, Prestation.MultipleObjectsReturned):
         prestation_fiche = Prestation.objects.filter(categorie='ADM', libelle__icontains="Fiche").first()
         
     if not prestation_fiche:
-        messages.error(request, "La prestation 'Fiche' n'est pas configurée dans les paramètres.")
-        return redirect('liste_patients')
+        messages.error(request, "La prestation 'Fiche' n'est pas configurée.")
+        return redirect('enregistrement_patient')
     
     prix_fiche_usd = Decimal(str(prestation_fiche.prix))
 
-    # 2. Calcul du cumul déjà payé (Conversion virtuelle en USD pour la comparaison)
+    # 2. Calcul du cumul déjà payé
     paiements_existants = Paiement.objects.filter(patient=patient, service='FICHE')
     total_deja_paye_usd = Decimal('0.00')
     
@@ -544,27 +544,37 @@ def payer_fiche(request, patient_id):
         montant_saisi = Decimal(request.POST.get('montant', 0))
         devise = request.POST.get('devise')
 
-        # Conversion temporaire pour vérifier si on ne dépasse pas le prix de la fiche
         montant_test_usd = montant_saisi
         if devise == 'CDF':
             montant_test_usd = montant_saisi / taux
 
-        # Vérification avec une petite marge d'erreur pour les arrondis (0.01)
         if montant_test_usd > (reste_a_payer_usd + Decimal('0.01')):
             messages.error(request, f"Le montant dépasse le reste à payer ({reste_a_payer_usd:.2f} USD).")
         elif montant_saisi > 0:
-            # ENREGISTREMENT RÉEL : On garde la valeur telle qu'elle a été saisie
+            # Enregistrement du paiement
             Paiement.objects.create(
                 patient=patient,
                 service='FICHE',
-                montant_verse=montant_saisi,  # Ici on aura bien 13000
-                devise=devise,               # Ici on aura bien 'CDF'
+                montant_verse=montant_saisi,
+                devise=devise,
                 caissier=request.user
             )
-            messages.success(request, f"Paiement de {montant_saisi} {devise} enregistré.")
-            return redirect('liste_patients')
+            
+            # --- NOUVELLE LOGIQUE DE VÉRIFICATION ---
+            # On recalcule le total après le nouveau paiement
+            nouveau_total_usd = total_deja_paye_usd + montant_test_usd
+            
+            # Si le total atteint ou dépasse le prix (avec marge d'erreur 0.01)
+            if nouveau_total_usd >= (prix_fiche_usd - Decimal('0.01')):
+                patient.fiche_payee = True  # Assure-toi que ce champ existe dans ton modèle Patient
+                patient.save()
+                messages.success(request, f"Paiement terminé. La fiche de {patient.noms} est maintenant validée.")
+            else:
+                messages.success(request, f"Paiement de {montant_saisi} {devise} enregistré. Reste : {(prix_fiche_usd - nouveau_total_usd):.2f} USD")
+            
+            return redirect('enregistrement_patient')
 
-    # verification de la fonction
+    # ... reste du contexte ...
     role = Fonction.objects.filter(userKey = request.user).first()
     fonctionKey = role.fonctionKey.roleName if role else None
 
@@ -575,7 +585,8 @@ def payer_fiche(request, patient_id):
         'taux': taux,
         'prix_fiche': prix_fiche_usd,
         'libelle_prestation': prestation_fiche.libelle,
-        'fonctionKey' : fonctionKey
+        'fonctionKey' : fonctionKey,
+        'deja_paye': patient.fiche_payee # Pour l'utiliser dans le template si besoin
     }
     return render(request, 'back-end/finance/payer_fiche.html', context)
 
