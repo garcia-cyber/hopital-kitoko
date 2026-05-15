@@ -146,7 +146,7 @@ class Paiement(models.Model):
     service = models.CharField(max_length=20, choices=SERVICES)
     montant_verse = models.DecimalField(max_digits=15, decimal_places=2)
     devise = models.CharField(max_length=3, choices=CURRENCY, default='USD')
-    date_paiement = models.DateTimeField(auto_now_add=True)
+    date_paiement = models.DateTimeField(default=timezone.now)
     caissier = models.ForeignKey('auth.User', on_delete=models.PROTECT)
 
     def save(self, *args, **kwargs):
@@ -170,7 +170,8 @@ class Facture(models.Model):
     """ Document lié à chaque paiement pour la traçabilité """
     paiement = models.OneToOneField(Paiement, on_delete=models.CASCADE, related_name='facture_liee')
     numero_facture = models.CharField(max_length=50, unique=True)
-    date_emission = models.DateTimeField(auto_now_add=True)
+    date_emission = models.DateTimeField(default=timezone.now)
+
 
     def __str__(self):
         return f"Facture {self.numero_facture} ({self.paiement.service})"
@@ -188,7 +189,7 @@ class SigneVital(models.Model):
     frequence_cardiaque = models.IntegerField()
     frequence_respiratoire = models.IntegerField(null=True, blank=True)
     saturation_oxygene = models.IntegerField(null=True, blank=True) 
-    date_prelevement = models.DateTimeField(auto_now_add=True)
+    date_prelevement = models.DateTimeField(default=timezone.now)
     infirmier = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     est_consulte = models.BooleanField(default=False)
 
@@ -206,7 +207,7 @@ class Consultation(models.Model):
     examen_physique = models.TextField(verbose_name="Examen physique")
     hypothese_diagnostique = models.TextField(verbose_name="Hypothèse diagnostique")
     
-    date_creation = models.DateTimeField(auto_now_add=True)
+    date_creation = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
         # Correction du chemin vers le patient
@@ -238,7 +239,7 @@ class DemandeExamen(models.Model):
                                   on_delete=models.SET_NULL, null=True, blank=True)
     
     statut = models.CharField(max_length=20, choices=STATUT, default='EN_ATTENTE')
-    date_demande = models.DateTimeField(auto_now_add=True)
+    date_demande = models.DateTimeField(default=timezone.now)
     date_realisation = models.DateTimeField(null=True, blank=True)
     quantite = models.PositiveIntegerField(default=1)
 
@@ -253,7 +254,7 @@ class Ordonnance(models.Model):
     ]
     
     consultation = models.ForeignKey(Consultation, on_delete=models.CASCADE)
-    date_prescrite = models.DateTimeField(auto_now_add=True)
+    date_prescrite = models.DateTimeField(default=timezone.now)
     # AJOUT DU TYPE ICI
     type_ordonnance = models.CharField(max_length=20, choices=TYPE_CHOICES, default='URGENCE')
     observation = models.TextField(blank=True, help_text="Note générale sur l'ordonnance")
@@ -275,7 +276,7 @@ class LigneMedicament(models.Model):
     # Gestion de l'évolution du traitement
     statut = models.CharField(max_length=20, choices=STATUT_MEDOC, default='EN_COURS')
     motif_arret = models.TextField(blank=True, null=True, help_text="Pourquoi le médecin a changé ce médicament")
-    date_modification = models.DateTimeField(auto_now=True)
+    date_modification = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
         return f"{self.nom_medicament} - {self.statut}"

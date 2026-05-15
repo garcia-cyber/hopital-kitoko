@@ -12,6 +12,7 @@ import pytz
 from datetime import timedelta
 from django.db import transaction
 from django.core.paginator import Paginator
+from django.conf import settings
 
 
 # Create your views here.
@@ -672,16 +673,22 @@ def historique_paiements(request, patient_id):
 def imprimer_recu_direct(request, paiement_id):
     paiement = get_object_or_404(Paiement, id=paiement_id)
     
-    # Si le serveur affiche 19:56 au lieu de 04:00, il y a environ 8h de décalage
-    # On force la conversion locale de Django
-    date_paiement_vraie = timezone.localtime(paiement.date_paiement)
+    # ÉTAPE A : On récupère la date brute
+    date_brute = paiement.date_paiement
     
-    # Pour l'impression, on prend l'heure exacte de ton Mac à cet instant
+    # ÉTAPE B : On la rend "Aware" (on lui donne un fuseau) manuellement
+    # C'est ici que le crash s'arrête
+    if timezone.is_naive(date_brute):
+        from django.utils.timezone import make_aware, get_current_timezone
+        date_brute = make_aware(date_brute, get_current_timezone())
+    
+    # ÉTAPE C : On convertit à l'heure locale pour le ticket
+    date_paiement_fix = timezone.localtime(date_brute)
     date_impression = timezone.localtime(timezone.now())
     
     context = {
         'paiement': paiement,
-        'date_paiement_fix': date_paiement_vraie,
+        'date_paiement_fix': date_paiement_fix,
         'date_impression': date_impression,
     }
     return render(request, 'back-end/finance/recu_format_ticket.html', context)
