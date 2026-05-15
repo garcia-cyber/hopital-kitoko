@@ -6,7 +6,7 @@
                     <span>MENU PRINCIPAL</span>
                 </li>
                 
-                <!-- Dashboard Médical -->
+                <!-- Dashboard (Visible pour tout le monde) -->
                 <li class="submenu">
                     <a href="#"><i class="la la-hospital"></i> <span> Dashboard</span> <span class="menu-arrow"></span></a>
                     <ul style="display: none;">
@@ -14,110 +14,65 @@
                     </ul>
                 </li>
 
+                <!-- MENU ADMIN -->
                 {% if fonctionKey == 'admin' %}
-                <li class="menu-title"> 
-                    <span>ADMINISTRATION</span>
-                </li>
+                    <li class="menu-title"> <span>ADMINISTRATION</span> </li>
+                    <li class="submenu">
+                        <a href="#"><i class="la la-user-md"></i> <span> Personnel Médical</span> <span class="menu-arrow"></span></a>
+                        <ul style="display: none;">
+                            <li><a href="{% url 'employeAdd' %}">Inscrire un utilisateur</a></li>
+                            <li><a href="{% url 'employeRead' %}">Liste du Personnel</a></li>
+                            <li><a href="{% url 'liste_employe_poste'%}">Profil Utilisateur</a></li>
+                        </ul>
+                    </li>
 
-                <!-- Gestion du Personnel / Utilisateurs -->
-                <li class="submenu">
-                    <a href="#"><i class="la la-user-md"></i> <span> Personnel Médical</span> <span class="menu-arrow"></span></a>
-                    <ul style="display: none;">
-                        <li>
-                            <a href="{% url 'employeAdd' %}"><i class="la la-user-plus"></i> Inscrire un utilisateur</a>
-                        </li>
-                        <li>
-                            <a href="{% url 'employeRead' %}"><i class="la la-users"></i> Liste du Personnel</a>
-                        </li>
-                        <li>
-                            <a href="{% url 'liste_employe_poste'%}"><i class="la la-vcard"></i> Profil Utilisateur</a>
-                        </li>
-                    </ul>
-                </li>
+                    <li class="submenu">
+                        <a href="#"><i class="la la-cog"></i> <span> Configuration </span> <span class="menu-arrow"></span></a>
+                        <ul style="display: none;">
+                            <li><a href="{% url 'gestion_prestations' %}">Prestations</a></li>
+                            <li><a href="{% url 'modifier_taux' %}">Taux de change</a></li>
+                            <li><a href="{% url 'gestion_services' %}">Services</a></li>
+                        </ul>
+                    </li>
 
-                <!-- Outils de Communication -->
-                <li class="submenu">
-                    <a href="#"><i class="la la-stethoscope"></i> <span> Services Internes</span> <span class="menu-arrow"></span></a>
-                    <ul style="display: none;">
-                        <li><a href="events.html"><i class="la la-calendar"></i> Planning Gardes</a></li>
-                        <li><a href="chat.html"><i class="la la-comments"></i> Chat Praticiens</a></li>
-                        <li><a href="inbox.html"><i class="la la-envelope"></i> Messagerie Labo</a></li>
-                        <li><a href="file-manager.html"><i class="la la-folder-open"></i> Dossiers Patients</a></li>
-                    </ul>
-                </li>
+                    <li class="submenu">
+                        <a href="#"><i class="la la-user-injured"></i> <span> Patients </span> <span class="menu-arrow"></span></a>
+                        <ul style="display: none;">
+                            <li><a href="{% url 'enregistrement_patient' %}">Tous les patients</a></li>
+                        </ul>
+                    </li>
 
-    <!--             <li class="menu-title"> 
-    <span>Administration</span> 
-</li> -->
-<li class="submenu">
-    <a href="#"><i class="la la-cog"></i> <span> Configuration </span> <span class="menu-arrow"></span></a>
-    <ul style="display: none;">
-        <li>
-            <a href="{% url 'gestion_prestations' %}" class="{% if request.resolver_match.url_name == 'gestion_prestations' %}active{% endif %}">
-                <i class="la la-list-alt"></i> Prestations
-            </a>
-        </li>
-        <li>
-            <a href="{% url 'modifier_taux' %}" class="{% if request.resolver_match.url_name == 'modifier_taux' %}active{% endif %}">
-                <i class="la la-money-bill"></i> Taux de change
-            </a>
-        </li>
-
-        <li class="{% if request.resolver_match.url_name == 'gestion_services' %}active{% endif %}">
-    <a href="{% url 'gestion_services' %}">
-        <i class="fa fa-hospital-o"></i> 
-        <span>Services</span>
-    </a>
-</li>
-    </ul>
-</li>
-
- <li class="submenu">
-    <a href="#"><i class="la la-user-injured"></i> <span> Patients </span> <span class="menu-arrow"></span></a>
-    <ul style="display: none;">
-        <li>
-            <a class="{% if segment == 'enregistrement_patient' %}active{% endif %}" 
-               href="{% url 'enregistrement_patient' %}">
-               patient all
-            </a>
-        </li>
-        <!-- <li>
-            <a class="{% if segment == 'liste_patients' %}active{% endif %}" 
-               href="{% url 'liste_patients' %}">
-               Liste des Patients
-            </a>
-        </li> -->
-    </ul>
-</li>
-
-
-
+                <!-- MENU RECEPTIONNISTE -->
                 {% elif fonctionKey == 'receptionniste' %}
-                <li class="submenu">
-    <a href="#"><i class="la la-user-injured"></i> <span> Patients </span> <span class="menu-arrow"></span></a>
-    <ul style="display: none;">
-        <li>
-            <a class="{% if segment == 'enregistrement_patient' %}active{% endif %}" 
-               href="{% url 'enregistrement_patient' %}">
-               patient all
-            </a>
-        </li>
-        <!-- <li>
-            <a class="{% if segment == 'liste_patients' %}active{% endif %}" 
-               href="{% url 'liste_patients' %}">
-               Liste des Patients
-            </a>
-        </li> -->
-    </ul>
-</li>
+                    <li class="menu-title"> <span>RECEPTION</span> </li>
+                    <li class="submenu">
+                        <a href="#"><i class="la la-user-injured"></i> <span> Patients </span> <span class="menu-arrow"></span></a>
+                        <ul style="display: none;">
+                            <li><a href="{% url 'enregistrement_patient' %}">Enregistrement</a></li>
+                        </ul>
+                    </li>
+
+                <!-- MENU INFIRMIER (CORRIGÉ ICI) -->
+                {% elif fonctionKey == 'infirmier' %}
+                    <li class="menu-title"> <span>SERVICES INFIRMERIE</span> </li>
+                    
+                    <li class="{% if request.resolver_match.url_name == 'liste_attente_triage' %}active{% endif %}">
+                        <a href="{% url 'liste_attente_triage' %}">
+                            <i class="la la-stethoscope"></i> 
+                            <span>File d'attente Triage</span>
+                        </a>
+                    </li>
+
+                    <li class="{% if request.resolver_match.url_name == 'liste_globale_triage' %}active{% endif %}">
+                        <a href="{% url 'liste_globale_triage' %}">
+                            <i class="la la-clipboard-list"></i> 
+                            <span>Registre Global Triage</span>
+                        </a>
+                    </li>
                 {% endif %}
 
-               <!--  <li class="menu-title"> 
-                    <span>PARAMÈTRES</span>
-                </li>
-                <li> 
-                    <a href="#"><i class="la la-cogs"></i> <span>Configuration ERP</span></a>
-                </li> -->
+                <!-- Toujours visible à la fin -->
+                <li class="menu-title"> <span>SESSION</span> </li>
                 <li> 
                     <a href="{% url 'deco' %}" class="text-danger"><i class="la la-power-off"></i> <span>Déconnexion</span></a>
                 </li>
@@ -125,24 +80,3 @@
         </div>
     </div>
 </div>
-
-<style>
-    /* Ajustement subtil pour un look plus propre/médical */
-    .sidebar-menu li a {
-        font-weight: 500;
-        transition: all 0.3s;
-    }
-    .sidebar-menu li a i {
-        font-size: 20px; /* Icônes plus lisibles */
-    }
-    .sidebar-menu ul ul a {
-        font-size: 14px;
-        padding-left: 50px !important;
-    }
-    .menu-title span {
-        color: #007bff !important; /* Bleu médical pour les titres de section */
-        font-weight: 700;
-        font-size: 11px;
-        letter-spacing: 1px;
-    }
-</style>
