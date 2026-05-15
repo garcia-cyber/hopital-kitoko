@@ -28,7 +28,7 @@
                                     <li class="breadcrumb-item active">Enregistrement Patient</li>
                                 </ul>
                             </div>
-                            {% if fonctionKey == 'receptionniste'%}
+                            {% if fonctionKey == 'receptionniste' %}
                             <div class="col-auto float-right ml-auto">
                                 <a href="#" class="btn btn-primary add-btn" data-toggle="modal" data-target="#add_patient">
                                     <i class="fa fa-plus"></i> Nouveau Patient
@@ -54,7 +54,7 @@
                     <div class="row filter-row">
                         <div class="col-sm-6 col-md-9">  
                             <div class="form-group form-focus">
-                                <input type="text" class="form-control floating" id="myInput" onkeyup="myFunction()" placeholder="Rechercher par nom, matricule, téléphone...">
+                                <input type="text" class="form-control floating" id="myInput" placeholder="Rechercher par nom, matricule, téléphone...">
                                 <label class="focus-label">Recherche rapide</label>
                             </div>
                         </div>
@@ -72,7 +72,7 @@
                                         <tr>
                                             <th>Matricule</th>
                                             <th>Nom Complet</th>
-                                            <th>Téléphone</th> <!-- Nouvelle colonne -->
+                                            <th>Téléphone</th>
                                             <th>Âge</th>
                                             <th>Service</th>
                                             <th>Adresse</th>
@@ -86,7 +86,7 @@
                                         <tr>
                                             <td><span class="badge badge-info">{{ patient.code_patient }}</span></td>
                                             <td><strong>{{ patient.noms }}</strong></td>
-                                            <td>{{ patient.telephone }}</td> <!-- Champ téléphone ajouté -->
+                                            <td>{{ patient.telephone }}</td>
                                             <td>{{ patient.age }} ans</td>
                                             <td>
                                                 <span class="badge badge-light-primary text-uppercase">
@@ -97,41 +97,48 @@
                                             <td>{{ patient.date_creation|date:"d/m/Y" }}</td>
                                             <td>{{ patient.created_by.username }}</td>
                                             <td class="text-right">
-    <div class="dropdown dropdown-action">
-        <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
-            <i class="material-icons">more_vert</i>
-        </a>
-        <div class="dropdown-menu dropdown-menu-right">
-            <!-- Lien Payer la Fiche -->
-            {% if not patient.fiche_payee %}
-                <a class="dropdown-item text-success" href="{% url 'payer_fiche' patient.id %}">
-                    <i class="fa fa-money m-r-5"></i> <strong>Payer la Fiche</strong>
-                </a>
-            {% else %}
-                <a class="dropdown-item text-muted disabled" href="#">
-                    <i class="fa fa-check text-success m-r-5"></i> Fiche déjà réglée
-                </a>
-            {% endif %}
+                                                <div class="dropdown dropdown-action">
+                                                    <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+                                                        <i class="material-icons">more_vert</i>
+                                                    </a>
+                                                    <div class="dropdown-menu dropdown-menu-right">
+                                                        <!-- Lien Payer la Fiche -->
+                                                        {% if not patient.fiche_payee %}
+                                                            <a class="dropdown-item text-success" href="{% url 'payer_fiche' patient.id %}">
+                                                                <i class="fa fa-money m-r-5"></i> <strong>Payer la Fiche</strong>
+                                                            </a>
+                                                        {% else %}
+                                                            <a class="dropdown-item text-muted disabled" href="#">
+                                                                <i class="fa fa-check text-success m-r-5"></i> Fiche déjà réglée
+                                                            </a>
+                                                        {% endif %}
 
-            <!-- Lien Historique -->
-            <a class="dropdown-item" href="{% url 'historique_paiements' patient.id %}">
-                <i class="fa fa-history m-r-5"></i> Historique Paiements
-            </a>
+                                                        <!-- Lien Historique Paiements -->
+                                                        <a class="dropdown-item" href="{% url 'historique_paiements' patient.id %}">
+                                                            <i class="fa fa-history m-r-5"></i> Historique Paiements
+                                                        </a>
 
-            <div class="dropdown-divider"></div>
+                                                        <div class="dropdown-divider"></div>
 
-            <!-- Liens d'origine -->
-            <a class="dropdown-item" href="{% url 'modifier_patient' patient.id %}">
-                <i class="fa fa-pencil m-r-5"></i> Modifier
-            </a>
-            <a class="dropdown-item" href="#"><i class="fa fa-eye m-r-5"></i> Dossier</a>
-            
-            <a class="dropdown-item" href="#" style="color: red;">
-                <i class="fa fa-trash-o m-r-5"></i> Supprimer
-            </a>
-        </div>
-    </div>
-</td>
+                                                        <!-- Liens de gestion et médicaux -->
+                                                        <a class="dropdown-item" href="{% url 'modifier_patient' patient.id %}">
+                                                            <i class="fa fa-pencil m-r-5"></i> Modifier
+                                                        </a>
+                                                        <a class="dropdown-item" href="#"><i class="fa fa-eye m-r-5"></i> Dossier</a>
+                                                        
+                                                        <!-- AJOUT DU LIEN HISTORIQUE TRIAGE (SIGNES VITAUX) -->
+                                                        <a class="dropdown-item" href="{% url 'historique_signes_vitaux' patient.id %}">
+                                                            <i class="fa fa-heartbeat m-r-5"></i> Historique Triage
+                                                        </a>
+                                                        
+                                                        <div class="dropdown-divider"></div>
+                                                        
+                                                        <a class="dropdown-item" href="#" style="color: red;">
+                                                            <i class="fa fa-trash-o m-r-5"></i> Supprimer
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            </td>
                                         </tr>
                                         {% empty %}
                                         <tr>
@@ -189,30 +196,17 @@
 
         <script>
             $(document).ready(function(){
+                // Ajout de la classe form-control aux champs du modal
                 $('#add_patient form input, #add_patient form select, #add_patient form textarea').addClass('form-control');
-            });
-
-            function myFunction() {
-                var input, filter, table, tr, td, i, j, txtValue;
-                input = document.getElementById("myInput");
-                filter = input.value.toUpperCase();
-                table = document.getElementById("myTable");
-                tr = table.getElementsByTagName("tr");
-
-                for (i = 1; i < tr.length; i++) {
-                    tr[i].style.display = "none";
-                    td = tr[i].getElementsByTagName("td");
-                    for (j = 0; j < td.length; j++) {
-                        if (td[j]) {
-                            txtValue = td[j].textContent || td[j].innerText;
-                            if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                                tr[i].style.display = "";
-                                break;
-                            }
-                        }
-                    }
+                
+                // Liaison moderne de la barre de recherche avec l'instance de DataTable 
+                if ($.fn.DataTable.isDataTable('#myTable')) {
+                    var table = $('#myTable').DataTable();
+                    $('#myInput').on('keyup', function() {
+                        table.search(this.value).draw();
+                    });
                 }
-            }
+            });
         </script>
     </body>
 </html>
