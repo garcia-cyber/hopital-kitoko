@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reçu Médical #{{ paiement.id }}</title>
+    <style>
+        /* Configuration spécifique pour imprimante ticket thermique (80mm) */
+        @page { 
+            size: 80mm auto; 
+            margin: 0; 
+        }
+        
+        body { 
+            width: 72mm; 
+            font-family: 'Helvetica', 'Arial', sans-serif; 
+            font-size: 11px; 
+            padding: 4mm; 
+            color: #000;
+            line-height: 1.2;
+            margin: 0;
+        }
+
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .bold { font-weight: bold; }
+        .uppercase { text-transform: uppercase; }
+        
+        /* En-tête Médical */
+        .medical-header { margin-bottom: 10px; }
+        .medical-cross { 
+            font-size: 28px; 
+            font-weight: bold; 
+            margin-bottom: -5px;
+            color: #000;
+        }
+        .hospital-name { 
+            font-size: 17px; 
+            font-weight: bold; 
+            text-transform: uppercase; 
+            letter-spacing: 1px;
+        }
+        
+        .divider { 
+            border-top: 1px dashed #000; 
+            margin: 8px 0; 
+        }
+        
+        /* Tableaux d'informations */
+        .info-table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin: 8px 0; 
+        }
+        .info-table td { 
+            padding: 3px 0; 
+            vertical-align: top;
+        }
+        
+        /* Boîte de montant mis en évidence */
+        .amount-box { 
+            border: 1px solid #000; 
+            padding: 10px; 
+            margin: 10px 0; 
+            text-align: center;
+        }
+        .total-label { 
+            font-size: 10px; 
+            text-transform: uppercase; 
+            margin-bottom: 3px;
+        }
+        .total-amount { 
+            font-size: 20px; 
+            font-weight: bold; 
+        }
+        
+        .footer-text { 
+            font-size: 9px; 
+            font-style: italic; 
+            margin-top: 15px; 
+            line-height: 1.4;
+        }
+
+        /* Masquer les éléments non nécessaires à l'impression physique */
+        @media print {
+            .no-print { display: none; }
+        }
+
+        .btn-print {
+            background: #000;
+            color: #fff;
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body onload="window.print();">
+
+    <!-- En-tête du Centre Médical -->
+    <div class="medical-header text-center">
+        <div class="medical-cross">+</div>
+        <div class="hospital-name">Medical Moyanoli</div>
+        <div class="bold">Service de Santé & Soins</div>
+        <div style="font-size: 9px;">Kinshasa, RDC</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Titre du Document -->
+    <div class="text-center">
+        <span class="bold">REÇU DE CAISSE N° {{ paiement.id|stringformat:"05d" }}</span>
+    </div>
+
+    <!-- Détails du Patient et de la Consultation -->
+    <table class="info-table">
+        <tr>
+            <td><span class="bold">Date :</span></td>
+            <td class="text-right">{{ date_paiement_fix|date:"d/m/Y H:i" }}</td>
+        </tr>
+        <tr>
+            <td><span class="bold">Patient :</span></td>
+            <td class="text-right">{{ paiement.patient.noms }}</td>
+        </tr>
+        <tr>
+            <td><span class="bold">ID Patient :</span></td>
+            <td class="text-right">#{{ paiement.patient.id }}</td>
+        </tr>
+        <tr>
+            <td><span class="bold">Service :</span></td>
+            <td class="text-right uppercase">{{ paiement.service }}</td>
+        </tr>
+    </table>
+
+    <!-- Zone du Montant Payé -->
+    <div class="amount-box">
+        <div class="total-label">Montant Versé</div>
+        <div class="total-amount">{{ paiement.montant_verse|floatformat:2 }} {{ paiement.devise }}</div>
+    </div>
+
+    <!-- Détails Financiers Secondaires -->
+    <table class="info-table">
+        <tr>
+            <td>Reste à payer :</td>
+            <td class="text-right"><span class="bold">{{ paiement.reste_a_payer|floatformat:2 }} $</span></td>
+        </tr>
+        <tr>
+            <td>Mode de paiement :</td>
+            <td class="text-right">Espèces</td>
+        </tr>
+    </table>
+
+    <div class="divider"></div>
+
+    <!-- Signature et Remerciements -->
+    <div class="text-center">
+        <p><span class="bold">Agent de facturation</span><br>
+        {{ user.get_full_name|default:user.username }}</p>
+        
+        <div class="footer-text">
+            Le Medical Moyanoli vous remercie de votre confiance.<br>
+            <strong>"Les soins de qualité pour tous."</strong>
+        </div>
+    </div>
+
+    <!-- Bouton de secours (visible uniquement sur écran) -->
+    <div class="text-center no-print">
+        <button class="btn-print" onclick="window.print()">Imprimer le ticket</button>
+        <p style="font-size: 10px; color: grey;">(L'impression se lance automatiquement)</p>
+    </div>
+
+</body>
+</html>

@@ -673,25 +673,16 @@ def historique_paiements(request, patient_id):
 def imprimer_recu_direct(request, paiement_id):
     paiement = get_object_or_404(Paiement, id=paiement_id)
     
-    # ÉTAPE A : On récupère la date brute
-    date_brute = paiement.date_paiement
-    
-    # ÉTAPE B : On la rend "Aware" (on lui donne un fuseau) manuellement
-    # C'est ici que le crash s'arrête
-    if timezone.is_naive(date_brute):
-        from django.utils.timezone import make_aware, get_current_timezone
-        date_brute = make_aware(date_brute, get_current_timezone())
-    
-    # ÉTAPE C : On convertit à l'heure locale pour le ticket
-    date_paiement_fix = timezone.localtime(date_brute)
-    date_impression = timezone.localtime(timezone.now())
-    
+    # On ajoute manuellement les 11 heures de décalage
+    # pour compenser l'heure système du serveur
+    date_reelle = paiement.date_paiement + timedelta(hours=11)
+
     context = {
         'paiement': paiement,
-        'date_paiement_fix': date_paiement_fix,
-        'date_impression': date_impression,
+        'patient': paiement.patient,
+        'date_paiement_fix': date_reelle,
     }
-    return render(request, 'back-end/finance/recu_format_ticket.html', context)
+    return render(request, 'back-end/finance/ticket_paiement.html', context)
 
 # 23
 # ==================================================================================================

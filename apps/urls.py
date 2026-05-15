@@ -48,7 +48,7 @@ urlpatterns =[
      # FINANCE
      path('patient/<int:patient_id>/payer-fiche/', views.payer_fiche, name='payer_fiche'),
      path('patient/<int:patient_id>/historique/', views.historique_paiements, name='historique_paiements'),
-     path('paiement/<int:paiement_id>/imprimer/', views.imprimer_recu_direct, name='imprimer_recu_direct'),
+     path('paiement/imprimer/<int:paiement_id>/', views.imprimer_recu_direct, name='imprimer_recu_direct'),
 
      # ====================================
      # INFIRMIER
