@@ -14,7 +14,9 @@
                     </ul>
                 </li>
 
-                <!-- MENU ADMIN -->
+                <!-- ========================================== -->
+                <!-- 1. MENU ADMIN                              -->
+                <!-- ========================================== -->
                 {% if fonctionKey == 'admin' %}
                     <li class="menu-title"> <span>ADMINISTRATION</span> </li>
                     <li class="submenu">
@@ -22,7 +24,7 @@
                         <ul style="display: none;">
                             <li><a href="{% url 'employeAdd' %}">Inscrire un utilisateur</a></li>
                             <li><a href="{% url 'employeRead' %}">Liste du Personnel</a></li>
-                            <li><a href="{% url 'liste_employe_poste'%}">Profil Utilisateur</a></li>
+                            <li><a href="{% url 'liste_employe_poste' %}">Profil Utilisateur</a></li>
                         </ul>
                     </li>
 
@@ -42,7 +44,9 @@
                         </ul>
                     </li>
 
-                <!-- MENU RECEPTIONNISTE -->
+                <!-- ========================================== -->
+                <!-- 2. MENU RECEPTIONNISTE                     -->
+                <!-- ========================================== -->
                 {% elif fonctionKey == 'receptionniste' %}
                     <li class="menu-title"> <span>RECEPTION</span> </li>
                     <li class="submenu">
@@ -52,7 +56,9 @@
                         </ul>
                     </li>
 
-                <!-- MENU INFIRMIER (CORRIGÉ ICI) -->
+                <!-- ========================================== -->
+                <!-- 3. MENU INFIRMIER                          -->
+                <!-- ========================================== -->
                 {% elif fonctionKey == 'infirmier' %}
                     <li class="menu-title"> <span>SERVICES INFIRMERIE</span> </li>
                     
@@ -68,6 +74,30 @@
                             <i class="la la-clipboard-list"></i> 
                             <span>Registre Global Triage</span>
                         </a>
+                    </li>
+
+                <!-- ========================================== -->
+                <!-- 4. MENU MEDECIN (CORRIGÉ ICI)              -->
+                <!-- ========================================== -->
+                {% elif fonctionKey == 'medecin' %}
+                    <li class="menu-title"> <span>SERVICES MEDECIN</span> </li>
+                    <li class="submenu">
+                        <a href="#"><i class="la la-stethoscope"></i> <span> Consultations </span> <span class="menu-arrow"></span></a>
+                        <ul style="display: none;">
+                            <!-- Salle d'attente (Consultations en attente) -->
+                            <li class="{% if request.resolver_match.url_name == 'liste_consultation_medecin' %}active{% endif %}">
+                                <a href="{% url 'liste_consultation_medecin' %}">
+                                    <i class="la la-users"></i> Salle d'Attente
+                                </a>
+                            </li>
+                            
+                            <!-- Historique / Registre des consultations terminées -->
+                            <li class="{% if request.resolver_match.url_name == 'liste_consultations' %}active{% endif %}">
+                                <a href="{% url 'liste_consultations' %}">
+                                    <i class="la la-archive"></i> Registre Consultations
+                                </a>
+                            </li>
+                        </ul>
                     </li>
                 {% endif %}
 

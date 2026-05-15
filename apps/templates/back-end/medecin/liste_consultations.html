@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+        <title>Moyanoli - Registre des Consultations</title>
+		
+		<!-- Favicon & CSS -->
+        {% include 'back-end/includes/css.html' %}
+    </head>
+    <body>
+		<!-- Main Wrapper -->
+        <div class="main-wrapper">
+		
+			<!-- Header -->
+            {% include 'back-end/includes/header.html' %}
+			<!-- /Header -->
+			
+			<!-- Sidebar -->
+            {% include 'back-end/includes/sidebar.html' %}
+			<!-- /Sidebar -->
+			
+			<!-- Page Wrapper -->
+            <div class="page-wrapper">
+			
+				<!-- Page Content -->
+                <div class="content container-fluid">
+                
+                    <!-- Page Header -->
+                    <div class="page-header">
+                        <div class="row align-items-center">
+                            <div class="col">
+                                <h3 class="page-title">Archives & Consultations Terminées</h3>
+                                <ul class="breadcrumb">
+                                    <li class="breadcrumb-item"><a href="#">Médecin</a></li>
+                                    <li class="breadcrumb-item active">Registre Global</li>
+                                </ul>
+                            </div>
+                            <div class="col-auto float-right ml-auto">
+                                <span class="badge badge-pill badge-success" style="font-size: 14px; padding: 8px 16px;">
+                                    <i class="fa fa-folder-open"></i> Total : {{ consultations.count }} Fiche(s)
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- /Page Header -->
+
+                    <!-- Barre de Recherche Globale -->
+                    <div class="row filter-row">
+                        <div class="col-sm-6 col-md-12">  
+                            <div class="form-group form-focus">
+                                <input type="text" id="archiveSearchInput" class="form-control floating" placeholder="Rechercher par nom de patient, matricule, médecin, diagnostic ou examen paraclinique...">
+                                <label class="focus-label">Recherche rapide dans l'historique</label>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- /Barre de Recherche Globale -->
+
+                    <!-- Tableau du Registre -->
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="card card-table">
+                                <div class="card-header">
+                                    <h4 class="card-title mb-0"><i class="fa fa-archive text-success"></i> Historique des fiches cliniques</h4>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive" style="padding: 15px;">
+                                        <table class="table table-striped table-hover custom-table mb-0 datatable" id="archiveTable">
+                                            <thead>
+                                                <tr>
+                                                    <th>Date & Heure</th>
+                                                    <th>Patient</th>
+                                                    <th>Motif de consultation</th>
+                                                    <th>Diagnostic Retenu</th>
+                                                    <th>Examens Complémentaires (Labo/Imagerie)</th>
+                                                    <th>Médecin Traitant</th>
+                                                    <th class="text-right">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for consultation in consultations %}
+                                                <tr>
+                                                    <td>
+                                                        <strong class="text-dark">{{ consultation.date_creation|date:"d/m/Y" }}</strong>
+                                                        <br><small class="text-muted">{{ consultation.date_creation|date:"H:i" }}</small>
+                                                    </td>
+                                                    <td>
+                                                        <h2 class="table-avatar">
+                                                            <a href="#" class="avatar avatar-xs bg-success text-white rounded-circle d-flex align-items-center justify-content-center" style="font-weight: bold; font-size: 11px;">
+                                                                {{ consultation.triage.patient.noms|slice:":2"|upper }}
+                                                            </a>
+                                                            <a href="#"><strong>{{ consultation.triage.patient.noms }}</strong> <span>Matricule: #{{ consultation.triage.patient.code_patient }}</span></a>
+                                                        </h2>
+                                                    </td>
+                                                    <td>
+                                                        <span class="text-secondary" title="{{ consultation.motif }}">{{ consultation.motif|default:"Non spécifié"|truncatechars:35 }}</span>
+                                                    </td>
+                                                    <td>
+                                                        <span class="font-weight-bold text-dark" title="{{ consultation.diagnostic }}">{{ consultation.diagnostic|default:"En attente..."|truncatechars:40 }}</span>
+                                                    </td>
+                                                    <td>
+                                                        <!-- Utilisation du prefetch_related 'examens' -->
+                                                        {% for exam in consultation.examens.all %}
+                                                            <span class="badge badge-light border text-dark mb-1" style="font-size: 11px; padding: 4px 8px;">
+                                                                <i class="fa fa-flask text-info"></i> {{ exam.prestation.libelle }} 
+                                                                {% if exam.quantite > 1 %}<span class="badge badge-secondary">x{{ exam.quantite }}</span>{% endif %}
+                                                            </span>
+                                                        {% empty %}
+                                                            <small class="text-muted">Aucun examen demandé</small>
+                                                        {% endfor %}
+                                                    </td>
+                                                    <td>
+                                                        <small class="text-dark font-weight-bold">
+                                                            <i class="fa fa-user-md text-muted"></i> Dr. {{ consultation.medecin.get_full_name|default:consultation.medecin.username }}
+                                                        </small>
+                                                    </td>
+                                                    <td class="text-right">
+                                                        <div class="dropdown dropdown-action">
+                                                            <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+                                                                <i class="material-icons">more_vert</i>
+                                                            </a>
+                                                            <div class="dropdown-menu dropdown-menu-right">
+                                                                <!-- Lien de réédition ou consultation de la fiche -->
+                                                                <a class="dropdown-item" href="{% url 'consultation_medicale' consultation.triage.id %}">
+                                                                    <i class="fa fa-eye m-r-5"></i> Voir / Modifier la Fiche
+                                                                </a>
+                                                                
+                                                                <!-- Lien vers l'historique complet des constantes du patient -->
+                                                                <a class="dropdown-item" href="{% url 'historique_signes_vitaux' consultation.triage.patient.id %}">
+                                                                    <i class="fa fa-heartbeat m-r-5"></i> Constantes Vitales
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                {% empty %}
+                                                <tr>
+                                                    <td colspan="7" class="text-center text-muted py-5">
+                                                        <i class="fa fa-folder-open-o fa-3x mb-3 text-secondary"></i>
+                                                        <br>Aucune consultation n'a encore été enregistrée dans la base de données.
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- /Tableau du Registre -->
+
+                </div>
+				<!-- /Page Content -->
+				
+            </div>
+			<!-- /Page Wrapper -->
+			
+        </div>
+		<!-- /Main Wrapper -->
+		
+		<!-- jQuery & Scripts de base -->
+        {% include 'back-end/includes/js.html' %}
+
+        <!-- Script de couplage pour la recherche fluide -->
+        <script>
+            $(document).ready(function() {
+                if ($.fn.DataTable.isDataTable('#archiveTable')) {
+                    var table = $('#archiveTable').DataTable({
+                        "pageLength": 25, // Idéal pour un registre d'archives denses
+                        "language": {
+                            "search": "Filtrer : "
+                        }
+                    });
+                    
+                    // Liaison de votre barre de filtrage personnalisée SmartHR
+                    $('#archiveSearchInput').on('keyup', function() {
+                        table.search(this.value).draw();
+                    });
+                }
+            });
+        </script>
+		
+    </body>
+</html>
