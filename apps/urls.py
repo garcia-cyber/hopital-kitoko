@@ -65,6 +65,8 @@ urlpatterns =[
     path('consultation/<int:triage_id>/', views.consultation_medicale, name='consultation_medicale'),
     path('medecin/consultations/historique/', views.liste_consultations_terminees, name='liste_consultations'),
     path('consultation/<int:pk>/', views.detail_consultation, name='detail_consultation'),
+    path('consultations/ordonnances-urgence/', views.liste_ordonnances_urgence, name='liste_ordonnances_urgence'),
+    path('consultations/<int:consultation_id>/prescrire-urgence/', views.prescrire_ordonnance_urgence_rapide, name='prescrire_ordonnance_urgence_rapide'),
 
      
 

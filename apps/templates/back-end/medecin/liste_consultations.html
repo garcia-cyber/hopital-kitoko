@@ -30,7 +30,23 @@
                         </div>
                     </div>
 
-                    <!-- Barre de Recherche Backend (Optionnelle si DataTables fait déjà le travail) -->
+                    <!-- Affichage des messages flash (Succès/Erreur) -->
+                    {% if messages %}
+                        <div class="row">
+                            <div class="col-md-12">
+                                {% for message in messages %}
+                                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                        {{ message }}
+                                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    <!-- Barre de Recherche Backend -->
                     <div class="row mb-3">
                         <div class="col-md-12">
                             <form method="GET" action="" class="search-form">
@@ -62,7 +78,7 @@
                                             <th>Constantes (Triage)</th>
                                             <th>Données Cliniques</th>
                                             <th>Examens Prescrits</th>
-                                            <th class="text-right">Statut</th>
+                                            <th class="text-right">Statut / Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -133,9 +149,12 @@
                                                 {% endif %}
                                             </td>
                                             
-                                            <!-- Statut final -->
+                                            <!-- Statut final & Bouton d'urgence -->
                                             <td class="text-right">
-                                                <span class="badge badge-success"><i class="fa fa-check-circle"></i> Clôturé</span>
+                                                <span class="badge badge-success mb-2 d-inline-block"><i class="fa fa-check-circle"></i> Clôturé</span>
+                                                <button class="btn btn-sm btn-danger btn-block mt-1" data-toggle="modal" data-target="#modal_urgence_{{ c.id }}" style="font-size: 11px; padding: 4px 8px;">
+                                                    <i class="fa fa-ambulance"></i> Ordo Urgence
+                                                </button>
                                             </td>
                                         </tr>
                                         {% empty %}
@@ -150,7 +169,7 @@
                                 </table>
                             </div>
 
-                            <!-- Bloc Pagination Django (Utile si tu n'utilises pas la pagination DataTables) -->
+                            <!-- Bloc Pagination Django -->
                             {% if consultations.has_other_pages %}
                             <div class="mt-4">
                                 <ul class="pagination justify-content-center">
@@ -183,6 +202,45 @@
                 </div>
             </div>
         </div>
+
+        <!-- Modals de Prescription Réactifs d'Urgence (Générés proprement hors du tableau) -->
+        {% for c in consultations %}
+        <div class="modal fade" id="modal_urgence_{{ c.id }}" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered" role="document">
+                <div class="modal-content">
+                    <div class="modal-header bg-danger text-white">
+                        <h5 class="modal-title"><i class="fa fa-ambulance"></i> Rédiger une Ordonnance d'Urgence</h5>
+                        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <form method="POST" action="{% url 'prescrire_ordonnance_urgence_rapide' c.id %}">
+                        {% csrf_token %}
+                        <div class="modal-body">
+                            <div class="alert alert-warning mb-3" style="color: #856404; background-color: #fff3cd; border-color: #ffeeba;">
+                                <strong>Patient :</strong> {{ c.triage.patient.noms }} ({{ c.triage.patient.code_patient }})<br>
+                                <small>État dégradé avant les résultats d'examens. Délivrez un traitement symptomatique immédiat.</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="font-weight-bold text-dark">Médicaments & Posologies d'Urgence</label>
+                                <textarea name="medicaments_text" class="form-control" rows="4" placeholder="Ex: Perfusion Paracétamol 1g Direct + Perfalgan IV..." required></textarea>
+                            </div>
+                            
+                            <div class="form-group mb-0">
+                                <label class="font-weight-bold text-dark">Observations / Justification médicale</label>
+                                <textarea name="observation" class="form-control" rows="2" placeholder="Ex: Pic de fièvre soudain à 39.8°C, vomissements sévères..."></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
+                            <button type="submit" class="btn btn-danger"><i class="fa fa-paper-plane"></i> Enregistrer et Envoyer</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
 
         {% include 'back-end/includes/js.html' %}
     </body>

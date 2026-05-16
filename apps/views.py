@@ -11,8 +11,8 @@ from decimal import Decimal , ROUND_HALF_UP
 import pytz
 from datetime import timedelta
 from django.db import transaction
-from django.core.paginator import Paginator
 from django.conf import settings
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 
 # Create your views here.
@@ -1039,5 +1039,69 @@ def detail_consultation(request, pk):
 
 # 32
 # ==================================================================================================
-# MEDECIN  DETAILS CONSULTATION  COMPLET
+# MEDECIN  VOIR LES ORDONNANCES D'URGENCE
 # ==================================================================================================
+@login_required
+def liste_ordonnances_urgence(request):
+    query = request.GET.get('q')
+    
+    # 1. Filtre strict sur le type 'URGENCE' et correction du tri avec 'date_prescrite'
+    ordonnances_list = Ordonnance.objects.filter(
+        type_ordonnance='URGENCE'
+    ).select_related(
+        'consultation__triage__patient',
+        'consultation__medecin'
+    ).prefetch_related(
+        'medicaments' # Utilise le nom exact de ton champ ManyToMany ou Related_name ici
+    ).order_by('-date_prescrite') # CORRECTION ICI
+
+    # 2. Recherche par nom de patient ou code patient
+    if query:
+        ordonnances_list = ordonnances_list.filter(
+            Q(consultation__triage__patient__noms__icontains=query) |
+            Q(consultation__triage__patient__code_patient__icontains=query)
+        )
+
+    # 3. Pagination à 10 éléments par page
+    paginator = Paginator(ordonnances_list, 10)
+    page = request.GET.get('page')
+    
+    try:
+        ordonnances = paginator.page(page)
+    except PageNotAnInteger:
+        ordonnances = paginator.page(1)
+    except EmptyPage:
+        ordonnances = paginator.page(paginator.num_pages)
+
+    # 4. Rôle de l'utilisateur pour la sidebar
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role else None
+    
+    context = {
+        'ordonnances': ordonnances,
+        'fonctionKey': fonctionKey
+    }
+    return render(request, 'back-end/medecin/liste_ordonnances_urgence.html', context)
+
+# 33
+# ==================================================================================================
+# MEDECIN  ORDONNANCE D'URGENCE
+# ==================================================================================================
+@login_required
+def prescrire_ordonnance_urgence_rapide(request, consultation_id):
+    if request.method == 'POST':
+        consultation = get_object_or_404(Consultation, id=consultation_id)
+        observation = request.POST.get('observation')
+        medicaments_text = request.POST.get('medicaments_text') # Contenu texte libre ou liste
+        
+        # 1. Création de l'ordonnance d'urgence
+        ordonnance = Ordonnance.objects.create(
+            consultation=consultation,
+            type_ordonnance='URGENCE',
+            observation=f"{observation} | Produits prescrits : {medicaments_text}" if medicaments_text else observation
+        )
+        
+        messages.success(request, f"Ordonnance d'urgence #{ordonnance.id} créée avec succès pour {consultation.triage.patient.noms} !")
+        
+    # Redirige vers la page d'où vient l'utilisateur
+    return redirect(request.META.get('HTTP_REFERER', 'liste_consultations_terminees'))
