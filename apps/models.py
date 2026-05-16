@@ -198,26 +198,26 @@ class SigneVital(models.Model):
 
 # ==================================================================================================
 class Consultation(models.Model):
-    # Correction : On pointe vers 'SigneVital' au lieu de 'Triage'
     triage = models.OneToOneField('SigneVital', db_index=True, on_delete=models.CASCADE)
     medecin = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
     
     motif_consultation = models.TextField(verbose_name="Motif")
     histoire_maladie = models.TextField(verbose_name="Histoire de la maladie")
     examen_physique = models.TextField(verbose_name="Examen physique")
+    complement_d_anamnese = models.CharField(max_length=200, null=True)
     hypothese_diagnostique = models.TextField(verbose_name="Hypothèse diagnostique")
     
     date_creation = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
-        # Correction du chemin vers le patient
         return f"Consultation de {self.triage.patient.noms} le {self.date_creation.strftime('%d/%m/%Y')}"
 
     @property
     def total_examens_a_payer(self):
-        # On calcule la somme des prix de toutes les prestations demandées
-        examens = self.demandeexamen_set.all()
-        return sum(ex.prestation.prix for ex in examens)
+        # CORRECTION ICI : On utilise le related_name 'examens' défini dans DemandeExamen
+        examens_lies = self.examens.all()
+        # Sécurité : on vérifie que l'examen possède bien une prestation et un prix
+        return sum((ex.prestation.prix * ex.quantite) for ex in examens_lies if ex.prestation and ex.prestation.prix)
 
 
 # ==================================================================================================

@@ -4,183 +4,186 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
-        <title>Moyanoli - Registre des Consultations</title>
-		
-		<!-- Favicon & CSS -->
+        <title>Moyanoli - Historique des Consultations</title>
+        
         {% include 'back-end/includes/css.html' %}
     </head>
     <body>
-		<!-- Main Wrapper -->
         <div class="main-wrapper">
-		
-			<!-- Header -->
+        
             {% include 'back-end/includes/header.html' %}
-			<!-- /Header -->
-			
-			<!-- Sidebar -->
             {% include 'back-end/includes/sidebar.html' %}
-			<!-- /Sidebar -->
-			
-			<!-- Page Wrapper -->
+            
             <div class="page-wrapper">
-			
-				<!-- Page Content -->
                 <div class="content container-fluid">
                 
                     <!-- Page Header -->
                     <div class="page-header">
                         <div class="row align-items-center">
                             <div class="col">
-                                <h3 class="page-title">Archives & Consultations Terminées</h3>
+                                <h3 class="page-title">Historique des Consultations Clôturées</h3>
                                 <ul class="breadcrumb">
-                                    <li class="breadcrumb-item"><a href="#">Médecin</a></li>
-                                    <li class="breadcrumb-item active">Registre Global</li>
+                                    <li class="breadcrumb-item"><a href="#">Accueil</a></li>
+                                    <li class="breadcrumb-item active">Consultations terminées</li>
                                 </ul>
                             </div>
-                            <div class="col-auto float-right ml-auto">
-                                <span class="badge badge-pill badge-success" style="font-size: 14px; padding: 8px 16px;">
-                                    <i class="fa fa-folder-open"></i> Total : {{ consultations.count }} Fiche(s)
-                                </span>
-                            </div>
                         </div>
                     </div>
-                    <!-- /Page Header -->
 
-                    <!-- Barre de Recherche Globale -->
-                    <div class="row filter-row">
-                        <div class="col-sm-6 col-md-12">  
-                            <div class="form-group form-focus">
-                                <input type="text" id="archiveSearchInput" class="form-control floating" placeholder="Rechercher par nom de patient, matricule, médecin, diagnostic ou examen paraclinique...">
-                                <label class="focus-label">Recherche rapide dans l'historique</label>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- /Barre de Recherche Globale -->
-
-                    <!-- Tableau du Registre -->
-                    <div class="row">
+                    <!-- Barre de Recherche Backend (Optionnelle si DataTables fait déjà le travail) -->
+                    <div class="row mb-3">
                         <div class="col-md-12">
-                            <div class="card card-table">
-                                <div class="card-header">
-                                    <h4 class="card-title mb-0"><i class="fa fa-archive text-success"></i> Historique des fiches cliniques</h4>
-                                </div>
-                                <div class="card-body">
-                                    <div class="table-responsive" style="padding: 15px;">
-                                        <table class="table table-striped table-hover custom-table mb-0 datatable" id="archiveTable">
-                                            <thead>
-                                                <tr>
-                                                    <th>Date & Heure</th>
-                                                    <th>Patient</th>
-                                                    <th>Motif de consultation</th>
-                                                    <th>Diagnostic Retenu</th>
-                                                    <th>Examens Complémentaires (Labo/Imagerie)</th>
-                                                    <th>Médecin Traitant</th>
-                                                    <th class="text-right">Actions</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {% for consultation in consultations %}
-                                                <tr>
-                                                    <td>
-                                                        <strong class="text-dark">{{ consultation.date_creation|date:"d/m/Y" }}</strong>
-                                                        <br><small class="text-muted">{{ consultation.date_creation|date:"H:i" }}</small>
-                                                    </td>
-                                                    <td>
-                                                        <h2 class="table-avatar">
-                                                            <a href="#" class="avatar avatar-xs bg-success text-white rounded-circle d-flex align-items-center justify-content-center" style="font-weight: bold; font-size: 11px;">
-                                                                {{ consultation.triage.patient.noms|slice:":2"|upper }}
-                                                            </a>
-                                                            <a href="#"><strong>{{ consultation.triage.patient.noms }}</strong> <span>Matricule: #{{ consultation.triage.patient.code_patient }}</span></a>
-                                                        </h2>
-                                                    </td>
-                                                    <td>
-                                                        <span class="text-secondary" title="{{ consultation.motif }}">{{ consultation.motif|default:"Non spécifié"|truncatechars:35 }}</span>
-                                                    </td>
-                                                    <td>
-                                                        <span class="font-weight-bold text-dark" title="{{ consultation.diagnostic }}">{{ consultation.diagnostic|default:"En attente..."|truncatechars:40 }}</span>
-                                                    </td>
-                                                    <td>
-                                                        <!-- Utilisation du prefetch_related 'examens' -->
-                                                        {% for exam in consultation.examens.all %}
-                                                            <span class="badge badge-light border text-dark mb-1" style="font-size: 11px; padding: 4px 8px;">
-                                                                <i class="fa fa-flask text-info"></i> {{ exam.prestation.libelle }} 
-                                                                {% if exam.quantite > 1 %}<span class="badge badge-secondary">x{{ exam.quantite }}</span>{% endif %}
-                                                            </span>
-                                                        {% empty %}
-                                                            <small class="text-muted">Aucun examen demandé</small>
-                                                        {% endfor %}
-                                                    </td>
-                                                    <td>
-                                                        <small class="text-dark font-weight-bold">
-                                                            <i class="fa fa-user-md text-muted"></i> Dr. {{ consultation.medecin.get_full_name|default:consultation.medecin.username }}
-                                                        </small>
-                                                    </td>
-                                                    <td class="text-right">
-                                                        <div class="dropdown dropdown-action">
-                                                            <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
-                                                                <i class="material-icons">more_vert</i>
-                                                            </a>
-                                                            <div class="dropdown-menu dropdown-menu-right">
-                                                                <!-- Lien de réédition ou consultation de la fiche -->
-                                                                <a class="dropdown-item" href="{% url 'consultation_medicale' consultation.triage.id %}">
-                                                                    <i class="fa fa-eye m-r-5"></i> Voir / Modifier la Fiche
-                                                                </a>
-                                                                
-                                                                <!-- Lien vers l'historique complet des constantes du patient -->
-                                                                <a class="dropdown-item" href="{% url 'historique_signes_vitaux' consultation.triage.patient.id %}">
-                                                                    <i class="fa fa-heartbeat m-r-5"></i> Constantes Vitales
-                                                                </a>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                                {% empty %}
-                                                <tr>
-                                                    <td colspan="7" class="text-center text-muted py-5">
-                                                        <i class="fa fa-folder-open-o fa-3x mb-3 text-secondary"></i>
-                                                        <br>Aucune consultation n'a encore été enregistrée dans la base de données.
-                                                    </td>
-                                                </tr>
-                                                {% endfor %}
-                                            </tbody>
-                                        </table>
+                            <form method="GET" action="" class="search-form">
+                                <div class="input-group">
+                                    <input type="text" name="q" class="form-control" placeholder="Rechercher par nom de patient, code ou médecin..." value="{{ request.GET.q }}">
+                                    <div class="input-group-append">
+                                        <button class="btn btn-primary" type="submit">
+                                            <i class="fa fa-search"></i> Filtrer
+                                        </button>
+                                        {% if request.GET.q %}
+                                            <a href="?" class="btn btn-secondary">Réinitialiser</a>
+                                        {% endif %}
                                     </div>
                                 </div>
-                            </div>
+                            </form>
                         </div>
                     </div>
-                    <!-- /Tableau du Registre -->
 
-                </div>
-				<!-- /Page Content -->
-				
-            </div>
-			<!-- /Page Wrapper -->
-			
-        </div>
-		<!-- /Main Wrapper -->
-		
-		<!-- jQuery & Scripts de base -->
-        {% include 'back-end/includes/js.html' %}
+                    <!-- Liste des consultations -->
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="table-responsive">
+                                <table class="table table-hover custom-table mb-0 datatable">
+                                    <thead class="thead-dark">
+                                        <tr>
+                                            <th>Date & Heure</th>
+                                            <th>Patient</th>
+                                            <th>Médecin</th>
+                                            <th>Constantes (Triage)</th>
+                                            <th>Données Cliniques</th>
+                                            <th>Examens Prescrits</th>
+                                            <th class="text-right">Statut</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for c in consultations %}
+                                        <tr>
+                                            <!-- Date -->
+                                            <td>
+                                                <strong>{{ c.date_creation|date:"d/m/Y" }}</strong><br>
+                                                <small class="text-muted">{{ c.date_creation|date:"H:i" }}</small>
+                                            </td>
+                                            
+                                            <!-- Patient -->
+                                            <td>
+                                                <span class="badge badge-light-info">{{ c.triage.patient.code_patient }}</span><br>
+                                                <strong>{{ c.triage.patient.noms }}</strong><br>
+                                                <small>{{ c.triage.patient.age }} ans</small>
+                                            </td>
+                                            
+                                            <!-- Médecin -->
+                                            <td>
+                                                <i class="fa fa-user-md text-primary"></i> Dr. {{ c.medecin.get_full_name|default:c.medecin.username }}
+                                            </td>
+                                            
+                                            <!-- Constantes du Triage -->
+                                            <td>
+                                                <small>
+                                                    <strong>T°:</strong> {{ c.triage.temperature }} °C <br>
+                                                    <strong>Tension:</strong> {{ c.triage.tension_arterielle|default:"--" }} <br>
+                                                    <strong>Poids:</strong> {{ c.triage.poids }} Kg <br>
+                                                    <strong>Pouls:</strong> {{ c.triage.frequence_cardiaque|default:"--" }} bpm
+                                                </small>
+                                            </td>
+                                            
+                                            <!-- Données Cliniques (Motif & Diagnostic) -->
+                                            <td>
+                                                <button class="btn btn-xs btn-outline-info btn-block mb-1" data-toggle="collapse" data-target="#clinique_{{ c.id }}">
+                                                    <i class="fa fa-eye"></i> Voir Clinique
+                                                </button>
+                                                <div id="clinique_{{ c.id }}" class="collapse mt-2" style="min-width: 250px; font-size: 12px; background: #fdfdfd; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                                    <strong>Motif :</strong> {{ c.motif_consultation }}<br><br>
+                                                    <strong>Histoire maladie :</strong> {{ c.histoire_maladie }}<br><br>
+                                                    <strong>Examen physique :</strong> {{ c.examen_physique }}<br><br>
+                                                    {% if c.complement_d_anamnese %}
+                                                        <strong>Complément Anamnèse :</strong> {{ c.complement_d_anamnese }}<br><br>
+                                                    {% endif %}
+                                                    <strong class="text-danger">Hypothèse Diag :</strong> {{ c.hypothese_diagnostique }}
+                                                </div>
+                                            </td>
+                                            
+                                            <!-- Examens -->
+                                            <td>
+                                                {% if c.examens.all %}
+                                                    <ul class="pl-3 mb-0" style="font-size: 12px;">
+                                                        {% for exam in c.examens.all %}
+                                                            <li>
+                                                                {{ exam.prestation.libelle }} 
+                                                                {% if exam.quantite > 1 %}<small class="text-muted">(x{{ exam.quantite }})</small>{% endif %}
+                                                                <span class="badge {% if exam.statut == 'TERMINE' %}badge-success{% elif exam.statut == 'ANNULE' %}badge-danger{% else %}badge-warning{% endif %}" style="font-size: 10px;">
+                                                                    {{ exam.get_statut_display }}
+                                                                </span>
+                                                            </li>
+                                                        {% endfor %}
+                                                    </ul>
+                                                    <hr class="my-1">
+                                                    <small class="text-dark font-weight-bold">Total : {{ c.total_examens_a_payer }} USD/FC</small>
+                                                {% else %}
+                                                    <span class="text-muted" style="font-size: 12px;">Aucun examen</span>
+                                                {% endif %}
+                                            </td>
+                                            
+                                            <!-- Statut final -->
+                                            <td class="text-right">
+                                                <span class="badge badge-success"><i class="fa fa-check-circle"></i> Clôturé</span>
+                                            </td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="7" class="text-center text-muted py-4">
+                                                <i class="fa fa-folder-open fa-2x"></i><br>
+                                                Aucune consultation n'a encore été enregistrée dans le système Moyanoli.
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
 
-        <!-- Script de couplage pour la recherche fluide -->
-        <script>
-            $(document).ready(function() {
-                if ($.fn.DataTable.isDataTable('#archiveTable')) {
-                    var table = $('#archiveTable').DataTable({
-                        "pageLength": 25, // Idéal pour un registre d'archives denses
-                        "language": {
-                            "search": "Filtrer : "
-                        }
-                    });
+                            <!-- Bloc Pagination Django (Utile si tu n'utilises pas la pagination DataTables) -->
+                            {% if consultations.has_other_pages %}
+                            <div class="mt-4">
+                                <ul class="pagination justify-content-center">
+                                    {% if consultations.has_previous %}
+                                        <li class="page-item"><a class="page-link" href="?page={{ consultations.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">&laquo;</a></li>
+                                    {% else %}
+                                        <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
+                                    {% endif %}
+
+                                    {% for i in consultations.paginator.page_range %}
+                                        {% if consultations.number == i %}
+                                            <li class="page-item active"><span class="page-link">{{ i }} <span class="sr-only">(actuel)</span></span></li>
+                                        {% else %}
+                                            <li class="page-item"><a class="page-link" href="?page={{ i }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">{{ i }}</a></li>
+                                        {% endif %}
+                                    {% endfor %}
+
+                                    {% if consultations.has_next %}
+                                        <li class="page-item"><a class="page-link" href="?page={{ consultations.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">&raquo;</a></li>
+                                    {% else %}
+                                        <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+                                    {% endif %}
+                                </ul>
+                            </div>
+                            {% endif %}
+
+                        </div>
+                    </div>
                     
-                    // Liaison de votre barre de filtrage personnalisée SmartHR
-                    $('#archiveSearchInput').on('keyup', function() {
-                        table.search(this.value).draw();
-                    });
-                }
-            });
-        </script>
-		
+                </div>
+            </div>
+        </div>
+
+        {% include 'back-end/includes/js.html' %}
     </body>
 </html>

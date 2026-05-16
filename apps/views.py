@@ -731,32 +731,68 @@ def liste_attente_triage(request):
 @login_required
 def saisir_signes(request, patient_id):
     patient = get_object_or_404(Patient, id=patient_id)
+    today = timezone.now().date()
     
-    if request.method == 'POST':
-        # On enregistre les données envoyées par le formulaire
-        SigneVital.objects.create(
-            patient=patient,
-            temperature=request.POST.get('temp'),
-            poids=request.POST.get('poids'),
-            # Assure-toi que 'taille' est dans ton modèle, sinon retire cette ligne
-            tension_arterielle=request.POST.get('tension'),
-            frequence_cardiaque=request.POST.get('pouls'),
-            # Ajoute ces deux-là si tu veux remplir tout ton modèle :
-            frequence_respiratoire=request.POST.get('f_resp'),
-            saturation_oxygene=request.POST.get('spo2'),
-            infirmier=request.user
-        )
-        messages.success(request, f"Signes vitaux de {patient.noms} enregistrés avec succès.")
-        # Après l'enregistrement, on retourne à la liste d'attente
-        return redirect('liste_attente_triage')
+    # On vérifie si un prélèvement non consulté existe déjà pour aujourd'hui
+    triage_existant = SigneVital.objects.filter(
+        patient=patient,
+        date_prelevement__date=today,  
+        est_consulte=False
+    ).first()
 
-    # Rôles
+    if request.method == 'POST':
+        try:
+            if triage_existant:
+                # [MODE MISE À JOUR] : Le patient existe déjà, on écrase les anciennes valeurs
+                triage_existant.temperature = request.POST.get('temp')
+                triage_existant.poids = request.POST.get('poids')
+                triage_existant.tension_arterielle = request.POST.get('tension')
+                triage_existant.frequence_cardiaque = request.POST.get('pouls')
+                triage_existant.frequence_respiratoire = request.POST.get('f_resp')
+                triage_existant.saturation_oxygene = request.POST.get('spo2')
+                triage_existant.infirmier = request.user  # L'infirmier qui fait la modification
+                triage_existant.date_prelevement = timezone.now()  # On actualise l'heure du prélèvement
+                triage_existant.save()
+                
+                messages.success(request, f"Les signes vitaux de {patient.noms} ont été actualisés avec succès.")
+            else:
+                # [MODE CRÉATION] : Premier prélèvement de la journée pour ce patient
+                SigneVital.objects.create(
+                    patient=patient,
+                    temperature=request.POST.get('temp'),
+                    poids=request.POST.get('poids'),
+                    tension_arterielle=request.POST.get('tension'),
+                    frequence_cardiaque=request.POST.get('pouls'),
+                    frequence_respiratoire=request.POST.get('f_resp'),
+                    saturation_oxygene=request.POST.get('spo2'),
+                    infirmier=request.user,
+                    est_consulte=False 
+                )
+                messages.success(request, f"Signes vitaux de {patient.noms} enregistrés avec succès.")
+                
+            return redirect('liste_attente_triage')
+            
+        except Exception as e:
+            messages.error(request, f"Une erreur s'est produite lors de l'enregistrement : {str(e)}")
+
+    else:
+        # En mode GET : Si le patient a déjà des constantes saisies aujourd'hui
+        if triage_existant:
+            messages.info(
+                request, 
+                f"Note : Ce patient a déjà été prélevé aujourd'hui à {triage_existant.date_prelevement.strftime('%H:%M')}. "
+                "Modifier les valeurs ci-dessous mettra à jour sa fiche en attente."
+            )
+
+    # Gestion des rôles pour l'interface
     role = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role.fonctionKey.roleName if role else None
 
-    # Si c'est une requête GET (quand on arrive sur la page), on affiche juste le formulaire
-    return render(request, 'back-end/infirmerie/form_triage.html', {'patient': patient, 'fonctionKey': fonctionKey})
-
+    return render(request, 'back-end/infirmerie/form_triage.html', {
+        'patient': patient, 
+        'fonctionKey': fonctionKey,
+        'triage_existant': triage_existant  # Passe ceci au HTML pour injecter les `value="{{ triage_existant.temperature }}"` dans les inputs
+    })
 # 25
 # ==================================================================================================
 # PATIENT LISTE GLOBALE SIGNE VITAUX 
@@ -832,28 +868,39 @@ def marquer_consulte(request, sv_id):
     # 1. On récupère le prélèvement spécifique
     signe = get_object_or_404(SigneVital, id=sv_id)
     
-    # 2. On marque comme consulté (Optionnel ici)
-    # Note : Il est souvent préférable de marquer "est_consulte" 
-    # seulement quand le médecin ENREGISTRE la consultation (dans la vue POST).
-    # Mais si tu veux le faire au clic du bouton, garde cette ligne :
+    # 2. On marque comme consulté pour qu'il disparaisse DIRECTEMENT de la liste d'attente
     signe.est_consulte = True
     signe.save()
     
-    # 3. LA REDIRECTION CRUCIALE :
-    # Tu dois passer l'ID du signe vital (sv_id) à la vue de destination
+    # 3. Redirection vers l'espace de travail du médecin
     return redirect('consultation_medicale', triage_id=sv_id)
 
-# 29
+# 30
 # ==================================================================================================
-# MEDECIN 
+# MEDECIN   CONSULTATION PATIENT
 # ==================================================================================================
+
 @login_required
 def consultation_medicale(request, triage_id):
     # 1. Récupération des données de base
     triage = get_object_or_404(SigneVital, id=triage_id)
+    
+    # On vérifie si une consultation a déjà été enregistrée pour ce triage
     consultation = Consultation.objects.filter(triage=triage).first()
 
+    # [SÉCURITÉ ANTI-DUBLON MODIFIÉE] 
+    # On bloque UNIQUEMENT si le triage est marqué consulté ET qu'une consultation existe déjà.
+    # Si le médecin vient de cliquer sur le bouton, 'consultation' est None, donc il peut entrer.
+    if triage.est_consulte and consultation is not None:
+        messages.warning(request, f"Le dossier de consultation pour {triage.patient.noms} a déjà été clôturé.")
+        return redirect('liste_consultation_medecin')
+
     if request.method == 'POST':
+        # Double vérification de sécurité au cas où deux utilisateurs soumettent en même temps
+        if consultation is not None:
+            messages.error(request, "Erreur : Cette consultation a déjà été enregistrée par un autre utilisateur.")
+            return redirect('liste_consultation_medecin')
+
         # Initialisation du formulaire avec les données POST
         form = ConsultationForm(request.POST, instance=consultation)
         
@@ -867,6 +914,10 @@ def consultation_medicale(request, triage_id):
         if form.is_valid():
             try:
                 with transaction.atomic():
+                    # On vérifie si une consultation s'est créée entre temps
+                    if Consultation.objects.filter(triage=triage).exists():
+                        raise Exception("Ce patient a déjà été pris en charge entre-temps.")
+
                     # A. Sauvegarde de la consultation clinique
                     consultation_obj = form.save(commit=False)
                     consultation_obj.triage = triage
@@ -874,34 +925,28 @@ def consultation_medicale(request, triage_id):
                     consultation_obj.save()
 
                     # B. Gestion des Examens Paracliniques
-                    # Nettoyage des anciennes demandes non traitées pour mise à jour
                     DemandeExamen.objects.filter(consultation=consultation_obj, statut='EN_ATTENTE').delete()
-                    
                     for e_id in examens_ids:
                         prestation = get_object_or_404(Prestation, id=e_id)
-                        # Récupération de la quantité spécifique via l'ID de la prestation
                         qty_value = request.POST.get(f'qty_{e_id}', 1)
                         
                         DemandeExamen.objects.create(
                             consultation=consultation_obj,
                             prestation=prestation,
-                            quantite=qty_value, # Ton nouveau champ ajouté au modèle
+                            quantite=qty_value,
                             statut='EN_ATTENTE'
                         )
 
                     # C. Gestion de l'Ordonnance d'Urgence
-                    # On vérifie s'il y a au moins un médicament dont le nom n'est pas vide
                     if any(n.strip() for n in noms_medocs if n):
                         ordonnance, _ = Ordonnance.objects.get_or_create(
                             consultation=consultation_obj,
                             type_ordonnance='URGENCE'
                         )
-                        # On remplace les anciennes lignes par les nouvelles
                         LigneMedicament.objects.filter(ordonnance=ordonnance).delete()
                         
                         for i, nom in enumerate(noms_medocs):
                             if nom and nom.strip():
-                                # Sécurité sur les index des listes parallèles
                                 poso = posologies[i] if i < len(posologies) else ""
                                 dur = durees[i] if i < len(durees) else ""
                                 
@@ -913,21 +958,20 @@ def consultation_medicale(request, triage_id):
                                     statut='EN_COURS'
                                 )
 
-                    # D. Mise à jour du statut du Triage
+                    # D. Mise à jour définitive du statut du Triage
                     triage.est_consulte = True
                     triage.save()
 
-                messages.success(request, f"Consultation de {triage.patient.noms} enregistrée avec succès !")
-                return redirect('consultation_medicale', triage_id=triage.id)
+                messages.success(request, f"Consultation de {triage.patient.noms} enregistrée et clôturée avec succès !")
+                return redirect('liste_consultation_medecin')
 
             except Exception as e:
-                # En cas d'erreur, transaction.atomic() annule tout
                 messages.error(request, f"Une erreur technique est survenue : {str(e)}")
         else:
             messages.error(request, "Veuillez vérifier les erreurs dans le formulaire clinique.")
     
     else:
-        # Mode GET : affichage
+        # Mode GET : affichage normal
         form = ConsultationForm(instance=consultation)
 
     # 3. Préparation du contexte
@@ -935,10 +979,9 @@ def consultation_medicale(request, triage_id):
         categorie__in=['LABO', 'ECHO', 'RADIO']
     ).order_by('categorie', 'libelle')
     
-    # Gestion du rôle utilisateur (spécifique à ta structure Moyanoli)
     role = None
     try:
-        from .models import Fonction # Ajuste l'import selon ton app
+        from .models import Fonction
         role_obj = Fonction.objects.filter(userKey=request.user).first()
         role = role_obj.fonctionKey.roleName if role_obj else None
     except:
@@ -963,17 +1006,20 @@ def consultation_medicale(request, triage_id):
 # ==================================================================================================
 @login_required
 def liste_consultations_terminees(request):
-    # 'examens' est le related_name dans ton modèle DemandeExamen
-    # 'prestation' est chargé pour avoir accès au libelle du test (ex: Hémogramme)
+    # Optimisation de la requête avec le bon nom de relation : 'examens'
     consultations = Consultation.objects.select_related(
-        'triage__patient', 
-        'medecin'
+        'triage__patient',      
+        'medecin'               
     ).prefetch_related(
-        'examens__prestation'
+        'examens__prestation'  # Utilise 'examens' car related_name='examens'
     ).order_by('-date_creation')
+
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role else None
     
     context = {
         'consultations': consultations,
+        'fonctionKey': fonctionKey
     }
     return render(request, 'back-end/medecin/liste_consultations.html', context)
 
@@ -981,6 +1027,7 @@ def liste_consultations_terminees(request):
 # ==================================================================================================
 # MEDECIN  DETAILS CONSULTATION 
 # ==================================================================================================
+@login_required
 def detail_consultation(request, pk):
     # On récupère la consultation avec ses relations pour éviter trop de requêtes SQL
     consultation = get_object_or_404(
@@ -988,3 +1035,9 @@ def detail_consultation(request, pk):
         pk=pk
     )
     return render(request, 'back-end/medecin/detail_consultation.html', {'c': consultation})
+
+
+# 32
+# ==================================================================================================
+# MEDECIN  DETAILS CONSULTATION  COMPLET
+# ==================================================================================================

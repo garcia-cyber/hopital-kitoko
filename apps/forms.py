@@ -246,7 +246,7 @@ class PatientForm(forms.ModelForm):
 class ConsultationForm(forms.ModelForm):
     class Meta:
         model = Consultation
-        fields = ['motif_consultation', 'histoire_maladie', 'examen_physique', 'hypothese_diagnostique']
+        fields = ['motif_consultation', 'histoire_maladie', 'complement_d_anamnese','examen_physique', 'hypothese_diagnostique']
         widgets = {
             # On ajoute 'required': 'required' dans les attributs HTML
             'motif_consultation': forms.Textarea(attrs={
@@ -260,6 +260,13 @@ class ConsultationForm(forms.ModelForm):
                 'rows': 3,
                 'required': 'required'
             }),
+            'complement_d_anamnese': forms.Textarea(attrs={
+                'class': 'form-control', 
+                'rows': 3,
+                'required': 'required'
+            }),
+
+
             'examen_physique': forms.Textarea(attrs={
                 'class': 'form-control', 
                 'rows': 3,

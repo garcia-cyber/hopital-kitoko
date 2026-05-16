@@ -128,13 +128,27 @@
                             <!-- Partie Droite : Examens complémentaires & Ordonnance d'urgence -->
                             <div class="col-lg-5 col-md-12">
                                 
-                                <!-- Module A: Prescription d'Examens Paracliniques -->
+                                <!-- Module A: Prescription d'Examens Paracliniques Filtre Dynamique -->
                                 <div class="card border-info">
                                     <div class="card-body">
                                         <h4 class="section-title text-info" style="border-left-color: #17a2b8;"><i class="fa fa-flask"></i> Examens Laboratoire / Imagerie</h4>
                                         
+                                        <!-- ÉTAPE 1 : Choisir la Catégorie (Filtre) -->
+                                        <div class="form-group">
+                                            <label class="small font-weight-bold text-muted">1. Filtrer par type d'examen :</label>
+                                            <select id="filter_categorie" class="form-control select">
+                                                <option value="all">-- Afficher toutes les catégories --</option>
+                                                {% regroup examens_disponibles by categorie as categorie_list %}
+                                                {% for cat in categorie_list %}
+                                                    <option value="{{ cat.grouper }}">{{ cat.grouper }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+
+                                        <!-- ÉTAPE 2 : Sélectionner l'examen filtré -->
                                         <div class="form-group row">
                                             <div class="col-9">
+                                                <label class="small font-weight-bold text-muted">2. Sélectionner l'examen :</label>
                                                 <select id="select_examen" class="form-control select">
                                                     <option value="">-- Choisir un examen --</option>
                                                     {% for ex in examens_disponibles %}
@@ -144,8 +158,8 @@
                                                     {% endfor %}
                                                 </select>
                                             </div>
-                                            <div class="col-3">
-                                                <button type="button" id="btn_add_examen" class="btn btn-info btn-block"><i class="fa fa-plus"></i></button>
+                                            <div class="col-3 d-flex align-items-end">
+                                                <button type="button" id="btn_add_examen" class="btn btn-info btn-block" style="height: 44px;"><i class="fa fa-plus"></i></button>
                                             </div>
                                         </div>
 
@@ -164,10 +178,10 @@
                                     </div>
                                 </div>
 
-                                <!-- Module B: Ordonnance d'Urgence Initiale -->
+                                <!-- Module B: Ordonnance d'Urgence Initiale (Facultative) -->
                                 <div class="card border-warning">
                                     <div class="card-body">
-                                        <h4 class="section-title text-warning" style="border-left-color: #ffc107;"><i class="fa fa-pills"></i> Ordonnance d'Urgence</h4>
+                                        <h4 class="section-title text-warning" style="border-left-color: #ffc107;"><i class="fa fa-pills"></i> Ordonnance d'Urgence <small class="text-muted">(Facultatif)</small></h4>
                                         
                                         <div class="table-responsive">
                                             <table class="table table-sm table-bordered" id="table_ordonnance">
@@ -180,18 +194,15 @@
                                                     </tr>
                                                 </thead>
                                                 <tbody id="wrapper_medicaments">
-                                                    <!-- Ligne initiale par défaut -->
-                                                    <tr>
-                                                        <td><input type="text" name="nom_medicament" class="form-control form-control-sm" placeholder="Ex: Paracétamol ampoule"></td>
-                                                        <td><input type="text" name="posologie" class="form-control form-control-sm" placeholder="Ex: 1g injectable toutes les 8h"></td>
-                                                        <td><input type="text" name="duree" class="form-control form-control-sm" placeholder="Ex: 3 jours"></td>
-                                                        <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger btn-remove-medoc"><i class="fa fa-trash"></i></button></td>
+                                                    <!-- On démarre sans ligne par défaut pour bien marquer le côté facultatif, ou une ligne vide -->
+                                                    <tr class="placeholder-row">
+                                                        <td colspan="4" class="text-center text-muted small py-3">Aucun médicament d'urgence ajouté pour le moment.</td>
                                                     </tr>
                                                 </tbody>
                                             </table>
                                         </div>
                                         <button type="button" id="btn_add_medoc" class="btn btn-sm btn-outline-warning btn-block mt-2">
-                                            <i class="fa fa-plus"></i> Ajouter une ligne de prescription
+                                            <i class="fa fa-plus"></i> Ajouter un médicament d'urgence
                                         </button>
                                     </div>
                                 </div>
@@ -222,15 +233,38 @@
         <!-- jQuery & JS -->
         {% include 'back-end/includes/js.html' %}
 
-        <!-- Gestion dynamique en JS des formulaires parallèles -->
+        <!-- Script d'automatisation et de filtrage -->
         <script>
             $(document).ready(function() {
-                // Application de la mise en forme de base de SmartHR sur le formulaire clinique Django
+                // Style des inputs Django
                 $('#consultationForm textarea, #consultationForm input[type="text"], #consultationForm select').addClass('form-control');
 
-                // --- MODULE 1 : GESTION DES EXAMENS PARACLINIQUES ---
+                // --- OPTIMISATION 1 : FILTRAGE DYNAMIQUE DES EXAMENS ---
+                // Sauvegarde de toutes les options originales pour pouvoir filtrer proprement
+                var allExamenOptions = $('#select_examen option').clone();
+
+                $('#filter_categorie').on('change', function() {
+                    var selectedCat = $(this).val();
+                    
+                    // Réinitialiser le sélecteur d'examens
+                    $('#select_examen').empty();
+                    
+                    // Réinjecter uniquement les options correspondantes
+                    allExamenOptions.each(function() {
+                        var optionCat = $(this).data('cat');
+                        
+                        if (selectedCat === 'all' || !optionCat || optionCat === selectedCat) {
+                            $('#select_examen').append($(this).clone());
+                        }
+                    });
+                    
+                    // Forcer Select2 ou le select de base à se mettre à jour
+                    $('#select_examen').val('').trigger('change');
+                });
+
+                // --- AJOUT DES EXAMENS DANS LE TABLEAU ---
                 $('#btn_add_examen').on('click', function() {
-                    var select = $('#select_examen font-select, #select_examen');
+                    var select = $('#select_examen');
                     var selectedOption = $('#select_examen option:selected');
                     var exId = select.val();
                     var exLibelle = selectedOption.data('libelle');
@@ -241,9 +275,8 @@
                         return;
                     }
 
-                    // Éviter les doublons
                     if ($('#exam_row_' + exId).length > 0) {
-                        alert("Cet examen a déjà été ajouté à la demande.");
+                        alert("Cet examen a déjà été ajouté.");
                         return;
                     }
 
@@ -262,29 +295,40 @@
                         </tr>
                     `;
                     $('#wrapper_examens').append(htmlRow);
-                    select.val('').trigger('change'); // Réinitialise l'élément sélecteur
+                    select.val('').trigger('change');
                 });
 
-                // --- MODULE 2 : GESTION DES LIGNES D'ORDONNANCES D'URGENCE ---
+
+                // --- OPTIMISATION 2 : ORDONNANCE FACULTATIVE ---
+                // Ajouter un médicament
                 $('#btn_add_medoc').on('click', function() {
+                    // Supprimer la ligne "Aucun médicament" si elle existe
+                    $('.placeholder-row').remove();
+
                     var htmlMedocRow = `
                         <tr>
-                            <td><input type="text" name="nom_medicament" class="form-control form-control-sm" placeholder="Nom de la molécule"></td>
-                            <td><input type="text" name="posologie" class="form-control form-control-sm" placeholder="Posologie"></td>
-                            <td><input type="text" name="duree" class="form-control form-control-sm" placeholder="Durée"></td>
-                            <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger btn-remove-medoc"><i class="fa fa-trash"></i></button></td>
+                            <td><input type="text" name="nom_medicament" class="form-control form-control-sm" placeholder="Ex: Paracétamol ampoule" required></td>
+                            <td><input type="text" name="posologie" class="form-control form-control-sm" placeholder="Ex: 1g toutes les 8h"></td>
+                            <td><input type="text" name="duree" class="form-control form-control-sm" placeholder="Ex: 3 jours"></td>
+                            <td class="text-center">
+                                <button type="button" class="btn btn-sm btn-outline-danger btn-remove-medoc"><i class="fa fa-trash"></i></button>
+                            </td>
                         </tr>
                     `;
                     $('#wrapper_medicaments').append(htmlMedocRow);
                 });
 
-                // Suppression d'une ligne de médicament
+                // Supprimer un médicament
                 $(document).on('click', '.btn-remove-medoc', function() {
-                    if ($('#wrapper_medicaments tr').length > 1) {
-                        $(this).closest('tr').remove();
-                    } else {
-                        // Vider les champs si c'est la seule ligne restante
-                        $(this).closest('tr').find('input').val('');
+                    $(this).closest('tr').remove();
+                    
+                    // Si plus aucun médicament, remettre le message informatif facultatif
+                    if ($('#wrapper_medicaments tr').length === 0) {
+                        $('#wrapper_medicaments').append(`
+                            <tr class="placeholder-row">
+                                <td colspan="4" class="text-center text-muted small py-3">Aucun médicament d'urgence ajouté pour le moment.</td>
+                            </tr>
+                        `);
                     }
                 });
             });
