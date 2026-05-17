@@ -1374,3 +1374,64 @@ def liste_examens_techniques(request):
 # ==================================================================================================
 # 
 # ==================================================================================================
+@login_required
+def saisir_resultats_examens(request, paiement_id):
+    # 1. Vérification du rôle du technicien
+    role_user = Fonction.objects.filter(userKey=request.user).first()
+    if not role_user or not role_user.fonctionKey:
+        messages.error(request, "Accès refusé.")
+        return redirect('dashboard')
+
+    nom_role = role_user.fonctionKey.roleName.lower()
+    fonctionKey = role_user.fonctionKey.roleName
+
+    # 2. Récupération du paiement et de la consultation associée
+    paiement = get_object_or_404(Paiement, id=paiement_id)
+    consultation = p = paiement.consultation
+
+    if not consultation:
+        messages.error(request, "Aucune consultation associée à ce paiement.")
+        return redirect('liste_examens_techniques')
+
+    # 3. Extraction et filtrage des examens 'EN_COURS' pour ce rôle précis
+    examens_payes = consultation.examens.filter(statut='EN_COURS').select_related('prestation')
+    
+    examens_a_saisir = []
+    for exam in examens_payes:
+        cat = exam.prestation.categorie
+        if ('labo' in nom_role or 'laborantin' in nom_role) and cat == 'LABO':
+            examens_a_saisir.append(exam)
+        elif ('echo' in nom_role or 'echographe' in nom_role) and cat == 'ECHO':
+            examens_a_saisir.append(exam)
+        elif ('radio' in nom_role or 'radiologue' in nom_role) and cat == 'RADIO':
+            examens_a_saisir.append(exam)
+
+    # Si le technicien tente de forcer l'accès à un examen qui ne le regarde pas
+    if not examens_a_saisir:
+        messages.error(request, "Aucun examen ne correspond à votre spécialité pour ce patient.")
+        return redirect('liste_examens_techniques')
+
+    # 4. Traitement de la soumission du formulaire (POST)
+    if request.method == 'POST':
+        for exam in examens_a_saisir:
+            # On récupère le résultat saisi pour chaque examen via son ID unique
+            cle_resultat = f"resultat_{exam.id}"
+            texte_resultat = request.POST.get(cle_resultat, "").strip()
+            
+            if texte_resultat:
+                exam.resultat = texte_resultat
+                exam.statut = 'TERMINE'  # L'examen passe de EN_COURS à TERMINE
+                exam.technicien = request.user # Optionnel : pour savoir qui a fait l'examen
+                exam.save()
+                
+        messages.success(request, f"Les résultats pour {paiement.patient.noms} ont été enregistrés avec succès.")
+        return redirect('liste_examens_techniques')
+
+    context = {
+        'paiement': paiement,
+        'patient': paiement.patient,
+        'consultation': consultation,
+        'examens_a_saisir': examens_a_saisir,
+        'fonctionKey': fonctionKey
+    }
+    return render(request, 'back-end/technique/saisir_resultats.html', context)

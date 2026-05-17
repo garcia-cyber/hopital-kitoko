@@ -78,5 +78,6 @@ urlpatterns =[
     # TECHNIQUE
     # URL pour l'espace technique (Laboratoire / Radiologie)
     path('technique/examens-a-realiser/', views.liste_examens_techniques, name='liste_examens_techniques'),
+    path('technique/saisir-resultats/<int:paiement_id>/', views.saisir_resultats_examens, name='saisir_resultats_examens'),
 
  ]
