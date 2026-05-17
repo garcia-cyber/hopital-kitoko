@@ -41,7 +41,7 @@
                                     <span class="dash-widget-icon"><i class="fa fa-money"></i></span>
                                     <div class="dash-widget-info">
                                         <h3>{{ cout_total_usd|floatformat:2 }} $</h3>
-                                        <span>Coût Total Fiche</span>
+                                        <span>Facturation Globale</span>
                                     </div>
                                 </div>
                             </div>
@@ -94,7 +94,7 @@
                                             <thead>
                                                 <tr>
                                                     <th>Date & Heure</th>
-                                                    <th>Service</th>
+                                                    <th>Service / Détails médicaux</th>
                                                     <th>Montant Versé</th>
                                                     <th>Devise</th>
                                                     <th>Reste après vers.</th>
@@ -106,19 +106,31 @@
                                                 {% for item in paiements_liste %}
                                                 <tr>
                                                     <td>{{ item.date|date:"d/m/Y H:i" }}</td>
-                                                    <td><span class="badge badge-light-info">{{ item.service }}</span></td>
+                                                    <td>
+                                                        <span class="badge badge-light-info mb-1">{{ item.service }}</span>
+                                                        
+                                                        <!-- Section Traçabilité : Liste des examens rattachés à ce paiement -->
+                                                        {% if item.examens %}
+                                                            <div class="mt-1" style="font-size: 0.85rem; line-height: 1.3;">
+                                                                <ul class="pl-3 m-0 text-muted" style="list-style-type: circle;">
+                                                                    {% for ex in item.examens %}
+                                                                        <li>{{ ex.libelle }} <span class="text-success">({{ ex.prix|floatformat:2 }} $)</span></li>
+                                                                    {% endfor %}
+                                                                </ul>
+                                                            </div>
+                                                        {% endif %}
+                                                    </td>
                                                     <td><strong>{{ item.montant|floatformat:2 }}</strong></td>
                                                     <td>{{ item.devise }}</td>
                                                     <td>
                                                         {% if item.reste_usd > 0 %}
                                                             <span class="text-danger">{{ item.reste_usd|floatformat:2 }} $</span>
                                                         {% else %}
-                                                            <span class="text-success">Soldé</span>
+                                                            <span class="text-success"><i class="fa fa-check-circle"></i> Soldé</span>
                                                         {% endif %}
                                                     </td>
-                                                    <td><i class="fa fa-user m-r-5"></i> {{ item.caissier }}</td>
+                                                    <td><i class="fa fa-user m-r-5 text-muted"></i> {{ item.caissier }}</td>
                                                     <td class="text-right">
-                                                        <!-- LIEN AJOUTÉ ICI -->
                                                         <a href="{% url 'imprimer_recu_direct' item.id %}" target="_blank" class="btn btn-sm btn-primary">
                                                             <i class="fa fa-print"></i> Reçu
                                                         </a>
@@ -136,6 +148,7 @@
                             </div>
                         </div>
                     </div>
+                    
                 </div>
             </div>
         </div>

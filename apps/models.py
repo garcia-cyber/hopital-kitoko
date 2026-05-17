@@ -135,19 +135,32 @@ class Patient(models.Model):
 class Paiement(models.Model):
     """ Journal de caisse : chaque entrée d'argent physique """
     CURRENCY = [('USD', 'USD'), ('CDF', 'CDF')]
+    
     SERVICES = [
         ('FICHE', 'Fiche'), 
         ('LABO', 'Labo'), 
-        ('PHARMA', 'Pharmacie'),
-        ('ECHOGRAPHIE', 'Échographie'),  # Ajout de l'échographie
+        ('ECHOGRAPHIE', 'Échographie'),
+        ('RADIO', 'Radiographie'),  # Ajout de la radiographie
+        # ('PHARMA', 'Pharmacie'),  # Masqué pour le moment
     ]
 
     patient = models.ForeignKey('Patient', on_delete=models.CASCADE)
+    
+    # Lien crucial pour retrouver et débloquer les examens de la consultation payée
+    consultation = models.ForeignKey(
+        'Consultation', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='paiements'
+    )
+    
     service = models.CharField(max_length=20, choices=SERVICES)
     montant_verse = models.DecimalField(max_digits=15, decimal_places=2)
     devise = models.CharField(max_length=3, choices=CURRENCY, default='USD')
     date_paiement = models.DateTimeField(default=timezone.now)
     caissier = models.ForeignKey('auth.User', on_delete=models.PROTECT)
+    reste_a_payer = models.DecimalField(max_digits=15, decimal_places=2, default=0.00, verbose_name="Dette / Reste à payer")
 
     def save(self, *args, **kwargs):
         # On sauvegarde d'abord le paiement
@@ -162,9 +175,11 @@ class Paiement(models.Model):
             )
 
     def __str__(self):
-        return f"Paiement {self.id} - {self.montant_verse} {self.devise}"
+        return f"Paiement {self.id} - {self.montant_verse} {self.devise} ({self.get_service_display()})"
+
 
 # =================================================================================================
+
 
 class Facture(models.Model):
     """ Document lié à chaque paiement pour la traçabilité """
@@ -172,9 +187,9 @@ class Facture(models.Model):
     numero_facture = models.CharField(max_length=50, unique=True)
     date_emission = models.DateTimeField(default=timezone.now)
 
-
     def __str__(self):
-        return f"Facture {self.numero_facture} ({self.paiement.service})"
+        # get_service_display() permet d'afficher "Radiographie" au lieu de "RADIO"
+        return f"Facture {self.numero_facture} ({self.paiement.get_service_display()})"
 
 
 # ===================================================================================================

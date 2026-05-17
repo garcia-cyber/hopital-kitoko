@@ -1,175 +1,208 @@
 <!DOCTYPE html>
+{% load static %}
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reçu Médical #{{ paiement.id }}</title>
+    <title>Reçu de Paiement #{{ paiement.id }}</title>
     <style>
-        /* Configuration spécifique pour imprimante ticket thermique (80mm) */
-        @page { 
-            size: 80mm auto; 
-            margin: 0; 
+        /* Configuration de la page pour imprimante thermique (Ticket) */
+        @page {
+            size: auto;
+            margin: 0mm;
         }
         
-        body { 
-            width: 72mm; 
-            font-family: 'Helvetica', 'Arial', sans-serif; 
-            font-size: 11px; 
-            padding: 4mm; 
+        body {
+            font-family: 'Courier New', Courier, monospace; /* Style ticket classique */
+            font-size: 13px;
+            line-height: 1.4;
             color: #000;
-            line-height: 1.2;
             margin: 0;
+            padding: 10px;
+            max-width: 280px; /* Largeur standard ticket de caisse */
+            background-color: #fff;
         }
 
         .text-center { text-align: center; }
         .text-right { text-align: right; }
         .bold { font-weight: bold; }
-        .uppercase { text-transform: uppercase; }
-        
-        /* En-tête Médical */
-        .medical-header { margin-bottom: 10px; }
-        .medical-cross { 
-            font-size: 28px; 
-            font-weight: bold; 
-            margin-bottom: -5px;
-            color: #000;
+
+        .header {
+            margin-bottom: 12px;
+            border-bottom: 1px dashed #000;
+            padding-bottom: 8px;
         }
-        .hospital-name { 
-            font-size: 17px; 
-            font-weight: bold; 
-            text-transform: uppercase; 
-            letter-spacing: 1px;
+
+        .header h2 {
+            margin: 0 0 4px 0;
+            font-size: 16px;
+            text-transform: uppercase;
         }
-        
-        .divider { 
-            border-top: 1px dashed #000; 
-            margin: 8px 0; 
+
+        .header p {
+            margin: 2px 0;
+            font-size: 11px;
         }
-        
-        /* Tableaux d'informations */
-        .info-table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            margin: 8px 0; 
+
+        .info-section {
+            margin-bottom: 10px;
+            font-size: 12px;
         }
-        .info-table td { 
-            padding: 3px 0; 
+
+        .info-section p {
+            margin: 3px 0;
+        }
+
+        /* Tableaux des détails financiers */
+        .ticket-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 5px;
+            margin-bottom: 10px;
+        }
+
+        .ticket-table th {
+            border-top: 1px dashed #000;
+            border-bottom: 1px dashed #000;
+            padding: 4px 0;
+            font-size: 12px;
+            text-align: left;
+        }
+
+        .ticket-table td {
+            padding: 5px 0;
             vertical-align: top;
-        }
-        
-        /* Boîte de montant mis en évidence */
-        .amount-box { 
-            border: 1px solid #000; 
-            padding: 10px; 
-            margin: 10px 0; 
-            text-align: center;
-        }
-        .total-label { 
-            font-size: 10px; 
-            text-transform: uppercase; 
-            margin-bottom: 3px;
-        }
-        .total-amount { 
-            font-size: 20px; 
-            font-weight: bold; 
-        }
-        
-        .footer-text { 
-            font-size: 9px; 
-            font-style: italic; 
-            margin-top: 15px; 
-            line-height: 1.4;
+            font-size: 12px;
         }
 
-        /* Masquer les éléments non nécessaires à l'impression physique */
-        @media print {
-            .no-print { display: none; }
+        .exam-list {
+            margin: 2px 0 0 0;
+            padding-left: 12px;
+            list-style-type: square;
+            font-size: 11px;
+            color: #333;
         }
 
-        .btn-print {
-            background: #000;
-            color: #fff;
-            padding: 8px 15px;
+        .divider {
+            border-top: 1px dashed #000;
+            margin: 8px 0;
+        }
+
+        .total-block {
+            margin-top: 5px;
+            font-size: 13px;
+        }
+
+        .footer {
+            margin-top: 15px;
+            padding-top: 8px;
+            border-top: 1px dashed #000;
+            font-size: 11px;
+        }
+
+        /* Bouton d'action masqué à l'impression */
+        .no-print-btn {
+            background-color: #007bff;
+            color: white;
             border: none;
+            padding: 8px 14px;
+            font-weight: bold;
             border-radius: 4px;
             cursor: pointer;
-            margin-top: 20px;
+            margin-bottom: 15px;
+            width: 100%;
+        }
+
+        @media print {
+            .no-print-btn {
+                display: none;
+            }
+            body {
+                padding: 0;
+            }
         }
     </style>
 </head>
-<body onload="window.print();">
+<body>
 
-    <!-- En-tête du Centre Médical -->
-    <div class="medical-header text-center">
-        <div class="medical-cross">+</div>
-        <div class="hospital-name">Medical Moyanoli</div>
-        <div class="bold">Service de Santé & Soins</div>
-        <div style="font-size: 9px;">Kinshasa, RDC</div>
+    <!-- Bouton de secours si l'impression auto ne se lance pas -->
+    <button class="no-print-btn" onclick="window.print()">Imprimer le reçu</button>
+
+    <!-- En-tête de l'Hôpital -->
+    <div class="header text-center">
+        <h2>Moyanoli ERP</h2>
+        <p>Centre Hospitalier & Médical</p>
+        <p>Kinshasa, RDC</p>
+        <p>Tél: +243 81x xxx xxx</p>
     </div>
 
-    <div class="divider"></div>
-
-    <!-- Titre du Document -->
-    <div class="text-center">
-        <span class="bold">REÇU DE CAISSE N° {{ paiement.id|stringformat:"05d" }}</span>
+    <!-- Informations du Ticket -->
+    <div class="info-section">
+        <p><span class="bold">RECU N° :</span> {{ paiement.id }}</p>
+        <p><span class="bold">Date :</span> {{ date_paiement_fix|date:"d/m/Y H:i" }}</p>
+        <p><span class="bold">Patient :</span> {{ patient.noms }}</p>
+        <p><span class="bold">ID Pat :</span> #{{ patient.id }}</p>
+        <p><span class="bold">Caissier :</span> {{ paiement.caissier.username|default:"Système" }}</p>
     </div>
 
-    <!-- Détails du Patient et de la Consultation -->
-    <table class="info-table">
-        <tr>
-            <td><span class="bold">Date :</span></td>
-            <td class="text-right">{{ date_paiement_fix|date:"d/m/Y H:i" }}</td>
-        </tr>
-        <tr>
-            <td><span class="bold">Patient :</span></td>
-            <td class="text-right">{{ paiement.patient.noms }}</td>
-        </tr>
-        <tr>
-            <td><span class="bold">ID Patient :</span></td>
-            <td class="text-right">#{{ paiement.patient.id }}</td>
-        </tr>
-        <tr>
-            <td><span class="bold">Service :</span></td>
-            <td class="text-right uppercase">{{ paiement.service }}</td>
-        </tr>
-    </table>
-
-    <!-- Zone du Montant Payé -->
-    <div class="amount-box">
-        <div class="total-label">Montant Versé</div>
-        <div class="total-amount">{{ paiement.montant_verse|floatformat:2 }} {{ paiement.devise }}</div>
-    </div>
-
-    <!-- Détails Financiers Secondaires -->
-    <table class="info-table">
-        <tr>
-            <td>Reste à payer :</td>
-            <td class="text-right"><span class="bold">{{ paiement.reste_a_payer|floatformat:2 }} $</span></td>
-        </tr>
-        <tr>
-            <td>Mode de paiement :</td>
-            <td class="text-right">Espèces</td>
-        </tr>
+    <!-- Tableau de tarification -->
+    <table class="ticket-table">
+        <thead>
+            <tr>
+                <th>Libellé / Prestation</th>
+                <th class="text-right">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>
+                    <span class="bold">{{ paiement.get_service_display }}</span>
+                    
+                    <!-- Traçabilité médicale : Liste des examens rattachés à ce paiement -->
+                    {% if examens_ticket %}
+                        <ul class="exam-list">
+                            {% for ex in examens_ticket %}
+                                <li>{{ ex.libelle }} ({{ ex.prix|floatformat:2 }} $)</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                </td>
+                <td class="text-right bold">
+                    {{ paiement.montant_verse|floatformat:2 }} {{ paiement.devise }}
+                </td>
+            </tr>
+        </tbody>
     </table>
 
     <div class="divider"></div>
 
-    <!-- Signature et Remerciements -->
-    <div class="text-center">
-        <p><span class="bold">Agent de facturation</span><br>
-        {{ user.get_full_name|default:user.username }}</p>
-        
-        <div class="footer-text">
-            Le Medical Moyanoli vous remercie de votre confiance.<br>
-            <strong>"Les soins de qualité pour tous."</strong>
-        </div>
+    <!-- Bloc des Totaux -->
+    <div class="total-block">
+        <table style="width: 100%;">
+            <tr>
+                <td>Net Payé :</td>
+                <td class="text-right bold" style="font-size: 15px;">
+                    {{ paiement.montant_verse|floatformat:2 }} {{ paiement.devise }}
+                </td>
+            </tr>
+        </table>
     </div>
 
-    <!-- Bouton de secours (visible uniquement sur écran) -->
-    <div class="text-center no-print">
-        <button class="btn-print" onclick="window.print()">Imprimer le ticket</button>
-        <p style="font-size: 10px; color: grey;">(L'impression se lance automatiquement)</p>
+    <!-- Pied de Page du ticket -->
+    <div class="footer text-center">
+        <p class="bold">Merci pour votre confiance !</p>
+        <p>Les actes médicaux payés ne sont pas remboursables.</p>
+        <p style="font-size: 9px; margin-top: 10px; color: #555;">Généré le 17/05/2026 à 19:45 via Moyanoli</p>
     </div>
 
+    <!-- Script d'automatisation de l'impression -->
+    <script>
+        window.onload = function() {
+            // Lance automatiquement la boîte de dialogue d'impression au chargement
+            setTimeout(function() {
+                window.print();
+            }, 300);
+        };
+    </script>
 </body>
 </html>

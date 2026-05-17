@@ -68,6 +68,15 @@ urlpatterns =[
     path('consultations/ordonnances-urgence/', views.liste_ordonnances_urgence, name='liste_ordonnances_urgence'),
     path('consultations/<int:consultation_id>/prescrire-urgence/', views.prescrire_ordonnance_urgence_rapide, name='prescrire_ordonnance_urgence_rapide'),
 
-     
+    # ================================
+    # CAISSE
+    path('caisse/file-d-attente/', views.liste_attente_caisse, name='liste_attente_caisse'),
+    path('caisse/payer-examens/<int:consultation_id>/', views.encaisser_examens_prescrits, name='encaisser_examens_prescrits'),
+
+
+    # ===============================
+    # TECHNIQUE
+    # URL pour l'espace technique (Laboratoire / Radiologie)
+    path('technique/examens-a-realiser/', views.liste_examens_techniques, name='liste_examens_techniques'),
 
  ]
