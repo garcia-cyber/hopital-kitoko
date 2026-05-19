@@ -34,7 +34,7 @@ def login(request):
     # Si l'utilisateur est déjà connecté, on le redirige directement
     if request.user.is_authenticated:
          return redirect('dashboard')
-
+ 
     msg = None
     if request.method == 'POST':
         form = LoginForm(request.POST)
