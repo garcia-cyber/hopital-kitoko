@@ -123,3 +123,52 @@ class OrdonnanceAdmin(admin.ModelAdmin):
 class LigneMedicamentAdmin(admin.ModelAdmin):
     list_display = ('nom_medicament', 'posologie', 'statut', 'ordonnance')
     list_filter = ('statut',)
+
+
+# ==================================================================================================
+@admin.register(Depense)
+class DepenseAdmin(admin.ModelAdmin):
+    # 1. Configuration des colonnes visibles dans la liste
+    list_display = ('id', 'date_depense', 'motif', 'montant_affiche', 'beneficiaire', 'auteur')
+    
+    # 2. Liens cliquables pour ouvrir une dépense
+    list_display_links = ('id', 'motif')
+    
+    # 3. Filtres rapides latéraux (très pratique pour la comptabilité)
+    list_filter = ('devise', 'motif', 'date_depense', 'auteur')
+    
+    # 4. Barre de recherche intelligente
+    search_fields = ('description', 'beneficiaire', 'auteur__username', 'montant')
+    
+    # 5. Tri par défaut (la dépense la plus récente s'affiche en premier)
+    ordering = ('-date_depense',)
+    
+    # 6. Rendre le champ auteur automatique (met l'utilisateur connecté par défaut)
+    readonly_fields = ('date_depense',)
+
+    def montant_affiche(self, obj):
+        """ Affiche proprement le montant avec sa devise en couleur dans l'admin """
+        if obj.devise == 'USD':
+            return f"{obj.montant} USD"
+        return f"{obj.montant} CDF"
+    montant_affiche.short_description = "Montant"
+    montant_affiche.admin_order_field = 'montant'
+
+    def save_model(self, request, obj, form, change):
+        """ 
+        Intercepte la sauvegarde dans l'admin Django pour attribuer l'auteur 
+        et attraper proprement l'erreur de validation du solde insuffisant.
+        """
+        # Si c'est une nouvelle dépense, l'auteur devient l'utilisateur connecté
+        if not change:
+            obj.auteur = request.user
+            
+        try:
+            # force la validation du modèle (execute la méthode clean())
+            obj.full_clean()
+            super().save_model(request, obj, form, change)
+        except ValidationError as e:
+            # En cas de solde insuffisant, renvoie l'erreur sous forme de message d'alerte rouge
+            for field, errors in e.message_dict.items():
+                for error in errors:
+                    messages.error(request, f"Erreur : {error}")

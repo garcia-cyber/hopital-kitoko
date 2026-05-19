@@ -285,3 +285,20 @@ class ConsultationForm(forms.ModelForm):
         # On s'assure que TOUS les champs du formulaire sont obligatoires au niveau de Django
         for field_name in self.fields:
             self.fields[field_name].required = True
+
+
+# ==================================================================================================
+class DepenseForm(forms.ModelForm):
+    class Meta:
+        model = Depense
+        # On ne met pas 'auteur' et 'date_depense' car ils sont gérés automatiquement
+        fields = ['motif', 'description', 'montant', 'devise', 'beneficiaire']
+        
+        # Injection des classes Bootstrap pour le design
+        widgets = {
+            'motif': forms.Select(attrs={'class': 'form-control select'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Détails de la dépense...'}),
+            'montant': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Ex: 150'}),
+            'devise': forms.Select(attrs={'class': 'form-control'}),
+            'beneficiaire': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Fournisseur Mazout ou Nom de l\'agent'}),
+        }

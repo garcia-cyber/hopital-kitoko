@@ -6,13 +6,14 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import SetPasswordForm ,UserChangeForm
 from django.contrib import messages
-from django.db.models import Q , Sum 
+from django.db.models import Q , Sum , DecimalField
 from decimal import Decimal , ROUND_HALF_UP
 import pytz
 from datetime import timedelta
 from django.db import transaction
 from django.conf import settings
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.db.models.functions import Coalesce
 
 
 # Create your views here.
@@ -1636,7 +1637,159 @@ def dashboard_finance(request):
     }
     return render(request, 'back-end/finance/dashboard_finance.html', context)
 
-# 41
 # ==================================================================================================
-#  FINANCE GESTION DE DETTE 
+# #41 : FINANCE GESTION DE DETTE 
 # ==================================================================================================
+@login_required
+def creer_depense(request):
+    # Extraction du rôle pour la sidebar
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role else None
+
+    if request.method == 'POST':
+        form = DepenseForm(request.POST)
+        if form.is_valid():
+            # 1. On crée l'objet en mémoire sans le sauvegarder immédiatement en BDD
+            depense = form.save(commit=False)
+            # 2. On lui attribue automatiquement l'utilisateur connecté comme auteur
+            depense.auteur = request.user
+            
+            # --- VÉRIFICATION STRICTE DU SOLDE DISPONIBLE ---
+            devise_saisie = depense.devise  # USD ou CDF
+            
+            # On force tout en float pour sécuriser les calculs mathématiques
+            montant_demande_float = float(depense.montant)
+
+            # Calcule toutes les entrées (Paiements) pour cette devise
+            res_entrees = Paiement.objects.filter(devise=devise_saisie).aggregate(
+                total=Coalesce(Sum('montant_verse'), 0, output_field=DecimalField())
+            )['total']
+            
+            # Calcule toutes les sorties (Dépenses) déjà validées pour cette devise
+            res_sorties = Depense.objects.filter(devise=devise_saisie).aggregate(
+                total=Coalesce(Sum('montant'), 0, output_field=DecimalField())
+            )['total']
+
+            # Conversion mathématique brute et sécurisée en float
+            total_entrees_float = float(res_entrees) if res_entrees else 0.0
+            total_sorties_float = float(res_sorties) if res_sorties else 0.0
+
+            # Calcul du solde en float (Plus aucun risque de conflit)
+            solde_disponible_float = total_entrees_float - total_sorties_float
+
+            # Blocage manuel si la somme demandée est supérieure à la caisse
+            if montant_demande_float > solde_disponible_float:
+                form.add_error(None, f"Opération refusée. Solde de caisse insuffisant en {devise_saisie}. Disponible : {solde_disponible_float:.2f} {devise_saisie}. Montant demandé : {montant_demande_float:.2f} {devise_saisie}.")
+            else:
+                try:
+                    # 3. On force l'exécution du clean() du modèle au cas où d'autres validations existent
+                    depense.full_clean()
+                    depense.save()
+                    
+                    # Message de succès et redirection vers la bonne vue de journal
+                    messages.success(request, "La dépense a été enregistrée avec succès !")
+                    return redirect('dashboard_finance_depense')
+                    
+                except ValidationError as e:
+                    # 4. Si une autre validation du modèle échoue, on récupère l'erreur pour l'afficher
+                    if hasattr(e, 'message_dict'):
+                        for field, errors in e.message_dict.items():
+                            for error in errors:
+                                form.add_error(None, error)
+                    else:
+                        for error in e.messages:
+                            form.add_error(None, error)
+    else:
+        form = DepenseForm()
+
+    context = {
+        'form': form,
+        'titre_page': "Enregistrer une Sortie de Caisse",
+        'fonctionKey': fonctionKey,
+    }
+    return render(request, 'back-end/finance/creer_depense.html', context)
+
+
+# ==================================================================================================
+# #42 : FINANCE GESTION DE DETTE  JOURNAL
+# ==================================================================================================
+@login_required
+def dashboard_finance_depense(request):
+    """
+    Tableau de bord financier : Journal des entrées,
+    statistiques temporelles et bilan global du coffre (USD / CDF).
+    """
+    # 1. Gestion du rôle pour la sidebar Moyanoli
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role else None
+
+    # 2. Filtrage temporel (Aujourd'hui, Cette semaine, Ce mois)
+    maintenant = timezone.now()
+    debut_aujourdhui = maintenant.replace(hour=0, minute=0, second=0, microsecond=0)
+    debut_semaine = debut_aujourdhui - timezone.timedelta(days=maintenant.weekday())
+    debut_mois = maintenant.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    # --- ENTRÉES (PAIEMENTS) ---
+    paiements_tous = Paiement.objects.all().order_by('-date_paiement')
+
+    # Utilisation de Decimal('0.00') et output_field pour éviter le mélange de types
+    zero_decimal = Decimal('0.00')
+
+    # Statistiques temporelles des entrées
+    recettes_stats = Paiement.objects.aggregate(
+        auj_usd=Coalesce(Sum('montant_verse', filter=Q(date_paiement__gte=debut_aujourdhui, devise='USD')), zero_decimal, output_field=DecimalField()),
+        auj_cdf=Coalesce(Sum('montant_verse', filter=Q(date_paiement__gte=debut_aujourdhui, devise='CDF')), zero_decimal, output_field=DecimalField()),
+        sem_usd=Coalesce(Sum('montant_verse', filter=Q(date_paiement__gte=debut_semaine, devise='USD')), zero_decimal, output_field=DecimalField()),
+        sem_cdf=Coalesce(Sum('montant_verse', filter=Q(date_paiement__gte=debut_semaine, devise='CDF')), zero_decimal, output_field=DecimalField()),
+        mois_usd=Coalesce(Sum('montant_verse', filter=Q(date_paiement__gte=debut_mois, devise='USD')), zero_decimal, output_field=DecimalField()),
+        mois_cdf=Coalesce(Sum('montant_verse', filter=Q(date_paiement__gte=debut_mois, devise='CDF')), zero_decimal, output_field=DecimalField()),
+    )
+
+    # Totaux globaux des entrées
+    total_entrees = Paiement.objects.aggregate(
+        usd=Coalesce(Sum('montant_verse', filter=Q(devise='USD')), zero_decimal, output_field=DecimalField()),
+        cdf=Coalesce(Sum('montant_verse', filter=Q(devise='CDF')), zero_decimal, output_field=DecimalField())
+    )
+
+    # --- SORTIES (DÉPENSES) ---
+    total_depenses = Depense.objects.aggregate(
+        usd=Coalesce(Sum('montant', filter=Q(devise='USD')), zero_decimal, output_field=DecimalField()),
+        cdf=Coalesce(Sum('montant', filter=Q(devise='CDF')), zero_decimal, output_field=DecimalField())
+    )
+
+    # --- CALCUL DU SOLDE NET EN COFFRE ---
+    restant_usd = total_entrees['usd'] - total_depenses['usd']
+    restant_cdf = total_entrees['cdf'] - total_depenses['cdf']
+
+    # --- VENTILATION PAR SERVICE ---
+    services_liste = ['FICHE', 'LABO', 'ECHOGRAPHIE', 'RADIO']
+    services_stats = []
+    for s in services_liste:
+        s_usd = Paiement.objects.filter(service=s, devise='USD').aggregate(t=Coalesce(Sum('montant_verse'), zero_decimal, output_field=DecimalField()))['t']
+        s_cdf = Paiement.objects.filter(service=s, devise='CDF').aggregate(t=Coalesce(Sum('montant_verse'), zero_decimal, output_field=DecimalField()))['t']
+        services_stats.append({'nom': s, 'usd': s_usd, 'cdf': s_cdf})
+
+    context = {
+        'titre_page': "Journal Général de Caisse",
+        'fonctionKey': fonctionKey,
+        'paiements': paiements_tous,
+        
+        # Variables Recettes Temporelles
+        'aujourdhui_usd': recettes_stats['auj_usd'],
+        'aujourdhui_cdf': recettes_stats['auj_cdf'],
+        'semaine_usd': recettes_stats['sem_usd'],
+        'semaine_cdf': recettes_stats['sem_cdf'],
+        'mois_usd': recettes_stats['mois_usd'],
+        'mois_cdf': recettes_stats['mois_cdf'],
+        
+        # Variables Bilan Coffre-Fort
+        'total_usd': total_entrees['usd'],
+        'total_cdf': total_entrees['cdf'],
+        'depense_totale_usd': total_depenses['usd'],
+        'depense_totale_cdf': total_depenses['cdf'],
+        'restant_usd': restant_usd,
+        'restant_cdf': restant_cdf,
+        
+        'services_stats': services_stats,
+    }
+    return render(request, 'back-end/finance/journal_caisse.html', context)
