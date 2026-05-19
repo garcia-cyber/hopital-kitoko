@@ -44,6 +44,7 @@ class Prestation(models.Model):
         ('ADM', 'Administratif'), 
         # ('CONS', 'Consultation'),
         ('LABO', 'Laboratoire'), 
+        # Si la catégorie de la prestation est "Labo", on pourra ajouter la valeur
         ('SOIN', 'Soins'), 
         ('ECHO', 'Échographie'), 
         ('RADIO', 'Radiologie'), 
@@ -56,12 +57,20 @@ class Prestation(models.Model):
         verbose_name="Catégorie"
     )
     
-    # Prix par défaut en Dollars (USD)
     prix = models.DecimalField(
         max_digits=10, 
         decimal_places=2, 
         default=0.00,
         verbose_name="Prix (USD)"
+    )
+
+    # Nouveau champ spécifique au Laboratoire
+    valeur_normale = models.CharField(
+        max_length=150,
+        blank=True,
+        null=True,
+        verbose_name="Valeur Normale / Référence (Labo uniquement)",
+        help_text="Ex: 70-110 mg/dl, Négatif, etc. Utilisé uniquement pour le Laboratoire."
     )
 
     def __str__(self):
@@ -70,6 +79,12 @@ class Prestation(models.Model):
     class Meta:
         verbose_name = "Prestation"
         verbose_name_plural = "Prestations"
+
+    # Optionnel : Validation de sécurité au niveau du modèle
+    def clean(self):
+        # Si on tente d'entrer une valeur alors que ce n'est pas du LABO
+        if self.categorie != 'LABO' and self.valeur_normale:
+            self.valeur_normale = None # On force à vide pour les autres catégories
 
 # 5
 # service 

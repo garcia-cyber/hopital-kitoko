@@ -92,24 +92,45 @@ class ModifierUserForm(forms.ModelForm):
         for field in self.fields:
             self.fields[field].widget.attrs.update({'class': 'form-control'})
 
+from django import forms
+from .models import Prestation
+
 class PrestationForm(forms.ModelForm):
     class Meta:
         model = Prestation
-        fields = ['libelle', 'categorie', 'prix']
+        # 1. On ajoute 'valeur_normale' dans la liste des champs
+        fields = ['libelle', 'categorie', 'prix', 'valeur_normale']
+        
+        # 2. On configure le widget Bootstrap pour le nouveau champ
         widgets = {
             'libelle': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Goutte Épaisse'}),
-            'categorie': forms.Select(attrs={'class': 'form-control'}),
+            'categorie': forms.Select(attrs={'class': 'form-control', 'id': 'id_categorie'}),
             'prix': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'valeur_normale': forms.TextInput(attrs={
+                'class': 'form-control', 
+                'placeholder': 'Ex: 70-110 mg/dl ou Négatif',
+                'id': 'id_valeur_normale'
+            }),
         }
 
     def clean_libelle(self):
         """ Vérifie si une prestation avec ce libellé existe déjà (insensible à la casse) """
         libelle = self.cleaned_data.get('libelle')
-        # On vérifie si un objet existe avec le même nom (en ignorant les majuscules/minuscules)
-        # .exclude(pk=self.instance.pk) permet d'ignorer l'objet actuel si on est en train de le modifier
         if Prestation.objects.filter(libelle__iexact=libelle).exclude(pk=self.instance.pk).exists():
             raise forms.ValidationError("Cette prestation existe déjà dans votre catalogue.")
         return libelle
+
+    # 3. Optionnel : Sécurité bonus au niveau du formulaire
+    def clean(self):
+        cleaned_data = super().clean()
+        categorie = cleaned_data.get('categorie')
+        valeur_normale = cleaned_data.get('valeur_normale')
+
+        # Si l'utilisateur a écrit quelque chose mais que ce n'est pas du LABO, on nettoie la donnée
+        if categorie != 'LABO' and valeur_normale:
+            cleaned_data['valeur_normale'] = None
+            
+        return cleaned_data
 
 
 class ConfigurationHopitalForm(forms.ModelForm):

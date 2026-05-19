@@ -17,6 +17,7 @@
             .add-btn { background-color: #007bff; color: white; border-radius: 50px; padding: 8px 20px; }
             .search-box { border-radius: 20px 0 0 20px; border-right: none; }
             .search-btn { border-radius: 0 20px 20px 0; }
+            .bloc-labo-uniquement { display: none; } 
         </style>
     </head>
     <body>
@@ -71,7 +72,7 @@
                         </div>
                     </div>
 
-                    <!-- Alertes Django -->
+                    <!-- Alertes Django (Corrigé ici) -->
                     {% if messages %}
                         {% for message in messages %}
                             <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
@@ -122,7 +123,7 @@
                                                 </tr>
 
                                                 <!-- MODAL DE MODIFICATION -->
-                                                <div id="edit_prestation_{{ item.id }}" class="modal custom-modal fade" role="dialog">
+                                                <div id="edit_prestation_{{ item.id }}" class="modal custom-modal fade edit-prestation-modal" role="dialog">
                                                     <div class="modal-dialog modal-dialog-centered" role="document">
                                                         <div class="modal-content">
                                                             <div class="modal-header">
@@ -138,12 +139,18 @@
                                                                     </div>
                                                                     <div class="form-group">
                                                                         <label>Catégorie</label>
-                                                                        <select name="categorie" class="form-control" required>
+                                                                        <select name="categorie" class="form-control select-categorie-edit" required>
                                                                             {% for val, name in categories_list %}
                                                                                 <option value="{{ val }}" {% if item.categorie == val %}selected{% endif %}>{{ name }}</option>
                                                                             {% endfor %}
                                                                         </select>
                                                                     </div>
+                                                                    
+                                                                    <div class="form-group bloc-valeur-normale-edit">
+                                                                        <label>Valeur Normale / Référence (Labo)</label>
+                                                                        <input type="text" name="valeur_normale" class="form-control" value="{{ item.valeur_normale|default:'' }}" placeholder="Ex: 70-110 mg/dl ou Négatif">
+                                                                    </div>
+
                                                                     <div class="form-group">
                                                                         <label>Prix en USD</label>
                                                                         <input type="number" step="0.01" name="prix" class="form-control" value="{{ item.prix|stringformat:'.2f' }}" required>
@@ -211,13 +218,13 @@
                             <form method="POST">
                                 {% csrf_token %}
                                 {% for field in form %}
-                                <div class="form-group">
-                                    <label>{{ field.label }}</label>
-                                    {{ field }}
-                                    {% if field.errors %}
-                                        <small class="text-danger">{{ field.errors.0 }}</small>
-                                    {% endif %}
-                                </div>
+                                    <div class="form-group {% if field.name == 'valeur_normale' %}bloc-valeur-normale-add{% endif %}">
+                                        <label>{{ field.label }}</label>
+                                        {{ field }}
+                                        {% if field.errors %}
+                                            <small class="text-danger">{{ field.errors.0 }}</small>
+                                        {% endif %}
+                                    </div>
                                 {% endfor %}
                                 <div class="submit-section text-center">
                                     <button class="btn btn-primary submit-btn">Ajouter au catalogue</button>
@@ -231,10 +238,52 @@
         </div>
 
         {% include 'back-end/includes/js.html' %}
+        
         <script>
             $(document).ready(function(){
-                // On s'assure que tous les champs de formulaire dans les modals ont la classe Bootstrap
                 $('.modal-body input, .modal-body select').addClass('form-control');
+
+                /* =======================================================
+                   LOGIQUE 1 : GESTION DANS LE MODAL D'AJOUT (FORM DJANGO)
+                   ======================================================= */
+                const $selectAdd = $('#add_prestation select[name="categorie"]');
+                const $blocAdd = $('.bloc-valeur-normale-add');
+
+                function gererAffichageAdd() {
+                    if ($selectAdd.val() === 'LABO') {
+                        $blocAdd.slideDown(200);
+                    } else {
+                        $blocAdd.slideUp(200);
+                        $blocAdd.find('input').val(''); 
+                    }
+                }
+
+                $selectAdd.on('change', gererAffichageAdd);
+                gererAffichageAdd(); 
+
+                /* =======================================================
+                   LOGIQUE 2 : GESTION DANS LES MODALS DE MODIFICATION
+                   ======================================================= */
+                $('.edit-prestation-modal').each(function() {
+                    const $modal = $(this);
+                    const $selectEdit = $modal.find('.select-categorie-edit');
+                    const $blocEdit = $modal.find('.bloc-valeur-normale-edit');
+
+                    function gererAffichageEdit() {
+                        if ($selectEdit.val() === 'LABO') {
+                            $blocEdit.show();
+                        } else {
+                            $blocEdit.hide();
+                            $blocEdit.find('input').val(''); 
+                        }
+                    }
+
+                    $selectEdit.on('change', gererAffichageEdit);
+                    
+                    $modal.on('show.bs.modal', function() {
+                        gererAffichageEdit();
+                    });
+                });
             });
         </script>
     </body>
