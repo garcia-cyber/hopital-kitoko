@@ -27,7 +27,7 @@
                     </div>
                 </div>
 
-                <!-- 📊 STATISTIQUES DES RECETTES TEMPORELLES -->
+                <!-- 📊 STATISTIQUES DES RECETTES TEMPORELLES (ENTRÉES) -->
                 <h4 class="mb-3 text-secondary"><i class="fa fa-chart-line"></i> Statistiques des Recettes</h4>
                 <div class="row mb-2">
                     
@@ -75,13 +75,44 @@
 
                 </div>
 
-                <!-- 🏦 RAPPEL DU FOND DE CAISSE GLOBAL CUMULÉ -->
-                <div class="alert alert-light border shadow-sm d-flex flex-column flex-sm-row justify-content-between align-items-sm-center mb-4 p-3">
-                    <span class="mb-2 mb-sm-0"><i class="fa fa-vault text-warning mr-2"></i> <strong>Total cumulé en caisse (Historique global) :</strong></span>
-                    <div class="d-flex align-items-center">
-                        <strong class="text-success h5 mb-0 mr-3">{{ total_usd|floatformat:2 }} USD</strong> 
-                        <span class="text-muted">|</span>
-                        <strong class="text-info h5 mb-0 ml-3">{{ total_cdf|floatformat:2 }} CDF</strong>
+                <!-- 🏦 BILAN COMPTABLE GLOBAL (Calcul du restant réel en caisse) -->
+                <div class="card shadow-sm mb-4 border">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="card-title mb-0"><i class="fa fa-vault text-warning"></i> Coffre-fort : Bilan global de la caisse</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped mb-0 text-center text-nowrap">
+                                <thead class="bg-light text-secondary">
+                                    <tr>
+                                        <th class="text-left font-weight-bold">Devise</th>
+                                        <th class="font-weight-bold text-success">Total des Entrées (+)</th>
+                                        <th class="font-weight-bold text-danger">Total des Dépenses (-)</th>
+                                        <th class="bg-secondary text-white font-weight-bold">Net physique restant (=)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- LIGNE USD -->
+                                    <tr>
+                                        <td class="text-left font-weight-bold text-dark">Dollar Américain (USD)</td>
+                                        <td class="text-success font-weight-bold">{{ total_usd|floatformat:2 }} USD</td>
+                                        <td class="text-danger font-weight-bold">{{ depense_totale_usd|floatformat:2 }} USD</td>
+                                        <td class="bg-light font-weight-bold text-success h5 mb-0">
+                                            {{ restant_usd|floatformat:2 }} USD
+                                        </td>
+                                    </tr>
+                                    <!-- LIGNE CDF -->
+                                    <tr>
+                                        <td class="text-left font-weight-bold text-dark">Franc Congolais (CDF)</td>
+                                        <td class="text-info font-weight-bold">{{ total_cdf|floatformat:2 }} CDF</td>
+                                        <td class="text-danger font-weight-bold">{{ depense_totale_cdf|floatformat:2 }} CDF</td>
+                                        <td class="bg-light font-weight-bold text-info h5 mb-0">
+                                            {{ restant_cdf|floatformat:2 }} CDF
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 

@@ -1554,17 +1554,25 @@ def dashboard_finance(request):
     # Aujourd'hui à minuit (00:00:00)
     debut_aujourdhui = maintenant.replace(hour=0, minute=0, second=0, microsecond=0)
     
-    # Début de la semaine (7 jours glissants ou depuis lundi, ici 7 jours glissants pour faire simple)
+    # Début de la semaine (7 jours glissants)
     debut_semaine = debut_aujourdhui - timedelta(days=7)
     
     # Début du mois (Le 1er du mois en cours à 00:00:00)
     debut_mois = debut_aujourdhui.replace(day=1)
 
-    # --- 1. CALCUL DES ENTRÉES GLOBALES (TOUT HISTORIQUE) ---
+    # --- 1. CALCUL DES ENTRÉES GLOBALES (PAIEMENTS - TOUT HISTORIQUE) ---
     total_usd = Paiement.objects.filter(devise='USD').aggregate(total=Sum('montant_verse'))['total'] or 0.00
     total_cdf = Paiement.objects.filter(devise='CDF').aggregate(total=Sum('montant_verse'))['total'] or 0.00
 
-    # --- 2. STATISTIQUES PAR PÉRIODES (USD et CDF) ---
+    # --- 2. CALCUL DES SORTIES GLOBALES (DÉPENSES - TOUT HISTORIQUE) ---
+    depense_totale_usd = Depense.objects.filter(devise='USD').aggregate(total=Sum('montant'))['total'] or 0.00
+    depense_totale_cdf = Depense.objects.filter(devise='CDF').aggregate(total=Sum('montant'))['total'] or 0.00
+
+    # --- 3. CALCUL DU SOLDE RESTANT REEL EN CAISSE ---
+    restant_usd = float(total_usd) - float(depense_totale_usd)
+    restant_cdf = float(total_cdf) - float(depense_totale_cdf)
+
+    # --- 4. STATISTIQUES DES ENTRÉES PAR PÉRIODES (USD et CDF) ---
     # Aujourd'hui
     recette_aujourdhui_usd = Paiement.objects.filter(date_paiement__gte=debut_aujourdhui, devise='USD').aggregate(total=Sum('montant_verse'))['total'] or 0.00
     recette_aujourdhui_cdf = Paiement.objects.filter(date_paiement__gte=debut_aujourdhui, devise='CDF').aggregate(total=Sum('montant_verse'))['total'] or 0.00
@@ -1577,7 +1585,7 @@ def dashboard_finance(request):
     recette_mois_usd = Paiement.objects.filter(date_paiement__gte=debut_mois, devise='USD').aggregate(total=Sum('montant_verse'))['total'] or 0.00
     recette_mois_cdf = Paiement.objects.filter(date_paiement__gte=debut_mois, devise='CDF').aggregate(total=Sum('montant_verse'))['total'] or 0.00
 
-    # --- 3. CALCUL DES ENTRÉES PAR SERVICE ET PAR DEVISE (TOUT HISTORIQUE) ---
+    # --- 5. CALCUL DES ENTRÉES PAR SERVICE ET PAR DEVISE (TOUT HISTORIQUE) ---
     services_stats = []
     for code, nom_service in Paiement.SERVICES:
         usd_service = Paiement.objects.filter(service=code, devise='USD').aggregate(total=Sum('montant_verse'))['total'] or 0.00
@@ -1589,32 +1597,42 @@ def dashboard_finance(request):
             'cdf': cdf_service
         })
 
-    # --- 4. LISTE DES PAIEMENTS ---
+    # --- 6. LISTE DES PAIEMENTS COMPLETS ---
     tous_les_paiements = Paiement.objects.select_related('patient', 'caissier').order_by('-date_paiement')
 
     # Extraction du rôle pour la sidebar
     role = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role.fonctionKey.roleName if role else None
 
-    # Envoi au template
+    # --- 7. ENVOI AU TEMPLATE ---
     context = {
+        # Entrées globales (Historique total des paiements reçus)
         'total_usd': total_usd,
         'total_cdf': total_cdf,
         
-        # Stats temporelles USD
+        # Sorties globales (Historique total des dépenses effectuées)
+        'depense_totale_usd': depense_totale_usd,
+        'depense_totale_cdf': depense_totale_cdf,
+        
+        # Net physique restant dans le coffre (Entrées - Sorties)
+        'restant_usd': restant_usd,
+        'restant_cdf': restant_cdf,
+        
+        # Stats temporelles des entrées : USD
         'aujourdhui_usd': recette_aujourdhui_usd,
         'semaine_usd': recette_semaine_usd,
         'mois_usd': recette_mois_usd,
         
-        # Stats temporelles CDF
+        # Stats temporelles des entrées : CDF
         'aujourdhui_cdf': recette_aujourdhui_cdf,
         'semaine_cdf': recette_semaine_cdf,
         'mois_cdf': recette_mois_cdf,
         
+        # Tables et meta
         'services_stats': services_stats,
         'paiements': tous_les_paiements,
         'fonctionKey': fonctionKey,
-        'titre_page': "Journal de Caisse & Finances"
+        'titre_page': "Journal de Caisse & Finances - Moyanoli"
     }
     return render(request, 'back-end/finance/dashboard_finance.html', context)
 
