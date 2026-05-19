@@ -44,6 +44,14 @@
                         </ul>
                     </li>
 
+                    <li class="{% if request.resolver_match.url_name == 'dashboard_finance' %}active{% endif %}">
+                        <a href="{% url 'dashboard_finance' %}">
+                            <i class="fa fa-wallet"></i> 
+                            <span>Journal de Caisse</span>
+                        </a>
+                    </li>
+
+
                 <!-- ========================================== -->
                 <!-- 2. MENU RECEPTIONNISTE                     -->
                 <!-- ========================================== -->
@@ -59,6 +67,13 @@
                     <li class="{% if request.resolver_match.url_name == 'liste_attente_caisse' or request.resolver_match.url_name == 'encaisser_examens_prescrits' %}active{% endif %}">
                         <a href="{% url 'liste_attente_caisse' %}">
                             <i class="fa fa-calculator"></i> <span>Caisse (Examens)</span>
+                        </a>
+                    </li>
+
+                    <li class="{% if request.resolver_match.url_name == 'dashboard_finance' %}active{% endif %}">
+                        <a href="{% url 'dashboard_finance' %}">
+                            <i class="fa fa-wallet"></i> 
+                            <span>Journal de Caisse</span>
                         </a>
                     </li>
 

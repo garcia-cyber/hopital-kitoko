@@ -295,3 +295,72 @@ class LigneMedicament(models.Model):
 
     def __str__(self):
         return f"{self.nom_medicament} - {self.statut}"
+
+
+# ===================================================================================================
+
+
+class Depense(models.Model):
+    """ Journal des dépenses avec vérification automatique du solde de caisse """
+    
+    CURRENCY = [('USD', 'USD'), ('CDF', 'CDF')]
+    CATEGORIES = [
+        ('LABO_REACTIF', 'Réactifs & Matériel Labo'),
+        ('PHARMA_STOCK', 'Achat Stock Pharmacie'),
+        ('CARBURANT', 'Carburant Générateur'),
+        ('MAINTENANCE', 'Maintenance & Réparations'),
+        ('ADMIN', 'Frais Administratifs & Bureau'),
+        ('SALAIRE', 'Avances & Salaires Personnel'),
+        ('AUTRE', 'Autre dépense'),
+    ]
+
+    motif = models.CharField(max_length=50, choices=CATEGORIES, verbose_name="Motif")
+    description = models.TextField(blank=True, null=True)
+    montant = models.DecimalField(max_digits=15, decimal_places=2)
+    devise = models.CharField(max_length=3, choices=CURRENCY, default='USD')
+    date_depense = models.DateTimeField(default=timezone.now)
+    auteur = models.ForeignKey('auth.User', on_delete=models.PROTECT, verbose_name="Enregistré par")
+    beneficiaire = models.CharField(max_length=150, blank=True, null=True, verbose_name="Bénéficiaire")
+
+    class Meta:
+        verbose_name = "Dépense"
+        verbose_name_plural = "Dépenses"
+
+    def clean(self):
+        """ 
+        Validation de sécurité : Empêche de dépenser de l'argent qui n'est pas en caisse.
+        """
+        # 1. Importer le modèle Paiement localement pour éviter les imports circulaires
+        from .models import Paiement  
+
+        # 2. Calculer le total des entrées pour cette devise
+        total_entrees = Paiement.objects.filter(devise=self.devise).aggregate(
+            total=Sum('montant_verse')
+        )['total'] or 0.0
+
+        # 3. Calculer le total des dépenses déjà effectuées pour cette devise
+        # Si on est en train de modifier une dépense existante, on l'exclut du calcul
+        toutes_les_depenses = Depense.objects.filter(devise=self.devise)
+        if self.pk:
+            toutes_les_depenses = toutes_les_depenses.exclude(pk=self.pk)
+            
+        total_sorties = toutes_les_depenses.aggregate(total=Sum('montant'))['total'] or 0.0
+
+        # 4. Calculer le solde actuellement disponible en caisse
+        solde_disponible = total_entrees - total_sorties
+
+        # 5. Vérifier si le montant demandé est supérieur au solde disponible
+        if self.montant > solde_disponible:
+            raise ValidationError(
+                f"Opération refusée. Solde de caisse insuffisant en {self.devise}. "
+                f"Disponible : {solde_disponible:.2f} {self.devise}. "
+                f"Montant demandé : {self.montant:.2f} {self.devise}."
+            )
+
+    def save(self, *args, **kwargs):
+        # On force l'exécution de la méthode clean() avant d'enregistrer en BDD
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Dépense {self.id} - {self.montant} {self.devise} ({self.get_motif_display()})"

@@ -1435,3 +1435,190 @@ def saisir_resultats_examens(request, paiement_id):
         'fonctionKey': fonctionKey
     }
     return render(request, 'back-end/technique/saisir_resultats.html', context)
+
+# 38
+# ==================================================================================================
+# 
+# ==================================================================================================
+@login_required
+def dossier_resultats_patient(request, patient_id):
+    patient = get_object_or_404(Patient, id=patient_id)
+    
+    # 1. Récupération de toutes les consultations du patient (de la plus récente à la plus ancienne)
+    consultations = Consultation.objects.filter(triage__patient=patient).select_related('medecin').order_by('-date_creation')
+    
+    historique_consultations_examens = []
+    
+    for condultation in consultations:
+        # 2. Récupération de TOUS les examens liés à CETTE consultation spécifique
+        tous_les_examens = condultation.examens.select_related('prestation').all()
+        
+        # On sépare les examens par catégorie pour un affichage structuré dans le template
+        examens_labo = []
+        examens_radio = []
+        examens_echo = []
+        
+        for exam in tous_les_examens:
+            cat = exam.prestation.categorie
+            if cat == 'LABO':
+                examens_labo.append(exam)
+            elif cat == 'RADIO':
+                examens_radio.append(exam)
+            elif cat == 'ECHO':
+                examens_echo.append(exam)
+        
+        # On calcule le niveau d'avancement des examens pour cette consultation
+        total_examens = tous_les_examens.count()
+        examens_termines = tous_les_examens.filter(statut='TERMINE').count()
+        
+        # Statut global de la fiche d'examen pour le médecin
+        if total_examens == 0:
+            statut_global = "Aucun examen prescrit"
+            classe_badge = "badge-secondary"
+        elif examens_termines == total_examens:
+            statut_global = "Complet (Tous les résultats sont disponibles)"
+            classe_badge = "badge-success"
+        elif examens_termines > 0:
+            statut_global = f"Incomplet ({examens_termines}/{total_examens} disponible(s))"
+            classe_badge = "badge-warning"
+        else:
+            statut_global = "En attente de réalisation / de paiement"
+            classe_badge = "badge-danger"
+
+        # On rassemble les informations de la consultation et ses examens cloisonnés
+        historique_consultations_examens.append({
+            'consultation': condultation,
+            'statut_global': statut_global,
+            'classe_badge': classe_badge,
+            'labo': examens_labo,
+            'radio': examens_radio,
+            'echo': examens_echo,
+            'a_des_examens': total_examens > 0
+        })
+
+    # Récupération du rôle pour la sidebar
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role else None
+
+    context = {
+        'patient': patient,
+        'historique': historique_consultations_examens,
+        'fonctionKey': fonctionKey
+    }
+    return render(request, 'back-end/medecin/dossier_resultats.html', context)
+
+
+# 39
+# ==================================================================================================
+# 
+# ==================================================================================================
+
+@login_required
+def uniquement_resultats_examens(request, patient_id):
+    patient = get_object_or_404(Patient, id=patient_id)
+    
+    # Récupérer toutes les consultations du patient
+    consultations = Consultation.objects.filter(triage__patient=patient).order_by('-date_creation')
+    
+    historique_resultats = []
+    
+    for consult in consultations:
+        # On prend UNIQUEMENT les examens terminés (avec un résultat saisi)
+        examens_termines = consult.examens.filter(statut='TERMINE').select_related('prestation')
+        
+        if examens_termines.exists():
+            historique_resultats.append({
+                'consultation': consult,
+                'examens': examens_termines
+            })
+            
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role else None
+
+    context = {
+        'patient': patient,
+        'historique_resultats': historique_resultats,
+        'fonctionKey': fonctionKey
+    }
+    return render(request, 'back-end/medecin/resultats_bruts.html', context)
+
+# 40
+# ==================================================================================================
+#  FINANCE DASHBOARD
+# ==================================================================================================
+@login_required
+def dashboard_finance(request):
+    # --- GESTION DES DATES ---
+    maintenant = timezone.now()
+    
+    # Aujourd'hui à minuit (00:00:00)
+    debut_aujourdhui = maintenant.replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    # Début de la semaine (7 jours glissants ou depuis lundi, ici 7 jours glissants pour faire simple)
+    debut_semaine = debut_aujourdhui - timedelta(days=7)
+    
+    # Début du mois (Le 1er du mois en cours à 00:00:00)
+    debut_mois = debut_aujourdhui.replace(day=1)
+
+    # --- 1. CALCUL DES ENTRÉES GLOBALES (TOUT HISTORIQUE) ---
+    total_usd = Paiement.objects.filter(devise='USD').aggregate(total=Sum('montant_verse'))['total'] or 0.00
+    total_cdf = Paiement.objects.filter(devise='CDF').aggregate(total=Sum('montant_verse'))['total'] or 0.00
+
+    # --- 2. STATISTIQUES PAR PÉRIODES (USD et CDF) ---
+    # Aujourd'hui
+    recette_aujourdhui_usd = Paiement.objects.filter(date_paiement__gte=debut_aujourdhui, devise='USD').aggregate(total=Sum('montant_verse'))['total'] or 0.00
+    recette_aujourdhui_cdf = Paiement.objects.filter(date_paiement__gte=debut_aujourdhui, devise='CDF').aggregate(total=Sum('montant_verse'))['total'] or 0.00
+
+    # Cette Semaine
+    recette_semaine_usd = Paiement.objects.filter(date_paiement__gte=debut_semaine, devise='USD').aggregate(total=Sum('montant_verse'))['total'] or 0.00
+    recette_semaine_cdf = Paiement.objects.filter(date_paiement__gte=debut_semaine, devise='CDF').aggregate(total=Sum('montant_verse'))['total'] or 0.00
+
+    # Ce Mois
+    recette_mois_usd = Paiement.objects.filter(date_paiement__gte=debut_mois, devise='USD').aggregate(total=Sum('montant_verse'))['total'] or 0.00
+    recette_mois_cdf = Paiement.objects.filter(date_paiement__gte=debut_mois, devise='CDF').aggregate(total=Sum('montant_verse'))['total'] or 0.00
+
+    # --- 3. CALCUL DES ENTRÉES PAR SERVICE ET PAR DEVISE (TOUT HISTORIQUE) ---
+    services_stats = []
+    for code, nom_service in Paiement.SERVICES:
+        usd_service = Paiement.objects.filter(service=code, devise='USD').aggregate(total=Sum('montant_verse'))['total'] or 0.00
+        cdf_service = Paiement.objects.filter(service=code, devise='CDF').aggregate(total=Sum('montant_verse'))['total'] or 0.00
+        
+        services_stats.append({
+            'nom': nom_service,
+            'usd': usd_service,
+            'cdf': cdf_service
+        })
+
+    # --- 4. LISTE DES PAIEMENTS ---
+    tous_les_paiements = Paiement.objects.select_related('patient', 'caissier').order_by('-date_paiement')
+
+    # Extraction du rôle pour la sidebar
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role else None
+
+    # Envoi au template
+    context = {
+        'total_usd': total_usd,
+        'total_cdf': total_cdf,
+        
+        # Stats temporelles USD
+        'aujourdhui_usd': recette_aujourdhui_usd,
+        'semaine_usd': recette_semaine_usd,
+        'mois_usd': recette_mois_usd,
+        
+        # Stats temporelles CDF
+        'aujourdhui_cdf': recette_aujourdhui_cdf,
+        'semaine_cdf': recette_semaine_cdf,
+        'mois_cdf': recette_mois_cdf,
+        
+        'services_stats': services_stats,
+        'paiements': tous_les_paiements,
+        'fonctionKey': fonctionKey,
+        'titre_page': "Journal de Caisse & Finances"
+    }
+    return render(request, 'back-end/finance/dashboard_finance.html', context)
+
+# 41
+# ==================================================================================================
+#  FINANCE GESTION DE DETTE 
+# ==================================================================================================
