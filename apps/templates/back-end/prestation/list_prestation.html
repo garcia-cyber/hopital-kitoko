@@ -9,14 +9,31 @@
         {% include 'back-end/includes/css.html' %}
         
         <style>
-            .card-table { border-radius: 15px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-            .badge-usd { background-color: #e3f2fd; color: #1976d2; border: 1px solid #1976d2; padding: 5px 10px; font-weight: bold; }
-            .text-cdf { color: #2e7d32; font-weight: bold; font-size: 1.1em; }
-            .taux-info { background: #fff3cd; border: 1px solid #ffeeba; color: #856404; padding: 8px 15px; border-radius: 10px; }
-            .cat-badge { font-size: 0.85em; padding: 4px 8px; border-radius: 4px; background: #f0f0f0; color: #555; }
-            .add-btn { background-color: #007bff; color: white; border-radius: 50px; padding: 8px 20px; }
-            .search-box { border-radius: 20px 0 0 20px; border-right: none; }
-            .search-btn { border-radius: 0 20px 20px 0; }
+            /* Améliorations Design Global */
+            .card-table { border-radius: 15px; border: none; box-shadow: 0 4px 24px rgba(0,0,0,0.06); overflow: hidden; }
+            .table thead th { background-color: #f8f9fa; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; border-bottom: 2px solid #edf2f9; color: #495057; padding: 14px; }
+            .table tbody td { vertical-align: middle; padding: 14px; }
+            
+            /* Badges de tarification */
+            .badge-usd { background-color: #e3f2fd; color: #0d6efd; border: 1px solid #b3d7ff; padding: 6px 12px; font-weight: 600; border-radius: 6px; }
+            .text-cdf { color: #198754; font-weight: bold; font-size: 1.05em; }
+            .taux-info { background: #fff8e1; border: 1px solid #ffe082; color: #b78103; padding: 10px 18px; border-radius: 50px; font-size: 0.95rem; box-shadow: 0 2px 6px rgba(0,0,0,0.02); }
+            
+            /* Badges Catégories de Prestations Dynamiques */
+            .cat-badge { font-size: 0.82em; padding: 5px 10px; border-radius: 30px; font-weight: 500; display: inline-block; }
+            .cat-labo { background-color: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
+            .cat-consult { background-color: #f3e5f5; color: #7b1fa2; border: 1px solid #e1bee7; }
+            .cat-imagerie { background-color: #fff3e0; color: #e65100; border: 1px solid #ffe0b2; }
+            .cat-default { background-color: #f8f9fa; color: #6c757d; border: 1px solid #e9ecef; }
+
+            /* Boutons et Recherches */
+            .add-btn { background-color: #007bff; color: white; border-radius: 50px; padding: 10px 24px; font-weight: 500; transition: all 0.2s; }
+            .add-btn:hover { background-color: #0056b3; color: white; transform: translateY(-1px); }
+            .search-box { border-radius: 30px 0 0 30px; border-right: none; padding-left: 20px; height: 46px; }
+            .search-btn { border-radius: 0 30px 30px 0; width: 50px; height: 46px; }
+            .btn-reset { border-radius: 30px; height: 46px; display: inline-flex; align-items: center; }
+            
+            .text-valeur-normale { font-family: 'Courier New', Courier, monospace; color: #495057; font-weight: 600; background: #f1f3f5; padding: 3px 8px; border-radius: 4px; font-size: 0.9em; }
             .bloc-labo-uniquement { display: none; } 
         </style>
     </head>
@@ -30,18 +47,18 @@
                 <div class="content container-fluid">
                     
                     <!-- Header de la page -->
-                    <div class="page-header">
+                    <div class="page-header mb-4">
                         <div class="row align-items-center">
                             <div class="col">
-                                <h3 class="page-title">Gestion des Prestations</h3>
-                                <ul class="breadcrumb">
-                                    <li class="breadcrumb-item"><a href="#">Catalogue</a></li>
-                                    <li class="breadcrumb-item active">Liste</li>
+                                <h3 class="page-title" style="font-weight: 700; color: #1f2937;">Catalogue des Prestations</h3>
+                                <ul class="breadcrumb" style="background: transparent; padding: 0;">
+                                    <li class="breadcrumb-item"><a href="#">Configuration</a></li>
+                                    <li class="breadcrumb-item active">Prestations</li>
                                 </ul>
                             </div>
                             <div class="col-auto float-right ml-auto">
                                 <a href="#" class="btn add-btn" data-toggle="modal" data-target="#add_prestation">
-                                    <i class="fa fa-plus"></i> Ajouter une prestation
+                                    <i class="fa fa-plus-circle"></i> Nouvelle prestation
                                 </a>
                             </div>
                         </div>
@@ -51,32 +68,32 @@
                     <div class="row mb-4 align-items-center">
                         <div class="col-md-7">
                             <form method="GET" action="{% url 'gestion_prestations' %}" class="input-group">
-                                <input type="text" name="q" class="form-control search-box" placeholder="Rechercher par désignation ou catégorie..." value="{{ request.GET.q|default:'' }}">
+                                <input type="text" name="q" class="form-control search-box" placeholder="Rechercher une prestation, un code ou une catégorie..." value="{{ request.GET.q|default:'' }}">
                                 <div class="input-group-append">
                                     <button class="btn btn-primary search-btn" type="submit">
                                         <i class="fa fa-search"></i>
                                     </button>
                                 </div>
                                 {% if request.GET.q %}
-                                    <a href="{% url 'gestion_prestations' %}" class="btn btn-light ml-2" style="border-radius: 20px;">
-                                        <i class="fa fa-times"></i> Réinitialiser
+                                    <a href="{% url 'gestion_prestations' %}" class="btn btn-light ml-2 btn-reset">
+                                        <i class="fa fa-times mr-1"></i> Réinitialiser
                                     </a>
                                 {% endif %}
                             </form>
                         </div>
-                        <div class="col-md-5 text-right">
+                        <div class="col-md-5 text-md-right mt-3 mt-md-0">
                             <div class="d-inline-block taux-info">
-                                <i class="fa fa-money"></i> 
-                                <strong>Taux : 1 USD = {{ taux|floatformat:0 }} CDF</strong>
+                                <i class="fa fa-exchange mr-1"></i> 
+                                <strong>Taux du jour : 1 USD = {{ taux|floatformat:0 }} CDF</strong>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Alertes Django (Corrigé ici) -->
+                    <!-- Alertes Django -->
                     {% if messages %}
                         {% for message in messages %}
-                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                                <strong>{% if message.tags == 'success' %}Succès !{% else %}Info{% endif %}</strong> {{ message }}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert" style="border-radius: 10px;">
+                                <strong>{% if message.tags == 'success' %}Succès !{% else %}Information{% endif %}</strong> {{ message }}
                                 <button type="button" class="close" data-dismiss="alert" aria-label="Close">
                                     <span aria-hidden="true">&times;</span>
                                 </button>
@@ -84,38 +101,58 @@
                         {% endfor %}
                     {% endif %}
 
+                    <!-- Tableau des Prestations -->
                     <div class="row">
                         <div class="col-md-12">
                             <div class="card card-table">
-                                <div class="card-body">
+                                <div class="card-body p-0">
                                     <div class="table-responsive">
-                                        <table class="table table-hover custom-table mb-0">
+                                        <table class="table table-hover mb-0">
                                             <thead>
                                                 <tr>
-                                                    <th>Code</th>
+                                                    <th style="width: 80px;">Code</th>
                                                     <th>Désignation</th>
                                                     <th>Catégorie</th>
+                                                    <th>Valeur Normale (Labo)</th>
                                                     <th>Prix (USD)</th>
                                                     <th>Prix (CDF)</th>
-                                                    <th class="text-right">Action</th>
+                                                    <th class="text-right" style="width: 100px;">Action</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {% for item in prestations %}
                                                 <tr>
-                                                    <td>#{{ item.id }}</td>
-                                                    <td><strong>{{ item.libelle }}</strong></td>
-                                                    <td><span class="cat-badge">{{ item.get_categorie_display }}</span></td>
-                                                    <td><span class="badge badge-usd">{{ item.prix }} $</span></td>
+                                                    <td><span class="text-muted">#{{ item.id }}</span></td>
+                                                    <td><span style="font-weight: 600; color: #2d3748;">{{ item.libelle }}</span></td>
+                                                    <td>
+                                                        {% if item.categorie == 'LABO' %}
+                                                            <span class="cat-badge cat-labo">{{ item.get_categorie_display }}</span>
+                                                        {% elif item.categorie == 'CONS' or item.categorie == 'CONSULTATION' %}
+                                                            <span class="cat-badge cat-consult">{{ item.get_categorie_display }}</span>
+                                                        {% elif item.categorie == 'IMAG' or item.categorie == 'IMAGERIE' %}
+                                                            <span class="cat-badge cat-imagerie">{{ item.get_categorie_display }}</span>
+                                                        {% else %}
+                                                            <span class="cat-badge cat-default">{{ item.get_categorie_display }}</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <!-- AJOUT DE LA COLONNE VALEUR NORMALE -->
+                                                    <td>
+                                                        {% if item.valeur_normale %}
+                                                            <span class="text-valeur-normale">{{ item.valeur_normale }}</span>
+                                                        {% else %}
+                                                            <span class="text-muted">—</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td><span class="badge-usd">{{ item.prix }} $</span></td>
                                                     <td>
                                                         <span class="text-cdf">{{ item.prix_cdf|floatformat:0 }} FC</span>
                                                     </td>
                                                     <td class="text-right">
                                                         <div class="dropdown dropdown-action">
-                                                            <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
+                                                            <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false" style="color: #6c757d;"><i class="fa fa-ellipsis-v"></i></a>
                                                             <div class="dropdown-menu dropdown-menu-right">
                                                                 <a class="dropdown-item" href="#" data-toggle="modal" data-target="#edit_prestation_{{ item.id }}">
-                                                                    <i class="fa fa-pencil m-r-5"></i> Modifier
+                                                                    <i class="fa fa-pencil m-r-5 text-warning"></i> Modifier
                                                                 </a>
                                                             </div>
                                                         </div>
@@ -125,9 +162,9 @@
                                                 <!-- MODAL DE MODIFICATION -->
                                                 <div id="edit_prestation_{{ item.id }}" class="modal custom-modal fade edit-prestation-modal" role="dialog">
                                                     <div class="modal-dialog modal-dialog-centered" role="document">
-                                                        <div class="modal-content">
+                                                        <div class="modal-content" style="border-radius: 15px;">
                                                             <div class="modal-header">
-                                                                <h5 class="modal-title">Modifier : {{ item.libelle }}</h5>
+                                                                <h5 class="modal-title" style="font-weight: 600;">Modifier : {{ item.libelle }}</h5>
                                                                 <button type="button" class="close" data-dismiss="modal">&times;</button>
                                                             </div>
                                                             <div class="modal-body">
@@ -155,8 +192,8 @@
                                                                         <label>Prix en USD</label>
                                                                         <input type="number" step="0.01" name="prix" class="form-control" value="{{ item.prix|stringformat:'.2f' }}" required>
                                                                     </div>
-                                                                    <div class="submit-section text-center">
-                                                                        <button type="submit" class="btn btn-primary submit-btn">Enregistrer les modifications</button>
+                                                                    <div class="submit-section text-center mt-4">
+                                                                        <button type="submit" class="btn btn-primary submit-btn" style="border-radius: 30px; padding: 10px 30px;">Enregistrer les modifications</button>
                                                                     </div>
                                                                 </form>
                                                             </div>
@@ -165,9 +202,9 @@
                                                 </div>
                                                 {% empty %}
                                                 <tr>
-                                                    <td colspan="6" class="text-center p-5">
+                                                    <td colspan="7" class="text-center p-5">
                                                         <i class="fa fa-folder-open-o fa-3x mb-3 text-muted"></i>
-                                                        <p>Aucune prestation trouvée dans le catalogue.</p>
+                                                        <p class="text-muted">Aucune prestation trouvée dans le catalogue.</p>
                                                     </td>
                                                 </tr>
                                                 {% endfor %}
@@ -177,11 +214,11 @@
 
                                     <!-- PAGINATION -->
                                     {% if prestations.has_other_pages %}
-                                    <div class="mt-4">
-                                        <ul class="pagination justify-content-center">
+                                    <div class="mt-4 p-3">
+                                        <ul class="pagination justify-content-center mb-0">
                                             {% if prestations.has_previous %}
                                                 <li class="page-item">
-                                                    <a class="page-link" href="?page={{ prestations.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">Précédent</a>
+                                                    <a class="page-link" href="?page={{ prestations.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}" style="border-radius: 20px 0 0 20px;">Précédent</a>
                                                 </li>
                                             {% endif %}
 
@@ -193,7 +230,7 @@
 
                                             {% if prestations.has_next %}
                                                 <li class="page-item">
-                                                    <a class="page-link" href="?page={{ prestations.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">Suivant</a>
+                                                    <a class="page-link" href="?page={{ prestations.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}" style="border-radius: 0 20px 20px 0;">Suivant</a>
                                                 </li>
                                             {% endif %}
                                         </ul>
@@ -209,9 +246,9 @@
             <!-- MODAL D'AJOUT -->
             <div id="add_prestation" class="modal custom-modal fade" role="dialog">
                 <div class="modal-dialog modal-dialog-centered" role="document">
-                    <div class="modal-content">
+                    <div class="modal-content" style="border-radius: 15px;">
                         <div class="modal-header">
-                            <h5 class="modal-title">Nouvelle Prestation</h5>
+                            <h5 class="modal-title" style="font-weight: 600;">Nouvelle Prestation</h5>
                             <button type="button" class="close" data-dismiss="modal">&times;</button>
                         </div>
                         <div class="modal-body">
@@ -219,15 +256,15 @@
                                 {% csrf_token %}
                                 {% for field in form %}
                                     <div class="form-group {% if field.name == 'valeur_normale' %}bloc-valeur-normale-add{% endif %}">
-                                        <label>{{ field.label }}</label>
+                                        <label style="font-weight: 500;">{{ field.label }}</label>
                                         {{ field }}
                                         {% if field.errors %}
                                             <small class="text-danger">{{ field.errors.0 }}</small>
                                         {% endif %}
                                     </div>
                                 {% endfor %}
-                                <div class="submit-section text-center">
-                                    <button class="btn btn-primary submit-btn">Ajouter au catalogue</button>
+                                <div class="submit-section text-center mt-4">
+                                    <button class="btn btn-primary submit-btn" style="border-radius: 30px; padding: 10px 30px;">Ajouter au catalogue</button>
                                 </div>
                             </form>
                         </div>
