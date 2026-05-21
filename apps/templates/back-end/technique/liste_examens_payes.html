@@ -68,12 +68,23 @@
                                                         <small class="text-muted">{{ item.patient.age }} ans</small>
                                                     </td>
                                                     
-                                                    <!-- Détails des examens de SA catégorie uniquement -->
+                                                    <!-- Détails des examens avec gestion d'état individuel -->
                                                     <td>
-                                                        <ul class="pl-3 m-0 text-danger" style="list-style-type: square; font-weight: 500; font-size: 13px;">
+                                                        <ul class="pl-3 m-0" style="list-style-type: square; font-weight: 500; font-size: 13px;">
                                                             {% for ex in item.examens %}
-                                                                <li>
-                                                                    {{ ex.libelle }}
+                                                                <li class="mb-1 {% if ex.est_deja_fait %}text-muted{% else %}text-danger{% endif %}">
+                                                                    <!-- Si l'examen est fait, on barre discrètement le texte -->
+                                                                    <span {% if ex.est_deja_fait %}style="text-decoration: line-through;"{% endif %}>
+                                                                        {{ ex.libelle }}
+                                                                    </span>
+                                                                    
+                                                                    <!-- Badge de statut pour un meilleur suivi visuel -->
+                                                                    {% if ex.est_deja_fait %}
+                                                                        <span class="badge badge-success" style="font-size: 9px; padding: 2px 4px;">Fait</span>
+                                                                    {% else %}
+                                                                        <span class="badge badge-warning text-dark" style="font-size: 9px; padding: 2px 4px;">En attente</span>
+                                                                    {% endif %}
+
                                                                     <span class="badge badge-light text-muted font-weight-normal" style="font-size: 10px;">
                                                                         Payé le {{ ex.date|date:"d/m à H:i" }}
                                                                     </span>
@@ -89,11 +100,22 @@
                                                         </span>
                                                     </td>
                                                     
-                                                    <!-- Action (Bouton de redirection vers le formulaire de saisie) -->
+                                                    <!-- Action : Blocage intelligent basé sur la présence d'examens restants -->
                                                     <td class="text-right">
-                                                        <a href="{% url 'saisir_resultats_examens' item.id_paiement %}" class="btn btn-sm btn-success shadow-sm">
-                                                            <i class="fa fa-flask"></i> Saisir Résultats
-                                                        </a>
+                                                        {% regroup item.examens by est_deja_fait as examens_groupes %}
+                                                        
+                                                        {# Si tous les examens de ce groupe ont 'est_deja_fait' à True #}
+                                                        {% if item.examens|length == 1 and item.examens.0.est_deja_fait or item.examens.0.est_deja_fait and item.examens.1.est_deja_fait %}
+                                                            <!-- Bouton désactivé si tout est traité -->
+                                                            <button class="btn btn-sm btn-secondary shadow-sm" disabled title="Tous les examens de cette fiche ont été saisis.">
+                                                                <i class="fa fa-lock"></i> Traité
+                                                            </button>
+                                                        {% else %}
+                                                            <!-- Bouton accessible s'il reste au moins un examen à faire -->
+                                                            <a href="{% url 'saisir_resultats_examens' item.id_paiement %}" class="btn btn-sm btn-success shadow-sm">
+                                                                <i class="fa fa-flask"></i> Saisir Résultats
+                                                            </a>
+                                                        {% endif %}
                                                     </td>
                                                 </tr>
                                                 {% endfor %}

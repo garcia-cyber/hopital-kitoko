@@ -1303,8 +1303,7 @@ def liste_examens_techniques(request):
     fonctionKey = role_user.fonctionKey.roleName
 
     # 2. SÉCURITÉ COMPTABLE & TECHNIQUE : 
-    # On récupère uniquement les paiements validés pour les services techniques
-    # et qui possèdent une consultation associée avec des examens libérés ('EN_COURS')
+    # On cible les services concernés
     paiements_techniques = Paiement.objects.filter(
         consultation__isnull=False,
         service__in=['LABO', 'RADIO', 'ECHOGRAPHIE']
@@ -1313,33 +1312,38 @@ def liste_examens_techniques(request):
     examens_presents = False
     historique_technique = []
 
-    # 3. CLOISONNEMENT STRICT PAR PROFIL (Selon tes choix de catégories dans Prestation)
+    # 3. CLOISONNEMENT STRICT PAR PROFIL ET VÉRIFICATION DES STATUTS
     for p in paiements_techniques:
-        # On extrait les examens de la consultation qui ont le statut 'EN_COURS'
-        examens_payes = p.consultation.examens.filter(statut='EN_COURS').select_related('prestation')
+        # ÉVOLUTION : On prend 'EN_COURS' (à faire) ET 'TERMINE' (déjà fait) pour gérer le blocage
+        examens_payes = p.consultation.examens.filter(
+            statut__in=['EN_COURS', 'TERMINE']
+        ).select_related('prestation')
         
-        # Filtrage des examens selon le rôle de l'utilisateur
         examens_filtrés_pour_role = []
         for exam in examens_payes:
             cat = exam.prestation.categorie
             
+            # Déterminer si l'examen est déjà traité (ex: Goutte épaisse déjà validée)
+            deja_consulte = (exam.statut == 'TERMINE')
+
+            # Flag pour savoir si la catégorie correspond au rôle
+            correspond_au_role = False
             if ('labo' in nom_role or 'laborantin' in nom_role) and cat == 'LABO':
-                examens_filtrés_pour_role.append({
-                    'libelle': exam.prestation.libelle,
-                    'date': p.date_paiement
-                })
+                correspond_au_role = True
             elif ('echo' in nom_role or 'echographe' in nom_role) and cat == 'ECHO':
-                examens_filtrés_pour_role.append({
-                    'libelle': exam.prestation.libelle,
-                    'date': p.date_paiement
-                })
+                correspond_au_role = True
             elif ('radio' in nom_role or 'radiologue' in nom_role) and cat == 'RADIO':
+                correspond_au_role = True
+
+            # Si l'examen correspond au service de l'utilisateur, on l'ajoute avec son état
+            if correspond_au_role:
                 examens_filtrés_pour_role.append({
+                    'id_examen': exam.id, # Utile pour tes futurs liens/formulaires
                     'libelle': exam.prestation.libelle,
-                    'date': p.date_paiement
+                    'date': p.date_paiement,
+                    'est_deja_fait': deja_consulte  # Notre indicateur pour le template
                 })
 
-        # Correction de la variable ici : 'examens_filtrés_pour_role' au lieu de 'for_role'
         if examens_filtrés_pour_role:
             examens_presents = True
             historique_technique.append({
@@ -1356,11 +1360,11 @@ def liste_examens_techniques(request):
 
     # Définition du titre de la page selon le rôle
     if 'labo' in nom_role or 'laborantin' in nom_role:
-        titre_page = "Laboratoire - Analyses Payées à Réaliser"
+        titre_page = "Laboratoire - Analyses Payées"
     elif 'echo' in nom_role or 'echographe' in nom_role:
-        titre_page = "Échographie - Examens Payés à Réaliser"
+        titre_page = "Échographie - Examens Payés"
     else:
-        titre_page = "Radiologie - Examens Payés à Réaliser"
+        titre_page = "Radiologie - Examens Payés"
 
     context = {
         'historique_technique': historique_technique,
@@ -1388,13 +1392,14 @@ def saisir_resultats_examens(request, paiement_id):
 
     # 2. Récupération du paiement et de la consultation associée
     paiement = get_object_or_404(Paiement, id=paiement_id)
-    consultation = p = paiement.consultation
+    consultation = paiement.consultation
 
     if not consultation:
         messages.error(request, "Aucune consultation associée à ce paiement.")
         return redirect('liste_examens_techniques')
 
     # 3. Extraction et filtrage des examens 'EN_COURS' pour ce rôle précis
+    # L'utilisation de select_related('prestation') est cruciale ici pour récupérer 'valeur_normale' sans refaire de requêtes SQL
     examens_payes = consultation.examens.filter(statut='EN_COURS').select_related('prestation')
     
     examens_a_saisir = []
@@ -1407,25 +1412,31 @@ def saisir_resultats_examens(request, paiement_id):
         elif ('radio' in nom_role or 'radiologue' in nom_role) and cat == 'RADIO':
             examens_a_saisir.append(exam)
 
-    # Si le technicien tente de forcer l'accès à un examen qui ne le regarde pas
+    # Sécurité : Si l'accès est forcé par URL alors que tout est déjà traité ou hors spécialité
     if not examens_a_saisir:
-        messages.error(request, "Aucun examen ne correspond à votre spécialité pour ce patient.")
+        messages.error(request, "Aucun examen en attente de saisie pour votre spécialité.")
         return redirect('liste_examens_techniques')
 
     # 4. Traitement de la soumission du formulaire (POST)
     if request.method == 'POST':
+        examens_traites_count = 0
+        
         for exam in examens_a_saisir:
-            # On récupère le résultat saisi pour chaque examen via son ID unique
             cle_resultat = f"resultat_{exam.id}"
             texte_resultat = request.POST.get(cle_resultat, "").strip()
             
             if texte_resultat:
                 exam.resultat = texte_resultat
-                exam.statut = 'TERMINE'  # L'examen passe de EN_COURS à TERMINE
-                exam.technicien = request.user # Optionnel : pour savoir qui a fait l'examen
+                exam.statut = 'TERMINE'  # Passage au statut finalisé
+                exam.technicien = request.user  # Traçabilité du technicien
                 exam.save()
+                examens_traites_count += 1
                 
-        messages.success(request, f"Les résultats pour {paiement.patient.noms} ont été enregistrés avec succès.")
+        if examens_traites_count > 0:
+            messages.success(request, f"Les résultats de ({examens_traites_count}) examen(s) pour {paiement.patient.noms} ont été enregistrés.")
+        else:
+            messages.warning(request, "Aucun résultat n'a été saisi.")
+            
         return redirect('liste_examens_techniques')
 
     context = {
@@ -1711,7 +1722,7 @@ def creer_depense(request):
 
 
 # ==================================================================================================
-# #42 : FINANCE GESTION DE DETTE  JOURNAL
+# 42 : FINANCE GESTION DE DETTE  JOURNAL
 # ==================================================================================================
 @login_required
 def dashboard_finance_depense(request):
@@ -1793,3 +1804,7 @@ def dashboard_finance_depense(request):
         'services_stats': services_stats,
     }
     return render(request, 'back-end/finance/journal_caisse.html', context)
+
+# ==================================================================================================
+# 43 : RESULTAT DU LABO RADIO ET ECHO
+# ==================================================================================================

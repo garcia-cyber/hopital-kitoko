@@ -3,7 +3,7 @@ from .views import *
 from . import views 
 #
 #
-#
+# 
 urlpatterns =[
      # ===================================
      # page d'accueil login

@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Saisie des Résultats - Moyanoli</title>
+    <title>Saisie des Résultats Laboratoire - Moyanoli</title>
     {% include 'back-end/includes/css.html' %}
     <style>
         .clinical-title {
@@ -26,6 +26,15 @@
             color: #333;
             min-height: 40px;
         }
+        /* Style exclusif pour l'affichage des normes biologiques du Laboratoire */
+        .lab-reference-block {
+            background-color: #f0fdf4;
+            border-left: 3px solid #16a34a;
+            padding: 10px 14px;
+            border-radius: 0 4px 4px 0;
+            font-size: 13px;
+            color: #14532d;
+        }
     </style>
 </head>
 <body>
@@ -40,10 +49,10 @@
                 <div class="page-header">
                     <div class="row">
                         <div class="col">
-                            <h3 class="page-title">Saisie des Conclusions Médicales</h3>
+                            <h3 class="page-title">Saisie des Résultats de Laboratoire</h3>
                             <ul class="breadcrumb">
-                                <li class="breadcrumb-item"><a href="{% url 'liste_examens_techniques' %}">Console Technique</a></li>
-                                <li class="breadcrumb-item active">Saisie</li>
+                                <li class="breadcrumb-item"><a href="{% url 'liste_examens_techniques' %}">Console Laboratoire</a></li>
+                                <li class="breadcrumb-item active">Saisie Biologique</li>
                             </ul>
                         </div>
                     </div>
@@ -69,7 +78,7 @@
                 </div>
 
                 <div class="row">
-                    <!-- 📑 PANNEAU GAUCHE : DOSSIER CLINIQUE DU MÉDECIN -->
+                    <!-- 📑 PANNEAU GAUCHE : DOSSIER CLINIQUE (Renseignements médicaux reçus) -->
                     <div class="col-md-5">
                         <div class="card shadow-sm">
                             <div class="card-header bg-info text-white">
@@ -100,11 +109,11 @@
                         </div>
                     </div>
 
-                    <!-- 📝 PANNEAU DROIT : FORMULAIRE DE SAISIE DES RÉSULTATS -->
+                    <!-- 📝 PANNEAU DROIT : FORMULAIRE DE SAISIE LABO -->
                     <div class="col-md-7">
                         <div class="card shadow-sm">
                             <div class="card-header bg-primary text-white">
-                                <h5 class="card-title mb-0" style="color: white;"><i class="fa fa-edit"></i> Protocoles & Résultats à remplir</h5>
+                                <h5 class="card-title mb-0" style="color: white;"><i class="fa fa-flask"></i> Examens Biologiques à analyser</h5>
                             </div>
                             <div class="card-body">
                                 <form method="POST">
@@ -113,17 +122,30 @@
                                     {% for exam in examens_a_saisir %}
                                         <div class="form-group border-bottom pb-4 mb-4">
                                             <label class="font-weight-bold text-dark" style="font-size: 15px;">
-                                                <i class="fa fa-flask text-success mr-2"></i> {{ exam.prestation.libelle }}
+                                                <i class="fa fa-chevron-right text-success mr-2"></i> {{ exam.prestation.libelle }}
                                             </label>
-                                            <p class="text-muted small mb-2">Veuillez saisir les résultats biologiques ou conclusions d'imagerie ci-dessous :</p>
+                                            
+                                            <!-- 🔬 Bloc Valeur Normale / de Référence (Strictement Labo) -->
+                                            {% if exam.prestation.valeur_normale %}
+                                                <div class="lab-reference-block mb-3 shadow-sm">
+                                                    <strong><i class="fa fa-info-circle"></i> Valeurs normales de référence :</strong>
+                                                    <div class="mt-1 text-monospace small" style="white-space: pre-line;">{{ exam.prestation.valeur_normale }}</div>
+                                                </div>
+                                            {% endif %}
+
+                                            <p class="text-muted small mb-2">Saisissez les analyses ou mesures chiffrées obtenues :</p>
                                             
                                             <!-- Zone de saisie du résultat -->
                                             <textarea 
                                                 name="resultat_{{ exam.id }}" 
-                                                rows="5" 
+                                                rows="4" 
                                                 class="form-control" 
-                                                placeholder="Ex: Constatations, valeurs chiffrées, conclusions de l'examen..."
+                                                placeholder="Saisir les résultats pour : {{ exam.prestation.libelle }}..."
                                                 required></textarea>
+                                        </div>
+                                    {% empty %}
+                                        <div class="alert alert-warning">
+                                            Aucun examen de laboratoire en attente de manipulation.
                                         </div>
                                     {% endfor %}
 
@@ -133,7 +155,7 @@
                                             <i class="fa fa-times"></i> Annuler
                                         </a>
                                         <button type="submit" class="btn btn-success shadow-sm">
-                                            <i class="fa fa-save"></i> Enregistrer et Clôturer
+                                            <i class="fa fa-save"></i> Confirmer et Clôturer les Analyses
                                         </button>
                                     </div>
                                 </form>
