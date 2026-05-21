@@ -1806,5 +1806,17 @@ def dashboard_finance_depense(request):
     return render(request, 'back-end/finance/journal_caisse.html', context)
 
 # ==================================================================================================
-# 43 : RESULTAT DU LABO RADIO ET ECHO
+# 43 : RESULTAT DU LABO RADIO ET ECHO PAR LE MEDECIN
 # ==================================================================================================
+@login_required
+def liste_attente_ordonnance_view(request):
+    # On récupère les triages dont la consultation possède 
+    # AU MOINS un examen au statut 'TERMINE'
+    patients_en_attente = SigneVital.objects.filter(
+        consultation__examens__statut='TERMINE'
+    ).select_related('patient').distinct().order_by('-date_prelevement')
+
+    context = {
+        'patients_en_attente': patients_en_attente,
+    }
+    return render(request, 'back-end/medecin/liste_attente.html', context)

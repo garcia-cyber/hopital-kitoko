@@ -69,6 +69,7 @@ urlpatterns =[
     path('medecin/consultations/historique/', views.liste_consultations_terminees, name='liste_consultations'),
     path('consultation/<int:pk>/', views.detail_consultation, name='detail_consultation'),
     path('consultations/ordonnances-urgence/', views.liste_ordonnances_urgence, name='liste_ordonnances_urgence'),
+    path('medecin/salle-d-attente/', views.liste_attente_ordonnance_view, name='liste_attente_medecin'),
     path('consultations/<int:consultation_id>/prescrire-urgence/', views.prescrire_ordonnance_urgence_rapide, name='prescrire_ordonnance_urgence_rapide'),
 
     # ================================

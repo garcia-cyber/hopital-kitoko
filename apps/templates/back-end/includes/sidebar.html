@@ -148,6 +148,14 @@
                                 <span>Ordonnances d'Urgence</span>
                         </a>
                     </li>
+
+                    <li class="{% if request.resolver_match.url_name == 'liste_attente_medecin' %}active{% endif %}">
+                        <a href="{% url 'liste_attente_medecin' %}">
+                            <i class="fas fa-stethoscope"></i> 
+                            <span>Salle d'Attente</span> 
+                            <span class="menu-arrow"></span>
+                        </a>
+                    </li>
                 <!-- ========================================== -->
                 <!-- 5. MENU LABORANTIN (CORRIGÉ ICI)           -->
                 <!-- ========================================== -->
