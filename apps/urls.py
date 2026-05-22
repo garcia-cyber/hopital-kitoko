@@ -88,5 +88,14 @@ urlpatterns =[
     # EXAMENS
     path('examens/historique/', views.historique_examens_view, name='historique_examens'),
 
+    # ================================
+    # HOSPITALISATION
+    path('chambres/', views.dashboard_chambres, name='dashboard_chambres'),
+    path('chambres/types/nouveau/', views.ajouter_type_chambre, name='ajouter_type_chambre'),
+    path('chambres/nouvelle/', views.ajouter_chambre, name='ajouter_chambre'),
+    path('lits/nouveau/', views.ajouter_lit, name='ajouter_lit'),
+    path('lits/<int:lit_id>/toggle/', views.toggle_statut_lit, name='lit_toggle_statut'),
+
+
 
  ]

@@ -52,24 +52,20 @@
                     </li>
 
                     <li class="submenu {% if request.resolver_match.url_name == 'dashboard_finance_depense' or request.resolver_match.url_name == 'creer_depense' %}active{% endif %}">
-    <a href="#"><i class="la la-wallet"></i> <span> Gestion Financière </span> <span class="menu-arrow"></span></a>
-    <ul style="{% if request.resolver_match.url_name == 'dashboard_finance_depense' or request.resolver_match.url_name == 'creer_depense' %}display: block;{% else %}display: none;{% endif %}">
-        <li>
-            <a class="{% if request.resolver_match.url_name == 'dashboard_finance_depense' %}active{% endif %}" href="{% url 'dashboard_finance_depense' %}">
-                <i class="la la-list"></i> Journal de Caisse
-            </a>
-        </li>
-        <li>
-            <a class="{% if request.resolver_match.url_name == 'creer_depense' %}active{% endif %}" href="{% url 'creer_depense' %}">
-                <i class="la la-money-bill-wave"></i> Saisir une Dépense
-            </a>
-        </li>
-    </ul>
-</li>
-
-
-
-
+                        <a href="#"><i class="la la-wallet"></i> <span> Gestion Financière </span> <span class="menu-arrow"></span></a>
+                        <ul style="{% if request.resolver_match.url_name == 'dashboard_finance_depense' or request.resolver_match.url_name == 'creer_depense' %}display: block;{% else %}display: none;{% endif %}">
+                            <li>
+                                <a class="{% if request.resolver_match.url_name == 'dashboard_finance_depense' %}active{% endif %}" href="{% url 'dashboard_finance_depense' %}">
+                                    <i class="la la-list"></i> Journal de Caisse
+                                </a>
+                            </li>
+                            <li>
+                                <a class="{% if request.resolver_match.url_name == 'creer_depense' %}active{% endif %}" href="{% url 'creer_depense' %}">
+                                    <i class="la la-money-bill-wave"></i> Saisir une Dépense
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
 
                 <!-- ========================================== -->
                 <!-- 2. MENU RECEPTIONNISTE                     -->
@@ -96,6 +92,39 @@
                         </a>
                     </li>
 
+                    <!-- ========================================== -->
+                    <!-- SECTION HOSPITALISATION CORRIGÉE          -->
+                    <!-- ========================================== -->
+                    {% with url=request.resolver_match.url_name %}
+                    <li class="submenu {% if url == 'dashboard_chambres' or url == 'ajouter_type_chambre' or url == 'ajouter_chambre' or url == 'ajouter_lit' %}active{% endif %}">
+                        <a href="#">
+                            <i class="la la-bed"></i> <span> Hospitalisation </span> <span class="menu-arrow"></span>
+                        </a>
+                        <ul style="{% if url == 'dashboard_chambres' or url == 'ajouter_type_chambre' or url == 'ajouter_chambre' or url == 'ajouter_lit' %}display: block;{% else %}display: none;{% endif %}">
+                            <li>
+                                <a class="{% if url == 'dashboard_chambres' %}active{% endif %}" href="{% url 'dashboard_chambres' %}">
+                                    Tableau des Chambres
+                                </a>
+                            </li>
+                            <li>
+                                <a class="{% if url == 'ajouter_type_chambre' %}active{% endif %}" href="{% url 'ajouter_type_chambre' %}">
+                                    1. Catégories de chambre
+                                </a>
+                            </li>
+                            <li>
+                                <a class="{% if url == 'ajouter_chambre' %}active{% endif %}" href="{% url 'ajouter_chambre' %}">
+                                    2. Ajouter une Chambre
+                                </a>
+                            </li>
+                            <li>
+                                <a class="{% if url == 'ajouter_lit' %}active{% endif %}" href="{% url 'ajouter_lit' %}">
+                                    3. Ajouter un Lit
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    {% endwith %}
+
                 <!-- ========================================== -->
                 <!-- 3. MENU INFIRMIER                          -->
                 <!-- ========================================== -->
@@ -116,25 +145,20 @@
                         </a>
                     </li>
 
-
-                    
-
                 <!-- ========================================== -->
-                <!-- 4. MENU MEDECIN (CORRIGÉ ICI)              -->
+                <!-- 4. MENU MEDECIN                            -->
                 <!-- ========================================== -->
                 {% elif fonctionKey == 'medecin' %}
                     <li class="menu-title"> <span>SERVICES MEDECIN</span> </li>
                     <li class="submenu">
                         <a href="#"><i class="la la-stethoscope"></i> <span> Consultations </span> <span class="menu-arrow"></span></a>
                         <ul style="display: none;">
-                            <!-- Salle d'attente (Consultations en attente) -->
                             <li class="{% if request.resolver_match.url_name == 'liste_consultation_medecin' %}active{% endif %}">
                                 <a href="{% url 'liste_consultation_medecin' %}">
                                     <i class="la la-users"></i> Salle d'Attente
                                 </a>
                             </li>
                             
-                            <!-- Historique / Registre des consultations terminées -->
                             <li class="{% if request.resolver_match.url_name == 'liste_consultations' %}active{% endif %}">
                                 <a href="{% url 'liste_consultations' %}">
                                     <i class="la la-archive"></i> Registre Consultations
@@ -145,7 +169,7 @@
                     <li>
                         <a href="{% url 'liste_ordonnances_urgence' %}">
                             <i class="fa fa-ambulance"></i> 
-                                <span>Ordonnances d'Urgence</span>
+                            <span>Ordonnances d'Urgence</span>
                         </a>
                     </li>
 
@@ -156,55 +180,57 @@
                             <span class="menu-arrow"></span>
                         </a>
                     </li>
+
                 <!-- ========================================== -->
-                <!-- 5. MENU LABORANTIN (CORRIGÉ ICI)           -->
+                <!-- 5. MENU LABORANTIN                         -->
                 <!-- ========================================== -->
                 {% elif fonctionKey == 'laborantin'%}
-                 <li class="{% if request.resolver_match.url_name == 'liste_examens_techniques' %}active{% endif %}">
-                    <a href="{% url 'liste_examens_techniques' %}">
-                        <i class="fa fa-flask"></i> <span>Examens à réaliser</span>
-                    </a>
-                </li> 
+                    <li class="{% if request.resolver_match.url_name == 'liste_examens_techniques' %}active{% endif %}">
+                        <a href="{% url 'liste_examens_techniques' %}">
+                            <i class="fa fa-flask"></i> <span>Examens à réaliser</span>
+                        </a>
+                    </li> 
 
-                <li class="{% if request.resolver_match.url_name == 'historique_examens' %}active{% endif %}">
-                    <a href="{% url 'historique_examens' %}">
-                        <i class="fas fa-history"></i> 
-                        <span>Historique Examens</span>
-                    </a>
-                </li>
+                    <li class="{% if request.resolver_match.url_name == 'historique_examens' %}active{% endif %}">
+                        <a href="{% url 'historique_examens' %}">
+                            <i class="fas fa-history"></i> 
+                            <span>Historique Examens</span>
+                        </a>
+                    </li>
+
                 <!-- ========================================== -->
-                <!-- 6. MENU RADIOLOGUE (CORRIGÉ ICI)           -->
+                <!-- 6. MENU RADIOLOGUE                         -->
                 <!-- ========================================== -->
                 {% elif fonctionKey == 'radiologue'%}  
-                <li class="{% if request.resolver_match.url_name == 'liste_examens_techniques' %}active{% endif %}">
-                    <a href="{% url 'liste_examens_techniques' %}">
-                        <i class="fa fa-flask"></i> <span>Examens à réaliser</span>
-                    </a>
-                </li>
+                    <li class="{% if request.resolver_match.url_name == 'liste_examens_techniques' %}active{% endif %}">
+                        <a href="{% url 'liste_examens_techniques' %}">
+                            <i class="fa fa-flask"></i> <span>Examens à réaliser</span>
+                        </a>
+                    </li>
 
-                <li class="{% if request.resolver_match.url_name == 'historique_examens' %}active{% endif %}">
-                    <a href="{% url 'historique_examens' %}">
-                        <i class="fas fa-history"></i> 
-                        <span>Historique Examens</span>
-                    </a>
-                </li>
+                    <li class="{% if request.resolver_match.url_name == 'historique_examens' %}active{% endif %}">
+                        <a href="{% url 'historique_examens' %}">
+                            <i class="fas fa-history"></i> 
+                            <span>Historique Examens</span>
+                        </a>
+                    </li>
 
                 <!-- ========================================== -->
-                <!-- 7. MENU ECHOGRAPHE (CORRIGÉ ICI)           -->
+                <!-- 7. MENU ECHOGRAPHE                         -->
                 <!-- ========================================== -->
                 {% elif fonctionKey == 'echographe'%}  
-                <li class="{% if request.resolver_match.url_name == 'liste_examens_techniques' %}active{% endif %}">
-                    <a href="{% url 'liste_examens_techniques' %}">
-                        <i class="fa fa-flask"></i> <span>Examens à réaliser</span>
-                    </a>
-                </li>
+                    <li class="{% if request.resolver_match.url_name == 'liste_examens_techniques' %}active{% endif %}">
+                        <a href="{% url 'liste_examens_techniques' %}">
+                            <i class="fa fa-flask"></i> <span>Examens à réaliser</span>
+                        </a>
+                    </li>
 
-                <li class="{% if request.resolver_match.url_name == 'historique_examens' %}active{% endif %}">
-                    <a href="{% url 'historique_examens' %}">
-                        <i class="fas fa-history"></i> 
-                        <span>Historique Examens</span>
-                    </a>
-                </li>
+                    <li class="{% if request.resolver_match.url_name == 'historique_examens' %}active{% endif %}">
+                        <a href="{% url 'historique_examens' %}">
+                            <i class="fas fa-history"></i> 
+                            <span>Historique Examens</span>
+                        </a>
+                    </li>
                 {% endif %}
 
                 <!-- Toujours visible à la fin -->

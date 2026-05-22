@@ -172,3 +172,65 @@ class DepenseAdmin(admin.ModelAdmin):
             for field, errors in e.message_dict.items():
                 for error in errors:
                     messages.error(request, f"Erreur : {error}")
+
+
+# =================================================================================================================
+@admin.register(TypeChambre)
+class TypeChambreAdmin(admin.ModelAdmin):
+    list_display = ('libelle', 'description')
+    search_fields = ('libelle',)
+
+
+class LitInline(admin.TabularInline):
+    """
+    Permet d'ajouter, modifier ou voir les lits d'une chambre 
+    directement depuis la page de modification de cette chambre.
+    """
+    model = Lit
+    extra = 1 # Nombre de lignes vides affichées par défaut pour ajouter de nouveaux lits
+    fields = ('nom_ou_code', 'est_occupe', 'est_actif')
+
+
+@admin.register(Chambre)
+class ChambreAdmin(admin.ModelAdmin):
+    list_display = (
+        'nom_ou_numero', 
+        'type_chambre', 
+        'prix_par_jour', 
+        'localisation', 
+        'est_active',
+        'afficher_lits_total',       # Colonne personnalisée basée sur ta property
+        'afficher_lits_dispo'        # Colonne personnalisée basée sur ta property
+    )
+    list_filter = ('type_chambre', 'est_active', 'localisation')
+    search_fields = ('nom_ou_numero', 'localisation')
+    ordering = ('nom_ou_numero',)
+    
+    # Intégration des lits directement dans la fiche de la chambre
+    inlines = [LitInline]
+
+    # --- Configuration de l'affichage des properties dans la liste ---
+
+    def afficher_lits_total(self, obj):
+        return obj.nombre_lits_total
+    afficher_lits_total.short_description = "Lits Total" # Titre de la colonne
+
+    def afficher_lits_dispo(self, obj):
+        total_dispo = obj.nombre_lits_disponibles
+        if total_dispo == 0:
+            return "❌ Aucun lit libre"
+        return f"🟢 {total_dispo} libre(s)"
+    afficher_lits_dispo.short_description = "Disponibles"
+
+
+@admin.register(Lit)
+class LitAdmin(admin.ModelAdmin):
+    list_display = ('nom_ou_code', 'chambre', 'get_type_chambre', 'est_occupe', 'est_actif')
+    list_filter = ('est_occupe', 'est_actif', 'chambre__type_chambre', 'chambre')
+    search_fields = ('nom_ou_code', 'chambre__nom_ou_numero')
+    list_editable = ('est_occupe', 'est_actif') # Permet de cocher/décocher directement depuis la liste
+
+    def get_type_chambre(self, obj):
+        """ Récupère le type de chambre à travers la relation ForeignKey """
+        return obj.chambre.type_chambre.libelle
+    get_type_chambre.short_description = "Type de Chambre"

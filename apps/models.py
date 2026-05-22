@@ -381,3 +381,68 @@ class Depense(models.Model):
 
     def __str__(self):
         return f"Dépense {self.id} - {self.montant} {self.devise} ({self.get_motif_display()})"
+
+
+
+class TypeChambre(models.Model):
+    """
+    Ex: VIP, Privée, Commune, Réanimation, Néonatologie...
+    Permet de regrouper les chambres par catégorie et de centraliser ou d'analyser la tarification.
+    """
+    libelle = models.CharField(max_length=100, unique=True, verbose_name="Type de chambre")
+    description = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return self.libelle
+
+    class Meta:
+        verbose_name = "Type de Chambre"
+        verbose_name_plural = "Types de Chambres"
+
+
+class Chambre(models.Model):
+    """
+    Représente une chambre physique au sein de l'hôpital.
+    Le prix est défini par nuitée (prix journalier d'occupation).
+    """
+    nom_ou_numero = models.CharField(max_length=50, unique=True, verbose_name="Nom / Numéro de la chambre")
+    type_chambre = models.ForeignKey(TypeChambre, on_delete=models.PROTECT, related_name="chambres", verbose_name="Type")
+    prix_par_jour = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Prix par jour (Nuitée)")
+    localisation = models.CharField(max_length=150, blank=True, null=True, help_text="Ex: Pavillon A, 2ème étage")
+    est_active = models.BooleanField(default=True, verbose_name="En service", help_text="Décocher si la chambre est en travaux ou indisponible")
+
+    def __str__(self):
+        return f"Chambre {self.nom_ou_numero} ({self.type_chambre.libelle})"
+
+    @property
+    def nombre_lits_total(self):
+        return self.lits.count()
+
+    @property
+    def nombre_lits_disponibles(self):
+        return self.lits.filter(est_occupe=False, est_actif=True).count()
+
+    class Meta:
+        verbose_name = "Chambre"
+        verbose_name_plural = "Chambres"
+
+
+class Lit(models.Model):
+    """
+    Représente un lit spécifique à l'intérieur d'une chambre.
+    C'est cette entité qu'on liera à l'hospitalisation du patient.
+    """
+    chambre = models.ForeignKey(Chambre, on_delete=models.CASCADE, related_name="lits", verbose_name="Chambre")
+    nom_ou_code = models.CharField(max_length=50, verbose_name="Code / Numéro du lit")
+    est_occupe = models.BooleanField(default=False, verbose_name="Occupé")
+    est_actif = models.BooleanField(default=True, verbose_name="Opérationnel", help_text="Décocher si le lit est cassé/en maintenance")
+
+    def __str__(self):
+        return f"Lit {self.nom_ou_code} - Chambre {self.chambre.nom_ou_numero}"
+
+    class Meta:
+        unique_together = ('chambre', 'nom_ou_code') # Évite d'avoir deux lits avec le même nom dans une même chambre
+        verbose_name = "Lit"
+        verbose_name_plural = "Lits"      
+
+

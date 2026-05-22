@@ -323,3 +323,36 @@ class DepenseForm(forms.ModelForm):
             'devise': forms.Select(attrs={'class': 'form-control'}),
             'beneficiaire': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Fournisseur Mazout ou Nom de l\'agent'}),
         }
+
+
+# ==================================================================================================
+class TypeChambreForm(forms.ModelForm):
+    class Meta:
+        model = TypeChambre
+        fields = ['libelle', 'description']
+        widgets = {
+            'libelle': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: VIP, Privée, Commune...'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Description facultative...'}),
+        }
+
+class ChambreForm(forms.ModelForm):
+    class Meta:
+        model = Chambre
+        fields = ['nom_ou_numero', 'type_chambre', 'prix_par_jour', 'localisation', 'est_active']
+        widgets = {
+            'nom_ou_numero': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: 101, Bloc A-3...'}),
+            'type_chambre': forms.Select(attrs={'class': 'form-control'}),
+            'prix_par_jour': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Tarif par nuitée'}),
+            'localisation': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Pavillon A, 2ème étage'}),
+            'est_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+class LitForm(forms.ModelForm):
+    class Meta:
+        model = Lit
+        fields = ['chambre', 'nom_ou_code', 'est_actif']
+        widgets = {
+            'chambre': forms.Select(attrs={'class': 'form-control'}),
+            'nom_ou_code': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Lit A, Lit 01...'}),
+            'est_actif': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }

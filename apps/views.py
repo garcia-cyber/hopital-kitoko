@@ -1875,3 +1875,125 @@ def historique_examens_view(request):
 # 45 : GESTION HOPITALISATION
 # ==================================================================================================
 
+# --------------------------------------------------------------------------------------------------
+# VUE : Vue principale agissant comme tableau de bord pour piloter les infrastructures physiques.
+# FONCTION : Récupère toutes les chambres (avec jointures optimisées), calcule les statistiques 
+#            d'occupation globales en temps réel et génère l'affichage du plan des salles.
+# --------------------------------------------------------------------------------------------------
+@login_required
+def dashboard_chambres(request):
+    """ Affichage global de la situation des chambres et lits """
+    # Optimisation SQL : select_related évite le problème N+1 sur le type de chambre,
+    # et prefetch_related charge tous les lits dépendants en une seule requête secondaire.
+    chambres = Chambre.objects.all().select_related('type_chambre').prefetch_related('lits')
+    # 4. Gestion des rôles utilisateur
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role else None
+    context = {
+        'fonctionKey': fonctionKey , 
+        'chambres': chambres,
+        'total_chambres': Chambre.objects.filter(est_active=True).count(),
+        'total_lits': Lit.objects.filter(est_actif=True).count(),
+        'lits_occupes': Lit.objects.filter(est_occupe=True, est_actif=True).count(),
+        'lits_disponibles': Lit.objects.filter(est_occupe=False, est_actif=True).count(),
+    }
+    return render(request, 'back-end/hospitalisation/dashboard_chambres.html', context)
+
+
+# --------------------------------------------------------------------------------------------------
+# VUE : Première étape de la configuration de l'infrastructure de soins.
+# FONCTION : Permet d'enregistrer une nouvelle catégorie de tarification ou de destination médicale 
+#            (ex: VIP, Soins Intensifs, Pédiatrie) avant de pouvoir y affecter des locaux.
+# --------------------------------------------------------------------------------------------------
+@login_required
+def ajouter_type_chambre(request):
+    """ Étape 1 : Enregistrer une catégorie (VIP, Commune, etc.) """
+    if request.method == 'POST':
+        form = TypeChambreForm(request.POST)
+        if form.is_valid():
+            type_chambre = form.save()
+            messages.success(request, f"Le type de chambre '{type_chambre.libelle}' a été enregistré.")
+            # Redirection logique et fluide vers l'étape 2 (Ajout d'une pièce physique)
+            return redirect('ajouter_chambre') 
+    else:
+        form = TypeChambreForm()
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role else None
+
+    return render(request, 'back-end/hospitalisation/type_chambre_form.html', {'form': form , 'fonctionKey':fonctionKey})
+
+
+# --------------------------------------------------------------------------------------------------
+# VUE : Deuxième étape de la configuration de l'infrastructure de soins.
+# FONCTION : Gère l'enregistrement des chambres physiques et de leurs prix par nuitée. Elle bloque
+#            l'accès et réoriente l'utilisateur vers l'étape 1 si aucune catégorie n'existe en base.
+# --------------------------------------------------------------------------------------------------
+@login_required
+def ajouter_chambre(request):
+    """ Étape 2 : Enregistrer une chambre physique """
+    # Sécurité métier : Empêche l'enregistrement d'une chambre orpheline sans type associé.
+    if not TypeChambre.objects.exists():
+        messages.warning(request, "Vous devez d'abord créer un Type de chambre avant d'ajouter une chambre.")
+        return redirect('ajouter_type_chambre')
+
+    if request.method == 'POST':
+        form = ChambreForm(request.POST)
+        if form.is_valid():
+            chambre = form.save()
+            messages.success(request, f"La chambre {chambre.nom_ou_numero} a été enregistrée.")
+            # Redirection logique et fluide vers l'étape 3 (Ajout du mobilier / des lits)
+            return redirect('ajouter_lit')
+    else:
+        form = ChambreForm()
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role else None
+
+    return render(request, 'back-end/hospitalisation/chambre_form.html', {'form': form, 'fonctionKey':fonctionKey})
+
+
+# --------------------------------------------------------------------------------------------------
+# VUE : Troisième et dernière étape de la configuration de l'infrastructure.
+# FONCTION : Ajoute les unités d'accueil individuelles (Lits) dans les chambres. Gère la double 
+#            possibilité de valider la saisie ou d'enchaîner sur un enregistrement en série.
+# --------------------------------------------------------------------------------------------------
+@login_required
+def ajouter_lit(request):
+    """ Étape 3 : Enregistrer un lit dans une chambre """
+    # Sécurité métier : Interdit de créer un lit s'il n'y a aucun local physique pour le recevoir.
+    if not Chambre.objects.exists():
+        messages.warning(request, "Vous devez d'abord créer une chambre avant d'y ajouter des lits.")
+        return redirect('ajouter_chambre')
+
+    if request.method == 'POST':
+        form = LitForm(request.POST)
+        if form.is_valid():
+            lit = form.save()
+            messages.success(request, f"Le lit '{lit.nom_ou_code}' a bien été ajouté à la {lit.chambre}.")
+            
+            # Optimisation UX : Permet à l'agent de configurer rapidement plusieurs lits pour une même chambre 
+            # sans subir de ruptures de navigation récurrentes vers le tableau de bord.
+            if 'ajouter_autre' in request.POST:
+                return redirect('ajouter_lit')
+            return redirect('dashboard_chambres')
+    else:
+        form = LitForm()
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role else None
+
+    return render(request, 'back-end/hospitalisation/lit_form.html', {'form': form , 'fonctionKey':fonctionKey})
+
+
+# --------------------------------------------------------------------------------------------------
+# VUE : Point d'entrée d'action unitaire et asynchrone (ou par redirection directe).
+# FONCTION : Permet aux infirmiers ou gestionnaires d'annuler une occupation ou de bloquer temporairement
+#            un lit à la volée depuis l'interface visuelle sans passer par un formulaire d'édition complet.
+# --------------------------------------------------------------------------------------------------
+@login_required
+def toggle_statut_lit(request, lit_id):
+    """ Action rapide pour occuper/libérer un lit depuis le dashboard """
+    lit = get_object_or_404(Lit, id=lit_id)
+    # Bascule booléenne de l'état d'occupation du lit
+    lit.est_occupe = not lit.est_occupe
+    lit.save()
+    messages.info(request, f"Le statut du lit {lit.nom_ou_code} a été modifié.")
+    return redirect('dashboard_chambres')
