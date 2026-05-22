@@ -165,6 +165,13 @@
                         <i class="fa fa-flask"></i> <span>Examens à réaliser</span>
                     </a>
                 </li> 
+
+                <li class="{% if request.resolver_match.url_name == 'historique_examens' %}active{% endif %}">
+                    <a href="{% url 'historique_examens' %}">
+                        <i class="fas fa-history"></i> 
+                        <span>Historique Examens</span>
+                    </a>
+                </li>
                 <!-- ========================================== -->
                 <!-- 6. MENU RADIOLOGUE (CORRIGÉ ICI)           -->
                 <!-- ========================================== -->
@@ -174,6 +181,14 @@
                         <i class="fa fa-flask"></i> <span>Examens à réaliser</span>
                     </a>
                 </li>
+
+                <li class="{% if request.resolver_match.url_name == 'historique_examens' %}active{% endif %}">
+                    <a href="{% url 'historique_examens' %}">
+                        <i class="fas fa-history"></i> 
+                        <span>Historique Examens</span>
+                    </a>
+                </li>
+
                 <!-- ========================================== -->
                 <!-- 7. MENU ECHOGRAPHE (CORRIGÉ ICI)           -->
                 <!-- ========================================== -->
@@ -181,6 +196,13 @@
                 <li class="{% if request.resolver_match.url_name == 'liste_examens_techniques' %}active{% endif %}">
                     <a href="{% url 'liste_examens_techniques' %}">
                         <i class="fa fa-flask"></i> <span>Examens à réaliser</span>
+                    </a>
+                </li>
+
+                <li class="{% if request.resolver_match.url_name == 'historique_examens' %}active{% endif %}">
+                    <a href="{% url 'historique_examens' %}">
+                        <i class="fas fa-history"></i> 
+                        <span>Historique Examens</span>
                     </a>
                 </li>
                 {% endif %}

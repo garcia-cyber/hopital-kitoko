@@ -1816,7 +1816,62 @@ def liste_attente_ordonnance_view(request):
         consultation__examens__statut='TERMINE'
     ).select_related('patient').distinct().order_by('-date_prelevement')
 
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role else None
+
     context = {
         'patients_en_attente': patients_en_attente,
+        'fonctionKey' : fonctionKey
     }
     return render(request, 'back-end/medecin/liste_attente.html', context)
+
+# ==================================================================================================
+# 44 : RESULTAT HISTORIQUE SOIT LABO , RADIO OU ECHO
+# ==================================================================================================
+@login_required
+def historique_examens_view(request):
+    """
+    Vue pour afficher l'historique de tous les examens terminés dans Moyanoli avec pagination.
+    """
+    # 1. Récupération et optimisation du QuerySet de base
+    examens_liste = DemandeExamen.objects.filter(
+        statut='TERMINE'
+    ).select_related(
+        'consultation__triage__patient',  # Accès direct aux infos du patient
+        'prestation',                     # Accès au prix et libellé de l'examen
+        'technicien'                      # Accès à l'utilisateur qui a fait l'examen
+    ).prefetch_related(
+        'technicien__user_fonction__fonctionKey'  # Récupère la fonction et le rôle associé
+    ).order_by('-date_realisation')
+
+    # 2. Configuration de la pagination (ex: 10 examens par page)
+    elements_par_page = 10
+    paginator = Paginator(examens_liste, elements_par_page)
+    
+    # 3. Récupération du numéro de la page actuelle depuis l'URL (?page=...)
+    page_number = request.GET.get('page')
+    
+    try:
+        historique_examens = paginator.get_page(page_number)
+    except PageNotAnInteger:
+        # Si le paramètre page n'est pas un entier, on renvoie la première page
+        historique_examens = paginator.page(1)
+    except EmptyPage:
+        # Si la page est hors limites, on renvoie la dernière page de résultats
+        historique_examens = paginator.page(paginator.num_pages)
+
+    # 4. Gestion des rôles utilisateur
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role else None
+
+    context = {
+        'historique_examens': historique_examens,  # Cet objet contient maintenant les méthodes de pagination (.has_next, etc.)
+        'fonctionKey': fonctionKey
+    }
+    
+    return render(request, 'back-end/examens/historique.html', context)
+
+# ==================================================================================================
+# 45 : GESTION HOPITALISATION
+# ==================================================================================================
+

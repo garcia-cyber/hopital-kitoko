@@ -30,13 +30,14 @@ class Role(models.Model):
 
 # 3 fonction ======================================================
 class Fonction(models.Model):
-    fonctionKey = models.ForeignKey(Role , on_delete = models.SET_NULL , null = True)
-    userKey     = models.ForeignKey(User , on_delete = models.SET_NULL , null = True)
-    autorisation = models.CharField(max_length = 30 , default = 'oui')
-
+    fonctionKey = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True)
+    userKey     = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='user_fonction')
+    autorisation = models.CharField(max_length=30, default='oui')
 
     def __str__(self):
-        return self.autorisation 
+        if self.userKey and self.fonctionKey:
+            return f"{self.userKey.username} - {self.fonctionKey.roleName}"
+        return f"Autorisation: {self.autorisation}"
 
 # 4 prestations
 

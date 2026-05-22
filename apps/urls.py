@@ -84,4 +84,9 @@ urlpatterns =[
     path('technique/examens-a-realiser/', views.liste_examens_techniques, name='liste_examens_techniques'),
     path('technique/saisir-resultats/<int:paiement_id>/', views.saisir_resultats_examens, name='saisir_resultats_examens'),
 
+    # ================================
+    # EXAMENS
+    path('examens/historique/', views.historique_examens_view, name='historique_examens'),
+
+
  ]
