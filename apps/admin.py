@@ -113,11 +113,16 @@ class DemandeExamenAdmin(admin.ModelAdmin):
     def get_patient(self, obj):
         return obj.consultation.triage.patient.noms
     get_patient.short_description = "Patient"
+    
+class LigneMedicamentInline(admin.TabularInline):
+    model = LigneMedicament
+    extra = 0
 
 @admin.register(Ordonnance)
 class OrdonnanceAdmin(admin.ModelAdmin):
-    list_display = ('consultation', 'type_ordonnance', 'date_prescrite')
+    list_display = ('id', 'consultation', 'type_ordonnance', 'date_prescrite')
     list_filter = ('type_ordonnance', 'date_prescrite')
+    inlines = [LigneMedicamentInline]
 
 @admin.register(LigneMedicament)
 class LigneMedicamentAdmin(admin.ModelAdmin):

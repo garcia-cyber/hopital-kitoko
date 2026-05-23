@@ -185,7 +185,8 @@
 
                                         <!-- 4. BOUTON ACTION INTELLIGENT (TRAITER / MODIFIER) -->
                                         <td class="text-center align-middle">
-                                            {% if c.diagnostic_final %}
+                                            <!-- CORRECTION DE LA LOGIQUE : On teste si le diagnostic ou l'ordonnance existe -->
+                                            {% if c.diagnostic_final or c.contenu_ordonnance %}
                                                 <button type="button" class="btn btn-warning btn-sm btn-block py-2 shadow-sm text-dark" data-toggle="modal" data-target="#modalOrdonnance{{ c.id }}" style="border-radius: 6px; font-weight: 600;">
                                                     <i class="fa fa-edit mr-1"></i> Modifier
                                                 </button>
@@ -264,13 +265,13 @@
                                                             <div class="form-group mb-3">
                                                                 <label class="font-weight-bold text-dark">Diagnostic Final <span class="text-danger">*</span></label>
                                                                 <input type="text" name="diagnostic_final" class="form-control" required 
-                                                                       value="{{ c.diagnostic_final|default:'' }}" placeholder="Saisir le diagnostic précis...">
+                                                                       value="{% if c.diagnostic_final %}{{ c.diagnostic_final }}{% endif %}" placeholder="Saisir le diagnostic précis...">
                                                             </div>
 
                                                             <div class="form-group mb-0">
                                                                 <label class="font-weight-bold text-dark">Ordonnance Médicale <span class="text-danger">*</span></label>
                                                                 <textarea name="contenu_ordonnance" class="form-control prescription-textarea" required 
-                                                                          placeholder="R/&#10;1. ...">{{ c.contenu_ordonnance|default:'' }}</textarea>
+                                                                          placeholder="R/&#10;1. ...">{% if c.contenu_ordonnance %}{{ c.contenu_ordonnance }}{% endif %}</textarea>
                                                             </div>
                                                         </div>
 

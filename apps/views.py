@@ -13,7 +13,7 @@ from datetime import timedelta
 from django.db import transaction
 from django.conf import settings
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.db.models.functions import Coalesce
+from django.db.models.functions import Coalesce , Length
 
 
 # Create your views here.
@@ -1811,34 +1811,37 @@ def dashboard_finance_depense(request):
 @login_required
 def liste_attente_ordonnance_view(request):
     """
-    Affiche la liste d'attente et gère la création/modification des ordonnances.
+    Affiche la liste d'attente des ordonnances (ordre décroissant).
+    Gère de façon transparente la création ou la modification d'une ordonnance.
     """
+    # --- TRAITEMENT DU FORMULAIRE (SAUVEGARDE / MODIFICATION) ---
     if request.method == 'POST':
         consultation_id = request.POST.get('consultation_id')
         diagnostic = request.POST.get('diagnostic_final')
         ordonnance = request.POST.get('contenu_ordonnance')
         
-        # Récupération de la consultation concernée
+        # Récupération de la consultation
         consultation = Consultation.objects.filter(id=consultation_id).first()
         
         if consultation:
-            # On enregistre (ou met à jour) le diagnostic et l'ordonnance
+            # Enregistrement des données (écrase l'ancien si modification, crée si premier passage)
             consultation.diagnostic_final = diagnostic
             consultation.contenu_ordonnance = ordonnance
-            
-            # Optionnel : Si tu as un champ pour marquer que la consultation est totalement bouclée
-            # consultation.statut = 'TERMINE' 
-            
             consultation.save()
-            messages.success(request, f"Ordonnance de {consultation.triage.patient.noms} enregistrée avec succès !")
-        
-        return redirect('liste_attente_ordonnance') # Remplace par le nom exact de ton URL
+            
+            messages.success(request, f"L'ordonnance de {consultation.triage.patient.noms} a été enregistrée avec succès !")
+        else:
+            messages.error(request, "Une erreur est survenue lors de la récupération de la consultation.")
+            
+        # CORRECTIF : Utilisation de request.path_info pour recharger la page courante sans dépendre du nom de l'URL
+        return redirect(request.path_info)
 
-    # --- CODE DE L'AFFICHAGE (GET) ---
+    # --- AFFICHAGE DE LA LISTE (GET) ---
     consultations_en_attente = Consultation.objects.filter(
         examens__statut='TERMINE'
     ).select_related('triage__patient').prefetch_related('examens').distinct().order_by('-id')
 
+    # Gestion de la session utilisateur / rôle
     role = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
 
@@ -2033,7 +2036,6 @@ def enregistrer_ordonnance_view(request, triage_id):
     consultation = get_object_or_404(Consultation, triage=triage)
     
     # 2. Récupération optimisée des examens
-    # On charge la 'prestation' (pour la valeur normale) ET le 'technicien' (pour le nom)
     examens_termines = consultation.examens.filter(statut='TERMINE').select_related('prestation', 'technicien')
     examens_en_attente = consultation.examens.filter(statut='EN_ATTENTE')
     
@@ -2046,16 +2048,18 @@ def enregistrer_ordonnance_view(request, triage_id):
         posologies = request.POST.getlist('posologie[]')
         durees = request.POST.getlist('duree[]')
         
-        # Création de l'ordonnance
+        # Création de l'ordonnance structurée
         ordonnance = Ordonnance.objects.create(
             consultation=consultation,
             type_ordonnance=type_ordonnance,
             observation=observation
         )
         
+        # Pour stocker la version texte destinée à liste_ordonnances_delivrees_view
+        lignes_texte_ordonnance = []
+        
         # Sauvegarde des lignes de médicaments
         for i in range(len(noms_medocs)):
-            # On vérifie que le nom du médicament n'est pas vide
             if noms_medocs[i] and noms_medocs[i].strip():
                 LigneMedicament.objects.create(
                     ordonnance=ordonnance,
@@ -2063,6 +2067,21 @@ def enregistrer_ordonnance_view(request, triage_id):
                     posologie=posologies[i],
                     duree=durees[i]
                 )
+                # On prépare le texte à mettre dans consultation.ordonnance
+                texte_ligne = f"- {noms_medocs[i]} : {posologies[i]} ({durees[i]})"
+                lignes_texte_ordonnance.append(texte_ligne)
+        
+        # --- LE CORRECTIF ICI ---
+        # On rassemble tous les médicaments sous forme de texte séparé par des retours à la ligne
+        # Et s'il y a des observations, on les ajoute à la fin.
+        texte_final = "\n".join(lignes_texte_ordonnance)
+        if observation:
+            texte_final += f"\n\nObservation: {observation}"
+            
+        # On met à jour le champ de la consultation pour que l'autre vue le détecte !
+        consultation.ordonnance = texte_final
+        consultation.save()
+        # ------------------------
         
         # Mise à jour du triage et redirection
         triage.est_consulte = True
@@ -2079,3 +2098,52 @@ def enregistrer_ordonnance_view(request, triage_id):
         'examens_en_attente': examens_en_attente,
     }
     return render(request, 'back-end/medecin/enregistrer_ordonnance.html', context)
+
+#
+# ===========================================================================================
+# LISTE ORDONNANCE COTE MEDECIN
+# ============================================================================================
+@login_required
+def liste_ordonnances_delivrees_view(request):
+    """
+    Affiche la liste des ordonnances (Modèle Ordonnance) prescrites par le médecin.
+    Permet également de stopper un médicament spécifique.
+    """
+    
+    # --- GESTION DES ACTIONS (POST) ---
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        # Action pour stopper TOUTE l'ordonnance ou un médicament
+        if action == 'stopper_medicament':
+            ligne_id = request.POST.get('ligne_id')
+            motif = request.POST.get('motif_arret', 'Arrêté par le médecin')
+            
+            if ligne_id and ligne_id.isdigit():
+                ligne = LigneMedicament.objects.filter(id=int(ligne_id)).first()
+                if ligne:
+                    ligne.statut = 'STOPPE'
+                    ligne.motif_arret = motif
+                    ligne.date_modification = timezone.now()
+                    ligne.save()
+                    messages.warning(request, f"Le médicament '{ligne.nom_medicament}' a été stoppé.")
+            return redirect(request.path_info)
+
+    # --- REQUÊTE GET : AFFICHAGE DEPUIS LE MODÈLE ORDONNANCE ---
+    # On récupère toutes les ordonnances avec le patient lié, et on pré-charge ses médicaments
+    ordonnances_medecin = Ordonnance.objects.select_related(
+        'consultation__triage__patient'
+    ).prefetch_related(
+        'medicaments'
+    ).order_by('-date_prescrite')
+
+    # Gestion du rôle utilisateur pour la sidebar
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    context = {
+        'ordonnances_medecin': ordonnances_medecin,
+        'fonctionKey': fonctionKey
+    }
+    
+    return render(request, 'back-end/medecin/liste_ordonnances_delivrees.html', context)

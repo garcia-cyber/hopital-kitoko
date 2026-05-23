@@ -181,6 +181,13 @@
                         </a>
                     </li>
 
+                    <li class="{% if request.resolver_match.url_name == 'liste_ordonnances_delivrees' %}active{% endif %}">
+                        <a href="{% url 'liste_ordonnances_delivrees' %}">
+                            <i class="fa fa-book-medical"></i> 
+                            <span>Suivi des Ordonnances</span>
+                        </a>
+                    </li>
+
                 <!-- ========================================== -->
                 <!-- 5. MENU LABORANTIN                         -->
                 <!-- ========================================== -->
