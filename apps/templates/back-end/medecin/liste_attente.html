@@ -4,43 +4,77 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Salle d'Attente Médicale & Résultats - Moyanoli</title>
+    <title>Liste d'Attente Ordonnances - Moyanoli</title>
     {% include 'back-end/includes/css.html' %}
     <style>
-        .clinical-title {
-            font-size: 14px;
-            font-weight: bold;
-            color: #495057;
-            text-transform: uppercase;
-            background-color: #e9ecef;
-            padding: 6px 12px;
+        /* Couleurs et Badges des Catégories */
+        .badge-labo { background-color: #e6f7ed; color: #1f7a42; border: 1px solid #c2eed4; font-weight: 600; }
+        .badge-echo { background-color: #fff9db; color: #926c00; border: 1px solid #ffe8cc; font-weight: 600; }
+        .badge-radio { background-color: #fff0f1; color: #b82c39; border: 1px solid #ffccd1; font-weight: 600; }
+        
+        /* Textarea de l'Ordonnance */
+        .prescription-textarea {
+            resize: vertical;
+            min-height: 140px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 15px;
+            line-height: 1.6;
+            background-color: #fafafa;
+        }
+        
+        /* Boîtier des valeurs de référence laboratoire */
+        .norme-box {
+            background-color: #f0f4f9;
+            color: #2b59c3;
+            border-left: 3px solid #4a77e5;
             border-radius: 4px;
-            margin-top: 15px;
         }
-        .clinical-text {
-            padding: 10px 15px;
-            background-color: #fff;
-            border-left: 3px solid #28a745;
-            border-radius: 0 4px 4px 0;
-            font-size: 14px;
-            color: #333;
-            min-height: 40px;
+
+        /* --- DESIGN DU TABLEAU MODERNE --- */
+        .custom-table-card {
+            border: none;
+            border-radius: 12px;
+            overflow: hidden;
         }
-        /* Badges personnalisés pour l'origine des saisies techniques */
-        .badge-labo {
-            background-color: #d1e7dd;
-            color: #0f5132;
-            border: 1px solid #badbcc;
+        .table-modern {
+            border-collapse: separate;
+            border-spacing: 0;
+            border: none !important;
         }
-        .badge-echo {
-            background-color: #fff3cd;
-            color: #664d03;
-            border: 1px solid #ffecb5;
+        .table-modern thead th {
+            background-color: #2c3e50 !important; /* Bleu ardoise professionnel */
+            color: #ffffff !important;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+            padding: 16px 20px !important;
+            border: none !important;
         }
-        .badge-radio {
-            background-color: #f8d7da;
-            color: #842029;
-            border: 1px solid #f5c2c7;
+        .table-modern tbody tr {
+            transition: all 0.2s ease-in-out;
+            background-color: #ffffff;
+        }
+        .table-modern tbody tr:hover {
+            background-color: #f8fafd !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+        .table-modern tbody td {
+            padding: 18px 20px !important;
+            border-bottom: 1px solid #edf2f7 !important; /* Lignes horizontales douces */
+            border-top: none !important;
+            border-left: none !important;
+            border-right: none !important;
+        }
+        /* Style des lignes de résultats individuelles */
+        .exam-result-item {
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            transition: border-color 0.2s;
+        }
+        .exam-result-item:hover {
+            border-color: #cbd5e1;
         }
     </style>
 </head>
@@ -52,23 +86,23 @@
         <div class="page-wrapper">
             <div class="content container-fluid">
             
-                <!-- Header de la Page -->
+                <!-- En-tête de la page -->
                 <div class="page-header">
                     <div class="row">
                         <div class="col">
-                            <h3 class="page-title">Salle d'Attente Médicale</h3>
+                            <h3 class="page-title" style="font-weight: 700; color: #1e293b;">Ordonnances en Attente</h3>
                             <ul class="breadcrumb">
                                 <li class="breadcrumb-item"><a href="#">Médecin</a></li>
-                                <li class="breadcrumb-item active">Examens Réalisés & Ordonnances</li>
+                                <li class="breadcrumb-item active">Consultations & Ordonnances</li>
                             </ul>
                         </div>
                     </div>
                 </div>
 
-                <!-- Messages Flash de notification -->
+                <!-- Messages Flash Django -->
                 {% if messages %}
                     {% for message in messages %}
-                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm" role="alert">
+                        <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show" role="alert">
                             {{ message }}
                             <button type="button" class="close" data-dismiss="alert" aria-label="Close">
                                 <span aria-hidden="true">&times;</span>
@@ -77,107 +111,186 @@
                     {% endfor %}
                 {% endif %}
 
-                <!-- TABLEAU PRINCIPAL DE LA LOGIQUE CLINIQUE -->
-                <div class="card shadow-sm">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="card-title mb-0" style="color: white;">
-                            <i class="fa fa-list-ol"></i> File d'attente des patients avec résultats disponibles
-                        </h5>
-                    </div>
-                    <div class="card-body">
+                <!-- Bloc Tableau Principal -->
+                <div class="card shadow-sm custom-table-card">
+                    <div class="card-body p-0">
                         <div class="table-responsive">
-                            <table class="table table-bordered table-striped table-hover" width="100%" cellspacing="0">
-                                <thead class="bg-light text-dark">
+                            <table class="table table-modern table-hover mb-0" width="100%">
+                                <thead>
                                     <tr>
                                         <th style="width: 15%;">Date Triage</th>
-                                        <th style="width: 25%;">Patient & Identifiants</th>
-                                        <th style="width: 45%;">Résultats Disponibles (Saisis par les Services)</th>
+                                        <th style="width: 25%;">Patient</th>
+                                        <th style="width: 45%;">Résultats Laboratoire / Imagerie</th>
                                         <th style="width: 15%;" class="text-center">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for triage in patients_en_attente %}
+                                    {% for c in consultations_en_attente %}
                                     <tr>
-                                        <!-- 📅 Colonne 1 : Date & Heure d'arrivée au triage -->
+                                        <!-- 1. DATE DU TRIAGE -->
                                         <td class="align-middle">
-                                            <strong>{{ triage.date_prelevement|date:"d/m/Y" }}</strong>
-                                            <br><small class="text-muted"><i class="fa fa-clock"></i> {{ triage.date_prelevement|date:"H:i" }}</small>
+                                            <div class="text-dark font-weight-bold" style="font-size: 0.95rem;">{{ c.triage.date_prelevement|date:"d/m/Y" }}</div>
+                                            <small class="text-muted"><i class="far fa-clock mr-1"></i>{{ c.triage.date_prelevement|date:"H:i" }}</small>
                                         </td>
 
-                                        <!-- 👤 Colonne 2 : Informations du patient -->
+                                        <!-- 2. DONNÉES DU PATIENT -->
                                         <td class="align-middle">
-                                            <span class="badge badge-dark mb-1">{{ triage.patient.code_patient }}</span>
-                                            <strong class="d-block text-uppercase text-dark">{{ triage.patient.noms }}</strong>
-                                            <small class="text-muted font-weight-bold">
-                                                {{ triage.patient.age }} ans | 
-                                                {% if triage.patient.sexe == 'M' %}
-                                                    <i class="fa fa-mars text-primary"></i> Masculin
-                                                {% else %}
-                                                    <i class="fa fa-venus text-danger"></i> Féminin
-                                                {% endif %}
+                                            <span class="badge badge-secondary mb-1 px-2 py-1" style="font-size: 0.75rem; background-color: #64748b;">{{ c.triage.patient.code_patient }}</span>
+                                            <span class="d-block text-uppercase font-weight-bold text-dark" style="font-size: 1rem; letter-spacing: 0.3px;">{{ c.triage.patient.noms }}</span>
+                                            <small class="text-secondary font-weight-bold">
+                                                {{ c.triage.patient.age }} ans &bull; {% if c.triage.patient.sexe == 'M' %}Masculin{% else %}Féminin{% endif %}
                                             </small>
                                         </td>
 
-                                        <!-- 🔬 Colonne 3 : Liste des examens faits et leur provenance selon ta logique -->
+                                        <!-- 3. RÉSULTATS ET COMPARAISON VALEURS DE RÉFÉRENCE -->
                                         <td class="align-middle">
-                                            <div class="d-flex flex-column">
-                                                
-                                                {% if triage.consultation.examens.all %}
-                                                    {% for exam in triage.consultation.examens.all %}
-                                                        {% if exam.statut == 'TERMINE' %}
-                                                            
-                                                            <div class="p-2 mb-2 rounded bg-white border shadow-sm d-flex justify-content-between align-items-center">
-                                                                <div>
-                                                                    <i class="fa fa-check text-success mr-2"></i> 
-                                                                    <span class="font-weight-bold text-dark">{{ exam.prestation.libelle }}</span>
-                                                                </div>
-                                                                
-                                                                <!-- Affichage ciblé de la mention du professionnel qui a fait la saisie -->
-                                                                <div>
-                                                                    {% if exam.prestation.categorie == 'LABO' %}
-                                                                        <span class="badge badge-labo p-2 small font-weight-bold">
-                                                                            <i class="fa fa-flask"></i> Saisi par le Laborantin
-                                                                        </span>
-                                                                    {% elif exam.prestation.categorie == 'ECHO' %}
-                                                                        <span class="badge badge-echo p-2 small font-weight-bold">
-                                                                            <i class="fa fa-video"></i> Saisi par l'Échographiste
-                                                                        </span>
-                                                                    {% elif exam.prestation.categorie == 'RADIO' %}
-                                                                        <span class="badge badge-radio p-2 small font-weight-bold">
-                                                                            <i class="fa fa-x-ray"></i> Saisi par le Radiologue
-                                                                        </span>
-                                                                    {% else %}
-                                                                        <span class="badge badge-light p-2 small border text-muted">
-                                                                            <i class="fa fa-user-cog"></i> Technique
-                                                                        </span>
-                                                                    {% endif %}
-                                                                </div>
+                                            <div class="d-flex flex-column gap-2">
+                                                {% for exam in c.examens.all %}
+                                                    {% if exam.statut == 'TERMINE' %}
+                                                    <div class="p-3 mb-2 exam-result-item shadow-sm">
+                                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                                            <div>
+                                                                <i class="fa fa-notes-medical text-primary mr-2"></i> 
+                                                                <span class="font-weight-bold text-dark" style="font-size: 0.95rem;">{{ exam.prestation.libelle }}</span>
                                                             </div>
+                                                            <div>
+                                                                {% if exam.prestation.categorie == 'LABO' %}
+                                                                    <span class="badge badge-labo px-2 py-1 small">Laboratoire</span>
+                                                                {% elif exam.prestation.categorie == 'ECHO' %}
+                                                                    <span class="badge badge-echo px-2 py-1 small">Échographie</span>
+                                                                {% elif exam.prestation.categorie == 'RADIO' %}
+                                                                    <span class="badge badge-radio px-2 py-1 small">Radiologie</span>
+                                                                {% else %}
+                                                                    <span class="badge badge-light px-2 py-1 small border text-muted">Technique</span>
+                                                                {% endif %}
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <!-- Résultat d'analyse envoyé par le service -->
+                                                        <div class="small text-dark p-2 rounded border-left border-success font-italic" style="white-space: pre-line; background-color: #f8fafc !important;">
+                                                            <strong>Résultat :</strong> {{ exam.resultat }}
+                                                        </div>
 
+                                                        <!-- Valeur normale (Uniquement affichée pour la catégorie LABO) -->
+                                                        {% if exam.prestation.categorie == 'LABO' %}
+                                                        <div class="small mt-2 p-2 norme-box font-italic">
+                                                            <i class="fa fa-info-circle mr-1"></i><strong>Valeur normale de référence :</strong> {{ exam.prestation.valeur_normale|default:"Non spécifiée" }}
+                                                        </div>
                                                         {% endif %}
-                                                    {% endfor %}
-                                                {% else %}
-                                                    <span class="text-muted font-italic small">Aucun examen demandé / finalisé.</span>
-                                                {% endif %}
-
+                                                    </div>
+                                                    {% endif %}
+                                                {% endfor %}
                                             </div>
                                         </td>
 
-                                        <!-- 🎯 Colonne 4 : Bouton mis en attente (Lien mort temporaire) -->
+                                        <!-- 4. BOUTON ACTION INTELLIGENT (TRAITER / MODIFIER) -->
                                         <td class="text-center align-middle">
-                                            <a href="#" class="btn btn-success btn-sm btn-block py-2 shadow-sm">
-                                                <i class="fa fa-file-medical"></i> Rédiger l'Ordonnance
-                                            </a>
+                                            {% if c.diagnostic_final %}
+                                                <button type="button" class="btn btn-warning btn-sm btn-block py-2 shadow-sm text-dark" data-toggle="modal" data-target="#modalOrdonnance{{ c.id }}" style="border-radius: 6px; font-weight: 600;">
+                                                    <i class="fa fa-edit mr-1"></i> Modifier
+                                                </button>
+                                            {% else %}
+                                                <button type="button" class="btn btn-primary btn-sm btn-block py-2 shadow-sm" data-toggle="modal" data-target="#modalOrdonnance{{ c.id }}" style="border-radius: 6px; font-weight: 600; background-color: #2563eb; border-color: #2563eb;">
+                                                    <i class="fa fa-file-medical mr-1"></i> Traiter
+                                                </button>
+                                            {% endif %}
                                         </td>
                                     </tr>
+
+                                    <!-- FENÊTRE MODALE DE Saisie / Édition (PROPRE A CHAQUE CONSULTATION) -->
+                                    <div class="modal fade" id="modalOrdonnance{{ c.id }}" tabindex="-1" role="dialog" aria-hidden="true">
+                                        <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+                                            <div class="modal-content" style="border-radius: 12px; overflow: hidden;">
+                                                <div class="modal-header text-white" style="background-color: #2c3e50;">
+                                                    <h5 class="modal-title" style="color: white; font-weight: 600;">
+                                                        <i class="fa fa-pen-nib mr-2"></i>Consultation & Ordonnance : {{ c.triage.patient.noms }}
+                                                    </h5>
+                                                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                                                        <span aria-hidden="true">&times;</span>
+                                                    </button>
+                                                </div>
+                                                
+                                                <form method="POST" action="">
+                                                    {% csrf_token %}
+                                                    <div class="modal-body" style="max-height: calc(100vh - 200px); overflow-y: auto; background-color: #f8fafc;">
+                                                        
+                                                        <!-- Constantes issues du Triage -->
+                                                        <div class="card p-3 border-0 shadow-sm mb-4" style="border-radius: 8px;">
+                                                            <h6 class="font-weight-bold text-secondary mb-3"><i class="fa fa-heartbeat text-danger mr-2"></i>Constantes vitales d'entrée :</h6>
+                                                            <div class="row text-dark small">
+                                                                <div class="col-4"><strong>T° :</strong> <span class="badge badge-light border text-dark">{{ c.triage.temperature|default:"--" }} °C</span></div>
+                                                                <div class="col-4"><strong>Tension :</strong> <span class="badge badge-light border text-dark">{{ c.triage.tension_arterielle|default:"--" }} mmHg</span></div>
+                                                                <div class="col-4"><strong>Poids :</strong> <span class="badge badge-light border text-dark">{{ c.triage.poids|default:"--" }} kg</span></div>
+                                                            </div>
+                                                        </div>
+
+                                                        <!-- Rappel des Résultats et Normes dans la modale -->
+                                                        <h6 class="text-uppercase font-weight-bold text-secondary mb-2" style="font-size: 0.8rem; letter-spacing: 0.5px;"><i class="fa fa-microscope mr-1"></i> Historique des analyses de la session</h6>
+                                                        <div class="bg-white p-3 rounded shadow-sm mb-4" style="max-height: 220px; overflow-y: auto; border: 1px solid #e2e8f0;">
+                                                            {% for exam in c.examens.all %}
+                                                                {% if exam.statut == 'TERMINE' %}
+                                                                <div class="mb-3 border-bottom pb-3">
+                                                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                                                        <span class="font-weight-bold text-dark">{{ exam.prestation.libelle }}</span>
+                                                                        {% if exam.prestation.categorie == 'LABO' %}
+                                                                            <span class="badge badge-labo px-2 py-1 small">Laboratoire</span>
+                                                                        {% else %}
+                                                                            <span class="badge badge-secondary px-2 py-1 small">Imagerie</span>
+                                                                        {% endif %}
+                                                                    </div>
+                                                                    
+                                                                    <div class="pl-2 small">
+                                                                        <div class="p-2 rounded font-italic text-dark mb-1" style="background-color: #f1f5f9; white-space: pre-line;">
+                                                                            <strong>Saisie Labo :</strong> {{ exam.resultat }}
+                                                                        </div>
+                                                                        {% if exam.prestation.categorie == 'LABO' %}
+                                                                        <div class="p-2 rounded norme-box font-italic">
+                                                                            <strong>Norme :</strong> {{ exam.prestation.valeur_normale|default:"Non spécifiée" }}
+                                                                        </div>
+                                                                        {% endif %}
+                                                                    </div>
+                                                                </div>
+                                                                {% endif %}
+                                                            {% endfor %}
+                                                        </div>
+
+                                                        <!-- Zone Active de Prescription du Médecin (Données persistantes si modification) -->
+                                                        <h6 class="text-uppercase font-weight-bold text-secondary mb-2" style="font-size: 0.8rem; letter-spacing: 0.5px;"><i class="fa fa-user-md mr-1"></i> Rédaction médicale</h6>
+                                                        <div class="card p-3 border-0 shadow-sm" style="border-radius: 8px;">
+                                                            
+                                                            <!-- Input caché obligatoire pour lier l'action POST à la bonne ligne de la BDD -->
+                                                            <input type="hidden" name="consultation_id" value="{{ c.id }}">
+
+                                                            <div class="form-group mb-3">
+                                                                <label class="font-weight-bold text-dark">Diagnostic Final <span class="text-danger">*</span></label>
+                                                                <input type="text" name="diagnostic_final" class="form-control" required 
+                                                                       value="{{ c.diagnostic_final|default:'' }}" placeholder="Saisir le diagnostic précis...">
+                                                            </div>
+
+                                                            <div class="form-group mb-0">
+                                                                <label class="font-weight-bold text-dark">Ordonnance Médicale <span class="text-danger">*</span></label>
+                                                                <textarea name="contenu_ordonnance" class="form-control prescription-textarea" required 
+                                                                          placeholder="R/&#10;1. ...">{{ c.contenu_ordonnance|default:'' }}</textarea>
+                                                            </div>
+                                                        </div>
+
+                                                    </div>
+                                                    <div class="modal-footer bg-light border-top">
+                                                        <button type="button" class="btn btn-secondary px-4" data-dismiss="modal" style="border-radius: 6px;">Fermer</button>
+                                                        <button type="submit" class="btn btn-success px-4" style="border-radius: 6px; background-color: #16a34a; border-color: #16a34a; font-weight: 600;">Enregistrer & Valider</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     {% empty %}
-                                    <!-- Si la salle d'attente est vide -->
                                     <tr>
                                         <td colspan="4" class="text-center py-5 bg-light">
                                             <div class="text-muted">
                                                 <i class="fa fa-check-circle fa-3x text-success mb-3"></i>
-                                                <h5 class="font-weight-bold">File d'attente vide !</h5>
-                                                <p class="mb-0">Tous les résultats d'examens reçus ont été traités.</p>
+                                                <h5 class="font-weight-bold">Aucune ordonnance en attente</h5>
+                                                <p class="mb-0">La file d'attente de la salle de consultation est vide.</p>
                                             </div>
                                         </td>
                                     </tr>

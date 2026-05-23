@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import SetPasswordForm ,UserChangeForm
 from django.contrib import messages
-from django.db.models import Q , Sum , DecimalField
+from django.db.models import Q , Sum , DecimalField ,Prefetch
 from decimal import Decimal , ROUND_HALF_UP
 import pytz
 from datetime import timedelta
@@ -1810,19 +1810,43 @@ def dashboard_finance_depense(request):
 # ==================================================================================================
 @login_required
 def liste_attente_ordonnance_view(request):
-    # On récupère les triages dont la consultation possède 
-    # AU MOINS un examen au statut 'TERMINE'
-    patients_en_attente = SigneVital.objects.filter(
-        consultation__examens__statut='TERMINE'
-    ).select_related('patient').distinct().order_by('-date_prelevement')
+    """
+    Affiche la liste d'attente et gère la création/modification des ordonnances.
+    """
+    if request.method == 'POST':
+        consultation_id = request.POST.get('consultation_id')
+        diagnostic = request.POST.get('diagnostic_final')
+        ordonnance = request.POST.get('contenu_ordonnance')
+        
+        # Récupération de la consultation concernée
+        consultation = Consultation.objects.filter(id=consultation_id).first()
+        
+        if consultation:
+            # On enregistre (ou met à jour) le diagnostic et l'ordonnance
+            consultation.diagnostic_final = diagnostic
+            consultation.contenu_ordonnance = ordonnance
+            
+            # Optionnel : Si tu as un champ pour marquer que la consultation est totalement bouclée
+            # consultation.statut = 'TERMINE' 
+            
+            consultation.save()
+            messages.success(request, f"Ordonnance de {consultation.triage.patient.noms} enregistrée avec succès !")
+        
+        return redirect('liste_attente_ordonnance') # Remplace par le nom exact de ton URL
+
+    # --- CODE DE L'AFFICHAGE (GET) ---
+    consultations_en_attente = Consultation.objects.filter(
+        examens__statut='TERMINE'
+    ).select_related('triage__patient').prefetch_related('examens').distinct().order_by('-id')
 
     role = Fonction.objects.filter(userKey=request.user).first()
-    fonctionKey = role.fonctionKey.roleName if role else None
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
 
     context = {
-        'patients_en_attente': patients_en_attente,
-        'fonctionKey' : fonctionKey
+        'consultations_en_attente': consultations_en_attente,
+        'fonctionKey': fonctionKey
     }
+    
     return render(request, 'back-end/medecin/liste_attente.html', context)
 
 # ==================================================================================================
@@ -1997,3 +2021,61 @@ def toggle_statut_lit(request, lit_id):
     lit.save()
     messages.info(request, f"Le statut du lit {lit.nom_ou_code} a été modifié.")
     return redirect('dashboard_chambres')
+
+
+# =====================================================================================================
+# REDIGE ORDONNANCE
+# =====================================================================================================
+@login_required
+def enregistrer_ordonnance_view(request, triage_id):
+    # 1. Récupération des objets de base
+    triage = get_object_or_404(SigneVital, id=triage_id)
+    consultation = get_object_or_404(Consultation, triage=triage)
+    
+    # 2. Récupération optimisée des examens
+    # On charge la 'prestation' (pour la valeur normale) ET le 'technicien' (pour le nom)
+    examens_termines = consultation.examens.filter(statut='TERMINE').select_related('prestation', 'technicien')
+    examens_en_attente = consultation.examens.filter(statut='EN_ATTENTE')
+    
+    if request.method == 'POST':
+        type_ordonnance = request.POST.get('type_ordonnance')
+        observation = request.POST.get('observation', '')
+        
+        # Récupération des listes dynamiques du formulaire
+        noms_medocs = request.POST.getlist('nom_medicament[]')
+        posologies = request.POST.getlist('posologie[]')
+        durees = request.POST.getlist('duree[]')
+        
+        # Création de l'ordonnance
+        ordonnance = Ordonnance.objects.create(
+            consultation=consultation,
+            type_ordonnance=type_ordonnance,
+            observation=observation
+        )
+        
+        # Sauvegarde des lignes de médicaments
+        for i in range(len(noms_medocs)):
+            # On vérifie que le nom du médicament n'est pas vide
+            if noms_medocs[i] and noms_medocs[i].strip():
+                LigneMedicament.objects.create(
+                    ordonnance=ordonnance,
+                    nom_medicament=noms_medocs[i],
+                    posologie=posologies[i],
+                    duree=durees[i]
+                )
+        
+        # Mise à jour du triage et redirection
+        triage.est_consulte = True
+        triage.save()
+        
+        messages.success(request, "L'ordonnance a été enregistrée avec succès.")
+        return redirect('dashboard') 
+
+    context = {
+        'triage': triage,
+        'patient': triage.patient,
+        'consultation': consultation,
+        'examens_termines': examens_termines,
+        'examens_en_attente': examens_en_attente,
+    }
+    return render(request, 'back-end/medecin/enregistrer_ordonnance.html', context)
