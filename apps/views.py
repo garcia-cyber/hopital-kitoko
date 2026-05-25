@@ -1560,7 +1560,7 @@ def uniquement_resultats_examens(request, patient_id):
 # ==================================================================================================
 @login_required
 def dashboard_finance(request):
-    # --- GESTION DES DATES ---
+    # --- GESTION DES DATES --- 
     maintenant = timezone.now()
     
     # Aujourd'hui à minuit (00:00:00)
@@ -1816,22 +1816,42 @@ def liste_attente_ordonnance_view(request):
         diagnostic = request.POST.get('diagnostic_final')
         contenu = request.POST.get('contenu_ordonnance')
         
+        # Récupération des listes de médicaments (données dynamiques du HTML)
+        noms = request.POST.getlist('nom_medicament[]')
+        posologies = request.POST.getlist('posologie[]')
+        durees = request.POST.getlist('duree[]')
+        
         consultation = Consultation.objects.filter(id=consultation_id).first()
         
         if consultation:
-            # On récupère ou crée l'ordonnance liée à la consultation
-            ordonnance, created = Ordonnance.objects.get_or_create(consultation=consultation)
-            
-            # Mise à jour des champs
-            ordonnance.observation = contenu 
-            ordonnance.type_ordonnance = 'DEFINITIVE' # Forcé comme demandé
-            ordonnance.save()
-            
-            # Mise à jour du diagnostic dans la consultation
-            consultation.diagnostic_final = diagnostic
-            consultation.save()
-            
-            messages.success(request, f"L'ordonnance de {consultation.triage.patient.noms} a été enregistrée avec succès !")
+            try:
+                with transaction.atomic():
+                    # 1. Mise à jour de la consultation (diagnostic)
+                    consultation.diagnostic_final = diagnostic
+                    consultation.save()
+                    
+                    # 2. Gestion de l'ordonnance
+                    ordonnance, created = Ordonnance.objects.get_or_create(consultation=consultation)
+                    ordonnance.observation = contenu 
+                    ordonnance.type_ordonnance = 'DEFINITIVE'
+                    ordonnance.save()
+                    
+                    # 3. Sauvegarde des médicaments
+                    # On supprime les anciens pour éviter les doublons lors d'une modification
+                    ordonnance.medicaments.all().delete()
+                    
+                    for nom, pos, dur in zip(noms, posologies, durees):
+                        if nom.strip(): # On n'enregistre que si le médicament n'est pas vide
+                            LigneMedicament.objects.create(
+                                ordonnance=ordonnance,
+                                nom_medicament=nom,
+                                posologie=pos,
+                                duree=dur
+                            )
+                
+                messages.success(request, f"Ordonnance de {consultation.triage.patient.noms} enregistrée avec succès !")
+            except Exception as e:
+                messages.error(request, f"Erreur lors de l'enregistrement : {str(e)}")
         else:
             messages.error(request, "Erreur : Consultation introuvable.")
             
@@ -2122,3 +2142,23 @@ def liste_ordonnances_delivrees_view(request):
     }
     
     return render(request, 'back-end/medecin/liste_ordonnances_delivrees.html', context)
+#
+# ===========================================================================================
+# LISTE ORDONNANCE COTE MEDECIN
+# ============================================================================================
+@login_required
+def liste_ordonnances_prescrites_view(request):
+    # On récupère les ordonnances définitives
+    ordonnances = Ordonnance.objects.filter(type_ordonnance='DEFINITIVE').select_related(
+        'consultation__triage__patient', 
+        'consultation__medecin' 
+    ).prefetch_related(
+        'consultation__examens__prestation', # Chargement des examens et leur prestation
+        'consultation__examens__technicien'  # Chargement du technicien qui a fait l'examen
+    ).order_by('-id')
+
+    # ... reste du code role/fonctionKey ...
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+    context = {'ordonnances': ordonnances , 'fonctionKey': fonctionKey}
+    return render(request, 'back-end/medecin/liste_ordonnances.html', context)

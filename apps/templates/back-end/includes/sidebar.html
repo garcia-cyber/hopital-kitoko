@@ -171,6 +171,11 @@
                             <i class="fa fa-ambulance"></i> 
                             <span>Ordonnances d'Urgence</span>
                         </a>
+
+                        <a href="{% url 'liste_ordonnances' %}">
+    <i class="fa fa-list-alt"></i> 
+    <span>Historique Ordonnances</span>
+</a>
                     </li>
 
                     <li class="{% if request.resolver_match.url_name == 'liste_attente_medecin' %}active{% endif %}">
@@ -187,6 +192,7 @@
                             <span>Suivi des Ordonnances</span>
                         </a>
                     </li>
+
 
                 <!-- ========================================== -->
                 <!-- 5. MENU LABORANTIN                         -->
