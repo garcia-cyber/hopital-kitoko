@@ -114,20 +114,25 @@ class DemandeExamenAdmin(admin.ModelAdmin):
         return obj.consultation.triage.patient.noms
     get_patient.short_description = "Patient"
     
-class LigneMedicamentInline(admin.TabularInline):
+class LigneMedicamentInline(admin.TabularInline): # TabularInline affiche sous forme de tableau
     model = LigneMedicament
-    extra = 0
+    extra = 1  # Nombre de lignes vides pour ajouter rapidement des médicaments
+    fields = ('nom_medicament', 'posologie', 'duree', 'statut')
 
+# 2. Configuration de l'admin pour Ordonnance
 @admin.register(Ordonnance)
 class OrdonnanceAdmin(admin.ModelAdmin):
     list_display = ('id', 'consultation', 'type_ordonnance', 'date_prescrite')
     list_filter = ('type_ordonnance', 'date_prescrite')
-    inlines = [LigneMedicamentInline]
+    search_fields = ('consultation__triage__patient__noms',) # Permet de chercher par nom de patient
+    inlines = [LigneMedicamentInline] # C'est ici que le lien se fait
 
+# 3. Configuration de l'admin pour LigneMedicament
 @admin.register(LigneMedicament)
 class LigneMedicamentAdmin(admin.ModelAdmin):
-    list_display = ('nom_medicament', 'posologie', 'statut', 'ordonnance')
-    list_filter = ('statut',)
+    list_display = ('nom_medicament', 'posologie', 'duree', 'statut', 'ordonnance')
+    list_filter = ('statut', 'ordonnance__type_ordonnance')
+    search_fields = ('nom_medicament',)
 
 
 # ==================================================================================================

@@ -356,3 +356,14 @@ class LitForm(forms.ModelForm):
             'nom_ou_code': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Lit A, Lit 01...'}),
             'est_actif': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
+
+
+class OrdonnanceForm(forms.ModelForm):
+    class Meta:
+        model = Ordonnance
+        fields = ['type_ordonnance', 'observation']
+
+class LigneMedicamentForm(forms.ModelForm):
+    class Meta:
+        model = LigneMedicament
+        fields = ['nom_medicament', 'posologie', 'duree']
