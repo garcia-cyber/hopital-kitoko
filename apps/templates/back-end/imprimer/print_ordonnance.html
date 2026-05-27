@@ -71,18 +71,6 @@
         </tbody>
     </table>
 
-    <h3>Résultats Examens</h3>
-    <table>
-        <thead><tr><th>Examen</th><th>Résultat</th></tr></thead>
-        <tbody>
-            {% for ex in ord.consultation.examens.all %}
-            <tr><td><strong>{{ ex.prestation.libelle }}</strong></td><td>{{ ex.resultat|default:"En attente..." }}</td></tr>
-            {% empty %}
-            <tr><td colspan="2" style="color: #999;">Aucun examen associé.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
-
     <div class="signature-box">
         <div class="note-area">
             <strong>Notes :</strong><br>
