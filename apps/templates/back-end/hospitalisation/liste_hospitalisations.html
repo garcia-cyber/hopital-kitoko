@@ -1,0 +1,75 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <title>Suivi Hospitalisations - Moyanoli Medical ERP</title>
+    {% include 'back-end/includes/css.html' %}
+</head>
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/includes/header.html' %}
+        {% include 'back-end/includes/sidebar.html' %}
+        
+        <div class="page-wrapper">
+            <div class="content container-fluid">
+                <div class="page-header d-flex justify-content-between align-items-center mb-4">
+                    <h3 class="page-title">Suivi des Séjours</h3>
+                    <a href="{% url 'admettre_patient' %}" class="btn btn-primary"><i class="la la-plus"></i> Nouvelle Admission</a>
+                </div>
+
+                <div class="card">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Patient</th>
+                                        <th>Lit / Catégorie</th>
+                                        <th>Date Entrée</th>
+                                        <th>Durée</th>
+                                        <th>Coût Total</th>
+                                        <th>Statut</th>
+                                        <th class="text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for hosp in hospitalisations %}
+                                    <tr>
+                                        <td><strong>{{ hosp.patient.noms }}</strong></td>
+                                        <td>
+                                            {{ hosp.lit.nom_lit }} 
+                                            <br><small class="text-muted">{{ hosp.lit.type_chambre.libelle }}</small>
+                                        </td>
+                                        <td>{{ hosp.date_entree|date:"d/m/Y H:i" }}</td>
+                                        <td><span class="badge badge-light">{{ hosp.nombre_jours }} jour(s)</span></td>
+                                        <td><strong>{{ hosp.cout_total|floatformat:0 }} FC</strong></td>
+                                        <td>
+                                            <span class="badge {% if hosp.statut == 'EN_COURS' %}badge-success{% elif hosp.statut == 'TERMINE' %}badge-info{% else %}badge-secondary{% endif %}">
+                                                {{ hosp.get_statut_display }}
+                                            </span>
+                                        </td>
+                                        <td class="text-right">
+                                            {% if hosp.statut == 'EN_COURS' %}
+                                                <a href="#" class="btn btn-sm btn-outline-danger" title="Clôturer le séjour">
+                                                    <i class="la la-door-open"></i> Sortie
+                                                </a>
+                                            {% else %}
+                                                <a href="#" class="btn btn-sm btn-outline-info">Détails</a>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr><td colspan="7" class="text-center">Aucune hospitalisation enregistrée.</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% include 'back-end/includes/js.html' %}
+</body>
+</html>

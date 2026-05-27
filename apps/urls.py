@@ -43,6 +43,7 @@ urlpatterns =[
      path('patients/enregistrement/', views.enregistrement_patient, name='enregistrement_patient'),
      path('patients/modifier/<int:pk>/', views.modifier_patient, name='modifier_patient'),
      path('patients/liste/', views.liste_patients, name='liste_patients'),
+     path('dossier-medical/<int:patient_id>/', views.dossier_medical_complet, name='dossier_medical_complet'),
 
      # ====================================
      # FINANCE
@@ -98,6 +99,8 @@ urlpatterns =[
     path('chambres/nouvelle/', views.ajouter_chambre, name='ajouter_chambre'),
     path('lits/nouveau/', views.ajouter_lit, name='ajouter_lit'),
     path('lits/<int:lit_id>/toggle/', views.toggle_statut_lit, name='lit_toggle_statut'),
+    path('hospitalisations/', views.liste_hospitalisations, name='liste_hospitalisations'),
+    path('hospitalisations/admettre/', views.admettre_patient, name='admettre_patient'),
 
 
 

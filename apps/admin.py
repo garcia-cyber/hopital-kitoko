@@ -185,62 +185,78 @@ class DepenseAdmin(admin.ModelAdmin):
 
 
 # =================================================================================================================
+# 1. Permet de modifier les lits directement dans la fiche Chambre
+class LitInline(admin.TabularInline):
+    model = Lit
+    extra = 1  # Nombre de lignes vides à afficher par défaut
+    fields = ('nom_lit', 'est_occupe', 'est_actif')
+
 @admin.register(TypeChambre)
 class TypeChambreAdmin(admin.ModelAdmin):
-    list_display = ('libelle', 'description')
+    list_display = ('libelle', 'prix_nuitée')
     search_fields = ('libelle',)
-
-
-class LitInline(admin.TabularInline):
-    """
-    Permet d'ajouter, modifier ou voir les lits d'une chambre 
-    directement depuis la page de modification de cette chambre.
-    """
-    model = Lit
-    extra = 1 # Nombre de lignes vides affichées par défaut pour ajouter de nouveaux lits
-    fields = ('nom_ou_code', 'est_occupe', 'est_actif')
-
+    list_editable = ('prix_nuitée',) # Permet de changer les prix directement depuis la liste
 
 @admin.register(Chambre)
 class ChambreAdmin(admin.ModelAdmin):
-    list_display = (
-        'nom_ou_numero', 
-        'type_chambre', 
-        'prix_par_jour', 
-        'localisation', 
-        'est_active',
-        'afficher_lits_total',       # Colonne personnalisée basée sur ta property
-        'afficher_lits_dispo'        # Colonne personnalisée basée sur ta property
-    )
-    list_filter = ('type_chambre', 'est_active', 'localisation')
-    search_fields = ('nom_ou_numero', 'localisation')
-    ordering = ('nom_ou_numero',)
-    
-    # Intégration des lits directement dans la fiche de la chambre
-    inlines = [LitInline]
+    list_display = ('nom', 'type_chambre', 'get_prix', 'nb_lits', 'est_active')
+    list_filter = ('type_chambre', 'est_active')
+    search_fields = ('nom',)
+    inlines = [LitInline] # Intégration des lits
 
-    # --- Configuration de l'affichage des properties dans la liste ---
+    # Méthode pour afficher le prix lié au type dans la liste des chambres
+    def get_prix(self, obj):
+        return f"{obj.type_chambre.prix_nuitée} €"
+    get_prix.short_description = 'Prix / Nuit'
 
-    def afficher_lits_total(self, obj):
-        return obj.nombre_lits_total
-    afficher_lits_total.short_description = "Lits Total" # Titre de la colonne
-
-    def afficher_lits_dispo(self, obj):
-        total_dispo = obj.nombre_lits_disponibles
-        if total_dispo == 0:
-            return "❌ Aucun lit libre"
-        return f"🟢 {total_dispo} libre(s)"
-    afficher_lits_dispo.short_description = "Disponibles"
-
+    # Méthode pour voir rapidement le nombre de lits sans ouvrir la fiche
+    def nb_lits(self, obj):
+        return obj.lits.count()
+    nb_lits.short_description = 'Nombre de lits'
 
 @admin.register(Lit)
 class LitAdmin(admin.ModelAdmin):
-    list_display = ('nom_ou_code', 'chambre', 'get_type_chambre', 'est_occupe', 'est_actif')
-    list_filter = ('est_occupe', 'est_actif', 'chambre__type_chambre', 'chambre')
-    search_fields = ('nom_ou_code', 'chambre__nom_ou_numero')
-    list_editable = ('est_occupe', 'est_actif') # Permet de cocher/décocher directement depuis la liste
+    list_display = ('nom_lit', 'chambre', 'est_occupe', 'est_actif')
+    list_filter = ('est_occupe', 'est_actif', 'chambre__nom')
+    search_fields = ('nom_lit', 'chambre__nom')
+    list_editable = ('est_occupe', 'est_actif')
 
-    def get_type_chambre(self, obj):
-        """ Récupère le type de chambre à travers la relation ForeignKey """
-        return obj.chambre.type_chambre.libelle
-    get_type_chambre.short_description = "Type de Chambre"
+
+
+@admin.register(Hospitalisation)
+class HospitalisationAdmin(admin.ModelAdmin):
+    # Affichage des colonnes dans la liste
+    list_display = (
+        'patient', 
+        'lit', 
+        'date_entree', 
+        'statut', 
+        'date_sortie'
+    )
+    
+    # Filtres latéraux pour une gestion rapide
+    list_filter = ('statut', 'date_entree', 'lit__chambre')
+    
+    # Recherche par nom de patient ou nom de lit
+    search_fields = ('patient__noms', 'lit__nom_lit', 'motif_admission')
+    
+    # Organisation des champs par blocs pour plus de clarté
+    fieldsets = (
+        ('Informations d\'Admission', {
+            'fields': ('patient', 'lit', 'motif_admission')
+        }),
+        ('Suivi et État', {
+            'fields': ('statut', 'date_entree', 'date_sortie', 'observations')
+        }),
+    )
+    
+    # Actions personnalisées (Optionnel : permet de marquer comme terminé depuis la liste)
+    actions = ['marquer_comme_termine']
+
+    def marquer_comme_termine(self, request, queryset):
+        for obj in queryset:
+            obj.statut = 'TERMINE'
+            obj.save() # Le save() automatique gérera la libération du lit
+        self.message_user(request, "Les hospitalisations sélectionnées ont été marquées comme terminées.")
+    
+    marquer_comme_termine.short_description = "Marquer comme terminées"

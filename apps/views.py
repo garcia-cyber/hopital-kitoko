@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import SetPasswordForm ,UserChangeForm
 from django.contrib import messages
-from django.db.models import Q , Sum , DecimalField ,Prefetch
+from django.db.models import Q , Sum , DecimalField ,Prefetch , Count
 from decimal import Decimal , ROUND_HALF_UP
 import pytz
 from datetime import timedelta
@@ -1929,21 +1929,32 @@ def historique_examens_view(request):
 # --------------------------------------------------------------------------------------------------
 @login_required
 def dashboard_chambres(request):
-    """ Affichage global de la situation des chambres et lits """
-    # Optimisation SQL : select_related évite le problème N+1 sur le type de chambre,
-    # et prefetch_related charge tous les lits dépendants en une seule requête secondaire.
+    """ Affichage global de la situation des chambres, prix et lits """
+    
+    # 1. Récupération des chambres avec jointures optimisées
     chambres = Chambre.objects.all().select_related('type_chambre').prefetch_related('lits')
-    # 4. Gestion des rôles utilisateur
-    role = Fonction.objects.filter(userKey=request.user).first()
+
+    # 2. Gestion des rôles utilisateur
+    role = Fonction.objects.filter(userKey=request.user).select_related('fonctionKey').first()
     fonctionKey = role.fonctionKey.roleName if role else None
+
+    # 3. Statistiques globales en UNE SEULE requête SQL (Agrégation)
+    # Cela évite de solliciter la base de données plusieurs fois inutilement.
+    stats = Lit.objects.aggregate(
+        total_lits=Count('id', filter=Q(est_actif=True)),
+        lits_occupes=Count('id', filter=Q(est_occupe=True, est_actif=True)),
+        lits_disponibles=Count('id', filter=Q(est_occupe=False, est_actif=True))
+    )
+
     context = {
-        'fonctionKey': fonctionKey , 
+        'fonctionKey': fonctionKey,
         'chambres': chambres,
-        'total_chambres': Chambre.objects.filter(est_active=True).count(),
-        'total_lits': Lit.objects.filter(est_actif=True).count(),
-        'lits_occupes': Lit.objects.filter(est_occupe=True, est_actif=True).count(),
-        'lits_disponibles': Lit.objects.filter(est_occupe=False, est_actif=True).count(),
+        'total_chambres': chambres.filter(est_active=True).count(),
+        'total_lits': stats['total_lits'],
+        'lits_occupes': stats['lits_occupes'],
+        'lits_disponibles': stats['lits_disponibles'],
     }
+    
     return render(request, 'back-end/hospitalisation/dashboard_chambres.html', context)
 
 
@@ -1987,7 +1998,7 @@ def ajouter_chambre(request):
         form = ChambreForm(request.POST)
         if form.is_valid():
             chambre = form.save()
-            messages.success(request, f"La chambre {chambre.nom_ou_numero} a été enregistrée.")
+            messages.success(request, f"La chambre {chambre.nom} a été enregistrée.")
             # Redirection logique et fluide vers l'étape 3 (Ajout du mobilier / des lits)
             return redirect('ajouter_lit')
     else:
@@ -2160,5 +2171,114 @@ def liste_ordonnances_prescrites_view(request):
     # ... reste du code role/fonctionKey ...
     role = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
     context = {'ordonnances': ordonnances , 'fonctionKey': fonctionKey}
     return render(request, 'back-end/medecin/liste_ordonnances.html', context)
+
+#
+# ===========================================================================================
+# HOSPITALISE PATIENT 
+# ============================================================================================
+@login_required
+def admettre_patient(request):
+    if request.method == 'POST':
+        form = HospitalisationForm(request.POST)
+        if form.is_valid():
+            # 1. On récupère le patient avant de sauvegarder pour vérifier son statut
+            patient = form.cleaned_data.get('patient')
+            
+            # Vérification de sécurité : le patient a-t-il payé sa fiche ?
+            # (Note : le filtre dans le formulaire empêche déjà ce choix, 
+            # mais cette ligne protège contre une requête POST forcée)
+            if not patient.fiche_payee:
+                messages.error(request, "Impossible d'admettre ce patient : fiche non payée.")
+                return render(request, 'back-end/hospitalisation/admettre.html', {'form': form})
+
+            # 2. Sauvegarde de l'hospitalisation
+            hospitalisation = form.save(commit=False)
+            
+            # (Optionnel) Enregistrement de l'agent
+            # hospitalisation.agent_admetteur = request.user 
+            
+            hospitalisation.save()
+            
+            messages.success(request, "Admission réussie et lit réservé.")
+            return redirect('liste_hospitalisations')
+        else:
+            # Le formulaire est invalide (ex: lit déjà pris), on affiche l'erreur spécifique
+            messages.error(request, "Erreur lors de l'admission. Veuillez vérifier les champs.")
+    else:
+        form = HospitalisationForm()
+
+    # Récupération du rôle pour le menu
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    return render(request, 'back-end/hospitalisation/admettre.html', {
+        'form': form, 
+        'fonctionKey': fonctionKey
+    })
+
+#
+# ===========================================================================================
+# LISTE DES PATIENT HOSPITALISE
+# ============================================================================================
+@login_required
+def liste_hospitalisations(request):
+    # Récupère toutes les hospitalisations
+    # On utilise .select_related('lit', 'lit__type_chambre') pour optimiser 
+    # la requête SQL et éviter des ralentissements lors de l'affichage des prix
+    hospitalisations = Hospitalisation.objects.select_related(
+        'patient', 'lit', 'lit__type_chambre'
+    ).order_by('-date_entree')
+
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    return render(request, 'back-end/hospitalisation/liste_hospitalisations.html', {
+        'hospitalisations': hospitalisations,
+        'fonctionKey': fonctionKey
+    })
+
+
+#
+# ===========================================================================================
+# DOSSIER MEDICALE
+# ============================================================================================
+@login_required
+def dossier_medical_complet(request, patient_id):
+    # 1. Récupération du patient
+    patient = get_object_or_404(Patient, id=patient_id)
+    
+    # 2. Sécurité : Vérification du paiement
+    if not patient.fiche_payee:
+        messages.error(request, "Accès refusé : Le paiement de la fiche est requis.")
+        return redirect('liste_patients')
+    
+    # 3. Récupération optimisée
+    # On récupère toutes les consultations liées au patient via le triage
+    historique_consultations = Consultation.objects.filter(
+        triage__patient=patient
+    ).order_by('-date_creation').prefetch_related(
+        'examens', 
+        'ordonnance_set__medicaments'
+    ).select_related('triage', 'medecin')
+    
+    # 4. Récupération des hospitalisations (via le champ ForeignKey 'patient')
+    hospitalisations = Hospitalisation.objects.filter(patient=patient).order_by('-date_entree')
+    
+    # 5. Récupération de TOUS les signes vitaux (indépendants des consultations)
+    signes_vitaux = SigneVital.objects.filter(patient=patient).order_by('-date_prelevement')
+    
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    context = {
+        'patient': patient,
+        'consultations': historique_consultations,
+        'hospitalisations': hospitalisations,
+        'signes_vitaux': signes_vitaux,
+        'fonctionKey' : fonctionKey
+    }
+    
+    return render(request, 'back-end/patient/dossier_medical.html', context)

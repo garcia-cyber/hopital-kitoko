@@ -92,8 +92,7 @@ class ModifierUserForm(forms.ModelForm):
         for field in self.fields:
             self.fields[field].widget.attrs.update({'class': 'form-control'})
 
-from django import forms
-from .models import Prestation
+
 
 class PrestationForm(forms.ModelForm):
     class Meta:
@@ -173,42 +172,42 @@ class ServiceForm(forms.ModelForm):
 # ====================================================
 #
 
-class PatientForm(forms.ModelForm):
-    class Meta:
-        model = Patient
-        # On exclut code_patient et created_by car ils sont gérés automatiquement
-        fields = ['noms', 'sexe', 'age', 'adresse', 'telephone', 'service']
+# class PatientForm(forms.ModelForm):
+#     class Meta:
+#         model = Patient
+#         # On exclut code_patient et created_by car ils sont gérés automatiquement
+#         fields = ['noms', 'sexe', 'age', 'adresse', 'telephone', 'service']
         
-        widgets = {
-            'noms': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Nom, Post-nom et Prénom'
-            }),
-            'sexe': forms.Select(attrs={
-                'class': 'form-control custom-select'
-            }),
-            'age': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Ex: 25 ans ou 6 mois'
-            }),
-            'telephone': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Ex: +243...'
-            }),
-            'adresse': forms.Textarea(attrs={
-                'class': 'form-control',
-                'rows': 3,
-                'placeholder': 'Adresse complète du patient'
-            }),
-            'service': forms.Select(attrs={
-                'class': 'form-control custom-select'
-            }),
-        }
+#         widgets = {
+#             'noms': forms.TextInput(attrs={
+#                 'class': 'form-control',
+#                 'placeholder': 'Nom, Post-nom et Prénom'
+#             }),
+#             'sexe': forms.Select(attrs={
+#                 'class': 'form-control custom-select'
+#             }),
+#             'age': forms.TextInput(attrs={
+#                 'class': 'form-control',
+#                 'placeholder': 'Ex: 25 ans ou 6 mois'
+#             }),
+#             'telephone': forms.TextInput(attrs={
+#                 'class': 'form-control',
+#                 'placeholder': 'Ex: +243...'
+#             }),
+#             'adresse': forms.Textarea(attrs={
+#                 'class': 'form-control',
+#                 'rows': 3,
+#                 'placeholder': 'Adresse complète du patient'
+#             }),
+#             'service': forms.Select(attrs={
+#                 'class': 'form-control custom-select'
+#             }),
+#         }
 
-    def __init__(self, *args, **kwargs):
-        super(PatientForm, self).__init__(*args, **kwargs)
-        # On peut personnaliser le libellé vide du menu déroulant des services
-        self.fields['service'].empty_label = "Choisir le service d'orientation"
+#     def __init__(self, *args, **kwargs):
+#         super(PatientForm, self).__init__(*args, **kwargs)
+#         # On peut personnaliser le libellé vide du menu déroulant des services
+#         self.fields['service'].empty_label = "Choisir le service d'orientation"
 
 # ===========================================================================
 #
@@ -329,32 +328,48 @@ class DepenseForm(forms.ModelForm):
 class TypeChambreForm(forms.ModelForm):
     class Meta:
         model = TypeChambre
-        fields = ['libelle', 'description']
+        fields = ['libelle', 'prix_nuitée'] # Vérifiez que le nom correspond exactement au modèle
         widgets = {
-            'libelle': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: VIP, Privée, Commune...'}),
-            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Description facultative...'}),
+            'libelle': forms.TextInput(attrs={'class': 'form-control'}),
+            'prix_nuitée': forms.NumberInput(attrs={'class': 'form-control'}),
         }
 
 class ChambreForm(forms.ModelForm):
     class Meta:
         model = Chambre
-        fields = ['nom_ou_numero', 'type_chambre', 'prix_par_jour', 'localisation', 'est_active']
+        # On utilise uniquement les champs définis dans le modèle Chambre
+        fields = ['nom', 'type_chambre', 'est_active']
+        
         widgets = {
-            'nom_ou_numero': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: 101, Bloc A-3...'}),
+            'nom': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Chambre 101'}),
             'type_chambre': forms.Select(attrs={'class': 'form-control'}),
-            'prix_par_jour': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Tarif par nuitée'}),
-            'localisation': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Pavillon A, 2ème étage'}),
             'est_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
+        labels = {
+            'nom': 'Nom ou Numéro de la chambre',
+            'type_chambre': 'Type de chambre',
+            'est_active': 'Disponible pour hospitalisation',
+        }
+
+# apps/forms.py
 
 class LitForm(forms.ModelForm):
     class Meta:
         model = Lit
-        fields = ['chambre', 'nom_ou_code', 'est_actif']
+        # On utilise les noms exacts définis dans le modèle Lit
+        fields = ['chambre', 'nom_lit', 'est_occupe', 'est_actif']
+        
         widgets = {
             'chambre': forms.Select(attrs={'class': 'form-control'}),
-            'nom_ou_code': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Lit A, Lit 01...'}),
+            'nom_lit': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Lit A, Lit 01...'}),
+            'est_occupe': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'est_actif': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+        labels = {
+            'chambre': 'Chambre associée',
+            'nom_lit': 'Nom ou Numéro du Lit',
+            'est_occupe': 'Déjà occupé ?',
+            'est_actif': 'Opérationnel / Actif',
         }
 
 
@@ -367,3 +382,54 @@ class LigneMedicamentForm(forms.ModelForm):
     class Meta:
         model = LigneMedicament
         fields = ['nom_medicament', 'posologie', 'duree']
+
+# ===============================================================================
+#
+# 
+
+
+class HospitalisationForm(forms.ModelForm):
+    class Meta:
+        model = Hospitalisation
+        fields = ['patient', 'lit', 'date_entree', 'motif_admission']
+        widgets = {
+            'patient': forms.Select(attrs={'class': 'form-control select2'}), # 'select2' pour la recherche JS
+            'lit': forms.Select(attrs={'class': 'form-control'}),
+            'date_entree': forms.DateTimeInput(attrs={
+                'class': 'form-control', 
+                'type': 'datetime-local'
+            }),
+            'motif_admission': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # 1. Filtrage Patient : Seulement ceux dont la fiche est payée
+        # Assurez-vous que votre modèle Patient possède un champ 'fiche_payee'
+        self.fields['patient'].queryset = Patient.objects.filter(fiche_payee=True)
+        
+        # 2. Filtrage Lit : Uniquement les lits libres et actifs
+        self.fields['lit'].queryset = Lit.objects.filter(est_occupe=False, est_actif=True)
+        
+        # 3. Initialisation de la date par défaut
+        self.fields['date_entree'].initial = timezone.now().strftime('%Y-%m-%dT%H:%M')
+
+    def clean_patient(self):
+        patient = self.cleaned_data.get('patient')
+        # Sécurité supplémentaire : vérifier si le patient est déjà en cours d'hospitalisation
+        if Hospitalisation.objects.filter(patient=patient, statut='EN_COURS').exists():
+            raise forms.ValidationError(f"Le patient {patient.noms} est déjà hospitalisé actuellement.")
+        return patient
+
+    def clean_lit(self):
+        lit = self.cleaned_data.get('lit')
+        
+        # Vérification en base pour éviter les accès concurrents
+        qs = Hospitalisation.objects.filter(lit=lit, statut='EN_COURS')
+        if self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+            
+        if qs.exists():
+            raise forms.ValidationError(f"Le lit {lit.nom_lit} vient d'être réservé par un autre patient.")
+        return lit
