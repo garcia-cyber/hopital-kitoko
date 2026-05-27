@@ -83,13 +83,17 @@ def dashboard(request):
 
     total_patients = Patient.objects.count()
 
+    # compte les entreprises
+    entreprise = Entreprise.objects.count()
+
 
 
     return render(request , 'back-end/index.html',
                   {
                   'fonctionKey': fonctionKey,
                   'utilisateurs' : utilisateurs ,
-                  'total_patients' : total_patients
+                  'total_patients' : total_patients ,
+                  'entreprise' : entreprise
                   }
                   )
 # 5
@@ -2289,11 +2293,14 @@ def detail_hospitalisation(request, pk):
     
     # Récupérer tout le carnet de suivi
     suivis = hosp.suivis_journaliers.all()
-    
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
     return render(request, 'back-end/hospitalisation/detail.html', {
         'hosp': hosp,
         'ordonnance': ordonnance,
-        'suivis': suivis
+        'suivis': suivis , 
+        'fonctionKey': fonctionKey
     })
 
 #
@@ -2385,4 +2392,41 @@ def creer_ordonnance_view(request, consultation_id):
             messages.error(request, f"Une erreur est survenue : {str(e)}")
 
     # 3. Affichage du formulaire (GET)
-    return render(request, 'back-end/medecin/creer_ordonnance.html', {'c': consultation}) 
+
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    return render(request, 'back-end/medecin/creer_ordonnance.html', {'c': consultation, 'fonctionKey': fonctionKey}) 
+
+
+
+#
+# ======================================================================================
+# ENREGISTREMENT DE L'ENTREPRISE
+# ======================================================================================
+@login_required
+def enregistrer_entreprise_view(request):
+    if request.method == 'POST':
+        form = EntrepriseForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "L'entreprise a été enregistrée avec succès.")
+            return redirect('liste_entreprises') # Remplacez par votre URL de redirection
+    else:
+        form = EntrepriseForm()
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    return render(request, 'back-end/entreprise/enregistrer_entreprise.html', {'form': form , 'fonctionKey':fonctionKey})
+
+#
+# ======================================================================================
+# LISTE DES ENTREPRISES
+# ======================================================================================
+@login_required
+def liste_entreprises_view(request):
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    entreprises = Entreprise.objects.all().order_by('-date_enregistrement')
+    return render(request, 'back-end/entreprise/liste_entreprises.html', {'entreprises': entreprises, 'fonctionKey':fonctionKey})

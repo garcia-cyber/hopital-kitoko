@@ -112,5 +112,11 @@ urlpatterns =[
     path('ordonnance/imprimer/<int:ordonnance_id>/', views.imprimer_ordonnance, name='imprimer_ordonnance'),
 
 
+    # ====================================
+    # ENTREPRISE
+    path('entreprise/enregistrer/', views.enregistrer_entreprise_view, name='enregistrer_entreprise'),
+
+    path('entreprises/', views.liste_entreprises_view, name='liste_entreprises'),
+
 
  ]

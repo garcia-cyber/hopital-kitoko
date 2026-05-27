@@ -436,3 +436,24 @@ class HospitalisationForm(forms.ModelForm):
         if qs.exists():
             raise forms.ValidationError(f"Le lit {lit.nom_lit} vient d'être réservé par un autre patient.")
         return lit
+
+
+# =======================================================================
+# formulaire entreprise add 
+# =======================================================================
+
+class EntrepriseForm(forms.ModelForm):
+    class Meta:
+        model = Entreprise
+        fields = ['nom', 'contact_responsable']
+        widgets = {
+            'nom': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nom de l\'entreprise'}),
+            'contact_responsable': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Numéro de téléphone'}),
+        }
+
+    def clean_nom(self):
+        nom = self.cleaned_data.get('nom')
+        # On vérifie si une entreprise avec ce nom existe déjà (insensible à la casse)
+        if Entreprise.objects.filter(nom__iexact=nom).exists():
+            raise ValidationError(f"L'entreprise '{nom}' est déjà enregistrée dans le système.")
+        return nom

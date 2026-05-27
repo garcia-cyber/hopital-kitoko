@@ -271,15 +271,16 @@ class Ordonnance(models.Model):
         return f"Ordonnance {self.get_type_ordonnance_display()} - {self.consultation.triage.patient.noms}"
 
 class Medicament(models.Model):
-    STATUT_CHOICES = [('EN_COURS', 'En cours'), ('STOPPE', 'Stoppé')]
     ordonnance = models.ForeignKey(Ordonnance, on_delete=models.CASCADE, related_name='medicaments')
     nom = models.CharField(max_length=255)
     posologie = models.CharField(max_length=255)
     duree = models.CharField(max_length=100)
+    STATUT_CHOICES = [('EN_COURS', 'En cours'), ('STOPPE', 'Stoppé')]
     statut = models.CharField(max_length=20, choices=STATUT_CHOICES, default='EN_COURS')
 
     def __str__(self):
-        return f"{self.nom} ({self.statut})"
+        return f"{self.nom} ({self.statut})"    
+
 
 # 13. LIGNE MEDICAMENT =============================================
 class LigneMedicament(models.Model):
@@ -470,3 +471,14 @@ class SuiviQuotidien(models.Model):
 
     def __str__(self):
         return f"Suivi de {self.hospitalisation.patient.noms} le {self.date_suivi.strftime('%d/%m/%Y')}"
+
+# =======================================================================================
+# Entreprise
+# =======================================================================================
+class Entreprise(models.Model):
+    nom = models.CharField(max_length=255, verbose_name="Nom de l'entreprise")
+    contact_responsable = models.CharField(max_length=100, verbose_name="Numéro du responsable")
+    date_enregistrement = models.DateTimeField(default=timezone.now, verbose_name="Date d'enregistrement")
+
+    def __str__(self):
+        return self.nom
