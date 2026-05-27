@@ -2181,38 +2181,37 @@ def liste_ordonnances_prescrites_view(request):
 # ============================================================================================
 @login_required
 def admettre_patient(request):
+    # Récupération du rôle pour le contexte (optimisation : on évite la requête si user n'est pas authentifié)
+    fonctionKey = None
+    if request.user.is_authenticated:
+        role = Fonction.objects.filter(userKey=request.user).first()
+        if role and role.fonctionKey:
+            fonctionKey = role.fonctionKey.roleName
+
     if request.method == 'POST':
         form = HospitalisationForm(request.POST)
         if form.is_valid():
-            # 1. On récupère le patient avant de sauvegarder pour vérifier son statut
             patient = form.cleaned_data.get('patient')
             
             # Vérification de sécurité : le patient a-t-il payé sa fiche ?
-            # (Note : le filtre dans le formulaire empêche déjà ce choix, 
-            # mais cette ligne protège contre une requête POST forcée)
             if not patient.fiche_payee:
                 messages.error(request, "Impossible d'admettre ce patient : fiche non payée.")
-                return render(request, 'back-end/hospitalisation/admettre.html', {'form': form})
+                return render(request, 'back-end/hospitalisation/admettre.html', {
+                    'form': form, 
+                    'fonctionKey': fonctionKey
+                })
 
-            # 2. Sauvegarde de l'hospitalisation
-            hospitalisation = form.save(commit=False)
-            
-            # (Optionnel) Enregistrement de l'agent
-            # hospitalisation.agent_admetteur = request.user 
-            
-            hospitalisation.save()
-            
-            messages.success(request, "Admission réussie et lit réservé.")
-            return redirect('liste_hospitalisations')
+            # Sauvegarde
+            try:
+                hospitalisation = form.save()
+                messages.success(request, "Admission réussie et lit réservé.")
+                return redirect('liste_hospitalisations')
+            except Exception as e:
+                messages.error(request, f"Une erreur est survenue lors de l'enregistrement : {str(e)}")
         else:
-            # Le formulaire est invalide (ex: lit déjà pris), on affiche l'erreur spécifique
-            messages.error(request, "Erreur lors de l'admission. Veuillez vérifier les champs.")
+            messages.error(request, "Erreur lors de l'admission. Veuillez vérifier les champs du formulaire.")
     else:
         form = HospitalisationForm()
-
-    # Récupération du rôle pour le menu
-    role = Fonction.objects.filter(userKey=request.user).first()
-    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
 
     return render(request, 'back-end/hospitalisation/admettre.html', {
         'form': form, 
@@ -2225,11 +2224,11 @@ def admettre_patient(request):
 # ============================================================================================
 @login_required
 def liste_hospitalisations(request):
-    # Récupère toutes les hospitalisations
-    # On utilise .select_related('lit', 'lit__type_chambre') pour optimiser 
-    # la requête SQL et éviter des ralentissements lors de l'affichage des prix
+    # Correction : Le chemin complet vers le type de chambre est 'lit__chambre__type_chambre'
+    # 'patient' et 'lit' sont déjà inclus dans la chaîne.
     hospitalisations = Hospitalisation.objects.select_related(
-        'patient', 'lit', 'lit__type_chambre'
+        'patient', 
+        'lit__chambre__type_chambre'
     ).order_by('-date_entree')
 
     role = Fonction.objects.filter(userKey=request.user).first()

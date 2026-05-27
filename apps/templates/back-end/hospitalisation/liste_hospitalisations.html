@@ -3,8 +3,19 @@
 <html lang="fr">
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Suivi Hospitalisations - Moyanoli Medical ERP</title>
     {% include 'back-end/includes/css.html' %}
+    <style>
+        .page-wrapper { background-color: #f7f9fc; }
+        .card { border: none; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+        .table thead th { background: #f8f9fe; border: none; color: #707e8c; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px; padding: 20px; }
+        .table tbody td { padding: 20px; vertical-align: middle; border-color: #f1f1f1; }
+        .badge { padding: 0.5em 1em; border-radius: 50px; font-weight: 500; }
+        .btn-primary { border-radius: 10px; padding: 10px 20px; background: #5a8dee; border: none; }
+        .btn-outline-danger { border-radius: 8px; border: 1px solid #ff5b5b; color: #ff5b5b; }
+        .btn-outline-danger:hover { background: #ff5b5b; color: white; }
+    </style>
 </head>
 <body>
     <div class="main-wrapper">
@@ -13,15 +24,18 @@
         
         <div class="page-wrapper">
             <div class="content container-fluid">
-                <div class="page-header d-flex justify-content-between align-items-center mb-4">
-                    <h3 class="page-title">Suivi des Séjours</h3>
-                    <a href="{% url 'admettre_patient' %}" class="btn btn-primary"><i class="la la-plus"></i> Nouvelle Admission</a>
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h3 class="page-title">Suivi des Séjours</h3>
+                        <p class="text-muted">Gestion complète des hospitalisations en cours.</p>
+                    </div>
+                    <a href="{% url 'admettre_patient' %}" class="btn btn-primary shadow-sm"><i class="la la-plus"></i> Nouvelle Admission</a>
                 </div>
 
                 <div class="card">
-                    <div class="card-body">
+                    <div class="card-body p-0">
                         <div class="table-responsive">
-                            <table class="table table-hover">
+                            <table class="table table-hover mb-0">
                                 <thead>
                                     <tr>
                                         <th>Patient</th>
@@ -36,31 +50,36 @@
                                 <tbody>
                                     {% for hosp in hospitalisations %}
                                     <tr>
-                                        <td><strong>{{ hosp.patient.noms }}</strong></td>
                                         <td>
-                                            {{ hosp.lit.nom_lit }} 
-                                            <br><small class="text-muted">{{ hosp.lit.type_chambre.libelle }}</small>
+                                            <div class="font-weight-bold text-dark">{{ hosp.patient.noms }}</div>
+                                            <small class="text-muted">ID: {{ hosp.patient.id }}</small>
                                         </td>
-                                        <td>{{ hosp.date_entree|date:"d/m/Y H:i" }}</td>
-                                        <td><span class="badge badge-light">{{ hosp.nombre_jours }} jour(s)</span></td>
-                                        <td><strong>{{ hosp.cout_total|floatformat:0 }} FC</strong></td>
                                         <td>
-                                            <span class="badge {% if hosp.statut == 'EN_COURS' %}badge-success{% elif hosp.statut == 'TERMINE' %}badge-info{% else %}badge-secondary{% endif %}">
-                                                {{ hosp.get_statut_display }}
-                                            </span>
+                                            <div class="font-weight-bold">{{ hosp.lit.nom_lit }}</div>
+                                            <small class="text-primary font-weight-bold">{{ hosp.lit.chambre.type_chambre.libelle }}</small>
+                                        </td>
+                                        <td>{{ hosp.date_entree|date:"d M, Y" }}</td>
+                                        <td><span class="badge badge-soft-dark">{{ hosp.nombre_jours }} j</span></td>
+                                        <td class="font-weight-bold text-dark">{{ hosp.cout_total|floatformat:0 }} FC</td>
+                                        <td>
+                                            {% if hosp.statut == 'EN_COURS' %}
+                                                <span class="badge badge-soft-success text-success">En cours</span>
+                                            {% elif hosp.statut == 'TERMINE' %}
+                                                <span class="badge badge-soft-info text-info">Terminé</span>
+                                            {% else %}
+                                                <span class="badge badge-soft-secondary text-secondary">Annulé</span>
+                                            {% endif %}
                                         </td>
                                         <td class="text-right">
                                             {% if hosp.statut == 'EN_COURS' %}
-                                                <a href="#" class="btn btn-sm btn-outline-danger" title="Clôturer le séjour">
-                                                    <i class="la la-door-open"></i> Sortie
-                                                </a>
+                                                <a href="#" class="btn btn-sm btn-outline-danger"><i class="la la-door-open"></i> Sortie</a>
                                             {% else %}
                                                 <a href="#" class="btn btn-sm btn-outline-info">Détails</a>
                                             {% endif %}
                                         </td>
                                     </tr>
                                     {% empty %}
-                                    <tr><td colspan="7" class="text-center">Aucune hospitalisation enregistrée.</td></tr>
+                                    <tr><td colspan="7" class="text-center py-5">Aucune hospitalisation enregistrée.</td></tr>
                                     {% endfor %}
                                 </tbody>
                             </table>

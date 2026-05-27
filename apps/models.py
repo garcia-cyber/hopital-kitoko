@@ -411,8 +411,8 @@ class Hospitalisation(models.Model):
 
     @property
     def prix_par_jour(self):
-        # Accède au prix défini dans le TypeChambre via le lit associé
-        return self.lit.type_chambre.prix_nuitée
+        # Accède au prix défini dans le TypeChambre en passant par la chambre du lit
+        return self.lit.chambre.type_chambre.prix_nuitée
 
     @property
     def nombre_jours(self):
