@@ -259,20 +259,27 @@ class DemandeExamen(models.Model):
     def __str__(self):
         return f"{self.prestation.libelle} pour {self.consultation.triage.patient.noms}"
 
-# 12. ORDONNANCE ===================================================
 class Ordonnance(models.Model):
-    TYPE_CHOICES = [
-        ('URGENCE', 'Ordonnance d’Urgence'),
-        ('DEFINITIVE', 'Ordonnance Définitive'),
-    ]
-    
-    consultation = models.ForeignKey(Consultation, on_delete=models.CASCADE)
+    TYPE_CHOICES = [('URGENCE', 'Ordonnance d’Urgence'), ('DEFINITIVE', 'Ordonnance Définitive')]
+    consultation = models.ForeignKey('Consultation', on_delete=models.CASCADE)
     date_prescrite = models.DateTimeField(default=timezone.now)
     type_ordonnance = models.CharField(max_length=20, choices=TYPE_CHOICES, default='URGENCE')
-    observation = models.TextField(blank=True, help_text="Note générale sur l'ordonnance")
+    diagnostic = models.CharField(max_length=255, blank=True)
+    observation = models.TextField(blank=True)
 
     def __str__(self):
-        return f"Ordonnance {self.get_type_ordonnance_display()} du {self.date_prescrite.strftime('%d/%m/%Y')}"
+        return f"Ordonnance {self.get_type_ordonnance_display()} - {self.consultation.triage.patient.noms}"
+
+class Medicament(models.Model):
+    STATUT_CHOICES = [('EN_COURS', 'En cours'), ('STOPPE', 'Stoppé')]
+    ordonnance = models.ForeignKey(Ordonnance, on_delete=models.CASCADE, related_name='medicaments')
+    nom = models.CharField(max_length=255)
+    posologie = models.CharField(max_length=255)
+    duree = models.CharField(max_length=100)
+    statut = models.CharField(max_length=20, choices=STATUT_CHOICES, default='EN_COURS')
+
+    def __str__(self):
+        return f"{self.nom} ({self.statut})"
 
 # 13. LIGNE MEDICAMENT =============================================
 class LigneMedicament(models.Model):
@@ -281,7 +288,13 @@ class LigneMedicament(models.Model):
         ('STOPPE', 'Stoppé / Changé'),
     ]
     
-    ordonnance = models.ForeignKey(Ordonnance, related_name='medicaments', on_delete=models.CASCADE)
+    # Utilisez un related_name unique pour éviter les conflits
+    ordonnance = models.ForeignKey(
+        'Ordonnance', 
+        related_name='lignes_medicaments', 
+        on_delete=models.CASCADE
+    )
+    
     nom_medicament = models.CharField(max_length=200)
     posologie = models.CharField(max_length=200, help_text="ex: 1 tab 3 fois par jour")
     duree = models.CharField(max_length=100, help_text="ex: 5 jours")

@@ -4,14 +4,16 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Liste d'Attente - Ordonnances</title>
+    <title>Liste d'Attente - Ordonnances | Moyanoli</title>
     {% include 'back-end/includes/css.html' %}
     <style>
         .badge-labo { background-color: #e6f7ed; color: #1f7a42; border: 1px solid #c2eed4; }
         .badge-echo { background-color: #fff9db; color: #926c00; border: 1px solid #ffe8cc; }
         .badge-radio { background-color: #fff0f1; color: #b82c39; border: 1px solid #ffccd1; }
         .prescription-textarea { resize: vertical; min-height: 100px; font-family: 'Courier New', monospace; font-size: 15px; border: 2px solid #e2e8f0; border-radius: 8px; }
-        .exam-card { border-left: 4px solid #3498db; background: #f8f9fa; padding: 10px; margin-bottom: 8px; border-radius: 4px; }
+        .exam-card { border-left: 4px solid #3498db; background: #f8f9fa; padding: 10px; margin-bottom: 8px; border-radius: 4px; font-size: 0.9rem; }
+        .btn-disabled { cursor: not-allowed; opacity: 0.6; }
+        .results-box { max-height: 150px; overflow-y: auto; background: #eef2f7; padding: 10px; border-radius: 8px; border: 1px solid #ced4da; }
     </style>
 </head>
 <body>
@@ -21,9 +23,9 @@
         
         <div class="page-wrapper">
             <div class="content container-fluid">
-                <div class="page-header d-flex justify-content-between">
+                <div class="page-header d-flex justify-content-between align-items-center mb-4">
                     <h3>Ordonnances en Attente</h3>
-                    <input type="text" id="searchInput" class="form-control w-25" placeholder="🔍 Rechercher un patient...">
+                    <input type="text" id="searchInput" class="form-control w-25" placeholder="🔍 Rechercher...">
                 </div>
 
                 <div class="card shadow-sm">
@@ -50,56 +52,64 @@
                                                     <span class="badge {% if exam.prestation.categorie == 'LABO' %}badge-labo{% elif exam.prestation.categorie == 'RADIO' %}badge-radio{% else %}badge-echo{% endif %}">
                                                         {{ exam.prestation.categorie }}
                                                     </span>
-                                                    <strong>{{ exam.prestation.libelle }}</strong>
+                                                    <strong>{{ exam.prestation.libelle }}</strong>: {{ exam.resultat }}
                                                 </div>
                                                 {% endif %}
                                             {% endfor %}
                                         </td>
-                                        <td class="text-center align-middle">
-                                            <button class="btn btn-primary" data-toggle="modal" data-target="#modal{{ c.id }}">Traiter</button>
-                                        </td>
+                                       <td class="text-center align-middle">
+    {% if c.ordonnance_set.exists %}
+        <button class="btn btn-secondary btn-disabled" disabled>Déjà Traité</button>
+    {% else %}
+        <a href="{% url 'creer_ordonnance' c.id %}" class="btn btn-primary">Traiter</a>
+    {% endif %}
+</td>
                                     </tr>
 
                                     <div class="modal fade" id="modal{{ c.id }}" tabindex="-1" role="dialog">
-                                        <div class="modal-dialog modal-lg">
-                                            <div class="modal-content">
-                                                <div class="modal-header" style="background: #2c3e50; color: white;">
-                                                    <h5 class="modal-title">Ordonnance : {{ c.triage.patient.noms }}</h5>
-                                                </div>
-                                                <form method="POST" action="">
-                                                    {% csrf_token %}
-                                                    <input type="hidden" name="action" value="enregistrer_ordonnance">
-                                                    <input type="hidden" name="consultation_id" value="{{ c.id }}">
-                                                    
-                                                    <div class="modal-body" style="background: #f8fafc;">
-                                                        <div class="form-group">
-                                                            <label class="font-weight-bold">Diagnostic Final</label>
-                                                            <input type="text" name="diagnostic_final" class="form-control" value="{{ c.diagnostic_final|default:'' }}" required>
-                                                        </div>
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="POST" action="">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="enregistrer_ordonnance">
+                <input type="hidden" name="consultation_id" value="{{ c.id }}">
+                
+                <div class="modal-header" style="background: #2c3e50; color: white;">
+                    <h5 class="modal-title">Ordonnance : {{ c.triage.patient.noms }}</h5>
+                </div>
 
-                                                        <label class="font-weight-bold">Prescription Médicamenteuse</label>
-                                                        <div id="zone-medicaments-{{ c.id }}">
-                                                            <div class="row mb-2">
-                                                                <div class="col"><input type="text" name="nom_medicament[]" class="form-control" placeholder="Médicament"></div>
-                                                                <div class="col"><input type="text" name="posologie[]" class="form-control" placeholder="Posologie"></div>
-                                                                <div class="col"><input type="text" name="duree[]" class="form-control" placeholder="Durée"></div>
-                                                            </div>
-                                                        </div>
-                                                        <button type="button" class="btn btn-info btn-sm mb-3" onclick="ajouterLigne('{{ c.id }}')">+ Ajouter un médicament</button>
+                <div class="modal-body">
+                    <div class="form-group mb-3">
+                        <label class="font-weight-bold">Type d'ordonnance</label>
+                        <select name="type_ordonnance" class="form-control" required>
+                            <option value="URGENCE">Ordonnance d’Urgence</option>
+                            <option value="DEFINITIVE" selected>Ordonnance Définitive</option>
+                        </select>
+                    </div>
 
-                                                        <div class="form-group">
-                                                            <label class="font-weight-bold">Notes générales</label>
-                                                            <textarea name="contenu_ordonnance" class="form-control prescription-textarea">{{ c.ordonnance_set.first.observation|default:'' }}</textarea>
-                                                        </div>
-                                                    </div>
-                                                    <div class="modal-footer">
-                                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Fermer</button>
-                                                        <button type="submit" class="btn btn-success">Enregistrer & Valider</button>
-                                                    </div>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    </div>
+                    <div class="form-group mb-3">
+                        <label class="font-weight-bold">Diagnostic Final</label>
+                        <input type="text" name="diagnostic_final" class="form-control" required>
+                    </div>
+
+                    <label class="font-weight-bold">Prescription Médicamenteuse</label>
+                    <div id="zone-medicaments-{{ c.id }}">
+                        <div class="row mb-2">
+                            <div class="col"><input type="text" name="nom_medicament[]" class="form-control" placeholder="Médicament" required></div>
+                            <div class="col"><input type="text" name="posologie[]" class="form-control" placeholder="Posologie" required></div>
+                            <div class="col"><input type="text" name="duree[]" class="form-control" placeholder="Durée" required></div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-info btn-sm mb-3" onclick="ajouterLigne('{{ c.id }}')">+ Ajouter un médicament</button>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Fermer</button>
+                    <button type="submit" class="btn btn-success">Enregistrer & Valider</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
                                     {% endfor %}
                                 </tbody>
                             </table>
@@ -111,7 +121,6 @@
     </div>
 
     <script>
-        // Recherche patient
         document.getElementById('searchInput').addEventListener('keyup', function() {
             let filter = this.value.toUpperCase();
             let rows = document.querySelector("#tablePatients tbody").rows;
@@ -121,20 +130,19 @@
             }
         });
 
-        // Ajout ligne médicament
         function ajouterLigne(id) {
             const zone = document.getElementById('zone-medicaments-' + id);
             const div = document.createElement('div');
             div.className = 'row mb-2';
             div.innerHTML = `
-                <div class="col"><input type="text" name="nom_medicament[]" class="form-control" placeholder="Médicament"></div>
-                <div class="col"><input type="text" name="posologie[]" class="form-control" placeholder="Posologie"></div>
-                <div class="col"><input type="text" name="duree[]" class="form-control" placeholder="Durée"></div>
+                <div class="col"><input type="text" name="nom_medicament[]" class="form-control" placeholder="Médicament" required></div>
+                <div class="col"><input type="text" name="posologie[]" class="form-control" placeholder="Posologie" required></div>
+                <div class="col"><input type="text" name="duree[]" class="form-control" placeholder="Durée" required></div>
+                <div class="col-auto"><button type="button" class="btn btn-danger btn-sm" onclick="this.parentElement.parentElement.remove()">✕</button></div>
             `;
             zone.appendChild(div);
         }
     </script>
-    
     {% include 'back-end/includes/js.html' %}
 </body>
 </html>

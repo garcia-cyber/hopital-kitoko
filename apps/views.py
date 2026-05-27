@@ -1810,13 +1810,12 @@ def dashboard_finance_depense(request):
 # ==================================================================================================
 @login_required
 def liste_attente_ordonnance_view(request):
-    # --- TRAITEMENT DU FORMULAIRE ---
     if request.method == 'POST' and request.POST.get('action') == 'enregistrer_ordonnance':
         consultation_id = request.POST.get('consultation_id')
         diagnostic = request.POST.get('diagnostic_final')
         contenu = request.POST.get('contenu_ordonnance')
+        type_ord = request.POST.get('type_ordonnance')
         
-        # Récupération des listes de médicaments (données dynamiques du HTML)
         noms = request.POST.getlist('nom_medicament[]')
         posologies = request.POST.getlist('posologie[]')
         durees = request.POST.getlist('duree[]')
@@ -1826,52 +1825,39 @@ def liste_attente_ordonnance_view(request):
         if consultation:
             try:
                 with transaction.atomic():
-                    # 1. Mise à jour de la consultation (diagnostic)
                     consultation.diagnostic_final = diagnostic
                     consultation.save()
                     
-                    # 2. Gestion de l'ordonnance
-                    ordonnance, created = Ordonnance.objects.get_or_create(consultation=consultation)
-                    ordonnance.observation = contenu 
-                    ordonnance.type_ordonnance = 'DEFINITIVE'
-                    ordonnance.save()
-                    
-                    # 3. Sauvegarde des médicaments
-                    # On supprime les anciens pour éviter les doublons lors d'une modification
-                    ordonnance.medicaments.all().delete()
+                    ordonnance = Ordonnance.objects.create(
+                        consultation=consultation,
+                        observation=contenu,
+                        type_ordonnance=type_ord
+                    )
                     
                     for nom, pos, dur in zip(noms, posologies, durees):
-                        if nom.strip(): # On n'enregistre que si le médicament n'est pas vide
-                            LigneMedicament.objects.create(
+                        if nom.strip():
+                            Medicament.objects.create(
                                 ordonnance=ordonnance,
-                                nom_medicament=nom,
+                                nom=nom,
                                 posologie=pos,
                                 duree=dur
                             )
-                
-                messages.success(request, f"Ordonnance de {consultation.triage.patient.noms} enregistrée avec succès !")
+                messages.success(request, "Ordonnance enregistrée avec succès.")
             except Exception as e:
-                messages.error(request, f"Erreur lors de l'enregistrement : {str(e)}")
-        else:
-            messages.error(request, "Erreur : Consultation introuvable.")
-            
+                messages.error(request, f"Erreur : {str(e)}")
         return redirect(request.path_info)
 
-    # --- AFFICHAGE DE LA LISTE ---
-    consultations_en_attente = Consultation.objects.filter(
-        examens__statut='TERMINE'
-    ).select_related('triage__patient').prefetch_related('examens').distinct().order_by('-id')
-
+    consultations_en_attente = Consultation.objects.filter(examens__statut='TERMINE').distinct() 
+    # 4. Gestion des rôles utilisateur
     role = Fonction.objects.filter(userKey=request.user).first()
-    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
-
-    context = {
-        'consultations_en_attente': consultations_en_attente,
-        'fonctionKey': fonctionKey
-    }
+    fonctionKey = role.fonctionKey.roleName if role else None 
     
-    return render(request, 'back-end/medecin/liste_attente.html', context)
+    return render(request, 'back-end/medecin/liste_attente.html', {
+        'consultations_en_attente': consultations_en_attente, 
+        'fonctionKey' : fonctionKey 
+        })
 
+ 
 # ==================================================================================================
 # 44 : RESULTAT HISTORIQUE SOIT LABO , RADIO OU ECHO
 # ==================================================================================================
@@ -2065,45 +2051,48 @@ def enregistrer_ordonnance_view(request, triage_id):
     triage = get_object_or_404(SigneVital, id=triage_id)
     consultation = get_object_or_404(Consultation, triage=triage)
     
+    # Récupération des examens liés à cette consultation
+    examens_termines = Examen.objects.filter(consultation=consultation, statut='TERMINE')
+
     if request.method == 'POST':
         form = OrdonnanceForm(request.POST)
         
-        # Récupération manuelle des listes de médicaments
-        noms_medocs = request.POST.getlist('nom_medicament[]')
+        # Récupération des listes du formulaire
+        noms = request.POST.getlist('nom_medicament[]')
         posologies = request.POST.getlist('posologie[]')
         durees = request.POST.getlist('duree[]')
-        
+
         if form.is_valid():
             try:
                 with transaction.atomic():
-                    # Sauvegarde de l'ordonnance
                     ordonnance = form.save(commit=False)
                     ordonnance.consultation = consultation
                     ordonnance.save()
                     
-                    # Sauvegarde des médicaments
-                    for i in range(len(noms_medocs)):
-                        if noms_medocs[i].strip():
+                    # Enregistrement des lignes médicaments
+                    for n, p, d in zip(noms, posologies, durees):
+                        if n.strip():
                             LigneMedicament.objects.create(
                                 ordonnance=ordonnance,
-                                nom_medicament=noms_medocs[i],
-                                posologie=posologies[i],
-                                duree=durees[i]
+                                nom_medicament=n,
+                                posologie=p,
+                                duree=d
                             )
                     
                     triage.est_consulte = True
                     triage.save()
                     
-                messages.success(request, "Enregistrement réussi avec Formulaire !")
-                return redirect('dashboard')
+                    messages.success(request, "Ordonnance enregistrée avec succès !")
+                    return redirect('dashboard')
             except Exception as e:
                 messages.error(request, f"Erreur base de données : {e}")
         else:
-            messages.error(request, "Le formulaire est invalide.")
-            
+            messages.error(request, "Formulaire invalide.")
+
     return render(request, 'back-end/medecin/enregistrer_ordonnance.html', {
-        'triage': triage,
         'consultation': consultation,
+        'examens_termines': examens_termines, # C'est ici que l'info arrive dans le HTML
+        'form': OrdonnanceForm()
     })
 #
 # ===========================================================================================
@@ -2159,20 +2148,23 @@ def liste_ordonnances_delivrees_view(request):
 # ============================================================================================
 @login_required
 def liste_ordonnances_prescrites_view(request):
-    # On récupère les ordonnances définitives
+    # Récupération optimisée avec le bon related_name 'medicaments'
     ordonnances = Ordonnance.objects.filter(type_ordonnance='DEFINITIVE').select_related(
         'consultation__triage__patient', 
         'consultation__medecin' 
     ).prefetch_related(
-        'consultation__examens__prestation', # Chargement des examens et leur prestation
-        'consultation__examens__technicien'  # Chargement du technicien qui a fait l'examen
+        'medicaments', # <--- CORRIGÉ ICI
+        'consultation__examens__prestation',
+        'consultation__examens__technicien'
     ).order_by('-id')
 
-    # ... reste du code role/fonctionKey ...
     role = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
 
-    context = {'ordonnances': ordonnances , 'fonctionKey': fonctionKey}
+    context = {
+        'ordonnances': ordonnances, 
+        'fonctionKey': fonctionKey
+    }
     return render(request, 'back-end/medecin/liste_ordonnances.html', context)
 
 #
@@ -2321,3 +2313,76 @@ def ajouter_suivi(request, pk):
         )
         messages.success(request, "Suivi quotidien enregistré.")
         return redirect('detail_hospitalisation', pk=pk)
+
+#
+# ===========================================================================================
+# IMPRIMER ORDONNANCE 
+# ============================================================================================
+@login_required
+def imprimer_ordonnance(request, ordonnance_id):
+    # Récupération de l'ordonnance avec ses relations pré-chargées
+    ordonnance = get_object_or_404(
+        Ordonnance.objects.select_related(
+            'consultation__triage__patient', 
+            'consultation__medecin'
+        ).prefetch_related(
+            'medicaments' # Utilisation du related_name
+        ), 
+        id=ordonnance_id
+    )
+    
+    context = {'ord': ordonnance}
+    return render(request, 'back-end/imprimer/print_ordonnance.html', context)
+
+
+#
+# ===========================================================================================
+# CREE UN ORDONNANCE
+# ============================================================================================
+@login_required
+def creer_ordonnance_view(request, consultation_id):
+    # 1. Récupération sécurisée de la consultation
+    consultation = get_object_or_404(Consultation, id=consultation_id)
+
+    # 2. Traitement du formulaire POST
+    if request.method == 'POST':
+        diagnostic = request.POST.get('diagnostic_final')
+        contenu = request.POST.get('contenu_ordonnance')
+        type_ord = request.POST.get('type_ordonnance')
+        
+        # Listes dynamiques des médicaments
+        noms = request.POST.getlist('nom_medicament[]')
+        posologies = request.POST.getlist('posologie[]')
+        durees = request.POST.getlist('duree[]')
+
+        try:
+            with transaction.atomic():
+                # Mise à jour du diagnostic
+                consultation.diagnostic_final = diagnostic
+                consultation.save()
+                
+                # Création de l'ordonnance
+                ordonnance = Ordonnance.objects.create(
+                    consultation=consultation,
+                    observation=contenu,
+                    type_ordonnance=type_ord
+                )
+                
+                # Enregistrement des médicaments
+                for nom, pos, dur in zip(noms, posologies, durees):
+                    if nom.strip(): # On n'enregistre que si le nom est présent
+                        Medicament.objects.create(
+                            ordonnance=ordonnance,
+                            nom=nom,
+                            posologie=pos,
+                            duree=dur
+                        )
+            
+            messages.success(request, f"Ordonnance créée pour {consultation.triage.patient.noms}.")
+            return redirect('liste_attente_medecin') # Remplacez par votre vrai nom d'URL
+            
+        except Exception as e:
+            messages.error(request, f"Une erreur est survenue : {str(e)}")
+
+    # 3. Affichage du formulaire (GET)
+    return render(request, 'back-end/medecin/creer_ordonnance.html', {'c': consultation}) 

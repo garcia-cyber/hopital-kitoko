@@ -76,6 +76,8 @@ urlpatterns =[
     path('medecin/enregistrer-ordonnance/<int:triage_id>/', views.enregistrer_ordonnance_view, name='enregistrer_ordonnance'),
     path('consultations/<int:consultation_id>/prescrire-urgence/', views.prescrire_ordonnance_urgence_rapide, name='prescrire_ordonnance_urgence_rapide'),
 
+
+    path('creer-ordonnance/<int:consultation_id>/', views.creer_ordonnance_view, name='creer_ordonnance'),
     # ================================
     # CAISSE
     path('caisse/file-d-attente/', views.liste_attente_caisse, name='liste_attente_caisse'),
@@ -103,6 +105,11 @@ urlpatterns =[
     path('hospitalisations/admettre/', views.admettre_patient, name='admettre_patient'),
     path('hospitalisation/<int:pk>/', views.detail_hospitalisation, name='detail_hospitalisation'),
     path('hospitalisation/<int:pk>/ajouter-suivi/', views.ajouter_suivi, name='ajouter_suivi'),
+
+
+    # ====================================
+    # ORDONNANCE IMPRIMER
+    path('ordonnance/imprimer/<int:ordonnance_id>/', views.imprimer_ordonnance, name='imprimer_ordonnance'),
 
 
 

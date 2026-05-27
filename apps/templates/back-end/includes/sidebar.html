@@ -56,6 +56,21 @@
                     <li><a href="{% url 'liste_consultation_medecin' %}"><i class="la la-stethoscope"></i> Consultations</a></li>
                     <li><a href="{% url 'liste_consultations' %}"><i class="la la-history"></i> Historique Consultations</a></li>
                     <li><a href="{% url 'liste_hospitalisations' %}"><i class="la la-bed"></i> Suivi Hospitalisations</a></li>
+                    <li>
+        <a href="{% url 'liste_ordonnances' %}">
+            <i class="la la-file-text"></i> <span>Liste des Ordonnances</span>
+        </a>
+    </li>
+
+
+<li class="{% if request.resolver_match.url_name == 'liste_attente_medecin' %}active{% endif %}">
+    <a href="{% url 'liste_attente_medecin' %}">
+        <i class="fa fa-clock"></i> 
+        <span>Liste d'attente</span>
+    </a>
+</li>
+
+
                 {% endif %}
 
                 {% if fonctionKey == 'infirmier' %}
@@ -88,10 +103,10 @@
                         <a href="#"><i class="la la-bed"></i> <span> Gestion des Séjours </span> <span class="menu-arrow"></span></a>
                         <ul>
                             <li><a href="{% url 'liste_hospitalisations' %}">Liste des hospitalisés</a></li>
-                            <li><a href="{% url 'admettre_patient' %}">Admettre un patient</a></li>
+                            <!-- <li><a href="{% url 'admettre_patient' %}">Admettre un patient</a></li> -->
                         </ul>
                     </li>
-                    <li class="submenu">
+                   <!--  <li class="submenu">
                         <a href="#"><i class="la la-hospital"></i> <span> Chambres & Lits </span> <span class="menu-arrow"></span></a>
                         <ul>
                             <li><a href="{% url 'dashboard_chambres' %}">Tableau des Chambres</a></li>
@@ -99,7 +114,7 @@
                             <li><a href="{% url 'ajouter_chambre' %}">Ajouter Chambre</a></li>
                             <li><a href="{% url 'ajouter_lit' %}">Ajouter Lit</a></li>
                         </ul>
-                    </li>
+                    </li> -->
                 {% endif %}
 
                 <li class="menu-title"> <span>SESSION</span> </li>

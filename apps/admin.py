@@ -122,10 +122,10 @@ class LigneMedicamentInline(admin.TabularInline): # TabularInline affiche sous f
 # 2. Configuration de l'admin pour Ordonnance
 @admin.register(Ordonnance)
 class OrdonnanceAdmin(admin.ModelAdmin):
-    list_display = ('id', 'consultation', 'type_ordonnance', 'date_prescrite')
-    list_filter = ('type_ordonnance', 'date_prescrite')
-    search_fields = ('consultation__triage__patient__noms',) # Permet de chercher par nom de patient
-    inlines = [LigneMedicamentInline] # C'est ici que le lien se fait
+    # Remettez 'type_ordonnance' ici
+    list_display = ['consultation', 'date_prescrite', 'type_ordonnance', 'diagnostic']
+    list_filter = ['type_ordonnance', 'date_prescrite'] # Et ici
+    search_fields = ['consultation__triage__patient__noms']
 
 # 3. Configuration de l'admin pour LigneMedicament
 @admin.register(LigneMedicament)
@@ -133,6 +133,18 @@ class LigneMedicamentAdmin(admin.ModelAdmin):
     list_display = ('nom_medicament', 'posologie', 'duree', 'statut', 'ordonnance')
     list_filter = ('statut', 'ordonnance__type_ordonnance')
     search_fields = ('nom_medicament',)
+
+@admin.register(Medicament)
+class MedicamentAdmin(admin.ModelAdmin):
+    # Affiche le nom, la posologie, le statut et l'ordonnance associée
+    list_display = ['nom', 'posologie', 'duree', 'statut', 'ordonnance_link']
+    list_filter = ['statut']
+    search_fields = ['nom', 'ordonnance__consultation__triage__patient__noms']
+    
+    # Petite astuce : ajoute un lien cliquable vers l'ordonnance dans la liste
+    def ordonnance_link(self, obj):
+        return str(obj.ordonnance)
+    ordonnance_link.short_description = 'Ordonnance liée'
 
 
 # ==================================================================================================

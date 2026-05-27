@@ -373,15 +373,18 @@ class LitForm(forms.ModelForm):
         }
 
 
+
+
 class OrdonnanceForm(forms.ModelForm):
     class Meta:
         model = Ordonnance
-        fields = ['type_ordonnance', 'observation']
+        fields = ['type_ordonnance', 'diagnostic', 'observation']
 
-class LigneMedicamentForm(forms.ModelForm):
+class MedicamentForm(forms.ModelForm):
     class Meta:
-        model = LigneMedicament
-        fields = ['nom_medicament', 'posologie', 'duree']
+        model = Medicament
+        # Assurez-vous que ces champs existent dans votre classe Medicament :
+        fields = ['nom', 'posologie', 'duree']
 
 # ===============================================================================
 #
