@@ -1,0 +1,67 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dossier Patient - {{ hosp.patient.noms }}</title>
+    {% include 'back-end/includes/css.html' %}
+</head>
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/includes/header.html' %}
+        {% include 'back-end/includes/sidebar.html' %}
+        
+        <div class="page-wrapper">
+            <div class="content container-fluid">
+                <h3 class="mb-4">Dossier de suivi : {{ hosp.patient.noms }}</h3>
+                
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-header bg-primary text-white">Ordonnance Active</div>
+                            <div class="card-body">
+                                {% for med in ordonnance.medicaments.all %}
+                                    <div class="mb-3">
+                                        <strong>{{ med.nom_medicament }}</strong><br>
+                                        <small class="text-muted">{{ med.posologie }} | Durée: {{ med.duree }}</small>
+                                    </div>
+                                {% empty %}
+                                    <p class="text-muted">Aucun médicament actif.</p>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-8">
+                        <div class="card">
+                            <div class="card-body">
+                                <form method="POST" action="{% url 'ajouter_suivi' hosp.id %}" class="mb-4 p-3 bg-light rounded">
+                                    {% csrf_token %}
+                                    <h6 class="mb-3">Nouvelle entrée journalière</h6>
+                                    <input name="constantes_du_jour" class="form-control mb-2" placeholder="Constantes (TA, Pouls, Temp...)" required>
+                                    <textarea name="etat_general" class="form-control mb-2" placeholder="État général du patient" required></textarea>
+                                    <textarea name="soins_effectues" class="form-control mb-2" placeholder="Soins administrés"></textarea>
+                                    <button type="submit" class="btn btn-success">Valider l'entrée</button>
+                                </form>
+
+                                <hr>
+                                
+                                <h5>Historique d'évolution</h5>
+                                {% for s in suivis %}
+                                    <div class="border-left pl-3 mb-3">
+                                        <strong>{{ s.date_suivi|date:"d/m/Y H:i" }}</strong> - <small>{{ s.infirmier.username }}</small>
+                                        <p class="mb-1"><em>{{ s.constantes_du_jour }}</em></p>
+                                        <p class="mb-0">{{ s.etat_general }}</p>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% include 'back-end/includes/js.html' %}
+</body>
+</html>

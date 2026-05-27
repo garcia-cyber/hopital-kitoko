@@ -436,3 +436,24 @@ class Hospitalisation(models.Model):
     class Meta:
         verbose_name = "Hospitalisation"
         verbose_name_plural = "Hospitalisations"
+
+
+# ==============================================================================================
+# 
+class SuiviQuotidien(models.Model):
+    hospitalisation = models.ForeignKey(Hospitalisation, on_delete=models.CASCADE, related_name='suivis_journaliers')
+    infirmier = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    
+    # Évolution quotidienne
+    date_suivi = models.DateTimeField(auto_now_add=True)
+    etat_general = models.TextField(verbose_name="État général du patient")
+    constantes_du_jour = models.TextField(verbose_name="Constantes (TA, Pouls, Temp...)")
+    soins_effectues = models.TextField(verbose_name="Soins et médicaments administrés")
+    
+    class Meta:
+        verbose_name = "Suivi Quotidien"
+        verbose_name_plural = "Suivis Quotidiens"
+        ordering = ['-date_suivi']
+
+    def __str__(self):
+        return f"Suivi de {self.hospitalisation.patient.noms} le {self.date_suivi.strftime('%d/%m/%Y')}"

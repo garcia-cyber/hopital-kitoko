@@ -2281,3 +2281,43 @@ def dossier_medical_complet(request, patient_id):
     }
     
     return render(request, 'back-end/patient/dossier_medical.html', context)
+
+
+#
+# ===========================================================================================
+# DETAIL HOSPITALIERE
+# ============================================================================================
+@login_required
+def detail_hospitalisation(request, pk):
+    hosp = get_object_or_404(Hospitalisation.objects.select_related('patient', 'lit__chambre'), pk=pk)
+    
+    # Récupérer l'ordonnance active liée à la consultation de l'admission
+    # On suppose ici une relation entre l'hospitalisation et sa consultation initiale
+    ordonnance = Ordonnance.objects.filter(consultation__triage__patient=hosp.patient).first()
+    
+    # Récupérer tout le carnet de suivi
+    suivis = hosp.suivis_journaliers.all()
+    
+    return render(request, 'back-end/hospitalisation/detail.html', {
+        'hosp': hosp,
+        'ordonnance': ordonnance,
+        'suivis': suivis
+    })
+
+#
+# ===========================================================================================
+# ADD SUIVI
+# ============================================================================================
+@login_required
+def ajouter_suivi(request, pk):
+    if request.method == 'POST':
+        hosp = get_object_or_404(Hospitalisation, pk=pk)
+        SuiviQuotidien.objects.create(
+            hospitalisation=hosp,
+            infirmier=request.user,
+            etat_general=request.POST.get('etat_general'),
+            constantes_du_jour=request.POST.get('constantes_du_jour'),
+            soins_effectues=request.POST.get('soins_effectues')
+        )
+        messages.success(request, "Suivi quotidien enregistré.")
+        return redirect('detail_hospitalisation', pk=pk)

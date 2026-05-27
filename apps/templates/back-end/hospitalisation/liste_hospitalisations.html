@@ -15,6 +15,8 @@
         .btn-primary { border-radius: 10px; padding: 10px 20px; background: #5a8dee; border: none; }
         .btn-outline-danger { border-radius: 8px; border: 1px solid #ff5b5b; color: #ff5b5b; }
         .btn-outline-danger:hover { background: #ff5b5b; color: white; }
+        .btn-outline-primary { border-radius: 8px; border: 1px solid #5a8dee; color: #5a8dee; }
+        .btn-outline-primary:hover { background: #5a8dee; color: white; }
     </style>
 </head>
 <body>
@@ -72,9 +74,16 @@
                                         </td>
                                         <td class="text-right">
                                             {% if hosp.statut == 'EN_COURS' %}
-                                                <a href="#" class="btn btn-sm btn-outline-danger"><i class="la la-door-open"></i> Sortie</a>
+                                                <a href="{% url 'detail_hospitalisation' hosp.id %}" class="btn btn-sm btn-outline-primary mr-1" title="Suivi quotidien">
+                                                    <i class="la la-stethoscope"></i> Suivi
+                                                </a>
+                                                <a href="#" class="btn btn-sm btn-outline-danger" title="Clôturer le séjour">
+                                                    <i class="la la-door-open"></i> Sortie
+                                                </a>
                                             {% else %}
-                                                <a href="#" class="btn btn-sm btn-outline-info">Détails</a>
+                                                <a href="{% url 'detail_hospitalisation' hosp.id %}" class="btn btn-sm btn-outline-info">
+                                                    <i class="la la-eye"></i> Détails
+                                                </a>
                                             {% endif %}
                                         </td>
                                     </tr>
