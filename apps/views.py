@@ -2315,17 +2315,27 @@ def detail_hospitalisation(request, pk):
 # ADD SUIVI
 # ============================================================================================
 @login_required
+@login_required
 def ajouter_suivi(request, pk):
     if request.method == 'POST':
         hosp = get_object_or_404(Hospitalisation, pk=pk)
-        SuiviQuotidien.objects.create(
-            hospitalisation=hosp,
-            infirmier=request.user,
-            etat_general=request.POST.get('etat_general'),
-            constantes_du_jour=request.POST.get('constantes_du_jour'),
-            soins_effectues=request.POST.get('soins_effectues')
-        )
-        messages.success(request, "Suivi quotidien enregistré.")
+        
+        # Récupération sécurisée avec vérification minimale
+        constantes = request.POST.get('constantes_du_jour')
+        etat = request.POST.get('etat_general')
+        
+        if constantes and etat:
+            SuiviQuotidien.objects.create(
+                hospitalisation=hosp,
+                infirmier=request.user,
+                etat_general=etat,
+                constantes_du_jour=constantes,
+                soins_effectues=request.POST.get('soins_effectues', '') # Optionnel
+            )
+            messages.success(request, "Suivi quotidien enregistré.")
+        else:
+            messages.error(request, "Veuillez remplir au moins les constantes et l'état général.")
+            
         return redirect('detail_hospitalisation', pk=pk)
 
 #
