@@ -77,9 +77,11 @@
                                                 <a href="{% url 'detail_hospitalisation' hosp.id %}" class="btn btn-sm btn-outline-primary mr-1" title="Suivi quotidien">
                                                     <i class="la la-stethoscope"></i> Suivi
                                                 </a>
+                                                {% if fonctionKey == 'receptionniste' or fonctionKey == 'admin'%}
                                                 <a href="#" class="btn btn-sm btn-outline-danger" title="Clôturer le séjour">
                                                     <i class="la la-door-open"></i> Sortie
                                                 </a>
+                                                {% endif %}
                                             {% else %}
                                                 <a href="{% url 'detail_hospitalisation' hosp.id %}" class="btn btn-sm btn-outline-info">
                                                     <i class="la la-eye"></i> Détails

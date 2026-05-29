@@ -19,22 +19,31 @@
                 <div class="row">
                     <div class="col-md-4">
                         <div class="card">
-                            <div class="card-header bg-primary text-white">Ordonnance Active</div>
+                            <div class="card-header bg-primary text-white">Historique des Ordonnances</div>
                             <div class="card-body">
-                                {% for med in ordonnance.medicaments.all %}
-                                    <div class="mb-3">
-                                        <strong>{{ med.nom_medicament }}</strong><br>
-                                        <small class="text-muted">{{ med.posologie }} | Durée: {{ med.duree }}</small>
+                                {% for ordonnance in ordonnances %}
+                                    <div class="mb-4 pb-2 border-bottom">
+                                        <h6 class="text-primary">{{ ordonnance.get_type_ordonnance_display }}</h6>
+                                        <small class="text-muted">{{ ordonnance.date_prescrite|date:"d/m/Y H:i" }}</small>
+                                        <ul class="list-unstyled mt-2">
+                                            {% for med in ordonnance.medicaments.all %}
+                                                <li class="mb-2">
+                                                    <strong>{{ med.nom }}</strong><br>
+                                                    <span class="text-muted">{{ med.posologie }} | Durée: {{ med.duree }}</span>
+                                                    <br><span class="badge badge-info">{{ med.get_statut_display }}</span>
+                                                </li>
+                                            {% endfor %}
+                                        </ul>
                                     </div>
                                 {% empty %}
-                                    <p class="text-muted">Aucun médicament actif.</p>
+                                    <p class="text-muted">Aucune ordonnance trouvée.</p>
                                 {% endfor %}
                             </div>
                         </div>
                     </div>
 
                     <div class="col-md-8">
-                        <div class="card">
+                        <div class="card"> 
                             <div class="card-body">
                                 <form method="POST" action="{% url 'ajouter_suivi' hosp.id %}" class="mb-4 p-3 bg-light rounded">
                                     {% csrf_token %}
@@ -49,11 +58,15 @@
                                 
                                 <h5>Historique d'évolution</h5>
                                 {% for s in suivis %}
-                                    <div class="border-left pl-3 mb-3">
-                                        <strong>{{ s.date_suivi|date:"d/m/Y H:i" }}</strong> - <small>{{ s.infirmier.username }}</small>
-                                        <p class="mb-1"><em>{{ s.constantes_du_jour }}</em></p>
-                                        <p class="mb-0">{{ s.etat_general }}</p>
+                                    <div class="border-left pl-3 mb-4">
+                                        <strong>{{ s.date_suivi|date:"d/m/Y H:i" }}</strong> - 
+                                        <small class="text-muted">{{ s.infirmier.username|default:"Inconnu" }}</small>
+                                        <p class="mb-1"><strong>Constantes:</strong> <em>{{ s.constantes_du_jour }}</em></p>
+                                        <p class="mb-1"><strong>État:</strong> {{ s.etat_general }}</p>
+                                        <p class="mb-0"><strong>Soins:</strong> {{ s.soins_effectues }}</p>
                                     </div>
+                                {% empty %}
+                                    <p class="text-muted">Aucun suivi journalier enregistré.</p>
                                 {% endfor %}
                             </div>
                         </div>

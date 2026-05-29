@@ -2285,24 +2285,31 @@ def dossier_medical_complet(request, patient_id):
 # ============================================================================================
 @login_required
 def detail_hospitalisation(request, pk):
-    hosp = get_object_or_404(Hospitalisation.objects.select_related('patient', 'lit__chambre'), pk=pk)
+    # On garde ton select_related pour optimiser l'hospitalisation
+    hosp = get_object_or_404(
+        Hospitalisation.objects.select_related('patient', 'lit__chambre__type_chambre'), 
+        pk=pk
+    )
     
-    # Récupérer l'ordonnance active liée à la consultation de l'admission
-    # On suppose ici une relation entre l'hospitalisation et sa consultation initiale
-    ordonnance = Ordonnance.objects.filter(consultation__triage__patient=hosp.patient).first()
+    # 1. On récupère TOUTES les ordonnances du patient, triées par date (récentes d'abord)
+    # 2. On utilise prefetch_related pour charger les médicaments en une seule fois
+    ordonnances = Ordonnance.objects.filter(
+        consultation__triage__patient=hosp.patient
+    ).prefetch_related('medicaments').order_by('-date_prescrite')
     
     # Récupérer tout le carnet de suivi
     suivis = hosp.suivis_journaliers.all()
+    
+    # Gestion du rôle (optimisable via un middleware plus tard, mais OK pour le moment)
     role = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
 
     return render(request, 'back-end/hospitalisation/detail.html', {
         'hosp': hosp,
-        'ordonnance': ordonnance,
-        'suivis': suivis , 
+        'ordonnances': ordonnances, # On passe la liste
+        'suivis': suivis, 
         'fonctionKey': fonctionKey
     })
-
 #
 # ===========================================================================================
 # ADD SUIVI
