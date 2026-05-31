@@ -2447,3 +2447,65 @@ def liste_entreprises_view(request):
 
     entreprises = Entreprise.objects.all().order_by('-date_enregistrement')
     return render(request, 'back-end/entreprise/liste_entreprises.html', {'entreprises': entreprises, 'fonctionKey':fonctionKey})
+
+
+#
+# ======================================================================================
+# MEDECIN ORDONNANCE D'URGENCES
+# ======================================================================================
+@login_required
+def enregistrer_ordonnance_urgence(request, patient_id):
+    # On récupère le patient par son ID
+    patient = get_object_or_404(Patient, pk=patient_id)
+    
+    if request.method == 'POST':
+        diagnostic = request.POST.get('diagnostic')
+        observation = request.POST.get('observation')
+        
+        noms = request.POST.getlist('nom')
+        posologies = request.POST.getlist('posologie')
+        durees = request.POST.getlist('duree')
+
+        with transaction.atomic():
+            # Cas A : Si vous voulez lier à la dernière consultation du patient
+            # consultation = Consultation.objects.filter(triage__patient=patient).latest('date_creation')
+            
+            # Cas B : Création d'une consultation d'urgence si aucune n'est active
+            consultation = Consultation.objects.create(
+                triage=patient.triage_set.latest('id'), # Assurez-vous d'avoir ce lien
+                medecin=request.user,
+                motif_consultation="Urgence médicale"
+            )
+
+            ordonnance = Ordonnance.objects.create(
+                consultation=consultation,
+                type_ordonnance='URGENCE',
+                diagnostic=diagnostic,
+                observation=observation
+            )
+            
+            for i in range(len(noms)):
+                if noms[i]:
+                    Medicament.objects.create(
+                        ordonnance=ordonnance,
+                        nom=noms[i],
+                        posologie=posologies[i],
+                        duree=durees[i]
+                    )
+        
+        return redirect('detail_patient', pk=patient.pk)
+
+    return render(request, 'back-end/medecin/creer_ordonnance_urgence.html', {
+        'patient': patient
+    })
+
+
+#
+# ======================================================================================
+#  PATIENT PAR LE MEDECIN POUR ORDONNANCE D'URGENCE
+# ======================================================================================
+@login_required
+def liste_patients_urgence(request):
+    # On liste les patients, on peut filtrer si besoin
+    patients = Patient.objects.all().order_by('-id')
+    return render(request, 'back-end/medecin/liste_patients.html', {'patients': patients})

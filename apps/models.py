@@ -261,6 +261,7 @@ class DemandeExamen(models.Model):
 
 class Ordonnance(models.Model):
     TYPE_CHOICES = [('URGENCE', 'Ordonnance d’Urgence'), ('DEFINITIVE', 'Ordonnance Définitive')]
+    
     consultation = models.ForeignKey('Consultation', on_delete=models.CASCADE)
     date_prescrite = models.DateTimeField(default=timezone.now)
     type_ordonnance = models.CharField(max_length=20, choices=TYPE_CHOICES, default='URGENCE')
@@ -268,18 +269,26 @@ class Ordonnance(models.Model):
     observation = models.TextField(blank=True)
 
     def __str__(self):
-        return f"Ordonnance {self.get_type_ordonnance_display()} - {self.consultation.triage.patient.noms}"
+        # Utilisation d'une structure sécurisée pour éviter les erreurs de type DoesNotExist
+        try:
+            nom_patient = self.consultation.triage.patient.noms
+        except (AttributeError, ObjectDoesNotExist):
+            nom_patient = "Patient non identifié"
+            
+        return f"Ordonnance {self.get_type_ordonnance_display()} - {nom_patient}"
 
 class Medicament(models.Model):
-    ordonnance = models.ForeignKey(Ordonnance, on_delete=models.CASCADE, related_name='medicaments')
+    # Utilisation des guillemets pour éviter l'erreur de référence circulaire
+    ordonnance = models.ForeignKey('Ordonnance', on_delete=models.CASCADE, related_name='medicaments')
     nom = models.CharField(max_length=255)
     posologie = models.CharField(max_length=255)
     duree = models.CharField(max_length=100)
+    
     STATUT_CHOICES = [('EN_COURS', 'En cours'), ('STOPPE', 'Stoppé')]
     statut = models.CharField(max_length=20, choices=STATUT_CHOICES, default='EN_COURS')
 
     def __str__(self):
-        return f"{self.nom} ({self.statut})"    
+        return f"{self.nom} ({self.statut})"
 
 
 # 13. LIGNE MEDICAMENT =============================================

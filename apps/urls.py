@@ -53,6 +53,7 @@ urlpatterns =[
      path('finance/journal-caisse/', views.dashboard_finance, name='dashboard_finance'), 
      path('journal-caisse-depense/', views.dashboard_finance_depense, name='dashboard_finance_depense'),
      path('depense/nouvelle/', views.creer_depense, name='creer_depense'),
+     path('patients/', views.liste_patients_urgence, name='liste_patients_urgence'),
 
      # ====================================
      # INFIRMIER
@@ -74,6 +75,9 @@ urlpatterns =[
     path('medecin/ordonnances-delivrees/', views.liste_ordonnances_delivrees_view, name='liste_ordonnances_delivrees'),
     path('ordonnances/liste/', views.liste_ordonnances_prescrites_view, name='liste_ordonnances'),
     path('medecin/enregistrer-ordonnance/<int:triage_id>/', views.enregistrer_ordonnance_view, name='enregistrer_ordonnance'),
+    path('consultation/<int:consultation_id>/ordonnance-urgence/', 
+         views.enregistrer_ordonnance_urgence, 
+         name='enregistrer_ordonnance_urgence'),
     path('consultations/<int:consultation_id>/prescrire-urgence/', views.prescrire_ordonnance_urgence_rapide, name='prescrire_ordonnance_urgence_rapide'),
 
 

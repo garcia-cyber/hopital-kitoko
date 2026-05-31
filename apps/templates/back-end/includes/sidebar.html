@@ -43,6 +43,14 @@
                             <li><a href="{% url 'creer_depense' %}"><i class="la la-money-bill-wave"></i> Saisir une Dépense</a></li>
                         </ul>
                     </li>
+
+                    <li class="submenu">
+    <a href="#"><i class="fa fa-building"></i> <span>Entreprises</span> <span class="menu-arrow"></span></a>
+    <ul style="display: none;">
+        <li><a href="{% url 'enregistrer_entreprise' %}">Nouvelle Entreprise</a></li>
+        <li><a href="{% url 'liste_entreprises' %}">Liste des Entreprises</a></li>
+    </ul>
+</li>
                 {% endif %}
 
                 {% if fonctionKey == 'receptionniste' %}
