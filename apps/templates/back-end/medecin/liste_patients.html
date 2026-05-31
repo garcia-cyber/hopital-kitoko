@@ -13,6 +13,11 @@
             .btn-action { transition: transform 0.2s; }
             .btn-action:hover { transform: scale(1.05); }
             .search-container { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 5px solid #3498db; }
+            /* Styles pour les tabs médicaux */
+            .med-tab { font-size: 0.70rem; padding: 3px 8px; border-radius: 12px; font-weight: 600; display: inline-block; margin-top: 5px; }
+            #hosp_tab { background-color: #f39c12; color: #fff; }
+            #sv_tab { background-color: #27ae60; color: #fff; }
+            .tab-inactive { background-color: #e0e0e0 !important; color: #7f8c8d !important; }
         </style>
     </head>
     <body>
@@ -27,7 +32,7 @@
                         <div class="row align-items-center">
                             <div class="col">
                                 <h3 class="page-title text-primary">Registre des Patients Admis</h3>
-                                <p class="text-muted">Gestion des dossiers médicaux et urgences</p>
+                                <p class="text-muted">Gestion des dossiers médicaux, hospitalisations et suivi vital</p>
                             </div>
                         </div>
                     </div>
@@ -58,11 +63,22 @@
                                         {% for patient in patients %}
                                         <tr class="align-middle">
                                             <td><span class="badge-code">{{ patient.code_patient }}</span></td>
+                                            
                                             <td>
                                                 <div class="font-weight-bold text-dark">{{ patient.noms }}</div>
+                                                <div>
+                                                    <span id="hosp_tab" class="med-tab {% if not patient.hosp_en_cours %}tab-inactive{% endif %}">
+                                                        <i class="fa fa-bed"></i> {% if patient.hosp_en_cours %}Lit: {{ patient.hosp_en_cours.lit.nom_lit }}{% else %}Non Hosp{% endif %}
+                                                    </span>
+                                                    <span id="sv_tab" class="med-tab {% if not patient.a_signes_vitaux %}tab-inactive{% endif %}">
+                                                        <i class="fa fa-heartbeat"></i> SV
+                                                    </span>
+                                                </div>
                                             </td>
+
                                             <td>{{ patient.get_sexe_display }}</td>
                                             <td><span class="text-secondary"><i class="fa fa-hospital-o"></i> {{ patient.service.nom|default:"Non assigné" }}</span></td>
+                                            
                                             <td class="text-right">
                                                 {% if patient.consultation_active %}
                                                     <a href="{% url 'enregistrer_ordonnance_urgence' patient.consultation_active.id %}" 
@@ -97,7 +113,7 @@
         {% include 'back-end/includes/js.html' %}
 
         <script>
-            // Script de recherche performant
+            // Recherche en temps réel
             document.getElementById('searchInput').addEventListener('keyup', function() {
                 let filter = this.value.toLowerCase();
                 let rows = document.querySelectorAll('#patientTableBody tr');

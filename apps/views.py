@@ -2242,27 +2242,24 @@ def liste_hospitalisations(request):
 # ============================================================================================
 @login_required
 def dossier_medical_complet(request, patient_id):
-    # 1. Récupération du patient
     patient = get_object_or_404(Patient, id=patient_id)
     
-    # 2. Sécurité : Vérification du paiement
     if not patient.fiche_payee:
-        messages.error(request, "Accès refusé : Le paiement de la fiche est requis.")
+        messages.error(request, "Accès refusé.")
         return redirect('liste_patients')
     
-    # 3. Récupération optimisée
-    # On récupère toutes les consultations liées au patient via le triage
+    # Consultations
     historique_consultations = Consultation.objects.filter(
         triage__patient=patient
     ).order_by('-date_creation').prefetch_related(
-        'examens', 
+        'examens__prestation', 
         'ordonnance_set__medicaments'
     ).select_related('triage', 'medecin')
     
-    # 4. Récupération des hospitalisations (via le champ ForeignKey 'patient')
+    # Hospitalisations (on retire le prefetch qui causait l'erreur)
     hospitalisations = Hospitalisation.objects.filter(patient=patient).order_by('-date_entree')
     
-    # 5. Récupération de TOUS les signes vitaux (indépendants des consultations)
+    # Signes vitaux (on s'assure que 'infirmier' existe ou on le retire)
     signes_vitaux = SigneVital.objects.filter(patient=patient).order_by('-date_prelevement')
     
     role = Fonction.objects.filter(userKey=request.user).first()
@@ -2273,7 +2270,7 @@ def dossier_medical_complet(request, patient_id):
         'consultations': historique_consultations,
         'hospitalisations': hospitalisations,
         'signes_vitaux': signes_vitaux,
-        'fonctionKey' : fonctionKey
+        'fonctionKey':fonctionKey
     }
     
     return render(request, 'back-end/patient/dossier_medical.html', context)
@@ -2508,18 +2505,25 @@ def enregistrer_ordonnance_urgence(request, patient_id):
 # ======================================================================================
 @login_required
 def liste_patients_urgence(request):
-    # On filtre pour ne garder QUE les patients dont fiche_payee est True
+    # 1. On filtre pour ne garder QUE les patients dont fiche_payee est True
     patients = Patient.objects.filter(fiche_payee=True).order_by('-id')
     
-    # On récupère le rôle de l'utilisateur connecté
+    # 2. Récupération du rôle
     role = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
 
-    # On enrichit chaque patient avec sa consultation la plus récente
+    # 3. Enrichissement
     for p in patients:
+        # Consultation la plus récente
         p.consultation_active = Consultation.objects.filter(
             triage__patient=p
         ).order_by('-date_creation').first()
+        
+        # Hospitalisation en cours
+        p.hosp_en_cours = Hospitalisation.objects.filter(
+            patient=p, 
+            statut='EN_COURS'
+        ).first()
 
     return render(request, 'back-end/medecin/liste_patients.html', {
         'patients': patients, 
