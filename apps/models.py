@@ -42,11 +42,13 @@ class Fonction(models.Model):
 class Prestation(models.Model):
     CATEGORIES = [
         ('ADM', 'Administratif'), 
-        ('CONS', 'Consultation'), # <--- Ajouté ici
+        ('CONS', 'Consultation'),
         ('LABO', 'Laboratoire'), 
         ('SOIN', 'Soins'), 
         ('ECHO', 'Échographie'), 
-        ('RADIO', 'Radiologie'), 
+        ('RADIO', 'Radiologie'),
+        ('MED', 'Acte Médical'),      # Modifié ici
+        ('CHIR', 'Acte Chirurgical'), # Modifié ici
     ]
     
     libelle = models.CharField(max_length=200, verbose_name="Libellé")
@@ -55,20 +57,20 @@ class Prestation(models.Model):
     valeur_normale = models.CharField(
         max_length=150, blank=True, null=True, 
         verbose_name="Valeur Normale / Référence (Labo uniquement)",
-        help_text="Ex: 70-110 mg/dl, Négatif, etc. Utilisé uniquement pour le Laboratoire."
+        help_text="Ex: 70-110 mg/dl, Négatif, etc."
     )
 
+    def clean(self):
+        # Nettoyage : Si ce n'est pas du Laboratoire, on vide la valeur normale
+        if self.categorie != 'LABO':
+            self.valeur_normale = None
+            
     def __str__(self):
         return f"{self.libelle} ({self.get_categorie_display()}) - {self.prix} USD"
 
     class Meta:
         verbose_name = "Prestation"
         verbose_name_plural = "Prestations"
-
-    def clean(self):
-        # On nettoie la valeur normale si la catégorie n'est pas LABO
-        if self.categorie != 'LABO':
-            self.valeur_normale = None
 
 # 5. SERVICE =======================================================
 class Service(models.Model):
@@ -135,7 +137,7 @@ class Patient(models.Model):
 
     def __str__(self):
         return f"{self.noms} ({self.code_patient})"
-        
+
 # 6. PATIENT =======================================================
 class Paiement(models.Model):
     CURRENCY = [('USD', 'USD'), ('CDF', 'CDF')]
