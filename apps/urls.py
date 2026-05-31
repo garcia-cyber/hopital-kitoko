@@ -75,13 +75,12 @@ urlpatterns =[
     path('medecin/ordonnances-delivrees/', views.liste_ordonnances_delivrees_view, name='liste_ordonnances_delivrees'),
     path('ordonnances/liste/', views.liste_ordonnances_prescrites_view, name='liste_ordonnances'),
     path('medecin/enregistrer-ordonnance/<int:triage_id>/', views.enregistrer_ordonnance_view, name='enregistrer_ordonnance'),
-    path('consultation/<int:consultation_id>/ordonnance-urgence/', 
-         views.enregistrer_ordonnance_urgence, 
-         name='enregistrer_ordonnance_urgence'),
+    path('consultation/<int:consultation_id>/ordonnance-urgence/',views.enregistrer_ordonnance_urgence,name='enregistrer_ordonnance_urgence'),
     path('consultations/<int:consultation_id>/prescrire-urgence/', views.prescrire_ordonnance_urgence_rapide, name='prescrire_ordonnance_urgence_rapide'),
 
 
     path('creer-ordonnance/<int:consultation_id>/', views.creer_ordonnance_view, name='creer_ordonnance'),
+    path('medecin/liste-patients/', views.liste_patients_urgence, name='liste_patients_urgence'),
     # ================================
     # CAISSE
     path('caisse/file-d-attente/', views.liste_attente_caisse, name='liste_attente_caisse'),

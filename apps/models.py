@@ -110,15 +110,16 @@ class Patient(models.Model):
             self.code_patient = f"{prefixe}{new_id:04d}"
         super().save(*args, **kwargs)
 
-    # --- NOUVELLES MÉTHODES MÉTIER ---
+    # --- MÉTHODES MÉTIER MISES À JOUR (Corrigées pour éviter l'erreur) ---
 
     def a_deja_ete_consulte(self):
         """Vérifie si le patient a déjà eu au moins une consultation enregistrée."""
-        return self.consultation_set.exists()
+        # On utilise le filtrage sur le triage lié au patient
+        return Consultation.objects.filter(triage__patient=self).exists()
 
     def a_une_consultation_en_attente(self):
         """Retourne True si le patient a une consultation non payée."""
-        return self.consultation_set.filter(consultation_payee=False).exists()
+        return Consultation.objects.filter(triage__patient=self, consultation_payee=False).exists()
 
     def est_en_regle(self):
         """
@@ -134,7 +135,8 @@ class Patient(models.Model):
 
     def __str__(self):
         return f"{self.noms} ({self.code_patient})"
-
+        
+# 6. PATIENT =======================================================
 class Paiement(models.Model):
     CURRENCY = [('USD', 'USD'), ('CDF', 'CDF')]
     SERVICES = [
@@ -208,6 +210,11 @@ class SigneVital(models.Model):
 
 # 10. CONSULTATION ==================================================
 class Consultation(models.Model):
+    # Propriété pour accéder facilement au patient
+    @property
+    def patient(self):
+        return self.triage.patient
+
     triage = models.OneToOneField(SigneVital, db_index=True, on_delete=models.CASCADE)
     medecin = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
     motif_consultation = models.TextField(verbose_name="Motif")
@@ -217,7 +224,6 @@ class Consultation(models.Model):
     hypothese_diagnostique = models.TextField(verbose_name="Hypothèse diagnostique")
     date_creation = models.DateTimeField(default=timezone.now)
     
-    # NOUVEAU : Statut de paiement pour débloquer l'accès aux soins
     consultation_payee = models.BooleanField(default=False, verbose_name="Consultation payée")
 
     def __str__(self):
@@ -228,10 +234,8 @@ class Consultation(models.Model):
         examens_lies = self.examens.all()
         return sum((ex.prestation.prix * ex.quantite) for ex in examens_lies if ex.prestation and ex.prestation.prix)
 
-    # Méthode utilitaire pour vérifier si le patient est éligible aux examens/soins
     @property
     def est_accessible(self):
-        # La consultation est accessible si elle est payée
         return self.consultation_payee
 
 # 11. DEMANDE EXAMEN ===============================================

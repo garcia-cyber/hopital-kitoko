@@ -2315,7 +2315,6 @@ def detail_hospitalisation(request, pk):
 # ADD SUIVI
 # ============================================================================================
 @login_required
-@login_required
 def ajouter_suivi(request, pk):
     if request.method == 'POST':
         hosp = get_object_or_404(Hospitalisation, pk=pk)
@@ -2494,9 +2493,12 @@ def enregistrer_ordonnance_urgence(request, patient_id):
                     )
         
         return redirect('detail_patient', pk=patient.pk)
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
 
     return render(request, 'back-end/medecin/creer_ordonnance_urgence.html', {
-        'patient': patient
+        'patient': patient ,
+        'fonctionKey' : fonctionKey
     })
 
 
@@ -2506,6 +2508,20 @@ def enregistrer_ordonnance_urgence(request, patient_id):
 # ======================================================================================
 @login_required
 def liste_patients_urgence(request):
-    # On liste les patients, on peut filtrer si besoin
-    patients = Patient.objects.all().order_by('-id')
-    return render(request, 'back-end/medecin/liste_patients.html', {'patients': patients})
+    # On filtre pour ne garder QUE les patients dont fiche_payee est True
+    patients = Patient.objects.filter(fiche_payee=True).order_by('-id')
+    
+    # On récupère le rôle de l'utilisateur connecté
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    # On enrichit chaque patient avec sa consultation la plus récente
+    for p in patients:
+        p.consultation_active = Consultation.objects.filter(
+            triage__patient=p
+        ).order_by('-date_creation').first()
+
+    return render(request, 'back-end/medecin/liste_patients.html', {
+        'patients': patients, 
+        'fonctionKey': fonctionKey
+    })
