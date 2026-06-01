@@ -10,6 +10,8 @@
     
     <style>
         .page-wrapper { background-color: #f8fafc; padding: 20px; }
+        .search-container { margin-bottom: 20px; }
+        .search-box { width: 100%; max-width: 400px; padding: 10px; border: 1px solid #ddd; border-radius: 8px; }
         .card { border-radius: 12px; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         .table thead { background-color: #006064; color: #ffffff; }
         .badge-exam { 
@@ -18,7 +20,7 @@
             margin-bottom: 5px; border-left: 4px solid #006064; 
         }
         .med-list { font-size: 0.85rem; color: #37474f; list-style: square; padding-left: 20px; margin: 0; }
-        .btn-print { border-radius: 50%; width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; }
+        .btn-action { border-radius: 50%; width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; }
     </style>
 </head>
 
@@ -34,10 +36,14 @@
                     <h3 class="page-title text-primary font-weight-bold">Dossiers Médicaux & Prescriptions</h3>
                 </div>
 
+                <div class="search-container">
+                    <input type="text" id="searchInput" class="search-box" onkeyup="filterTable()" placeholder="🔍 Rechercher par nom de patient...">
+                </div>
+
                 <div class="card">
                     <div class="card-body">
                         <div class="table-responsive">
-                            <table class="table table-hover table-striped">
+                            <table class="table table-hover table-striped" id="ordonnanceTable">
                                 <thead>
                                     <tr>
                                         <th>Patient</th>
@@ -84,8 +90,11 @@
                                             </span>
                                         </td>
                                         <td class="text-center">
-                                            <a href="{% url 'imprimer_ordonnance' ord.id %}" target="_blank" class="btn btn-primary btn-print" title="Imprimer">
+                                            <a href="{% url 'imprimer_ordonnance' ord.id %}" target="_blank" class="btn btn-primary btn-action" title="Imprimer">
                                                 <i class="fa fa-print"></i>
+                                            </a>
+                                            <a href="{% url 'modifier_ordonnance' ord.id %}" class="btn btn-warning btn-action text-white" title="Modifier">
+                                                <i class="fa fa-pencil-alt"></i>
                                             </a>
                                         </td>
                                     </tr>
@@ -103,6 +112,20 @@
         </div>
     </div>
     
+    <script>
+        function filterTable() {
+            let input = document.getElementById("searchInput");
+            let filter = input.value.toLowerCase();
+            let table = document.getElementById("ordonnanceTable");
+            let tr = table.getElementsByTagName("tr");
+            for (let i = 1; i < tr.length; i++) {
+                let td = tr[i].getElementsByTagName("td")[0];
+                if (td) {
+                    tr[i].style.display = td.innerText.toLowerCase().indexOf(filter) > -1 ? "" : "none";
+                }
+            }
+        }
+    </script>
     {% include 'back-end/includes/js.html' %}
 </body>
 </html>

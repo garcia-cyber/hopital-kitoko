@@ -2580,3 +2580,41 @@ def imprimer_consultation(request, consultation_id):
         'consultation': consultation,
         'examens': examens_termines
     })
+
+# 
+# ============================================================================================
+# MODIFICATION DES L'ORDONNANCE
+# ============================================================================================
+@login_required
+def modifier_ordonnance_view(request, ordonnance_id):
+    # Récupération de l'ordonnance avec ses relations
+    ordonnance = get_object_or_404(Ordonnance.objects.select_related('consultation'), id=ordonnance_id)
+
+    if request.method == 'POST':
+        # 1. Mise à jour des informations de base
+        ordonnance.type_ordonnance = request.POST.get('type_ordonnance')
+        ordonnance.observation = request.POST.get('observation')
+        ordonnance.save()
+
+        # 2. Mise à jour des médicaments : on supprime les anciens et on recrée
+        ordonnance.medicaments.all().delete()
+        
+        noms = request.POST.getlist('nom_medicament[]')
+        posologies = request.POST.getlist('posologie[]')
+        durees = request.POST.getlist('duree[]')
+
+        for i in range(len(noms)):
+            if noms[i]: # On vérifie que le nom n'est pas vide
+                Medicament.objects.create(
+                    ordonnance=ordonnance,
+                    nom=noms[i],
+                    posologie=posologies[i],
+                    duree=durees[i]
+                )
+        
+        messages.success(request, "Ordonnance mise à jour avec succès.")
+        return redirect('liste_ordonnances_prescrites_view') # Remplacez par votre nom d'URL de liste
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    return render(request, 'back-end/medecin/modifier_ordonnance.html', {'ord': ordonnance, 'fonctionKey':fonctionKey})
