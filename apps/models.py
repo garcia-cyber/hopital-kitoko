@@ -253,9 +253,14 @@ class DemandeExamen(models.Model):
     indication = models.TextField(blank=True, help_text="Note du médecin pour le technicien")
     resultat = models.TextField(blank=True, null=True)
     image_resultat = models.ImageField(upload_to='resultats_examens/', blank=True, null=True)
+    
+    # Informations sur la réalisation de l'examen
     technicien = models.ForeignKey(
-        settings.AUTH_USER_MODEL, related_name='examens_realises', 
-        on_delete=models.SET_NULL, null=True, blank=True
+        settings.AUTH_USER_MODEL, 
+        related_name='examens_realises', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True
     )
     statut = models.CharField(max_length=20, choices=STATUT, default='EN_ATTENTE')
     date_demande = models.DateTimeField(default=timezone.now)
@@ -263,7 +268,13 @@ class DemandeExamen(models.Model):
     quantite = models.PositiveIntegerField(default=1)
 
     def __str__(self):
-        return f"{self.prestation.libelle} pour {self.consultation.triage.patient.noms}"
+        # Utilisation d'une structure sécurisée pour éviter les erreurs si la relation est nulle
+        try:
+            nom_patient = self.consultation.triage.patient.noms
+        except (AttributeError, ObjectDoesNotExist):
+            nom_patient = "Patient inconnu"
+            
+        return f"{self.prestation.libelle} pour {nom_patient}"
 
 class Ordonnance(models.Model):
     TYPE_CHOICES = [('URGENCE', 'Ordonnance d’Urgence'), ('DEFINITIVE', 'Ordonnance Définitive')]

@@ -1814,6 +1814,7 @@ def dashboard_finance_depense(request):
 # ==================================================================================================
 @login_required
 def liste_attente_ordonnance_view(request):
+    # 1. Gestion de l'enregistrement de l'ordonnance (POST)
     if request.method == 'POST' and request.POST.get('action') == 'enregistrer_ordonnance':
         consultation_id = request.POST.get('consultation_id')
         diagnostic = request.POST.get('diagnostic_final')
@@ -1851,15 +1852,23 @@ def liste_attente_ordonnance_view(request):
                 messages.error(request, f"Erreur : {str(e)}")
         return redirect(request.path_info)
 
-    consultations_en_attente = Consultation.objects.filter(examens__statut='TERMINE').distinct() 
-    # 4. Gestion des rôles utilisateur
+    # 2. Récupération des données pour le template (GET)
+    # Optimisation avec prefetch_related pour éviter les requêtes SQL en boucle
+    consultations_en_attente = Consultation.objects.filter(
+        examens__statut='TERMINE'
+    ).prefetch_related(
+        'examens', 
+        'ordonnance_set'
+    ).distinct()
+
+    # 3. Gestion des rôles utilisateur
     role = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role.fonctionKey.roleName if role else None 
     
     return render(request, 'back-end/medecin/liste_attente.html', {
         'consultations_en_attente': consultations_en_attente, 
-        'fonctionKey' : fonctionKey 
-        })
+        'fonctionKey': fonctionKey 
+    })
 
  
 # ==================================================================================================
@@ -2528,4 +2537,46 @@ def liste_patients_urgence(request):
     return render(request, 'back-end/medecin/liste_patients.html', {
         'patients': patients, 
         'fonctionKey': fonctionKey
+    })
+
+
+
+
+# 
+# ===========================================================================================
+# IMPRIMER LES RESULTAT DU TECHNICIEN 
+# ===========================================================================================
+@login_required
+def imprimer_resultat(request, examen_id):
+    # On récupère directement l'examen par son ID
+    examen = get_object_or_404(DemandeExamen.objects.select_related('consultation__triage__patient', 'prestation', 'technicien'), id=examen_id)
+    
+    # Comme vous avez besoin de la consultation pour le template, on l'extrait de l'examen
+    consultation = examen.consultation
+    
+    # On met l'examen dans une liste pour conserver la compatibilité avec votre template (qui fait un {% for exam in examens %})
+    examens = [examen]
+    
+    return render(request, 'back-end/medecin/imprimer_resultat.html', {
+        'consultation': consultation,
+        'examens': examens
+    })
+# 
+# ===========================================================================================
+# IMPRIMER LES RESULTAT DU TECHNICIEN TOUT 
+# ===========================================================================================
+@login_required
+def imprimer_consultation(request, consultation_id):
+    # On ne récupère que la consultation et ses examens
+    consultation = get_object_or_404(
+        Consultation.objects.prefetch_related('examens'), 
+        id=consultation_id
+    )
+    
+    # On filtre uniquement les examens terminés pour l'affichage
+    examens_termines = consultation.examens.filter(statut='TERMINE')
+    
+    return render(request, 'back-end/medecin/imprimer_consultation.html', {
+        'consultation': consultation,
+        'examens': examens_termines
     })
