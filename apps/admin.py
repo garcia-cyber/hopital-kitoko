@@ -334,28 +334,53 @@ class ConsultationMaterniteAdmin(admin.ModelAdmin):
 @admin.register(Deces)
 class DecesAdmin(admin.ModelAdmin):
     # Colonnes affichées dans la liste des décès
-    list_display = ('get_nom_patient', 'date_deces', 'cause_deces', 'certifie_par', 'date_enregistrement')
+    list_display = (
+        'get_nom_patient', 
+        'date_deces', 
+        'certifie_par', 
+        'etablissement', 
+        'date_enregistrement'
+    )
     
-    # Barre de recherche pour trouver un patient rapidement
-    search_fields = ('nom_patient_externe', 'patient__noms', 'cause_deces')
+    # Recherche rapide dans l'interface admin
+    search_fields = (
+        'patient__noms',  # Assurez-vous que le modèle Patient a bien un champ 'noms'
+        'nom_patient_externe', 
+        'certifie_par'
+    )
     
-    # Filtres sur le côté pour trier par date ou par médecin
-    list_filter = ('date_deces', 'certifie_par')
+    # Filtres latéraux pour trier les données
+    list_filter = ('date_deces', 'etablissement', 'date_enregistrement')
     
-    # Organisation des champs dans la page d'édition
+    # Organisation des formulaires en groupes pour plus de clarté
     fieldsets = (
-        ('Informations Patient', {
-            'fields': ('patient', 'nom_patient_externe')
+        ('Identité du défunt', {
+            'fields': ('patient', 'nom_patient_externe', 'date_naissance', 'lieu_naissance')
         }),
-        ('Détails du Décès', {
-            'fields': ('date_deces', 'cause_deces', 'certifie_par', 'notes')
+        ('Adresse du domicile', {
+            'fields': ('adresse_avenue', 'adresse_numero', 'adresse_quartier', 'adresse_commune'),
+            'classes': ('collapse',) # Le bloc est réduit par défaut
+        }),
+        ('Informations sur le décès', {
+            'fields': ('date_deces', 'cause_deces')
+        }),
+        ('Certification médicale', {
+            'fields': ('etablissement', 'certifie_par', 'numero_cnom')
+        }),
+        ('Informations complémentaires', {
+            'fields': ('notes',),
+            'classes': ('collapse',)
         }),
     )
 
-    # Fonction pour afficher soit le patient interne, soit l'externe
+    # Lecture seule pour les champs générés automatiquement
+    readonly_fields = ('date_enregistrement',)
+
+    # Méthode pour afficher le nom du patient proprement
     def get_nom_patient(self, obj):
         if obj.patient:
-            return obj.patient.noms # Assure-toi que ton modèle Patient a bien un champ 'noms'
+            return str(obj.patient) # Retourne la valeur de __str__ du modèle Patient
         return obj.nom_patient_externe
     
-    get_nom_patient.short_description = 'Patient' # Nom de la colonne dans l'admin
+    get_nom_patient.short_description = 'Patient / Défunt'
+    get_nom_patient.admin_order_field = 'patient'

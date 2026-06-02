@@ -2763,43 +2763,66 @@ def payer_dossier_maternite(request, dossier_id):
 # =================================================================================================
 @login_required
 def enregistrer_deces(request):
-    # Récupérer la liste des patients pour le menu déroulant (facultatif)
     patients = Patient.objects.all().order_by('noms')
 
     if request.method == 'POST':
         try:
-            # Récupération des données
+            # Récupération de l'identité
             patient_id = request.POST.get('patient_id')
             nom_externe = request.POST.get('nom_patient_externe')
+            
+            # Récupération des infos biographiques et adresse
+            date_naissance = request.POST.get('date_naissance')
+            lieu_naissance = request.POST.get('lieu_naissance')
+            adresse_avenue = request.POST.get('adresse_avenue')
+            adresse_numero = request.POST.get('adresse_numero')
+            adresse_quartier = request.POST.get('adresse_quartier')
+            adresse_commune = request.POST.get('adresse_commune')
+            
+            # Infos décès
             date_deces = request.POST.get('date_deces')
             cause = request.POST.get('cause_deces')
+            
+            # Certification
+            etablissement = request.POST.get('etablissement', "Hôpital Paradis Center")
             certifie = request.POST.get('certifie_par')
+            numero_cnom = request.POST.get('numero_cnom')
             notes = request.POST.get('notes', '')
 
-            # Validation simple
-            if not date_deces or not cause:
-                messages.error(request, "Veuillez remplir les champs obligatoires.")
+            # Validation (vérifie au moins les champs essentiels)
+            if not date_deces or not cause or not certifie:
+                messages.error(request, "Veuillez remplir tous les champs obligatoires (Date décès, Cause, Médecin).")
                 return redirect('enregistrer_deces')
 
-            # Création de l'objet
+            # Création de l'objet avec tous les nouveaux champs
             Deces.objects.create(
                 patient_id=patient_id if patient_id else None,
                 nom_patient_externe=nom_externe if not patient_id else None,
+                date_naissance=date_naissance,
+                lieu_naissance=lieu_naissance,
+                adresse_avenue=adresse_avenue,
+                adresse_numero=adresse_numero,
+                adresse_quartier=adresse_quartier,
+                adresse_commune=adresse_commune,
                 date_deces=date_deces,
                 cause_deces=cause,
+                etablissement=etablissement,
                 certifie_par=certifie,
+                numero_cnom=numero_cnom,
                 notes=notes
             )
 
-            messages.success(request, "Actes de décès enregistré avec succès.")
-            return redirect('liste_deces') # Redirige vers la liste des décès
+            messages.success(request, "Certificat de décès enregistré avec succès.")
+            return redirect('liste_deces')
 
         except Exception as e:
             messages.error(request, f"Erreur lors de l'enregistrement : {str(e)}")
+            return redirect('enregistrer_deces')
+
     role = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
 
-    return render(request, 'back-end/deces/enregistre.html', {'patients': patients, 'fonctionKey':fonctionKey})
+    return render(request, 'back-end/deces/enregistre.html', {'patients': patients, 'fonctionKey': fonctionKey})
 
 #
 # =========================================================================
@@ -2809,6 +2832,7 @@ def enregistrer_deces(request):
 def liste_deces(request):
     # On récupère tous les décès, triés par date (du plus récent au plus ancien)
     deces_list = Deces.objects.all().order_by('-date_deces')
+
     role = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
     return render(request, 'back-end/deces/liste.html', {'deces_list': deces_list, 'fonctionKey': fonctionKey})
@@ -2821,3 +2845,65 @@ def liste_deces(request):
 def imprimer_deces(request, deces_id):
     deces = get_object_or_404(Deces, id=deces_id)
     return render(request, 'back-end/deces/imprimer.html', {'deces': deces})
+
+
+#
+# =============================================================================
+# PAYER DECES ACTE
+# =============================================================================
+@login_required
+def enregistrer_paiement_deces(request, deces_id):
+    deces = get_object_or_404(Deces, id=deces_id)
+    
+    # 1. VÉRIFICATION DU DOUBLON : Est-ce qu'un paiement existe déjà pour ce décès ?
+    if deces.paiements.exists():
+        messages.warning(request, "Attention : Ce décès a déjà été réglé.")
+        return redirect('liste_deces')
+
+    config = ConfigurationHopital.objects.first()
+    taux = config.taux_usd_en_cdf if config else Decimal('2500.00')
+    
+    prestation = Prestation.objects.filter(libelle__icontains="acte de deces").first()
+    prix_usd = prestation.prix if prestation else Decimal('0.00')
+    prix_cdf = (prix_usd * taux).quantize(Decimal('1'), rounding=ROUND_HALF_UP)
+
+    if request.method == 'POST':
+        devise = request.POST.get('devise')
+        try:
+            montant_verse = Decimal(request.POST.get('montant_verse', '0')).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        except:
+            montant_verse = Decimal('0')
+            
+        prix_requis = (prix_usd if devise == 'USD' else prix_cdf).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        
+        # 2. VÉRIFICATION DU MONTANT
+        if abs(montant_verse - prix_requis) > Decimal('0.05'): 
+            messages.error(request, f"Paiement refusé : Le montant doit être de {prix_requis:.2f} {devise}.")
+            return render(request, 'back-end/deces/payer.html', {
+                'deces': deces, 'prix_usd': prix_usd, 'prix_cdf': prix_cdf, 'taux': taux
+            })
+
+        # 3. CRÉATION DU PAIEMENT (Double sécurité au cas où deux clics simultanés arrivent)
+        if not deces.paiements.exists():
+            Paiement.objects.create(
+                patient=deces.patient if deces.patient else None,
+                deces=deces,
+                service='DECES',
+                montant_verse=montant_verse,
+                devise=devise,
+                caissier=request.user
+            )
+            messages.success(request, "Paiement enregistré avec succès.")
+        else:
+            messages.error(request, "Erreur : Un paiement a été enregistré simultanément.")
+            
+        return redirect('liste_deces')
+
+    # Affichage normal
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    return render(request, 'back-end/deces/payer.html', {
+        'deces': deces, 'prix_usd': prix_usd, 'prix_cdf': prix_cdf, 
+        'taux': taux, 'fonctionKey': fonctionKey
+    })

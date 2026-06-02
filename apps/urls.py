@@ -134,5 +134,6 @@ urlpatterns =[
     path('deces/ajouter/', views.enregistrer_deces, name='enregistrer_deces'),
     path('deces/liste/', views.liste_deces, name='liste_deces'),
     path('deces/imprimer/<int:deces_id>/', views.imprimer_deces, name='imprimer_deces'),
+    path('deces/payer/<int:deces_id>/', views.enregistrer_paiement_deces, name='enregistrer_paiement_deces'),
 
  ]

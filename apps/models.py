@@ -150,13 +150,15 @@ class Paiement(models.Model):
         ('ECHOGRAPHIE', 'Échographie'),
         ('RADIO', 'Radiographie'), 
         ('SOIN', 'Soins'),
-        ('MATERNITE', 'Maternité'), # Ajouté pour le suivi maternité
+        ('MATERNITE', 'Maternité'),
+        ('DECES', 'Actes de décès'), # Ajout ici
     ]
 
-    patient = models.ForeignKey('Patient', on_delete=models.CASCADE)
+    patient = models.ForeignKey('Patient', on_delete=models.CASCADE, null=True, blank=True)
     consultation = models.ForeignKey('Consultation', on_delete=models.SET_NULL, null=True, blank=True, related_name='paiements')
-    # Ajout du lien vers Maternite pour gérer les dossiers et paiements liés
     dossier_maternite = models.ForeignKey('Maternite', on_delete=models.SET_NULL, null=True, blank=True, related_name='paiements')
+    # Ajout du lien vers le modèle Deces
+    deces = models.ForeignKey('Deces', on_delete=models.SET_NULL, null=True, blank=True, related_name='paiements')
     
     service = models.CharField(max_length=20, choices=SERVICES)
     montant_verse = models.DecimalField(max_digits=15, decimal_places=2)
@@ -177,7 +179,6 @@ class Paiement(models.Model):
             self.consultation.consultation_payee = True
             self.consultation.save()
             
-        # Logique pour la maternité : si le reste à payer est soldé, on valide le dossier
         elif self.service == 'MATERNITE' and self.dossier_maternite:
             if self.reste_a_payer <= 0:
                 self.dossier_maternite.est_paye = True
@@ -187,7 +188,6 @@ class Paiement(models.Model):
         
         # Création automatique de la facture
         if is_new:
-            # Import différé pour éviter les erreurs d'import circulaire
             from .models import Facture
             Facture.objects.create(
                 paiement=self,
@@ -585,16 +585,37 @@ class ConsultationMaternite(models.Model):
 # =======================================================================================================
 #
 class Deces(models.Model):
-    # Optionnel : si le patient est dans notre base
+    # Gestion de l'identité du défunt
     patient = models.ForeignKey('Patient', on_delete=models.SET_NULL, null=True, blank=True)
-    # Si patient externe
     nom_patient_externe = models.CharField(max_length=255, null=True, blank=True)
     
-    date_deces = models.DateTimeField()
-    cause_deces = models.TextField()
-    certifie_par = models.CharField(max_length=255) # Nom du médecin
+    # Informations biographiques (du certificat)
+    date_naissance = models.DateField(verbose_name="Date de naissance")
+    lieu_naissance = models.CharField(max_length=100, verbose_name="Lieu de naissance")
+    
+    # Adresse du défunt
+    adresse_avenue = models.CharField(max_length=100, verbose_name="Avenue")
+    adresse_numero = models.CharField(max_length=20, verbose_name="Numéro")
+    adresse_quartier = models.CharField(max_length=100, verbose_name="Quartier")
+    adresse_commune = models.CharField(max_length=100, verbose_name="Commune")
+    
+    # Informations sur le décès
+    date_deces = models.DateTimeField(verbose_name="Date et heure du décès")
+    cause_deces = models.TextField(verbose_name="Cause du décès")
+    
+    # Informations médicales et certification
+    etablissement = models.CharField(max_length=255, default="Hôpital Paradis Center")
+    certifie_par = models.CharField(max_length=255, verbose_name="Nom du médecin")
+    numero_cnom = models.CharField(max_length=50, verbose_name="Numéro CNOM du médecin")
+    
+    # Métadonnées
     notes = models.TextField(blank=True)
     date_enregistrement = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Décès : {self.patient or self.nom_patient_externe}"
+        nom = self.patient.nom if self.patient else self.nom_patient_externe
+        return f"Décès : {nom} - {self.date_deces.strftime('%d/%m/%Y')}"
+
+    class Meta:
+        verbose_name = "Certificat de décès"
+        verbose_name_plural = "Certificats de décès"
