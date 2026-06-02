@@ -6,19 +6,16 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
         <title>Moyanoli - File d'attente Triage</title>
         
-        <!-- Favicon et CSS -->
         {% include 'back-end/includes/css.html' %}
     </head>
     <body>
         <div class="main-wrapper">
-            <!-- Header & Sidebar -->
             {% include 'back-end/includes/header.html' %}
             {% include 'back-end/includes/sidebar.html' %}
             
             <div class="page-wrapper">
                 <div class="content container-fluid">
                     
-                    <!-- Page Header -->
                     <div class="page-header">
                         <div class="row align-items-center">
                             <div class="col">
@@ -31,7 +28,6 @@
                         </div>
                     </div>
 
-                    <!-- Filtre de recherche rapide -->
                     <div class="row filter-row">
                         <div class="col-sm-9 col-md-9">  
                             <div class="form-group form-focus">
@@ -40,11 +36,10 @@
                             </div>
                         </div>
                         <div class="col-sm-3 col-md-3">  
-                            <button class="btn btn-success btn-block"> <i class="fa fa-search"></i> Actualiser </button>  
-                        </div>      
+                            <button class="btn btn-success btn-block" onclick="window.location.reload();"> <i class="fa fa-search"></i> Actualiser </button>  
+                        </div>    
                     </div>
 
-                    <!-- Tableau des Patients -->
                     <div class="card card-table mt-3">
                         <div class="card-header">
                             <h4 class="card-title mb-0">Patients en attente de constantes (Taux : {{ taux }} FC)</h4>
@@ -84,15 +79,18 @@
                                                 {% endif %}
                                             </td>
                                             <td class="text-right">
-                                                {% if patient.a_solde_fiche %}
-                                                    <!-- Lien dynamique vers la saisie des signes vitaux -->
-                                                    <a href="{% url 'saisir_signes' patient.id %}" class="btn btn-primary btn-sm">
-                                                        <i class="fa fa-stethoscope"></i> Prélèvement Signes Vitaux
-                                                    </a>
-                                                {% else %}
+                                                {% if not patient.a_solde_fiche %}
                                                     <button class="btn btn-secondary btn-sm" disabled title="Le patient doit d'abord solder la fiche (6 USD)">
                                                         <i class="fa fa-lock"></i> Dossier bloqué
                                                     </button>
+                                                {% elif patient.a_signes_vitaux_deja_pris %}
+                                                    <button class="btn btn-warning btn-sm" disabled title="Les signes vitaux ont déjà été saisis pour ce patient">
+                                                        <i class="fa fa-check-square"></i> Déjà prélevé
+                                                    </button>
+                                                {% else %}
+                                                    <a href="{% url 'saisir_signes' patient.id %}" class="btn btn-primary btn-sm">
+                                                        <i class="fa fa-stethoscope"></i> Prélèvement Signes Vitaux
+                                                    </a>
                                                 {% endif %}
                                             </td>
                                         </tr>
@@ -114,7 +112,6 @@
 
         {% include 'back-end/includes/js.html' %}
 
-        <!-- Petit script de filtrage JS simple -->
         <script>
             function filterTable() {
                 let input = document.getElementById("searchPatient");

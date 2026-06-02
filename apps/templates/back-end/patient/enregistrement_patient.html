@@ -7,30 +7,16 @@
     <title>Patients - Moyanoli Médicale</title>
     {% include 'back-end/includes/css.html' %}
     <style>
-        .table-container { background: #ffffff; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
-        .custom-table { border-collapse: separate !important; border-spacing: 0 15px !important; width: 100%; }
+        .table-container { background: #ffffff; padding: 25px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); }
+        .custom-table thead tr { background: #f8f9fe; }
+        .custom-table thead th { border: none !important; color: #718096; font-weight: 700; text-transform: uppercase; font-size: 0.70rem; letter-spacing: 1px; padding: 20px !important; }
+        .custom-table td { padding: 18px !important; vertical-align: middle !important; border-top: 1px solid #f1f5f9; }
+        .badge-modern { padding: 6px 12px; border-radius: 6px; font-weight: 600; font-size: 0.75rem; }
         
-        .custom-table thead th { 
-            border: none !important; color: #8898aa; font-weight: 700; text-transform: uppercase; 
-            font-size: 0.70rem; letter-spacing: 1.5px; padding: 15px !important; background: #f8f9fe;
-        }
-
-        .custom-table tbody tr { background: #ffffff; transition: all 0.2s ease; border-radius: 10px; }
-        .custom-table tbody tr:hover { transform: scale(1.01); box-shadow: 0 5px 15px rgba(0,0,0,0.05); background: #fcfcfc; }
-        .custom-table td { border-top: 1px solid #eee; border-bottom: 1px solid #eee; padding: 18px !important; vertical-align: middle; }
-        .custom-table td:first-child { border-left: 1px solid #eee; border-radius: 10px 0 0 10px; }
-        .custom-table td:last-child { border-right: 1px solid #eee; border-radius: 0 10px 10px 0; }
-
-        .badge-modern { padding: 6px 12px; border-radius: 8px; font-weight: 600; font-size: 0.75rem; }
-        #customSearch { border-radius: 25px 0 0 25px; border: 1px solid #dee2e6; border-right: none; padding: 12px 20px; }
+        /* Recherche */
+        .search-container { display: flex; align-items: center; justify-content: flex-end; gap: 15px; }
+        #customSearch { border-radius: 25px 0 0 25px; border: 1px solid #dee2e6; border-right: none; padding: 12px 20px; width: 250px; }
         .search-addon { background: #fff; border-radius: 0 25px 25px 0; border: 1px solid #dee2e6; border-left: none; padding: 0 20px; color: #007bff; }
-
-        /* Responsive */
-        @media (max-width: 767px) {
-            .table-container { padding: 15px !important; }
-            .page-header .row { flex-direction: column; }
-            .page-header .text-right { text-align: center !important; margin-top: 15px; }
-        }
     </style>
 </head>
 <body>
@@ -49,20 +35,20 @@
                                 <li class="breadcrumb-item active">Liste</li>
                             </ul>
                         </div>
-                        <div class="col-md-6 text-right">
-                            <div class="d-inline-block mr-3" style="width: 280px;">
-                                <div class="input-group">
+                        <div class="col-md-6">
+                            <div class="search-container">
+                                <div class="input-group" style="width: auto;">
                                     <input type="text" id="customSearch" class="form-control" placeholder="Rechercher un patient...">
                                     <div class="input-group-append">
                                         <span class="input-group-text search-addon"><i class="fa fa-search"></i></span>
                                     </div>
                                 </div>
+                                {% if fonctionKey == 'receptionniste' %}
+                                <a href="#" class="btn btn-primary" data-toggle="modal" data-target="#add_patient" style="border-radius: 25px; padding: 10px 20px;">
+                                    <i class="fa fa-plus"></i> Nouveau
+                                </a>
+                                {% endif %}
                             </div>
-                            {% if fonctionKey == 'receptionniste' %}
-                            <a href="#" class="btn btn-primary" data-toggle="modal" data-target="#add_patient" style="border-radius: 25px; padding: 10px 20px;">
-                                <i class="fa fa-plus"></i> Nouveau Patient
-                            </a>
-                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -81,11 +67,10 @@
                                     <thead>
                                         <tr>
                                             <th>Matricule</th>
-                                            <th>Nom Complet</th>
-                                            <th>Téléphone</th>
+                                            <th>Patient</th>
+                                            <th>Contact</th>
                                             <th>Âge</th>
                                             <th>Service</th>
-                                            <th>Date Enreg.</th>
                                             <th>Auteur</th>
                                             <th class="text-right">Actions</th>
                                         </tr>
@@ -93,21 +78,23 @@
                                     <tbody>
                                         {% for patient in patients %}
                                         <tr>
-                                            <td><span class="badge badge-soft-info badge-modern">{{ patient.code_patient }}</span></td>
-                                            <td><strong>{{ patient.noms }}</strong></td>
+                                            <td><span class="badge badge-soft-info badge-modern" style="background:#eef2f7; color:#4a5568; font-family:monospace;">{{ patient.code_patient }}</span></td>
+                                            <td>
+                                                <div style="font-weight: 600; color: #2d3748;">{{ patient.noms }}</div>
+                                                <div style="font-size: 0.75rem; color: #a0aec0;">{{ patient.date_creation|date:"d/m/Y" }}</div>
+                                            </td>
                                             <td>{{ patient.telephone }}</td>
                                             <td>{{ patient.age }} ans</td>
-                                            <td><span class="badge badge-modern bg-light text-primary">{{ patient.service }}</span></td>
-                                            <td>{{ patient.date_creation|date:"d/m/Y" }}</td>
-                                            <td>{{ patient.created_by.username }}</td>
+                                            <td><span class="badge badge-modern" style="color: #3182ce; background: #ebf8ff;">{{ patient.service }}</span></td>
+                                            <td><i class="fa fa-user-circle-o mr-1"></i> {{ patient.created_by.username }}</td>
                                             <td class="text-right">
                                                 <div class="dropdown dropdown-action">
-                                                    <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown"><i class="material-icons">more_vert</i></a>
-                                                    <div class="dropdown-menu dropdown-menu-right">
+                                                    <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown"><i class="fa fa-ellipsis-v"></i></a>
+                                                    <div class="dropdown-menu dropdown-menu-right" style="border: none; box-shadow: 0 5px 15px rgba(0,0,0,0.1); border-radius: 10px;">
                                                         {% if not patient.fiche_payee %}
-                                                            <a class="dropdown-item text-success" href="{% url 'payer_fiche' patient.id %}"><i class="fa fa-money m-r-5"></i> Payer la Fiche</a>
+                                                            <a class="dropdown-item" href="{% url 'payer_fiche' patient.id %}" style="color: #38a169;"><i class="fa fa-money m-r-5"></i> Payer Fiche</a>
                                                         {% else %}
-                                                            <a class="dropdown-item text-muted disabled"><i class="fa fa-check text-success m-r-5"></i> Fiche réglée</a>
+                                                            <a class="dropdown-item" style="color: #a0aec0;"><i class="fa fa-check-circle m-r-5"></i> Fiche réglée</a>
                                                         {% endif %}
                                                         <a class="dropdown-item" href="{% url 'historique_paiements' patient.id %}"><i class="fa fa-history m-r-5"></i> Hist. Paiements</a>
                                                         <a class="dropdown-item" href="{% url 'historique_signes_vitaux' patient.id %}"><i class="fa fa-heartbeat m-r-5"></i> Hist. Triage</a>
@@ -116,10 +103,10 @@
                                                         {% if patient.fiche_payee %}
                                                             <a class="dropdown-item" href="{% url 'dossier_medical_complet' patient.id %}"><i class="fa fa-eye m-r-5"></i> Dossier Médical</a>
                                                         {% else %}
-                                                            <a class="dropdown-item text-danger" href="javascript:void(0)" onclick="alert('Paiement requis.');"><i class="fa fa-lock m-r-5"></i> Dossier</a>
+                                                            <a class="dropdown-item" href="javascript:void(0)" onclick="alert('Paiement requis.');" style="color: #e53e3e;"><i class="fa fa-lock m-r-5"></i> Dossier bloqué</a>
                                                         {% endif %}
                                                         <div class="dropdown-divider"></div>
-                                                        <a class="dropdown-item text-danger" href="#"><i class="fa fa-trash-o m-r-5"></i> Supprimer</a>
+                                                        <a class="dropdown-item" href="#" style="color: #e53e3e;"><i class="fa fa-trash-o m-r-5"></i> Supprimer</a>
                                                     </div>
                                                 </div>
                                             </td>
@@ -147,7 +134,7 @@
                         {% csrf_token %}
                         {{ form.as_p }}
                         <div class="submit-section mt-4 text-center">
-                            <button type="submit" class="btn btn-primary" style="border-radius: 20px; padding: 10px 30px;">Enregistrer le patient</button>
+                            <button type="submit" class="btn btn-primary" style="border-radius: 20px; padding: 10px 30px;">Enregistrer</button>
                         </div>
                     </form>
                 </div>

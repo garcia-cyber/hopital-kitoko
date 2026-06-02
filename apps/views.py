@@ -739,14 +739,14 @@ def imprimer_recu_direct(request, paiement_id):
 # ==================================================================================================
 @login_required
 def liste_attente_triage(request):
-    # On récupère le taux de 2300 que tu as défini
+    # On récupère le taux
     config = ConfigurationHopital.objects.first()
     taux = config.taux_usd_en_cdf if config else 2300.00
     
     patients_liste = Patient.objects.all().order_by('-date_creation')
     
     for patient in patients_liste:
-        # On filtre les paiements du patient pour le service 'FICHE' uniquement
+        # 1. Vérification du solde Fiche (Logique maintenue)
         paiements = Paiement.objects.filter(patient=patient, service='FICHE')
         
         total_usd = 0
@@ -754,12 +754,15 @@ def liste_attente_triage(request):
             if p.devise == 'USD':
                 total_usd += p.montant_verse
             else:
-                # Conversion stricte : montant CDF / 2300
+                # Conversion stricte : montant CDF / taux
                 total_usd += (p.montant_verse / taux)
         
         patient.total_fiche_usd = total_usd
-        # Seuil strict de 6.00 USD (soit 13 800 FC)
+        # Seuil strict de 6.00 USD
         patient.a_solde_fiche = total_usd >= 6.00
+        
+        # 2. Vérification signes vitaux (Ajouté sans supprimer le reste)
+        patient.a_signes_vitaux_deja_pris = SigneVital.objects.filter(patient=patient).exists()
 
     # Rôles
     role = Fonction.objects.filter(userKey=request.user).first()
@@ -767,8 +770,8 @@ def liste_attente_triage(request):
 
     return render(request, 'back-end/infirmerie/liste_attente.html', {
         'patients': patients_liste, 
-        'taux': taux ,
-        'fonctionKey' : fonctionKey
+        'taux': taux,
+        'fonctionKey': fonctionKey
     })
 
 
