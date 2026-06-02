@@ -47,8 +47,10 @@ class Prestation(models.Model):
         ('SOIN', 'Soins'), 
         ('ECHO', 'Échographie'), 
         ('RADIO', 'Radiologie'),
-        ('MED', 'Acte Médical'),      # Modifié ici
-        ('CHIR', 'Acte Chirurgical'), # Modifié ici
+        ('MED', 'Acte Médical'),      
+        ('CHIR', 'Acte Chirurgical'),
+        ('CONS_MAT', 'Consultation Maternité'), # Nouvelle catégorie
+        ('MAT', 'Forfait Maternité / Accouchement'), # Catégorie existante
     ]
     
     libelle = models.CharField(max_length=200, verbose_name="Libellé")
@@ -148,10 +150,14 @@ class Paiement(models.Model):
         ('ECHOGRAPHIE', 'Échographie'),
         ('RADIO', 'Radiographie'), 
         ('SOIN', 'Soins'),
+        ('MATERNITE', 'Maternité'), # Ajouté pour le suivi maternité
     ]
 
     patient = models.ForeignKey('Patient', on_delete=models.CASCADE)
     consultation = models.ForeignKey('Consultation', on_delete=models.SET_NULL, null=True, blank=True, related_name='paiements')
+    # Ajout du lien vers Maternite pour gérer les dossiers et paiements liés
+    dossier_maternite = models.ForeignKey('Maternite', on_delete=models.SET_NULL, null=True, blank=True, related_name='paiements')
+    
     service = models.CharField(max_length=20, choices=SERVICES)
     montant_verse = models.DecimalField(max_digits=15, decimal_places=2)
     devise = models.CharField(max_length=3, choices=CURRENCY, default='USD')
@@ -170,6 +176,12 @@ class Paiement(models.Model):
         elif self.service == 'CONSULTATION' and self.consultation:
             self.consultation.consultation_payee = True
             self.consultation.save()
+            
+        # Logique pour la maternité : si le reste à payer est soldé, on valide le dossier
+        elif self.service == 'MATERNITE' and self.dossier_maternite:
+            if self.reste_a_payer <= 0:
+                self.dossier_maternite.est_paye = True
+                self.dossier_maternite.save()
 
         super().save(*args, **kwargs)
         
@@ -534,6 +546,36 @@ class Maternite(models.Model):
     )
     
     enregistre_par = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    est_paye = models.BooleanField(default=False, verbose_name="Frais d'ouverture réglés")
 
     def __str__(self):
         return f"Maternité de {self.patient.noms} - {self.date_admission.strftime('%d/%m/%Y')}"
+
+
+# =======================================================================================
+#
+# model ConsultationMaternite 
+class ConsultationMaternite(models.Model):
+    # Lien vers le dossier de maternité spécifique
+    dossier_maternite = models.ForeignKey(Maternite, on_delete=models.CASCADE, related_name='consultations')
+    
+    date_consultation = models.DateTimeField(auto_now_add=True)
+    poids = models.DecimalField(max_digits=5, decimal_places=2, verbose_name="Poids (kg)")
+    tension_arterielle = models.CharField(max_length=10, verbose_name="Tension artérielle")
+    hauteur_uterine = models.IntegerField(verbose_name="Hauteur utérine (cm)")
+    bruits_cardiaques_foetaux = models.CharField(max_length=20, verbose_name="BCF")
+    notes = models.TextField(blank=True, null=True, verbose_name="Notes médicales")
+    
+    # Médecin/Infirmier ayant fait la consultation
+    effectue_par = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+
+    def __str__(self):
+        return f"Consultation du {self.date_consultation.strftime('%d/%m/%Y')} pour {self.dossier_maternite.patient.noms}"
+
+    # Pour facturer automatiquement la consultation lors de sa saisie
+    prestation = models.ForeignKey(
+        Prestation, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        limit_choices_to={'categorie': 'CONS_MAT'}
+    )

@@ -7,7 +7,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth.forms import SetPasswordForm ,UserChangeForm
 from django.contrib import messages
 from django.db.models import Q , Sum , DecimalField ,Prefetch , Count
-from decimal import Decimal , ROUND_HALF_UP
+from decimal import Decimal , ROUND_HALF_UP , InvalidOperation
 import pytz
 from datetime import timedelta , date
 from django.db import transaction
@@ -2631,13 +2631,13 @@ def modifier_ordonnance_view(request, ordonnance_id):
 def admettre_maternite(request, patient_id):
     patient = get_object_or_404(Patient, id=patient_id)
     
-    # SÉCURITÉ 1 : Vérification stricte du paiement de la fiche
+    # SÉCURITÉ 1 : Vérification stricte du paiement de la fiche générale
     if not patient.fiche_payee:
         messages.error(request, "Erreur : La fiche du patient doit être réglée avant toute admission.")
         return redirect('enregistrement_patient')
 
     # SÉCURITÉ 2 : Vérification stricte du sexe
-    if patient.sexe != 'Feminin' and patient.sexe != 'F':
+    if patient.sexe not in ['Feminin', 'F']:
         messages.error(request, "Erreur : Impossible d'admettre un homme en maternité.")
         return redirect('enregistrement_patient')
 
@@ -2648,9 +2648,15 @@ def admettre_maternite(request, patient_id):
         if form.is_valid():
             dossier = form.save(commit=False)
             dossier.enregistre_par = request.user
+            
+            # MISE À JOUR LOGIQUE : Initialisation du statut de paiement
+            # Par défaut, le dossier est à False tant que la caisse ne confirme pas
+            dossier.est_paye = False 
+            
             dossier.save()
-            messages.success(request, f"Patiente {patient.noms} admise en maternité avec succès.")
-            return redirect('enregistrement_patient')
+            
+            messages.success(request, f"Patiente {patient.noms} admise. Veuillez procéder au paiement des frais d'ouverture.")
+            return redirect('liste_admissions_maternite') # On redirige vers la liste pour voir le statut
     else:
         form = MaterniteForm(instance=maternite_instance)
     
@@ -2662,4 +2668,89 @@ def admettre_maternite(request, patient_id):
         'form': form, 
         'patient': patient,
         'fonctionKey': fonctionKey
+    })
+
+
+
+# 
+# ========================================================================================
+#  LISTE DE PATIENTES A LA MATERNITES 
+# ========================================================================================
+@login_required
+def liste_admissions_maternite(request):
+    # Récupère tous les dossiers, ordonnés du plus récent au plus ancien
+    admissions = Maternite.objects.all().order_by('-date_admission')
+
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    context = {
+        'admissions': admissions,
+        'segment': 'liste_maternite' ,
+        'fonctionKey' : fonctionKey
+    }
+    return render(request, 'back-end/maternite/liste_maternite.html', context)
+
+
+# 
+# ========================================================================================
+# PAYER DOSSIER MATERNITE
+# ========================================================================================
+@login_required
+def payer_dossier_maternite(request, dossier_id):
+    dossier = get_object_or_404(Maternite, id=dossier_id)
+    
+    # Récupération des données pour le formulaire
+    prestation_mat = Prestation.objects.filter(categorie='MAT').first()
+    prix_referentiel = prestation_mat.prix if prestation_mat else Decimal('150.00')
+    config = ConfigurationHopital.objects.first()
+    taux = config.taux_usd_en_cdf if config else Decimal('2500.00')
+    
+    if request.method == 'POST':
+        # On récupère les valeurs
+        montant_raw = request.POST.get('montant', '0')
+        reste_raw = request.POST.get('reste_a_payer', '0')
+        devise = request.POST.get('devise', 'USD')
+        
+        try:
+            # Conversion sécurisée en Decimal
+            montant = Decimal(montant_raw)
+            reste = Decimal(reste_raw)
+            
+            # Conversion du montant versé en USD pour comparaison
+            montant_en_usd = montant if devise == 'USD' else (montant / taux)
+            
+            # Vérification de sécurité
+            if montant_en_usd > prix_referentiel:
+                messages.error(request, f"Erreur : Le montant versé dépasse le forfait Maternité de {prix_referentiel} USD.")
+                return redirect('payer_dossier_maternite', dossier_id=dossier.id)
+            
+            # Création du paiement
+            Paiement.objects.create(
+                patient=dossier.patient,
+                dossier_maternite=dossier,
+                service='MATERNITE',
+                montant_verse=montant,
+                devise=devise,
+                reste_a_payer=reste,
+                caissier=request.user
+            )
+            
+            messages.success(request, f"Paiement de {montant} {devise} enregistré avec succès.")
+            return redirect('liste_admissions_maternite')
+            
+        except (InvalidOperation, ValueError, TypeError):
+            # En cas de valeur non numérique, on renvoie une erreur
+            messages.error(request, "Erreur : Format de montant invalide.")
+            return redirect('payer_dossier_maternite', dossier_id=dossier.id)
+    
+    # Affichage de la page en GET
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    return render(request, 'back-end/maternite/payer.html', {
+        'dossier': dossier, 
+        'prix_max': prix_referentiel,
+        'taux': taux ,
+        'fonctionKey' : fonctionKey
     })

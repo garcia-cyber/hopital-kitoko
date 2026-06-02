@@ -279,21 +279,49 @@ class HospitalisationAdmin(admin.ModelAdmin):
 # ===================================================================================================
 #
 # maternite 
+# ======================================================
+# Inline pour afficher les consultations dans la page du dossier Maternite
+# ======================================================
+class ConsultationMaterniteInline(admin.TabularInline):
+    model = ConsultationMaternite
+    extra = 1  # Nombre de formulaires vides affichés par défaut
+    fields = ['poids', 'tension_arterielle', 'hauteur_uterine', 'bruits_cardiaques_foetaux', 'prestation', 'effectue_par']
+    readonly_fields = ['date_consultation']
+    
+    # Restreindre le choix des prestations dans l'interface inline
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "prestation":
+            kwargs["queryset"] = Prestation.objects.filter(categorie='CONS_MAT')
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+# ======================================================
+# Administration du modèle Maternite
+# ======================================================
 @admin.register(Maternite)
 class MaterniteAdmin(admin.ModelAdmin):
-    # Ce qui s'affiche dans la liste des dossiers de maternité
     list_display = ('patient', 'date_admission', 'terme_prevu', 'groupe_sanguin', 'enregistre_par')
-    
-    # Barre de recherche pour trouver rapidement une patiente
     search_fields = ('patient__noms', 'patient__code_patient')
-    
-    # Filtres sur le côté droit pour trier par date ou par utilisateur
     list_filter = ('date_admission', 'enregistre_par')
-    
-    # Pour afficher les dates dans l'interface de modification
     readonly_fields = ('date_admission',)
+    
+    # Intégration de l'inline pour voir les consultations dans le dossier maternité
+    inlines = [ConsultationMaterniteInline]
 
-    # Optionnel : Affiche le nom de la patiente en gras dans la liste
     def patient_name(self, obj):
         return obj.patient.noms
     patient_name.short_description = 'Patiente'
+
+# ======================================================
+# Administration du modèle ConsultationMaternite
+# ======================================================
+@admin.register(ConsultationMaternite)
+class ConsultationMaterniteAdmin(admin.ModelAdmin):
+    list_display = ['dossier_maternite', 'date_consultation', 'poids', 'tension_arterielle', 'prestation', 'effectue_par']
+    list_filter = ['date_consultation', 'effectue_par']
+    search_fields = ['dossier_maternite__patient__noms']
+    
+    # Pour filtrer uniquement les prestations de type CONSULTATION MATERNITE dans l'admin
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "prestation":
+            kwargs["queryset"] = Prestation.objects.filter(categorie='CONS_MAT')
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)

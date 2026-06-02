@@ -63,6 +63,17 @@
                             <li><a href="{% url 'liste_entreprises' %}">Liste des Entreprises</a></li>
                         </ul>
                     </li>
+
+                    <li class="menu-title"> 
+                        <span>Gestion Médicale</span>
+                    </li>
+
+                    <li class="submenu">
+                        <a href="#"><i class="fa fa-child"></i> <span> Maternité</span> <span class="menu-arrow"></span></a>
+                        <ul style="display: none;">
+                            <li><a href="{% url 'liste_admissions_maternite' %}">Suivi des Admissions</a></li>
+                        </ul>
+                    </li> 
                 {% endif %}
 
                 {% if fonctionKey == 'medecin' %}
@@ -75,12 +86,35 @@
                         <a href="{% url 'liste_attente_medecin' %}"><i class="fa fa-clock"></i> <span>Liste d'attente</span></a>
                     </li>
                     <li><a href="{% url 'liste_patients_urgence' %}"><i class="fas fa-user-injured"></i> <span>Liste des Patients</span></a></li>
+
+                    <li class="menu-title"> 
+                        <span>Gestion Médicale</span>
+                    </li>
+
+                    <li class="submenu">
+                        <a href="#"><i class="fa fa-child"></i> <span> Maternité</span> <span class="menu-arrow"></span></a>
+                        <ul style="display: none;">
+                            <li><a href="{% url 'liste_admissions_maternite' %}">Suivi des Admissions</a></li>
+                        </ul>
+                    </li> 
+
                 {% endif %}
 
                 {% if fonctionKey == 'infirmier' %}
                     <li class="menu-title"> <span>SOINS INFIRMIERS</span> </li>
                     <li><a href="{% url 'liste_attente_triage' %}"><i class="la la-notes-medical"></i> <span>Liste Triage</span></a></li>
                     <li><a href="{% url 'liste_globale_triage' %}"><i class="la la-list-alt"></i> <span>Registre Global</span></a></li>
+
+                    <li class="menu-title"> 
+                        <span>Gestion Médicale</span>
+                    </li>
+
+                    <li class="submenu">
+                        <a href="#"><i class="fa fa-child"></i> <span> Maternité</span> <span class="menu-arrow"></span></a>
+                        <ul style="display: none;">
+                            <li><a href="{% url 'liste_admissions_maternite' %}">Suivi des Admissions</a></li>
+                        </ul>
+                    </li> 
                 {% endif %}
 
                 {% if fonctionKey == 'laborantin' or fonctionKey == 'technique' or fonctionKey == 'echographe' or fonctionKey == 'radiologue' %}
