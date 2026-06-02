@@ -121,8 +121,12 @@ urlpatterns =[
     # ====================================
     # ENTREPRISE
     path('entreprise/enregistrer/', views.enregistrer_entreprise_view, name='enregistrer_entreprise'),
-
     path('entreprises/', views.liste_entreprises_view, name='liste_entreprises'),
+
+    # =====================================
+    # MATERNITE
+    path('admettre-maternite/<int:patient_id>/', views.admettre_maternite, name='admettre_maternite'),
+
 
 
  ]

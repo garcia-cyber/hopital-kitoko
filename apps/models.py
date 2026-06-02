@@ -508,3 +508,32 @@ class Entreprise(models.Model):
 
     def __str__(self):
         return self.nom
+
+
+
+## ==================================================================================
+# model maternite 
+class Maternite(models.Model):
+    # Liste des groupes sanguins autorisés
+    GROUPE_SANGUIN_CHOICES = [
+        ('A+', 'A+'), ('A-', 'A-'),
+        ('B+', 'B+'), ('B-', 'B-'),
+        ('AB+', 'AB+'), ('AB-', 'AB-'),
+        ('O+', 'O+'), ('O-', 'O-'),
+    ]
+
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='dossiers_maternite')
+    date_admission = models.DateTimeField(auto_now_add=True)
+    terme_prevu = models.DateField()
+    
+    # Utilisation des 'choices' ici
+    groupe_sanguin = models.CharField(
+        max_length=3, 
+        choices=GROUPE_SANGUIN_CHOICES,
+        default='O+'
+    )
+    
+    enregistre_par = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+
+    def __str__(self):
+        return f"Maternité de {self.patient.noms} - {self.date_admission.strftime('%d/%m/%Y')}"

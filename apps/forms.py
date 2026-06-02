@@ -3,7 +3,7 @@ from django.contrib.auth.models import User
 from .models import *
 from django.core.exceptions import ValidationError
 from django.forms import inlineformset_factory
-
+from datetime import date
 
 # creation du formulaire d'authentification
 # ==========================================
@@ -457,3 +457,36 @@ class EntrepriseForm(forms.ModelForm):
         if Entreprise.objects.filter(nom__iexact=nom).exists():
             raise ValidationError(f"L'entreprise '{nom}' est déjà enregistrée dans le système.")
         return nom
+
+
+
+# =============================================================================
+# formulaire maternite 
+class MaterniteForm(forms.ModelForm):
+    class Meta:
+        model = Maternite
+        fields = ['terme_prevu', 'groupe_sanguin']
+        widgets = {
+            'terme_prevu': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'groupe_sanguin': forms.Select(attrs={'class': 'form-control'}),
+        }
+
+    def clean_terme_prevu(self):
+        terme = self.cleaned_data.get('terme_prevu')
+        # Optionnel : Empêcher une date passée
+        if terme and terme < date.today():
+            raise ValidationError("La date du terme ne peut pas être dans le passé.")
+        return terme
+
+    def clean(self):
+        # Cette vérification nécessite de passer le 'patient' au formulaire
+        # On le fera via le constructeur __init__
+        cleaned_data = super().clean()
+        patient = self.instance.patient if self.instance else None
+        
+        # Exemple : On bloque l'enregistrement si un dossier existe déjà 
+        # pour la même date de terme (évite les saisies en double)
+        if patient and Maternite.objects.filter(patient=patient, terme_prevu=cleaned_data.get('terme_prevu')).exists():
+            raise ValidationError("Cette patiente possède déjà un dossier de maternité avec cette date de terme.")
+        
+        return cleaned_data

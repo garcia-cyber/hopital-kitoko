@@ -272,3 +272,28 @@ class HospitalisationAdmin(admin.ModelAdmin):
         self.message_user(request, "Les hospitalisations sélectionnées ont été marquées comme terminées.")
     
     marquer_comme_termine.short_description = "Marquer comme terminées"
+
+
+
+
+# ===================================================================================================
+#
+# maternite 
+@admin.register(Maternite)
+class MaterniteAdmin(admin.ModelAdmin):
+    # Ce qui s'affiche dans la liste des dossiers de maternité
+    list_display = ('patient', 'date_admission', 'terme_prevu', 'groupe_sanguin', 'enregistre_par')
+    
+    # Barre de recherche pour trouver rapidement une patiente
+    search_fields = ('patient__noms', 'patient__code_patient')
+    
+    # Filtres sur le côté droit pour trier par date ou par utilisateur
+    list_filter = ('date_admission', 'enregistre_par')
+    
+    # Pour afficher les dates dans l'interface de modification
+    readonly_fields = ('date_admission',)
+
+    # Optionnel : Affiche le nom de la patiente en gras dans la liste
+    def patient_name(self, obj):
+        return obj.patient.noms
+    patient_name.short_description = 'Patiente'

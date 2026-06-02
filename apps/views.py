@@ -9,7 +9,7 @@ from django.contrib import messages
 from django.db.models import Q , Sum , DecimalField ,Prefetch , Count
 from decimal import Decimal , ROUND_HALF_UP
 import pytz
-from datetime import timedelta
+from datetime import timedelta , date
 from django.db import transaction
 from django.conf import settings
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
@@ -2616,8 +2616,50 @@ def modifier_ordonnance_view(request, ordonnance_id):
                 )
         
         messages.success(request, "Ordonnance mise à jour avec succès.")
-        return redirect('liste_ordonnances_prescrites_view') # Remplacez par votre nom d'URL de liste
+        return redirect('liste_ordonnances_prescrites_view') 
     role = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
 
     return render(request, 'back-end/medecin/modifier_ordonnance.html', {'ord': ordonnance, 'fonctionKey':fonctionKey})
+
+
+#
+# ====================================================================================================
+#  ADMETTRE UNE PATIENTE A LA MATERNITE 
+# ====================================================================================================
+@login_required
+def admettre_maternite(request, patient_id):
+    patient = get_object_or_404(Patient, id=patient_id)
+    
+    # SÉCURITÉ 1 : Vérification stricte du paiement de la fiche
+    if not patient.fiche_payee:
+        messages.error(request, "Erreur : La fiche du patient doit être réglée avant toute admission.")
+        return redirect('enregistrement_patient')
+
+    # SÉCURITÉ 2 : Vérification stricte du sexe
+    if patient.sexe != 'Feminin' and patient.sexe != 'F':
+        messages.error(request, "Erreur : Impossible d'admettre un homme en maternité.")
+        return redirect('enregistrement_patient')
+
+    maternite_instance = Maternite(patient=patient)
+    
+    if request.method == 'POST':
+        form = MaterniteForm(request.POST, instance=maternite_instance)
+        if form.is_valid():
+            dossier = form.save(commit=False)
+            dossier.enregistre_par = request.user
+            dossier.save()
+            messages.success(request, f"Patiente {patient.noms} admise en maternité avec succès.")
+            return redirect('enregistrement_patient')
+    else:
+        form = MaterniteForm(instance=maternite_instance)
+    
+    # Récupération du rôle
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    return render(request, 'back-end/maternite/admettre.html', {
+        'form': form, 
+        'patient': patient,
+        'fonctionKey': fonctionKey
+    })
