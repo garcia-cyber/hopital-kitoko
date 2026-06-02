@@ -98,6 +98,20 @@
                         </ul>
                     </li> 
 
+                    <li class="menu-title"><span>Gestion des Décès</span></li>
+
+<li>
+    <a href="{% url 'enregistrer_deces' %}">
+        <i class="fa fa-plus-circle"></i> <span>Déclarer un Décès</span>
+    </a>
+</li>
+
+<li>
+    <a href="{% url 'liste_deces' %}">
+        <i class="fa fa-list-alt"></i> <span>Registre des Décès</span>
+    </a>
+</li>
+
                 {% endif %}
 
                 {% if fonctionKey == 'infirmier' %}

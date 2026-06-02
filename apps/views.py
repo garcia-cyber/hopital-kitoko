@@ -2761,3 +2761,63 @@ def payer_dossier_maternite(request, dossier_id):
 # =================================================================================================
 # ENREGISTREMENT DE L'ACTE DE DECES 
 # =================================================================================================
+@login_required
+def enregistrer_deces(request):
+    # Récupérer la liste des patients pour le menu déroulant (facultatif)
+    patients = Patient.objects.all().order_by('noms')
+
+    if request.method == 'POST':
+        try:
+            # Récupération des données
+            patient_id = request.POST.get('patient_id')
+            nom_externe = request.POST.get('nom_patient_externe')
+            date_deces = request.POST.get('date_deces')
+            cause = request.POST.get('cause_deces')
+            certifie = request.POST.get('certifie_par')
+            notes = request.POST.get('notes', '')
+
+            # Validation simple
+            if not date_deces or not cause:
+                messages.error(request, "Veuillez remplir les champs obligatoires.")
+                return redirect('enregistrer_deces')
+
+            # Création de l'objet
+            Deces.objects.create(
+                patient_id=patient_id if patient_id else None,
+                nom_patient_externe=nom_externe if not patient_id else None,
+                date_deces=date_deces,
+                cause_deces=cause,
+                certifie_par=certifie,
+                notes=notes
+            )
+
+            messages.success(request, "Actes de décès enregistré avec succès.")
+            return redirect('liste_deces') # Redirige vers la liste des décès
+
+        except Exception as e:
+            messages.error(request, f"Erreur lors de l'enregistrement : {str(e)}")
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    return render(request, 'back-end/deces/enregistre.html', {'patients': patients, 'fonctionKey':fonctionKey})
+
+#
+# =========================================================================
+# LISTE DES DECES 
+# ========================================================================
+@login_required
+def liste_deces(request):
+    # On récupère tous les décès, triés par date (du plus récent au plus ancien)
+    deces_list = Deces.objects.all().order_by('-date_deces')
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+    return render(request, 'back-end/deces/liste.html', {'deces_list': deces_list, 'fonctionKey': fonctionKey})
+
+#
+# ==============================================================================
+# IMPRIMER DECES 
+# =============================================================================
+@login_required
+def imprimer_deces(request, deces_id):
+    deces = get_object_or_404(Deces, id=deces_id)
+    return render(request, 'back-end/deces/imprimer.html', {'deces': deces})
