@@ -579,3 +579,22 @@ class ConsultationMaternite(models.Model):
         null=True, 
         limit_choices_to={'categorie': 'CONS_MAT'}
     )
+
+
+
+# =======================================================================================================
+#
+class Deces(models.Model):
+    # Optionnel : si le patient est dans notre base
+    patient = models.ForeignKey('Patient', on_delete=models.SET_NULL, null=True, blank=True)
+    # Si patient externe
+    nom_patient_externe = models.CharField(max_length=255, null=True, blank=True)
+    
+    date_deces = models.DateTimeField()
+    cause_deces = models.TextField()
+    certifie_par = models.CharField(max_length=255) # Nom du médecin
+    notes = models.TextField(blank=True)
+    date_enregistrement = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Décès : {self.patient or self.nom_patient_externe}"

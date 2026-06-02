@@ -325,3 +325,37 @@ class ConsultationMaterniteAdmin(admin.ModelAdmin):
         if db_field.name == "prestation":
             kwargs["queryset"] = Prestation.objects.filter(categorie='CONS_MAT')
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+
+
+# =========================================================
+# ACTE DE DECES 
+# =========================================================
+@admin.register(Deces)
+class DecesAdmin(admin.ModelAdmin):
+    # Colonnes affichées dans la liste des décès
+    list_display = ('get_nom_patient', 'date_deces', 'cause_deces', 'certifie_par', 'date_enregistrement')
+    
+    # Barre de recherche pour trouver un patient rapidement
+    search_fields = ('nom_patient_externe', 'patient__noms', 'cause_deces')
+    
+    # Filtres sur le côté pour trier par date ou par médecin
+    list_filter = ('date_deces', 'certifie_par')
+    
+    # Organisation des champs dans la page d'édition
+    fieldsets = (
+        ('Informations Patient', {
+            'fields': ('patient', 'nom_patient_externe')
+        }),
+        ('Détails du Décès', {
+            'fields': ('date_deces', 'cause_deces', 'certifie_par', 'notes')
+        }),
+    )
+
+    # Fonction pour afficher soit le patient interne, soit l'externe
+    def get_nom_patient(self, obj):
+        if obj.patient:
+            return obj.patient.noms # Assure-toi que ton modèle Patient a bien un champ 'noms'
+        return obj.nom_patient_externe
+    
+    get_nom_patient.short_description = 'Patient' # Nom de la colonne dans l'admin

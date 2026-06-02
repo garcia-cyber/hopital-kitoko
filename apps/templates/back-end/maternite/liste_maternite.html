@@ -63,11 +63,15 @@
                                             </td>
                                             <td>{{ item.date_admission|date:"d/m/Y" }}</td>
                                             <td class="text-right">
+
                                                 {% if not item.est_paye %}
+                                                    {% if fonctionKey == 'receptionniste'%}
                                                     <a href="{% url 'payer_dossier_maternite' item.id %}" class="btn btn-sm btn-success" style="border-radius: 20px;">
                                                         <i class="fa fa-money"></i> Valider Paiement
                                                     </a>
+                                                    {%endif%}
                                                 {% else %}
+
                                                 <a href="#" class="btn btn-sm btn-primary" style="border-radius: 20px;">
     <i class="fa fa-stethoscope"></i> Consulter (Non dispo)
 </a>
