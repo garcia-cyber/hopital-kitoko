@@ -1817,11 +1817,10 @@ def dashboard_finance_depense(request):
 # ==================================================================================================
 @login_required
 def liste_attente_ordonnance_view(request):
-    # 1. Gestion de l'enregistrement de l'ordonnance (POST)
     if request.method == 'POST' and request.POST.get('action') == 'enregistrer_ordonnance':
         consultation_id = request.POST.get('consultation_id')
         diagnostic = request.POST.get('diagnostic_final')
-        contenu = request.POST.get('contenu_ordonnance')
+        contenu = request.POST.get('contenu_ordonnance', '')
         type_ord = request.POST.get('type_ordonnance')
         
         noms = request.POST.getlist('nom_medicament[]')
@@ -1833,15 +1832,18 @@ def liste_attente_ordonnance_view(request):
         if consultation:
             try:
                 with transaction.atomic():
+                    # Mise à jour du diagnostic
                     consultation.diagnostic_final = diagnostic
                     consultation.save()
                     
+                    # Création de l'ordonnance
                     ordonnance = Ordonnance.objects.create(
                         consultation=consultation,
                         observation=contenu,
                         type_ordonnance=type_ord
                     )
                     
+                    # Création des médicaments
                     for nom, pos, dur in zip(noms, posologies, durees):
                         if nom.strip():
                             Medicament.objects.create(
@@ -1852,19 +1854,15 @@ def liste_attente_ordonnance_view(request):
                             )
                 messages.success(request, "Ordonnance enregistrée avec succès.")
             except Exception as e:
-                messages.error(request, f"Erreur : {str(e)}")
-        return redirect(request.path_info)
+                messages.error(request, f"Erreur lors de l'enregistrement : {str(e)}")
+        
+        return redirect('liste_attente_ordonnance_view')
 
-    # 2. Récupération des données pour le template (GET)
-    # Optimisation avec prefetch_related pour éviter les requêtes SQL en boucle
+    # Récupération des données
     consultations_en_attente = Consultation.objects.filter(
         examens__statut='TERMINE'
-    ).prefetch_related(
-        'examens', 
-        'ordonnance_set'
-    ).distinct()
+    ).prefetch_related('examens', 'ordonnance_set').distinct()
 
-    # 3. Gestion des rôles utilisateur
     role = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role.fonctionKey.roleName if role else None 
     
@@ -2616,7 +2614,7 @@ def modifier_ordonnance_view(request, ordonnance_id):
                 )
         
         messages.success(request, "Ordonnance mise à jour avec succès.")
-        return redirect('liste_ordonnances_prescrites_view') 
+        return redirect('liste_ordonnances') 
     role = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
 
