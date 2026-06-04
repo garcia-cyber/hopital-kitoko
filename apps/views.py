@@ -2649,14 +2649,11 @@ def admettre_maternite(request, patient_id):
             dossier = form.save(commit=False)
             dossier.enregistre_par = request.user
             
-            # MISE À JOUR LOGIQUE : Initialisation du statut de paiement
-            # Par défaut, le dossier est à False tant que la caisse ne confirme pas
-            dossier.est_paye = False 
-            
+            # MISE À JOUR : Le paiement n'est plus requis pour l'ouverture du dossier
             dossier.save()
             
-            messages.success(request, f"Patiente {patient.noms} admise. Veuillez procéder au paiement des frais d'ouverture.")
-            return redirect('liste_admissions_maternite') # On redirige vers la liste pour voir le statut
+            messages.success(request, f"Patiente {patient.noms} admise avec succès. L'ouverture du dossier est gratuite.")
+            return redirect('liste_admissions_maternite')
     else:
         form = MaterniteForm(instance=maternite_instance)
     
@@ -2690,6 +2687,74 @@ def liste_admissions_maternite(request):
         'fonctionKey' : fonctionKey
     }
     return render(request, 'back-end/maternite/liste_maternite.html', context)
+
+#
+# ====================================================================================
+# AJOUTE CONSULTATION
+# ====================================================================================
+@login_required
+def ajouter_consultation(request, dossier_id):
+    dossier = get_object_or_404(Maternite, id=dossier_id)
+    
+    if request.method == 'POST':
+        form = ConsultationMaterniteForm(request.POST)
+        if form.is_valid():
+            consultation = form.save(commit=False)
+            consultation.dossier_maternite = dossier
+            consultation.effectue_par = request.user
+            consultation.save()
+            
+            messages.success(request, f"Consultation enregistrée pour {dossier.patient.noms}.") 
+            return redirect('liste_admissions_maternite')
+    else:
+        form = ConsultationMaterniteForm()
+
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    return render(request, 'back-end/maternite/ajouter_consultation.html', {
+        'form': form,
+        'dossier': dossier , 
+        'fonctionKey' : fonctionKey
+    })
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # 
@@ -2754,6 +2819,50 @@ def payer_dossier_maternite(request, dossier_id):
         'taux': taux ,
         'fonctionKey' : fonctionKey
     })
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -128,6 +128,7 @@ urlpatterns =[
     path('admettre-maternite/<int:patient_id>/', views.admettre_maternite, name='admettre_maternite'),
     path('maternite/liste/', views.liste_admissions_maternite, name='liste_admissions_maternite'),
     path('maternite/payer/<int:dossier_id>/', views.payer_dossier_maternite, name='payer_dossier_maternite'),
+    path('consultation/ajouter/<int:dossier_id>/', views.ajouter_consultation, name='ajouter_consultation'),
 
     # ====================================
     # DECES

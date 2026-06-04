@@ -490,3 +490,17 @@ class MaterniteForm(forms.ModelForm):
             raise ValidationError("Cette patiente possède déjà un dossier de maternité avec cette date de terme.")
         
         return cleaned_data
+
+
+
+# ===============================================================================
+#
+#  
+
+class ConsultationMaterniteForm(forms.ModelForm):
+    class Meta:
+        model = ConsultationMaternite
+        exclude = ['dossier_maternite', 'effectue_par', 'date_consultation']
+        widgets = {
+            'notes': forms.Textarea(attrs={'rows': 3}),
+        }

@@ -16,9 +16,6 @@
         .custom-table tbody tr { background: #ffffff; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
         .custom-table td { padding: 15px !important; border-top: none !important; border-bottom: none !important; }
         .badge-blood { background: #fff5f5; color: #e53e3e; font-weight: bold; }
-        /* Nouveaux badges pour le paiement */
-        .badge-paid { background: #f0fff4; color: #38a169; }
-        .badge-unpaid { background: #fffaf0; color: #dd6b20; }
     </style>
 </head>
 <body>
@@ -41,7 +38,6 @@
                                         <tr>
                                             <th>Patiente</th>
                                             <th>Groupe Sanguin</th>
-                                            <th>Statut Paiement</th>
                                             <th>Date Admission</th>
                                             <th class="text-right">Actions</th>
                                         </tr>
@@ -54,33 +50,23 @@
                                                 <div style="font-size: 0.75rem; color: #a0aec0;">ID: {{ item.patient.code_patient }}</div>
                                             </td>
                                             <td><span class="badge badge-blood" style="padding: 5px 10px; border-radius: 6px;">{{ item.groupe_sanguin }}</span></td>
-                                            <td>
-                                                {% if item.est_paye %}
-                                                    <span class="badge badge-paid">Dossier Validé</span>
-                                                {% else %}
-                                                    <span class="badge badge-unpaid">En attente de paiement</span>
-                                                {% endif %}
-                                            </td>
                                             <td>{{ item.date_admission|date:"d/m/Y" }}</td>
                                             <td class="text-right">
+                                                {% if fonctionKey == 'infirmier'%}
+                                                <a href="{% url 'ajouter_consultation' item.id %}" class="btn btn-sm btn-primary" style="border-radius: 20px;">
+                                                    <i class="fa fa-stethoscope"></i> Consulter
+                                                </a>
+                                                {% elif fonctionKey == 'medecin' or fonctionKey == 'receptionniste'%}
+                                                <a href="" class="btn btn-sm btn-primary" style="border-radius: 20px;">
+                                                    <i class="fa fa-stethoscope"></i> Detail
+                                                </a>
 
-                                                {% if not item.est_paye %}
-                                                    {% if fonctionKey == 'receptionniste'%}
-                                                    <a href="{% url 'payer_dossier_maternite' item.id %}" class="btn btn-sm btn-success" style="border-radius: 20px;">
-                                                        <i class="fa fa-money"></i> Valider Paiement
-                                                    </a>
-                                                    {%endif%}
-                                                {% else %}
-
-                                                <a href="#" class="btn btn-sm btn-primary" style="border-radius: 20px;">
-    <i class="fa fa-stethoscope"></i> Consulter (Non dispo)
-</a>
                                                 {% endif %}
                                             </td>
                                         </tr>
                                         {% empty %}
                                         <tr>
-                                            <td colspan="5" class="text-center text-muted">Aucune admission en maternité pour le moment.</td>
+                                            <td colspan="4" class="text-center text-muted">Aucune admission en maternité pour le moment.</td>
                                         </tr>
                                         {% endfor %}
                                     </tbody>
