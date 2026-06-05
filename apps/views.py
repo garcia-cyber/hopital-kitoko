@@ -2717,42 +2717,90 @@ def ajouter_consultation(request, dossier_id):
     })
 
 
+# 
+# ===================================================================================================
+#  PAIEMENT DE LA CARTE DE FIDELITE
+# ===================================================================================================
+@login_required
+def vue_paiement_carte_fidelite(request, patient_id):
+    patient = get_object_or_404(Patient, id=patient_id)
+    
+    # 0. Récupérer le taux de change
+    config = ConfigurationHopital.objects.first()
+    taux = config.taux_usd_en_cdf if config else Decimal('2800.00')
 
+    # 1. Récupérer la prestation "Carte de Fidélité"
+    # On cherche une prestation qui contient "Carte" dans le libellé et est administrative
+    try:
+        prestation_carte = Prestation.objects.get(categorie='ADM', libelle__icontains="Carte")
+    except (Prestation.DoesNotExist, Prestation.MultipleObjectsReturned):
+        prestation_carte = Prestation.objects.filter(categorie='ADM', libelle__icontains="Carte").first()
+        
+    if not prestation_carte:
+        messages.error(request, "La prestation 'Carte de Fidélité' n'est pas configurée.")
+        return redirect('enregistrement_patient')
+    
+    prix_carte_usd = Decimal(str(prestation_carte.prix))
 
+    # 2. Calcul du cumul des paiements déjà effectués pour la Carte
+    # On filtre sur le service 'CARTE' (Assurez-vous d'utiliser ce mot clé dans Paiement)
+    paiements_existants = Paiement.objects.filter(patient=patient, service='CARTE')
+    total_deja_paye_usd = Decimal('0.00')
+    
+    for p in paiements_existants:
+        if p.devise == 'CDF':
+            total_deja_paye_usd += p.montant_verse / taux
+        else:
+            total_deja_paye_usd += p.montant_verse
 
+    reste_a_payer_usd = prix_carte_usd - total_deja_paye_usd
 
+    if request.method == 'POST':
+        montant_saisi = Decimal(request.POST.get('montant', 0))
+        devise = request.POST.get('devise')
 
+        montant_test_usd = montant_saisi
+        if devise == 'CDF':
+            montant_test_usd = montant_saisi / taux
 
+        # Vérification si le montant dépasse le reste à payer
+        if montant_test_usd > (reste_a_payer_usd + Decimal('0.01')):
+            messages.error(request, f"Le montant dépasse le prix de la carte ({reste_a_payer_usd:.2f} USD restants).")
+        elif montant_saisi > 0:
+            # Enregistrement du paiement
+            Paiement.objects.create(
+                patient=patient,
+                service='CARTE', # Important pour le filtrage du cumul
+                montant_verse=montant_saisi,
+                devise=devise,
+                caissier=request.user
+            )
+            
+            nouveau_total_usd = total_deja_paye_usd + montant_test_usd
+            
+            # Vérification si la carte est totalement réglée
+            if nouveau_total_usd >= (prix_carte_usd - Decimal('0.01')):
+                patient.a_carte_fidelite = True # Assurez-vous que ce champ existe dans Patient
+                patient.save()
+                messages.success(request, f"Paiement terminé. La carte de {patient.noms} est activée.")
+            else:
+                messages.success(request, f"Paiement de {montant_saisi} {devise} enregistré. Reste : {(prix_carte_usd - nouveau_total_usd):.2f} USD")
+            
+            return redirect('enregistrement_patient')
 
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    context = {
+        'patient': patient,
+        'reste_a_payer': reste_a_payer_usd,
+        'reste_a_payer_cdf': reste_a_payer_usd * taux,
+        'taux': taux,
+        'prix_carte': prix_carte_usd,
+        'libelle_prestation': prestation_carte.libelle,
+        'fonctionKey': fonctionKey
+    }
+    return render(request, 'back-end/patient/paiement_prestation.html', context)
 
 
 # 
@@ -2817,53 +2865,6 @@ def payer_dossier_maternite(request, dossier_id):
         'taux': taux ,
         'fonctionKey' : fonctionKey
     })
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #  
 # =================================================================================================
 # ENREGISTREMENT DE L'ACTE DE DECES 

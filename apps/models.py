@@ -10,12 +10,20 @@ from django.conf import settings
 # 1. CONFIGURATION ET BASE =============================================
 
 class ConfigurationHopital(models.Model):
-    # Utilisation d'une chaîne pour le default pour éviter les dérives de float
     taux_usd_en_cdf = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('2500.00'))
     derniere_mise_a_jour = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = "Configuration du Taux"
+
+    # AJOUTEZ CE BLOC ICI
+    @classmethod
+    def get_taux(cls):
+        """Récupère le taux actuel ou renvoie 2500 par défaut si aucune config n'existe."""
+        config = cls.objects.first()
+        if config:
+            return config.taux_usd_en_cdf
+        return Decimal('2500.00')
 
     def __str__(self):
         return f"1 USD = {self.taux_usd_en_cdf} CDF"
@@ -89,6 +97,13 @@ class Service(models.Model):
 
 # 6. PATIENT =======================================================
 class Patient(models.Model):
+    # 1. Choix pour le type de patient
+    TYPE_CHOICES = [
+        ('SIMPLE', 'Patient Simple'),
+        ('FIDELE', 'Patient Fidèle'),
+        ('CONVENTIONNE', 'Patient Conventionné'),
+    ]
+
     code_patient = models.CharField(max_length=20, unique=True, editable=False)
     noms = models.CharField(max_length=100)
     service = models.ForeignKey('Service', on_delete=models.PROTECT, related_name='patients', null=True)
@@ -97,40 +112,35 @@ class Patient(models.Model):
     adresse = models.TextField()
     telephone = models.CharField(max_length=20)
     
-    # Statuts financiers
-    fiche_payee = models.BooleanField(default=False) # Pour le 1er passage
+    # 2. Nouveaux champs pour la gestion financière
+    type_patient = models.CharField(max_length=15, choices=TYPE_CHOICES, default='SIMPLE')
+    a_carte_fidelite = models.BooleanField(default=False, verbose_name="Possède carte de fidélité")
+    entreprise = models.ForeignKey('Entreprise', on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Entreprise (si conventionné)")
+    
+    # Statuts financiers existants
+    fiche_payee = models.BooleanField(default=False)
     
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='patients_crees')
     date_creation = models.DateTimeField(auto_now_add=True)
     date_modification = models.DateTimeField(auto_now=True)
 
+    # --- MÉTHODES EXISTANTES ---
     def save(self, *args, **kwargs):
         if not self.code_patient:
             annee = timezone.now().year
             prefixe = f"MLY-{annee}-"
-            # Utilisation de count() ou filter pour générer l'identifiant
             last_patient = Patient.objects.filter(code_patient__startswith=prefixe).order_by('id').last()
             new_id = int(last_patient.code_patient.split('-')[-1]) + 1 if last_patient else 1
             self.code_patient = f"{prefixe}{new_id:04d}"
         super().save(*args, **kwargs)
 
-    # --- MÉTHODES MÉTIER MISES À JOUR (Corrigées pour éviter l'erreur) ---
-
     def a_deja_ete_consulte(self):
-        """Vérifie si le patient a déjà eu au moins une consultation enregistrée."""
-        # On utilise le filtrage sur le triage lié au patient
         return Consultation.objects.filter(triage__patient=self).exists()
 
     def a_une_consultation_en_attente(self):
-        """Retourne True si le patient a une consultation non payée."""
         return Consultation.objects.filter(triage__patient=self, consultation_payee=False).exists()
 
     def est_en_regle(self):
-        """
-        Logique métier complète :
-        1. Si c'est la 1ère fois, il faut la fiche payée.
-        2. Si c'est un retour, la consultation doit être payée.
-        """
         if not self.fiche_payee:
             return False
         if self.a_deja_ete_consulte() and self.a_une_consultation_en_attente():
@@ -138,7 +148,7 @@ class Patient(models.Model):
         return True
 
     def __str__(self):
-        return f"{self.noms} ({self.code_patient})"
+        return f"{self.noms} ({self.code_patient}) - {self.get_type_patient_display()}"
 
 # 6. PATIENT =======================================================
 class Paiement(models.Model):
@@ -151,13 +161,13 @@ class Paiement(models.Model):
         ('RADIO', 'Radiographie'), 
         ('SOIN', 'Soins'),
         ('MATERNITE', 'Maternité'),
-        ('DECES', 'Actes de décès'), # Ajout ici
+        ('DECES', 'Actes de décès'),
+        ('CARTE_FIDELITE', 'Achat Carte de Fidélité'), # Nouveau service ajouté
     ]
 
     patient = models.ForeignKey('Patient', on_delete=models.CASCADE, null=True, blank=True)
     consultation = models.ForeignKey('Consultation', on_delete=models.SET_NULL, null=True, blank=True, related_name='paiements')
     dossier_maternite = models.ForeignKey('Maternite', on_delete=models.SET_NULL, null=True, blank=True, related_name='paiements')
-    # Ajout du lien vers le modèle Deces
     deces = models.ForeignKey('Deces', on_delete=models.SET_NULL, null=True, blank=True, related_name='paiements')
     
     service = models.CharField(max_length=20, choices=SERVICES)
@@ -183,6 +193,12 @@ class Paiement(models.Model):
             if self.reste_a_payer <= 0:
                 self.dossier_maternite.est_paye = True
                 self.dossier_maternite.save()
+        
+        # --- NOUVELLE LOGIQUE : ACTIVATION CARTE FIDÉLITÉ ---
+        elif self.service == 'CARTE_FIDELITE' and self.patient:
+            self.patient.a_carte_fidelite = True
+            self.patient.type_patient = 'FIDELE'
+            self.patient.save()
 
         super().save(*args, **kwargs)
         

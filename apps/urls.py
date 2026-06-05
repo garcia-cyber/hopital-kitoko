@@ -44,6 +44,7 @@ urlpatterns =[
      path('patients/modifier/<int:pk>/', views.modifier_patient, name='modifier_patient'),
      path('patients/liste/', views.liste_patients, name='liste_patients'),
      path('dossier-medical/<int:patient_id>/', views.dossier_medical_complet, name='dossier_medical_complet'),
+     path('paiement/<int:patient_id>/', views.vue_paiement_carte_fidelite, name='paiement_prestation'),
 
      # ====================================
      # FINANCE
