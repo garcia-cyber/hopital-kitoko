@@ -3015,3 +3015,49 @@ def enregistrer_paiement_deces(request, deces_id):
         'deces': deces, 'prix_usd': prix_usd, 'prix_cdf': prix_cdf, 
         'taux': taux, 'fonctionKey': fonctionKey
     })
+
+
+
+#
+# =========================================================================================
+# LISTE DES PATIENTS CARTE DE FIDELITE 
+# =========================================================================================
+@login_required
+def liste_patients_avec_carte(request):
+    # On filtre uniquement les patients dont a_carte_fidelite est True
+    patients_fideles = Patient.objects.filter(a_carte_fidelite=True).order_by('-date_creation')
+
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+    
+    context = {
+        'patients': patients_fideles,
+        'title': "Patients avec Carte de Fidélité" ,
+        'fonctionKey' : fonctionKey
+    }
+    return render(request, 'back-end/patient/liste_patients_carte.html', context)
+
+#
+# ==========================================================================================
+# MODIFIER TYPE DE PATIENT
+# ==========================================================================================
+@login_required
+def modifier_type_patient(request, patient_id):
+    patient = get_object_or_404(Patient, id=patient_id)
+    
+    # RÈGLE : Bloquer l'accès si le type est déjà 'FIDELE'
+    if patient.type_patient == 'FIDELE':
+        messages.error(request, "Le statut 'Patient Fidèle' est définitif et ne peut plus être modifié.")
+        return redirect('liste_patients_avec_carte')
+    
+    if request.method == 'POST':
+        nouveau_type = request.POST.get('type_patient')
+        patient.type_patient = nouveau_type
+        patient.save()
+        messages.success(request, f"Statut mis à jour.")
+        return redirect('liste_patients_avec_carte')
+
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+    
+    return render(request, 'back-end/patient/modifier_type.html', {'patient': patient , 'fonctionKey': fonctionKey})
