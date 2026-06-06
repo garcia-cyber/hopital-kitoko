@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import SetPasswordForm ,UserChangeForm
 from django.contrib import messages
-from django.db.models import Q , Sum , DecimalField ,Prefetch , Count
+from django.db.models import Q , Sum ,Prefetch , Count , ExpressionWrapper , OuterRef, Subquery , F , Value ,DecimalField, FloatField
 from decimal import Decimal , ROUND_HALF_UP , InvalidOperation
 import pytz
 from datetime import timedelta , date
@@ -434,33 +434,40 @@ def modifier_service(request, pk):
 # ==================================================================================================
 @login_required
 def enregistrement_patient(request):
-    # Récupération de tous les patients pour le tableau
+    # Récupération de tous les patients pour le tableau (optimisé)
     patients = Patient.objects.all().order_by('-date_creation')
     
     if request.method == 'POST':
         form = PatientForm(request.POST)
         if form.is_valid():
-            # On enregistre mais on ne commit pas encore pour pouvoir lier l'utilisateur
-            patient = form.save(commit=False)
-            patient.created_by = request.user
-            patient.save()
-            
-            messages.success(request, f"Patient {patient.noms} enregistré avec succès. Matricule : {patient.code_patient}")
-            return redirect('enregistrement_patient')
+            try:
+                # Enregistrement sécurisé
+                patient = form.save(commit=False)
+                patient.created_by = request.user
+                patient.save()
+                
+                messages.success(request, f"Patient {patient.noms} enregistré avec succès. Matricule : {patient.code_patient}")
+                return redirect('enregistrement_patient')
+            except Exception as e:
+                # Capture les erreurs de base de données (ex: contraintes uniques, champs obligatoires manqués)
+                messages.error(request, f"Une erreur technique est survenue lors de la sauvegarde : {str(e)}")
         else:
-            messages.error(request, "Erreur lors de l'enregistrement. Vérifiez les informations.")
+            # Capture et affiche chaque erreur de validation spécifique (ex: téléphone en doublon)
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f"Erreur dans le champ '{field.capitalize()}': {error}")
     else:
         form = PatientForm()
 
-    # verification de la fonction
-    role = Fonction.objects.filter(userKey = request.user).first()
-    fonctionKey = role.fonctionKey.roleName if role else None
+    # Vérification de la fonction utilisateur
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
 
     context = {
         'patients': patients,
         'form': form,
         'segment': 'enregistrement_patient', 
-        'fonctionKey' : fonctionKey
+        'fonctionKey': fonctionKey
     }
 
     return render(request, 'back-end/patient/enregistrement_patient.html', context)
@@ -631,72 +638,50 @@ def historique_paiements(request, patient_id):
     # COÛT TOTAL GLOBAL
     cout_total_usd = cout_fiche_usd + Decimal(str(cout_examens_usd))
 
-    # 4. RÉCUPÉRATION DES VERSEMENTS CHRONOLOGIQUES
+    # 4. RÉCUPÉRATION DE LA DERNIÈRE CONSULTATION (Pour le bouton payer)
+    derniere_consultation = Consultation.objects.filter(triage__patient=patient).order_by('-date_creation').first()
+
+    # 5. RÉCUPÉRATION DES VERSEMENTS
     paiements = Paiement.objects.filter(patient=patient).order_by('date_paiement')
-    
     historique_detaille = []
-    
-    # 🛠️ STRATÉGIE CHRONOLOGIQUE DE LA DETTE :
-    # On commence la dette à 0. Elle augmente dès qu'un service est facturé/payé.
-    cumul_paye_usd = Decimal('0.00')
+    cumul_acquitte_usd = Decimal('0.00')
     
     for p in paiements:
-        # Conversion devise
-        if p.devise == 'CDF':
-            montant_equivalent_usd = (p.montant_verse / taux).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-        else:
-            montant_equivalent_usd = p.montant_verse
-            
-        cumul_paye_usd += montant_equivalent_usd
+        montant_v_usd = (p.montant_verse / taux).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP) if p.devise == 'CDF' else p.montant_verse
+        montant_r_usd = p.montant_reduction or Decimal('0.00')
+        montant_total_ligne = montant_v_usd + montant_r_usd
+        cumul_acquitte_usd += montant_total_ligne
 
-        # Déterminer la cible du coût à cet instant précis pour éviter le saut à 85$
-        if p.service == 'FICHE':
-            # Si c'est la fiche, le reste ne doit pas inclure les examens pas encore payés à ce moment là
-            reste_ligne_usd = cout_fiche_usd - montant_equivalent_usd
-        else:
-            # Si c'est un examen, on calcule par rapport au reste global
-            reste_ligne_usd = cout_total_usd - cumul_paye_usd
-        
-        # Récupération des détails des examens payés
-        examens_associes = []
-        if p.consultation and p.service in ['LABO', 'RADIO', 'ECHOGRAPHIE']:
-            examens_payes = p.consultation.examens.filter(statut__in=['EN_COURS', 'TERMINE']).select_related('prestation')
-            for exam in examens_payes:
-                examens_associes.append({
-                    'libelle': exam.prestation.libelle,
-                    'prix': exam.prestation.prix
-                })
+        reste_ligne_usd = cout_total_usd - cumul_acquitte_usd
         
         historique_detaille.append({
             'date': p.date_paiement,
             'service': p.get_service_display(),
-            'montant': p.montant_verse,
+            'montant_verse': p.montant_verse,
+            'montant_reduction': p.montant_reduction,
             'devise': p.devise,
-            'caissier': p.caissier.username if p.caissier else "Système",
             'reste_usd': max(Decimal('0.00'), reste_ligne_usd),
-            'examens': examens_associes,
             'id': p.id
         })
 
-    # Inverser pour l'affichage du plus récent au plus ancien
     historique_detaille.reverse()
+    reste_final_usd = max(Decimal('0.00'), cout_total_usd - cumul_acquitte_usd)
 
+    # Gestion des rôles
     role = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role.fonctionKey.roleName if role else None
-
-    # Totaux finaux pour les cartes du haut
-    reste_final_usd = max(Decimal('0.00'), cout_total_usd - cumul_paye_usd)
 
     context = {
         'patient': patient,
         'paiements_liste': historique_detaille,
         'cout_total_usd': cout_total_usd,
-        'total_paye_usd': cumul_paye_usd,
+        'total_paye_usd': cumul_acquitte_usd,
         'reste_a_payer_usd': reste_final_usd,
         'reste_a_payer_cdf': (reste_final_usd * taux).quantize(Decimal('1'), rounding=ROUND_HALF_UP),
-        'taux': taux,
+        'derniere_consultation_id': derniere_consultation.id if derniere_consultation else None,
         'fonctionKey': fonctionKey
     }
+    
     return render(request, 'back-end/finance/historique.html', context)
 
 
@@ -1165,133 +1150,109 @@ def prescrire_ordonnance_urgence_rapide(request, consultation_id):
 @login_required
 def encaisser_examens_prescrits(request, consultation_id):
     consultation = get_object_or_404(Consultation, id=consultation_id)
+    examens = consultation.examens.all()
     
-    # On récupère TOUS les examens qui attendent encore un paiement
-    examens_en_attente = consultation.examens.filter(statut='EN_ATTENTE')
-
-    # Si aucun examen n'est en attente, on dégage la consultation
-    if not examens_en_attente.exists():
-        messages.warning(request, "Tous les examens de cette consultation ont déjà été payés.")
-        return redirect('liste_attente_caisse')
+    # Récupération du taux
+    config = ConfigurationHopital.objects.first()
+    taux = config.taux_usd_en_cdf if config and config.taux_usd_en_cdf else Decimal('2500')
+    
+    # Calculs financiers
+    total_prescrit = examens.aggregate(total=Sum('prestation__prix'))['total'] or Decimal('0.00')
+    total_verse = Paiement.objects.filter(consultation=consultation).aggregate(total=Sum('montant_verse'))['total'] or Decimal('0.00')
+    total_reductions = Paiement.objects.filter(consultation=consultation).aggregate(total=Sum('montant_reduction'))['total'] or Decimal('0.00')
+    
+    reste_a_payer_usd = total_prescrit - (total_verse + total_reductions)
 
     if request.method == 'POST':
-        # 1. Récupérer les IDs des examens cochés par le caissier dans le template
-        examen_ids_payes = request.POST.getlist('examens_choisis')
+        devise = request.POST.get('devise', 'USD')
+        montant_recu = Decimal(request.POST.get('montant_verse', 0))
+        reduction_usd = Decimal(request.POST.get('montant_reduction', 0))
+        
+        # 1. Conversion
+        montant_verse_usd = montant_recu / taux if devise == 'CDF' else montant_recu
+        
+        # 2. Calcul du nouveau reste après ce paiement
+        nouveau_reste = reste_a_payer_usd - (montant_verse_usd + reduction_usd)
+        
+        # 3. Création du paiement (Force le service à 'EXAMENS')
+        Paiement.objects.create(
+            patient=consultation.triage.patient,
+            consultation=consultation,
+            service='EXAMENS', # Force la valeur
+            montant_verse=montant_verse_usd,
+            montant_reduction=reduction_usd,
+            reste_a_payer=max(Decimal('0.00'), nouveau_reste), # Enregistre le solde
+            devise=devise,
+            caissier=request.user,
+            date_paiement=timezone.now()
+        )
 
-        if not examen_ids_payes:
-            messages.error(request, "Veuillez sélectionner au moins un examen à encaisser.")
-            return redirect('encaisser_examens_prescrits', consultation_id=consultation.id)
-
-        # 2. Filtrer sécurisé : on ne prend que les examens cochés ET qui appartiennent bien à cette consultation
-        examens_a_regler = examens_en_attente.filter(id__in=examen_ids_payes)
-
-        if examens_a_regler.exists():
-            # 3. Calculer dynamiquement le montant des examens sélectionnés
-            total_selection = examens_a_regler.aggregate(
-                total=Sum('prestation__prix')
-            )['total'] or 0
-
-            # Calcul de la dette restante avant validation pour l'affichage du message
-            total_global_avant = examens_en_attente.aggregate(
-                total=Sum('prestation__prix')
-            )['total'] or 0
-            
-            dette_restante = total_global_avant - total_selection
-
-            # 4. Détection automatique du service majeur selon la sélection réelle
-            contient_radio = examens_a_regler.filter(prestation__libelle__icontains="radio").exists()
-            contient_echo = examens_a_regler.filter(prestation__libelle__icontains="écho").exists()
-            
-            if contient_radio:
-                service_choisi = 'RADIO'
-            elif contient_echo:
-                service_choisi = 'ECHOGRAPHIE'
-            else:
-                service_choisi = 'LABO'
-
-            # 5. Création de l'entrée de paiement (sans l'argument invalide 'dette')
-            paiement = Paiement.objects.create(
-                patient=consultation.triage.patient,
-                consultation=consultation,
-                service=service_choisi,
-                montant_verse=total_selection,
-                devise='USD',
-                caissier=request.user,
-                date_paiement=timezone.now()
-            )
-
-            # 6. Libération EXCLUSIVE des examens payés (Le statut passe de 'EN_ATTENTE' à 'EN_COURS')
-            # C'est ce changement de statut qui fait que l'examen n'est plus compté dans la dette au rechargement
-            for examen in examens_a_regler:
-                examen.statut = 'EN_COURS'
-                examen.save()
-
-            # Message flash personnalisé s'il reste des examens non payés
-            if dette_restante > 0:
-                messages.warning(
-                    request, 
-                    f"Encaissé : {total_selection} USD. Il reste des examens non réglés d'une valeur de {dette_restante} USD "
-                    f"pour le patient {consultation.triage.patient.noms}."
-                )
-                return redirect('encaisser_examens_prescrits', consultation_id=consultation.id)
-            
-            else:
-                messages.success(
-                    request, 
-                    f"Encaissé avec succès : {total_selection} USD. Tous les examens ont été payés !"
-                )
-                return redirect('liste_attente_caisse')
-                
-        else:
-            messages.error(request, "Les examens sélectionnés sont invalides ou déjà réglés.")
-            return redirect('liste_attente_caisse')
-
-    # Pour l'affichage GET initial : calcul du reste total à payer globalement
-    total_global_restant = examens_en_attente.aggregate(total=Sum('prestation__prix'))['total'] or 0
+        messages.success(request, "Paiement enregistré avec succès.")
+        return redirect('historique_paiements', patient_id=consultation.triage.patient.id)
 
     role = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role.fonctionKey.roleName if role else None
 
     context = {
         'consultation': consultation,
-        'examens': examens_en_attente,
-        'total_a_payer': total_global_restant,
-        'fonctionKey': fonctionKey 
+        'reste_a_payer_usd': reste_a_payer_usd,
+        'taux': taux,
+        'fonctionKey': fonctionKey
     }
     return render(request, 'back-end/caisse/encaisser_examens.html', context)
+
 # 35
 # ==================================================================================================
 # RECEPTIONNISTE PAIEMENT DES EXAM
 # ==================================================================================================
 @login_required
 def liste_attente_caisse(request):
-    # 1. On récupère UNIQUEMENT les consultations qui possèdent encore 
-    # au moins un examen avec le statut 'EN_ATTENTE'.
-    # Pas besoin d'exclude() sur la table Paiement, la condition 'EN_ATTENTE' suffit !
-    consultations_a_payer = Consultation.objects.filter(
-        examens__statut='EN_ATTENTE'
-    ).distinct()
+    # Annotations avec typage explicite (DecimalField)
+    consultations_a_payer = Consultation.objects.annotate(
+        total_prescrit=Coalesce(
+            Sum('examens__prestation__prix'), 
+            Value(0.00, output_field=DecimalField())
+        ),
+        total_verse=Coalesce(
+            Sum('paiements__montant_verse'), 
+            Value(0.00, output_field=DecimalField())
+        ),
+        total_reductions=Coalesce(
+            Sum('paiements__montant_reduction'), 
+            Value(0.00, output_field=DecimalField())
+        )
+    ).annotate(
+        # Calcul du total réellement couvert (Versements + Réductions)
+        total_couvert=F('total_verse') + F('total_reductions')
+    ).annotate(
+        # Calcul du reste à payer dynamique
+        reste_a_payer=ExpressionWrapper(
+            F('total_prescrit') - F('total_couvert'),
+            output_field=DecimalField(max_digits=12, decimal_places=2)
+        )
+    ).filter(
+        # On ne garde que les consultations qui ont encore une dette
+        reste_a_payer__gt=0
+    ).distinct().order_by('-date_creation')
 
-    # 2. Gestion de la barre de recherche (Inchangée et fonctionnelle)
+    # Gestion de la recherche
     query = request.GET.get('q')
     if query:
         consultations_a_payer = consultations_a_payer.filter(
             Q(triage__patient__noms__icontains=query) |
-            Q(triage__patient__code_patient__icontains=query) |
-            Q(medecin__username__icontains=query)
-        ).distinct()
+            Q(triage__patient__code_patient__icontains=query)
+        )
 
-    # 3. Tri par date décroissante
-    consultations_a_payer = consultations_a_payer.order_by('-date_creation')
-
-    # 4. Récupération du rôle
+    # Récupération du rôle
     role = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role.fonctionKey.roleName if role else None
 
-    return render(request, 'back-end/caisse/liste_attente.html', {
+    context = {
         'consultations': consultations_a_payer,
         'fonctionKey': fonctionKey
-    })
+    }
+    
+    return render(request, 'back-end/caisse/liste_attente.html', context)
 
 # 36
 # ==================================================================================================
@@ -1299,84 +1260,63 @@ def liste_attente_caisse(request):
 # ==================================================================================================
 @login_required
 def liste_examens_techniques(request):
-    # 1. Vérification du rôle de l'utilisateur connecté via ton modèle Fonction
+    # 1. Vérification du rôle
     role_user = Fonction.objects.filter(userKey=request.user).first()
-    
     if not role_user or not role_user.fonctionKey:
-        messages.error(request, "Accès refusé : Aucun rôle ne vous est attribué.")
         return redirect('dashboard')
 
     nom_role = role_user.fonctionKey.roleName.lower()
     fonctionKey = role_user.fonctionKey.roleName
 
-    # 2. SÉCURITÉ COMPTABLE & TECHNIQUE : 
-    # On cible les services concernés
-    paiements_techniques = Paiement.objects.filter(
-        consultation__isnull=False,
-        service__in=['LABO', 'RADIO', 'ECHOGRAPHIE']
-    ).select_related('consultation', 'patient', 'consultation__triage')
+    # 2. Récupération des paiements
+    paiements_valides = Paiement.objects.filter(
+        service='EXAMENS', 
+        consultation__isnull=False
+    ).select_related('consultation', 'consultation__triage__patient')
 
-    examens_presents = False
     historique_technique = []
 
-    # 3. CLOISONNEMENT STRICT PAR PROFIL ET VÉRIFICATION DES STATUTS
-    for p in paiements_techniques:
-        # ÉVOLUTION : On prend 'EN_COURS' (à faire) ET 'TERMINE' (déjà fait) pour gérer le blocage
-        examens_payes = p.consultation.examens.filter(
-            statut__in=['EN_COURS', 'TERMINE']
-        ).select_related('prestation')
+    for p in paiements_valides:
+        cons = p.consultation
+        # On récupère tous les examens de cette consultation
+        examens_query = cons.examens.all()
         
-        examens_filtrés_pour_role = []
-        for exam in examens_payes:
+        examens_filtrés = []
+        for exam in examens_query:
             cat = exam.prestation.categorie
             
-            # Déterminer si l'examen est déjà traité (ex: Goutte épaisse déjà validée)
-            deja_consulte = (exam.statut == 'TERMINE')
-
-            # Flag pour savoir si la catégorie correspond au rôle
-            correspond_au_role = False
-            if ('labo' in nom_role or 'laborantin' in nom_role) and cat == 'LABO':
-                correspond_au_role = True
-            elif ('echo' in nom_role or 'echographe' in nom_role) and cat == 'ECHO':
-                correspond_au_role = True
-            elif ('radio' in nom_role or 'radiologue' in nom_role) and cat == 'RADIO':
-                correspond_au_role = True
-
-            # Si l'examen correspond au service de l'utilisateur, on l'ajoute avec son état
-            if correspond_au_role:
-                examens_filtrés_pour_role.append({
-                    'id_examen': exam.id, # Utile pour tes futurs liens/formulaires
+            # Filtre par rôle du technicien
+            if ('labo' in nom_role and cat == 'LABO') or \
+               (('echo' in nom_role or 'echographe' in nom_role) and cat == 'ECHO') or \
+               (('radio' in nom_role or 'radiologue' in nom_role) and cat == 'RADIO'):
+                
+                examens_filtrés.append({
+                    'id_examen': exam.id,
                     'libelle': exam.prestation.libelle,
-                    'date': p.date_paiement,
-                    'est_deja_fait': deja_consulte  # Notre indicateur pour le template
+                    'est_deja_fait': (exam.statut == 'TERMINE')
                 })
 
-        if examens_filtrés_pour_role:
-            examens_presents = True
+        # --- NOUVELLE LOGIQUE : Vérifier si tout est traité ---
+        # On considère la fiche comme "Traitée" si elle contient des examens 
+        # et qu'aucun n'est en statut différent de TERMINE
+        if examens_filtrés:
+            # Si on trouve au moins un examen qui n'est PAS terminé, 
+            # alors la fiche n'est pas totalement traitée
+            a_des_examens_en_attente = any(not ex['est_deja_fait'] for ex in examens_filtrés)
+            
             historique_technique.append({
                 'id_paiement': p.id,
-                'consultation': p.consultation,
-                'patient': p.patient,
-                'triage': p.consultation.triage if hasattr(p.consultation, 'triage') else None,
-                'examens': examens_filtrés_pour_role,
-                'medecin': p.consultation.medecin.username if p.consultation.medecin else "Généraliste"
+                'consultation': cons,
+                'patient': cons.triage.patient,
+                'examens': examens_filtrés,
+                'medecin': cons.medecin.username if cons.medecin else "Généraliste",
+                'tout_traite': not a_des_examens_en_attente  # Ce flag servira pour le bouton
             })
-
-    # Tri du plus récent au plus ancien basé sur les paiements
-    historique_technique.reverse()
-
-    # Définition du titre de la page selon le rôle
-    if 'labo' in nom_role or 'laborantin' in nom_role:
-        titre_page = "Laboratoire - Analyses Payées"
-    elif 'echo' in nom_role or 'echographe' in nom_role:
-        titre_page = "Échographie - Examens Payés"
-    else:
-        titre_page = "Radiologie - Examens Payés"
 
     context = {
         'historique_technique': historique_technique,
-        'examens_presents': examens_presents,
-        'titre_page': titre_page,
+        'examens_presents': len(historique_technique) > 0,
+        'titre_page': "Examens à réaliser",
         'fonctionKey': fonctionKey
     }
     return render(request, 'back-end/technique/liste_examens_payes.html', context)
@@ -2026,17 +1966,18 @@ def ajouter_lit(request):
         form = LitForm(request.POST)
         if form.is_valid():
             lit = form.save()
-            messages.success(request, f"Le lit '{lit.nom_ou_code}' a bien été ajouté à la {lit.chambre}.")
+            # CORRECTION : Remplacé .nom_ou_code par .nom_lit
+            messages.success(request, f"Le lit '{lit.nom_lit}' a bien été ajouté à la {lit.chambre}.")
             
-            # Optimisation UX : Permet à l'agent de configurer rapidement plusieurs lits pour une même chambre 
-            # sans subir de ruptures de navigation récurrentes vers le tableau de bord.
+            # Optimisation UX
             if 'ajouter_autre' in request.POST:
                 return redirect('ajouter_lit')
             return redirect('dashboard_chambres')
     else:
         form = LitForm()
+    
     role = Fonction.objects.filter(userKey=request.user).first()
-    fonctionKey = role.fonctionKey.roleName if role else None
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
 
     return render(request, 'back-end/hospitalisation/lit_form.html', {'form': form , 'fonctionKey':fonctionKey})
 

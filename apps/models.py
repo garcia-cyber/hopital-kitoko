@@ -162,6 +162,7 @@ class Paiement(models.Model):
         ('SOIN', 'Soins'),
         ('MATERNITE', 'Maternité'),
         ('DECES', 'Actes de décès'),
+        ('EXAMENS', 'Examens'),
         ('CARTE_FIDELITE', 'Achat Carte de Fidélité'), # Nouveau service ajouté
     ]
 
@@ -172,6 +173,7 @@ class Paiement(models.Model):
     
     service = models.CharField(max_length=20, choices=SERVICES)
     montant_verse = models.DecimalField(max_digits=15, decimal_places=2)
+    montant_reduction = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     devise = models.CharField(max_length=3, choices=CURRENCY, default='USD')
     date_paiement = models.DateTimeField(default=timezone.now)
     caissier = models.ForeignKey(User, on_delete=models.PROTECT)
