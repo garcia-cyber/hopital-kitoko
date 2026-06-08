@@ -3,60 +3,48 @@
 <html lang="fr">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Enregistrer une Vente | Moyanoli</title>
     {% include 'back-end/includes/css.html' %}
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <style>
-        .btn-medical { background-color: #0d6efd; color: white; }
-    </style>
 </head>
 <body>
     <div class="main-wrapper">
         {% include 'back-end/includes/header.html' %}
         {% include 'back-end/includes/sidebar.html' %}
-        
         <div class="page-wrapper">
             <div class="content container-fluid">
-                <div class="page-header mb-4"><h3>Nouvelle Vente</h3></div>
-
                 <div class="row">
                     <div class="col-lg-4">
-                        <div class="card p-4 shadow-sm">
+                        <div class="card p-3 shadow-sm">
                             <h5 class="mb-3">Ajouter Médicament</h5>
                             <select id="produitSelect" class="form-control">
-                                <option value="">Rechercher...</option>
+                                <option value="">Choisir un produit...</option>
                                 {% for p in produits %}
-                                <option value="{{ p.id }}" 
-                                        data-nom="{{ p.nom }}" 
-                                        data-prix="{{ p.prix_vente }}" 
-                                        data-stock="{{ p.stock_total }}">
-                                    {{ p.nom }} (Dispo: {{ p.stock_total }}) - {{ p.prix_vente }}$
+                                <option value="{{ p.id }}" data-nom="{{ p.nom }}" data-prix="{{ p.prix_vente }}" data-stock="{{ p.stock_reel }}">
+                                    {{ p.nom }} (Dispo: {{ p.stock_reel }})
                                 </option>
                                 {% endfor %}
                             </select>
-                            <input type="number" id="qte" class="form-control my-3" placeholder="Quantité">
-                            <button class="btn btn-medical w-100" onclick="ajouter()">Ajouter au Panier</button>
+                            <input type="number" id="qte" class="form-control my-2" placeholder="Quantité">
+                            <button type="button" id="btnAjouter" class="btn btn-primary w-100">Ajouter au panier</button>
                         </div>
                     </div>
-
                     <div class="col-lg-8">
-                        <div class="card shadow-sm">
-                            <div class="card-body">
-                                <form method="POST">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="panier_data" id="panierData">
-                                    <table class="table" id="panierTable">
-                                        <thead><tr><th>Produit</th><th>Qté</th><th>Prix</th><th>Total</th><th>Action</th></tr></thead>
-                                        <tbody id="panierBody"></tbody>
-                                    </table>
-                                    <select name="devise" class="form-select mb-3">
-                                        <option value="USD">USD ($)</option>
-                                        <option value="CDF">CDF (FC)</option>
-                                    </select>
-                                    <button type="submit" class="btn btn-success w-100">Finaliser la Vente</button>
-                                </form>
-                            </div>
+                        <div class="card p-3 shadow-sm">
+                            <form id="venteForm">
+                                {% csrf_token %}
+                                <table class="table table-hover">
+                                    <thead><tr><th>Produit</th><th>Qté</th><th>Prix</th><th>Total</th><th>Action</th></tr></thead>
+                                    <tbody id="panierBody"></tbody>
+                                </table>
+                                <hr>
+                                <label>Devise :</label>
+                                <select name="devise" id="deviseSelect" class="form-select mb-3">
+                                    <option value="USD">USD ($)</option>
+                                    <option value="CDF">CDF (FC)</option>
+                                </select>
+                                <button type="button" id="btnValider" class="btn btn-success w-100">Valider la Vente</button>
+                            </form>
                         </div>
                     </div>
                 </div>
@@ -67,36 +55,39 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
-        let panier = [];
-        $(document).ready(function() { $('#produitSelect').select2({ width: '100%' }); });
+        $(document).ready(function() {
+            let panier = [];
+            $('#produitSelect').select2({ width: '100%' });
 
-        function ajouter() {
-            let p = $('#produitSelect option:selected');
-            let qte = parseInt($('#qte').val());
-            let maxStock = parseInt(p.data('stock'));
-            let prix = parseFloat(p.data('prix'));
+            $('#btnAjouter').on('click', function() {
+                let p = $('#produitSelect option:selected');
+                let qte = parseInt($('#qte').val());
+                if(!p.val() || isNaN(qte) || qte <= 0) return alert("Données invalides");
+                
+                panier.push({ id: p.val(), nom: p.data('nom'), qte: qte, prix: parseFloat(p.data('prix')) });
+                $('#panierBody').append(`<tr data-id="${p.val()}"><td>${p.data('nom')}</td><td>${qte}</td><td>${p.data('prix')}</td><td>${qte * p.data('prix')}</td><td><button class="btn btn-danger btn-sm delete-btn">X</button></td></tr>`);
+            });
 
-            if (!qte || p.val() === "") return alert("Sélectionnez un produit et une quantité");
-            
-            // Gestion doublons et stock
-            let existant = panier.find(i => i.id == p.val());
-            let qteTotale = existant ? (existant.qte + qte) : qte;
+            $(document).on('click', '.delete-btn', function() { $(this).closest('tr').remove(); });
 
-            if (qteTotale > maxStock) {
-                alert("Stock insuffisant ! Disponible : " + maxStock);
-                return;
-            }
+            $('#btnValider').on('click', function() {
+                if(panier.length === 0) return alert("Panier vide !");
 
-            if (existant) {
-                existant.qte = qteTotale;
-                // Rafraîchir le tableau (simplifié pour l'exemple)
-                location.reload(); // Pour simplifier, on recharge pour mettre à jour les lignes
-            } else {
-                panier.push({ id: p.val(), nom: p.data('nom'), qte: qte, prix: prix });
-                $('#panierBody').append(`<tr><td>${p.data('nom')}</td><td>${qte}</td><td>${prix}</td><td>${prix * qte}</td><td>X</td></tr>`);
-            }
-            $('#panierData').val(JSON.stringify(panier));
-        }
+                fetch("{% url 'enregistrer_vente' %}", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "X-CSRFToken": "{{ csrf_token }}" },
+                    body: JSON.stringify({ 
+                        panier_data: JSON.stringify(panier), 
+                        devise: $('#deviseSelect').val() 
+                    })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if(data.status === 'success') { alert(data.message); window.location.reload(); }
+                    else { alert("Erreur: " + data.message); }
+                });
+            });
+        });
     </script>
     {% include 'back-end/includes/js.html' %}
 </body>

@@ -751,9 +751,17 @@ class LotPharmacie(models.Model):
 
 
 class SortiePharmacie(models.Model):
-    # Chaque vente est liée à un paiement unique
-    paiement = models.OneToOneField('Paiement', on_delete=models.CASCADE, related_name='sortie_stock')
-    produit = models.ForeignKey(ProduitPharmacie, on_delete=models.CASCADE, related_name='les_sorties')
+    # CHANGEMENT ICI : ForeignKey permet d'avoir plusieurs lignes liées au même paiement
+    paiement = models.ForeignKey(
+        'Paiement', 
+        on_delete=models.CASCADE, 
+        related_name='les_sorties' # Tu peux renommer related_name ici
+    )
+    produit = models.ForeignKey(
+        ProduitPharmacie, 
+        on_delete=models.CASCADE, 
+        related_name='les_sorties'
+    )
     quantite_vendue = models.PositiveIntegerField()
     date_sortie = models.DateTimeField(auto_now_add=True)
 

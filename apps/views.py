@@ -14,6 +14,8 @@ from django.db import transaction
 from django.conf import settings
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db.models.functions import Coalesce , Length
+import json
+from django.http import JsonResponse
 
 
 # Create your views here.
@@ -3218,7 +3220,49 @@ def ajouter_lot(request):
 # =====================================================================================
 @login_required
 def enregistrer_vente(request):
-    # Annoter le stock pour afficher la valeur réelle
+    # 1. Traitement POST (Validation de la vente)
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            panier = json.loads(data.get('panier_data', '[]'))
+            devise = data.get('devise', 'USD')
+
+            if not panier:
+                return JsonResponse({'status': 'error', 'message': 'Le panier est vide.'})
+
+            with transaction.atomic():
+                montant_total = 0
+                taux = ConfigurationHopital.get_taux() 
+
+                for item in panier:
+                    produit = ProduitPharmacie.objects.get(id=item['id'])
+                    prix = produit.prix_vente
+                    if devise == 'CDF':
+                        prix *= taux
+                    montant_total += (prix * int(item['qte']))
+
+                # Création du Paiement avec les champs obligatoires du modèle
+                paiement = Paiement.objects.create(
+                    montant_verse=montant_total,
+                    devise=devise,
+                    service='SOIN', # Remplace par le service approprié si besoin
+                    caissier=request.user
+                )
+
+                for item in panier:
+                    produit = ProduitPharmacie.objects.select_for_update().get(id=item['id'])
+                    SortiePharmacie.objects.create(
+                        paiement=paiement, 
+                        produit=produit, 
+                        quantite_vendue=int(item['qte'])
+                    )
+
+            return JsonResponse({'status': 'success', 'message': 'Vente validée avec succès.'})
+
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+
+    # 2. Logique GET (Affichage de la page avec produits et fonctionKey)
     produits = ProduitPharmacie.objects.annotate(
         stock_reel=ExpressionWrapper(
             Coalesce(Sum('les_lots__quantite'), 0) - Coalesce(Sum('les_sorties__quantite_vendue'), 0),
@@ -3226,33 +3270,11 @@ def enregistrer_vente(request):
         )
     ).order_by('nom')
 
-    if request.method == 'POST':
-        produit_id = request.POST.get('produit_id')
-        quantite = int(request.POST.get('quantite'))
-        devise = request.POST.get('devise')
-        
-        produit = produits.get(id=produit_id)
-        
-        if produit.stock_total >= quantite:
-            try:
-                with transaction.atomic():
-                    # Calcul dynamique du montant
-                    prix = produit.prix_vente
-                    if devise == 'CDF':
-                        prix *= ConfigurationHopital.get_taux()
-                    
-                    montant_total = prix * quantite
-                    
-                    p = Paiement.objects.create(montant=montant_total, devise=devise)
-                    SortiePharmacie.objects.create(paiement=p, produit=produit, quantite_vendue=quantite)
-                
-                messages.success(request, "Vente validée.")
-                return redirect('gestion_stock')
-            except Exception as e:
-                messages.error(request, f"Erreur: {e}")
-        else:
-            messages.error(request, "Stock insuffisant.")
+    # Récupération du rôle pour l'interface
     role = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
 
-    return render(request, 'back-end/pharmacie/enregistrer_vente.html', {'produits': produits, 'fonctionKey':fonctionKey})
+    return render(request, 'back-end/pharmacie/enregistrer_vente.html', {
+        'produits': produits, 
+        'fonctionKey': fonctionKey
+    })
