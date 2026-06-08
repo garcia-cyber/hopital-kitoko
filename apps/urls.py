@@ -148,4 +148,11 @@ urlpatterns =[
     path('soins/historique/', views.historique_soins, name='historique_soins'),
     path('facture/imprimer/<int:paiement_id>/', views.facture_print, name='facture_print'),
 
+
+    # =====================================
+    # PHARMACIE
+    path('pharmacie/ajouter-produit/', views.ajouter_produit, name='ajouter_produit'),
+    path('pharmacie/stock/', views.gestion_pharmacie, name='gestion_pharmacie'),
+    path('pharmacie/ajouter-lot/', views.ajouter_lot, name='ajouter_lot'),
+
  ]

@@ -3049,7 +3049,7 @@ def enregistrer_soin_rapide(request):
                     )
             
             messages.success(request, "Paiement enregistré !")
-            # Redirection vers la facture (remplace 'facture_print' par ton nom d'url)
+            
             
 
         except Exception as e:
@@ -3130,3 +3130,60 @@ def historique_soins(request):
         'paiements': paiements, 
         'fonctionKey': fonctionKey
     })
+
+
+#
+# ==============================================================================================
+# ENREGISTREMENT DES PRODUITS PHARMACEUTIQUES
+# ==============================================================================================
+@login_required
+def ajouter_produit(request):
+    """Vue pour enregistrer une nouvelle référence de médicament en stock"""
+    if request.method == 'POST':
+        form = ProduitPharmacieForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Le produit a été enregistré avec succès.")
+            # Redirige vers la liste des produits ou la gestion de stock
+            return redirect('gestion_pharmacie') 
+        else:
+            messages.error(request, "Erreur lors de l'enregistrement. Vérifie les données.")
+    else:
+        form = ProduitPharmacieForm()
+
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+    
+    return render(request, 'back-end/pharmacie/ajouter_produit.html', {'form': form ,'fonctionKey':fonctionKey})
+
+
+# 
+# ====================================================================================
+# LISTE DES MEDICAMENTS 
+# ====================================================================================
+@login_required
+def gestion_pharmacie(request):
+    produits = ProduitPharmacie.objects.all().order_by('nom')
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    return render(request, 'back-end/pharmacie/gestion_stock.html', {'produits': produits, 'fonctionKey': fonctionKey})
+
+#
+# ====================================================================================
+# GESTION DES STOCKS
+# ====================================================================================
+@login_required
+def ajouter_lot(request):
+    if request.method == 'POST':
+        form = LotPharmacieForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Lot ajouté avec succès, stock mis à jour.")
+            return redirect('gestion_pharmacie')
+    else:
+        form = LotPharmacieForm()
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    return render(request, 'back-end/pharmacie/ajouter_lot.html', {'form': form , 'fonctionKey':fonctionKey}) 
