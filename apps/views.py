@@ -3289,3 +3289,42 @@ def enregistrer_vente(request):
         'fonctionKey': fonctionKey,
         'taux_actuel': float(taux),
     })
+
+
+#
+# =============================================================================================================================
+# 
+# =============================================================================================================================
+@login_required
+def dashboard_ventes(request):
+    aujourdhui = timezone.now().date()
+    
+    # 1. Chiffre d'affaires du jour (par devise)
+    ventes_du_jour = Paiement.objects.filter(date_paiement__date=aujourdhui) \
+        .values('devise') \
+        .annotate(total=Sum('montant_verse'))
+
+    # 2. Nombre de ventes total
+    nombre_ventes = Paiement.objects.filter(date_paiement__date=aujourdhui).count()
+
+    # 3. Produits les plus vendus (Top 5)
+    top_produits = SortiePharmacie.objects.values('produit__nom') \
+        .annotate(total_vendu=Sum('quantite_vendue')) \
+        .order_by('-total_vendu')[:5]
+
+    # 4. Stock critique (Produits avec stock < 5)
+    # On réutilise la logique de calcul de stock
+    produits_critiques = ProduitPharmacie.objects.annotate(
+        stock=Coalesce(Sum('les_lots__quantite'), 0) - Coalesce(Sum('les_sorties__quantite_vendue'), 0)
+    ).filter(stock__lt=5)
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    context = {
+        'ventes_jour': ventes_du_jour,
+        'nb_ventes': nombre_ventes,
+        'top_produits': top_produits,
+        'produits_critiques': produits_critiques,
+        'fonctionKey' : fonctionKey
+    }
+    return render(request, 'back-end/pharmacie/dashboard.html', context)
