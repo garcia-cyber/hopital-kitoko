@@ -3163,11 +3163,26 @@ def ajouter_produit(request):
 # ====================================================================================
 @login_required
 def gestion_pharmacie(request):
-    produits = ProduitPharmacie.objects.all().order_by('nom')
+    # On annote chaque produit avec son stock total en additionnant ses lots
+    # 'les_lots' correspond au related_name défini dans ton modèle LotPharmacie
+    produits = ProduitPharmacie.objects.annotate(
+        total_en_stock=Sum('les_lots__quantite')
+    ).order_by('nom')
+    
+    # Gestion des rôles
     role = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+    
+    # Récupération du taux de change via ton modèle de configuration
+    taux_change = ConfigurationHopital.get_taux()
 
-    return render(request, 'back-end/pharmacie/gestion_stock.html', {'produits': produits, 'fonctionKey': fonctionKey})
+    context = {
+        'produits': produits, 
+        'fonctionKey': fonctionKey,
+        'taux': taux_change
+    }
+    
+    return render(request, 'back-end/pharmacie/gestion_stock.html', context)
 
 #
 # ====================================================================================

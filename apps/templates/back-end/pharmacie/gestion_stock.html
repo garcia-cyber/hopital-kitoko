@@ -4,15 +4,14 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestion du Stock | Moyanoli</title>
+    <title>État du Stock | Moyanoli</title>
     {% include 'back-end/includes/css.html' %}
     <style>
         .card { border: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-        .table thead th { border-top: none; text-transform: uppercase; font-size: 0.85rem; color: #6c757d; }
-        .badge-status { padding: 0.5rem 0.75rem; border-radius: 20px; font-weight: 600; font-size: 0.75rem; }
+        .table thead th { border-top: none; text-transform: uppercase; font-size: 0.75rem; color: #6c757d; letter-spacing: 0.5px; }
+        .badge-status { padding: 0.4rem 0.6rem; border-radius: 4px; font-weight: 600; font-size: 0.70rem; }
         .search-box { margin-bottom: 25px; }
-        .btn-action { transition: all 0.2s; }
-        .btn-action:hover { transform: translateY(-2px); }
+        .currency-text { font-family: monospace; font-weight: bold; }
     </style>
 </head>
 <body class="bg-light">
@@ -24,13 +23,13 @@
             <div class="content container-fluid">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h3 class="text-primary font-weight-bold">État du Stock Pharmacie</h3>
-                    <a href="{% url 'ajouter_lot' %}" class="btn btn-primary">
+                    <a href="{% url 'ajouter_lot' %}" class="btn btn-success">
                         <i class="fa fa-plus"></i> Nouveau Lot
                     </a>
                 </div>
 
                 <div class="search-box">
-                    <input type="text" id="searchStock" class="form-control form-control-lg" placeholder="🔍 Rechercher un médicament par son nom..." onkeyup="filterStock()">
+                    <input type="text" id="searchStock" class="form-control form-control-lg" placeholder="🔍 Rechercher par nom..." onkeyup="filterStock()">
                 </div>
 
                 <div class="card shadow-sm">
@@ -40,24 +39,29 @@
                                 <thead class="thead-light">
                                     <tr>
                                         <th>Médicament</th>
-                                        <th>Forme / Dosage</th>
-                                        <th>Catégorie</th>
-                                        <th class="text-center">Stock Total</th>
+                                        <th>Prix (USD)</th>
+                                        <th>Prix (CDF)</th>
+                                        <th class="text-center">Stock</th>
+                                        <th class="text-center">Valeur Totale (USD)</th>
                                         <th class="text-center">Statut</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for produit in produits %}
                                     <tr>
-                                        <td><strong>{{ produit.nom }}</strong></td>
-                                        <td>{{ produit.forme }} - {{ produit.dosage }}</td>
-                                        <td><span class="badge badge-light">{{ produit.categorie }}</span></td>
-                                        <td class="text-center"><strong>{{ produit.stock_total }}</strong></td>
+                                        <td>
+                                            <strong>{{ produit.nom }}</strong><br>
+                                            <small class="text-muted">{{ produit.forme }} - {{ produit.dosage }}</small>
+                                        </td>
+                                        <td class="currency-text">${{ produit.prix_vente }}</td>
+                                        <td class="currency-text text-secondary">{{ produit.prix_cdf|floatformat:0 }} CDF</td>
+                                        <td class="text-center font-weight-bold">{{ produit.stock_total }}</td>
+                                        <td class="text-center font-weight-bold">${{ produit.valeur_totale_usd }}</td>
                                         <td class="text-center">
                                             {% if produit.stock_total == 0 %}
-                                                <span class="badge badge-danger badge-status">Rupture</span>
+                                                <span class="badge badge-danger badge-status">RUPTURE</span>
                                             {% elif produit.stock_total < 10 %}
-                                                <span class="badge badge-warning badge-status">Faible</span>
+                                                <span class="badge badge-warning badge-status">FAIBLE</span>
                                             {% else %}
                                                 <span class="badge badge-success badge-status">OK</span>
                                             {% endif %}
@@ -65,7 +69,7 @@
                                     </tr>
                                     {% empty %}
                                     <tr>
-                                        <td colspan="5" class="text-center py-4 text-muted">Aucun produit enregistré en pharmacie.</td>
+                                        <td colspan="6" class="text-center py-4 text-muted">Aucun médicament en stock.</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>

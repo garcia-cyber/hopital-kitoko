@@ -3,14 +3,21 @@
 <html lang="fr">
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Patients à traiter | Moyanoli</title>
     {% include 'back-end/includes/css.html' %}
     <style>
-        .card { border: none; box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15); }
+        .card { border: none; box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15); border-radius: 8px; }
         .table thead { background-color: #f8f9fc; }
-        .btn-success { background-color: #28a745; border: none; }
         .search-box { margin-bottom: 20px; }
         .highlight-row:hover { background-color: #f1f8ff; }
+        
+        /* Ajustements pour mobile */
+        @media (max-width: 768px) {
+            .page-wrapper { padding: 10px !important; }
+            .content { padding: 0 !important; }
+            h3 { font-size: 1.25rem; }
+        }
     </style>
 </head>
 <body>
@@ -25,7 +32,7 @@
                 </div>
 
                 <div class="search-box">
-                    <input type="text" id="searchPatient" class="form-control form-control-lg" placeholder="🔍 Rechercher un patient par son nom..." onkeyup="filterTable()">
+                    <input type="text" id="searchPatient" class="form-control form-control-lg" placeholder="🔍 Rechercher un patient..." onkeyup="filterTable()">
                 </div>
 
                 <div class="card shadow-sm">
@@ -34,10 +41,10 @@
                             <table class="table table-hover align-middle mb-0" id="tablePatients">
                                 <thead class="thead-light">
                                     <tr>
-                                        <th>Heure</th>
+                                        <th style="width: 15%;">Heure</th>
                                         <th>Nom du Patient</th>
                                         <th>Prestation</th>
-                                        <th class="text-center">Action</th>
+                                        <th class="text-center" style="width: 20%;">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -47,20 +54,20 @@
                                         <td class="align-middle"><strong>{{ soin.nom_patient }}</strong></td>
                                         <td class="align-middle">{{ soin.prestation.libelle }}</td>
                                         <td class="text-center">
-    {% if soin.est_effectue %}
-        <button class="btn btn-sm btn-secondary" disabled>
-            <i class="fa fa-check-circle"></i> Fait
-        </button>
-    {% else %}
-        <a href="{% url 'marquer_fait' soin.id %}" class="btn btn-sm btn-success">
-            <i class="fa fa-check"></i> Marquer fait
-        </a>
-    {% endif %}
-</td>
+                                            {% if soin.est_effectue %}
+                                                <button class="btn btn-sm btn-secondary" disabled>
+                                                    <i class="fa fa-check-circle"></i> Fait
+                                                </button>
+                                            {% else %}
+                                                <a href="{% url 'marquer_fait' soin.id %}" class="btn btn-sm btn-success">
+                                                    <i class="fa fa-check"></i> Marquer fait
+                                                </a>
+                                            {% endif %}
+                                        </td>
                                     </tr>
                                     {% empty %}
                                     <tr>
-                                        <td colspan="4" class="text-center py-4 text-muted">Aucun patient en attente aujourd'hui.</td>
+                                        <td colspan="4" class="text-center py-4 text-muted">Aucun patient en attente.</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -77,9 +84,8 @@
             let input = document.getElementById("searchPatient").value.toLowerCase();
             let table = document.getElementById("tablePatients");
             let tr = table.getElementsByTagName("tr");
-
             for (let i = 1; i < tr.length; i++) {
-                let td = tr[i].getElementsByTagName("td")[1]; // Colonne Nom Patient
+                let td = tr[i].getElementsByTagName("td")[1];
                 if (td) {
                     let txtValue = td.textContent || td.innerText;
                     tr[i].style.display = txtValue.toLowerCase().indexOf(input) > -1 ? "" : "none";

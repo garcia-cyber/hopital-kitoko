@@ -719,12 +719,28 @@ class ProduitPharmacie(models.Model):
 
     def __str__(self):
         return f"{self.nom} - {self.forme} - {self.dosage}"
+    @property
+    def stock_total(self):
+        # Si la vue a fait l'annotation, on récupère 'total_en_stock', sinon 0
+        return self.total_en_stock or 0
+
+    @property
+    def prix_cdf(self):
+        # Utilise ton taux de change dynamique
+        return self.prix_vente * ConfigurationHopital.get_taux()
+
+    @property
+    def valeur_totale_usd(self):
+        # Utilise la quantité calculée dynamiquement
+        return self.prix_vente * self.stock_total
 
 class LotPharmacie(models.Model):
     produit = models.ForeignKey(ProduitPharmacie, on_delete=models.CASCADE, related_name='lots')
     quantite = models.PositiveIntegerField(default=0)
     date_peremption = models.DateField()
     date_entree = models.DateField(auto_now_add=True)
+    produit = models.ForeignKey(ProduitPharmacie, related_name='les_lots', on_delete=models.CASCADE)
+    
 
     def __str__(self):
         return f"{self.produit.nom} - Exp: {self.date_peremption}"
