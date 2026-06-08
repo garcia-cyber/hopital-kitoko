@@ -13,7 +13,7 @@ from datetime import timedelta , date
 from django.db import transaction
 from django.conf import settings
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.db.models.functions import Coalesce , Length
+from django.db.models.functions import Coalesce , Length ,TruncDay, TruncWeek, TruncMonth
 import json
 from django.http import JsonResponse
 
@@ -3293,38 +3293,74 @@ def enregistrer_vente(request):
 
 #
 # =============================================================================================================================
-# 
+# DASHBOARD COTE PHARMACIE 
 # =============================================================================================================================
 @login_required
 def dashboard_ventes(request):
+    # 1. Gestion du filtre de période
+    periode = request.GET.get('periode', 'jour')
+    periodes_map = {
+        'jour': TruncDay('date_paiement'),
+        'semaine': TruncWeek('date_paiement'),
+        'mois': TruncMonth('date_paiement'),
+    }
+    trunc_func = periodes_map.get(periode, TruncDay('date_paiement'))
+
+    # 2. Statistiques dynamiques selon la période
+    stats_ventes = Paiement.objects.annotate(date_groupee=trunc_func) \
+        .values('date_groupee', 'devise') \
+        .annotate(total=Sum('montant_verse')) \
+        .order_by('-date_groupee')
+
+    # 3. KPIs de synthèse (Aujourd'hui)
     aujourdhui = timezone.now().date()
-    
-    # 1. Chiffre d'affaires du jour (par devise)
     ventes_du_jour = Paiement.objects.filter(date_paiement__date=aujourdhui) \
         .values('devise') \
         .annotate(total=Sum('montant_verse'))
-
-    # 2. Nombre de ventes total
+    
     nombre_ventes = Paiement.objects.filter(date_paiement__date=aujourdhui).count()
 
-    # 3. Produits les plus vendus (Top 5)
+    # 4. Top 5 Produits
     top_produits = SortiePharmacie.objects.values('produit__nom') \
         .annotate(total_vendu=Sum('quantite_vendue')) \
         .order_by('-total_vendu')[:5]
 
-    # 4. Stock critique (Produits avec stock < 5)
-    # On réutilise la logique de calcul de stock
+    # 5. Stocks critiques
     produits_critiques = ProduitPharmacie.objects.annotate(
-        stock=Coalesce(Sum('les_lots__quantite'), 0) - Coalesce(Sum('les_sorties__quantite_vendue'), 0)
-    ).filter(stock__lt=5)
+        stock_reel=Coalesce(Sum('les_lots__quantite'), 0) - Coalesce(Sum('les_sorties__quantite_vendue'), 0)
+    ).filter(stock_reel__lt=5)
+
+    # 6. Gestion des rôles
     role = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
 
     context = {
+        'stats_ventes': stats_ventes,
+        'periode_actuelle': periode,
         'ventes_jour': ventes_du_jour,
         'nb_ventes': nombre_ventes,
         'top_produits': top_produits,
         'produits_critiques': produits_critiques,
-        'fonctionKey' : fonctionKey
+        'fonctionKey': fonctionKey
     }
     return render(request, 'back-end/pharmacie/dashboard.html', context)
+
+
+# 
+# ==================================================================================================
+# LISTE DES VENTES
+# ==================================================================================================
+@login_required
+def liste_ventes(request):
+    # On récupère toutes les transactions de paiement
+    ventes = Paiement.objects.all().order_by('-date_paiement')
+
+    # Gestion des rôles
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    context = {
+        'ventes': ventes,
+        'fonctionKey':fonctionKey 
+    }
+    return render(request, 'back-end/pharmacie/liste_ventes.html', context)

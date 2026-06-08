@@ -156,5 +156,6 @@ urlpatterns =[
     path('pharmacie/ajouter-lot/', views.ajouter_lot, name='ajouter_lot'),
     path('vente/', views.enregistrer_vente, name='enregistrer_vente'),
     path('vente/dashboard/', views.dashboard_ventes, name='dashboard_ventes'),
+    path('ventes/', views.liste_ventes, name='liste_ventes'),
 
  ]

@@ -8,23 +8,13 @@
     {% include 'back-end/includes/css.html' %}
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        :root {
-            --medical-blue: #0284c7; /* Bleu clinique */
-            --bg-body: #f1f5f9;      /* Gris très clair */
-        }
-        body { background-color: var(--bg-body) !important; font-family: 'Segoe UI', system-ui, sans-serif; }
-        
-        .card { border-radius: 16px; border: none; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
-        .hosp-banner { background: #fff; border-left: 5px solid var(--medical-blue); padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; }
-        
-        /* Style des indicateurs */
+        :root { --medical-blue: #0284c7; --bg-body: #f1f5f9; }
+        body { background-color: var(--bg-body) !important; font-family: 'Segoe UI', sans-serif; }
+        .card { border-radius: 16px; border: none; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); margin-bottom: 1.5rem; }
         .stat-icon { width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; border-radius: 12px; font-size: 1.2rem; }
-        
-        /* Tableaux type "Dossier Médical" */
-        .table-custom thead { background: #f8fafc; color: #64748b; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; }
-        .table-custom td { padding: 1rem; vertical-align: middle; }
-        
+        .table-custom thead { background: #f8fafc; color: #64748b; text-transform: uppercase; font-size: 0.75rem; }
         .badge-urgent { background: #fee2e2; color: #dc2626; font-weight: 600; padding: 0.4rem 0.8rem; border-radius: 6px; }
+        .btn-filter.active { background-color: var(--medical-blue); color: white; }
     </style>
 </head>
 <body>
@@ -35,43 +25,41 @@
         <div class="page-wrapper">
             <div class="content container-fluid">
                 
-                <div class="hosp-banner d-flex justify-content-between align-items-center">
-                    <div>
-                        <h4 class="mb-1 text-primary fw-bold">Gestion des Stocks Pharmacie</h4>
-                        <p class="text-muted mb-0 small">Centre Hospitalier Moyanoli - Système de gestion intégrée</p>
-                    </div>
-                    <div class="text-end">
-                        <small class="text-uppercase text-muted d-block">Date</small>
-                        <span class="fw-bold">{% now "d/m/Y" %}</span>
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h4 class="fw-bold">Tableau de Bord Pharmacie</h4>
+                    <div class="btn-group">
+                        <a href="?periode=jour" class="btn btn-outline-primary btn-filter {% if periode_actuelle == 'jour' %}active{% endif %}">Jour</a>
+                        <a href="?periode=semaine" class="btn btn-outline-primary btn-filter {% if periode_actuelle == 'semaine' %}active{% endif %}">Semaine</a>
+                        <a href="?periode=mois" class="btn btn-outline-primary btn-filter {% if periode_actuelle == 'mois' %}active{% endif %}">Mois</a>
                     </div>
                 </div>
 
-                <div class="row g-4 mb-4">
-                    <div class="col-md-4">
+                <div class="row g-3 mb-4">
+                    <div class="col-12 col-md-4">
                         <div class="card p-3 d-flex flex-row align-items-center gap-3">
                             <div class="stat-icon text-primary bg-light"><i class="fas fa-wallet"></i></div>
                             <div>
                                 <small class="text-muted d-block">Recettes (Jour)</small>
                                 {% for v in ventes_jour %}
-                                    <h5 class="mb-0 fw-bold">{{ v.total|floatformat:2 }} <span class="small text-muted">{{ v.devise }}</span></h5>
+                                    <h5 class="mb-0 fw-bold">{{ v.total|floatformat:2 }} {{ v.devise }}</h5>
                                 {% endfor %}
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-12 col-md-4">
                         <div class="card p-3 d-flex flex-row align-items-center gap-3">
                             <div class="stat-icon text-success bg-light"><i class="fas fa-notes-medical"></i></div>
                             <div>
-                                <small class="text-muted d-block">Actes Validés</small>
+                                <small class="text-muted d-block">Transactions</small>
                                 <h5 class="mb-0 fw-bold">{{ nb_ventes }}</h5>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-12 col-md-4">
                         <div class="card p-3 d-flex flex-row align-items-center gap-3">
-                            <div class="stat-icon text-danger bg-light"><i class="fas fa-exclamation-circle"></i></div>
+                            <div class="stat-icon text-danger bg-light"><i class="fas fa-exclamation-triangle"></i></div>
                             <div>
-                                <small class="text-muted d-block">Alertes Stock</small>
+                                <small class="text-muted d-block">Alerte Stock</small>
                                 <h5 class="mb-0 fw-bold text-danger">{{ produits_critiques|length }}</h5>
                             </div>
                         </div>
@@ -79,32 +67,41 @@
                 </div>
 
                 <div class="row g-4">
-                    <div class="col-lg-6">
+                    <div class="col-12 col-lg-7">
                         <div class="card p-4">
-                            <h6 class="mb-3 fw-bold"><i class="fas fa-chart-line me-2 text-primary"></i>Top 5 - Produits en rotation</h6>
-                            <table class="table table-custom">
-                                <thead><tr><th>Désignation</th><th class="text-end">Quantité</th></tr></thead>
-                                <tbody>
-                                    {% for p in top_produits %}
-                                    <tr><td>{{ p.produit__nom }}</td><td class="text-end fw-bold">{{ p.total_vendu }}</td></tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
+                            <h6 class="mb-3 fw-bold"><i class="fas fa-chart-bar me-2 text-primary"></i>Évolution des Ventes</h6>
+                            <div class="table-responsive">
+                                <table class="table table-custom">
+                                    <thead><tr><th>Période</th><th>Devise</th><th class="text-end">Total</th></tr></thead>
+                                    <tbody>
+                                        {% for s in stats_ventes %}
+                                        <tr>
+                                            <td>{{ s.date_groupee|date:"d M Y" }}</td>
+                                            <td>{{ s.devise }}</td>
+                                            <td class="text-end fw-bold">{{ s.total|floatformat:2 }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
-                    <div class="col-lg-6">
+
+                    <div class="col-12 col-lg-5">
+                        <div class="card p-4 mb-3">
+                            <h6 class="mb-3 fw-bold"><i class="fas fa-trophy me-2 text-warning"></i>Top 5 Ventes</h6>
+                            <table class="table table-sm">
+                                {% for p in top_produits %}
+                                <tr><td>{{ p.produit__nom }}</td><td class="text-end">{{ p.total_vendu }}</td></tr>
+                                {% endfor %}
+                            </table>
+                        </div>
                         <div class="card p-4">
-                            <h6 class="mb-3 fw-bold text-danger"><i class="fas fa-capsules me-2 text-danger"></i>Rupture de Stock Imminente</h6>
-                            <table class="table table-custom">
-                                <thead><tr><th>Désignation</th><th class="text-end">Stock</th></tr></thead>
-                                <tbody>
-                                    {% for p in produits_critiques %}
-                                    <tr>
-                                        <td>{{ p.nom }}</td>
-                                        <td class="text-end"><span class="badge-urgent">{{ p.stock_reel }}</span></td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
+                            <h6 class="mb-3 fw-bold text-danger"><i class="fas fa-capsules me-2"></i>Urgence Stock</h6>
+                            <table class="table table-sm">
+                                {% for p in produits_critiques %}
+                                <tr><td>{{ p.nom }}</td><td class="text-end"><span class="badge-urgent">{{ p.stock_reel }}</span></td></tr>
+                                {% endfor %}
                             </table>
                         </div>
                     </div>

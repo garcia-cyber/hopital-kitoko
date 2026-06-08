@@ -49,6 +49,44 @@
                             <li><a href="{% url 'liste_entreprises' %}">Liste des Entreprises</a></li>
                         </ul>
                     </li>
+
+                    <li class="menu-title"><span>Gestion Pharmacie</span></li>
+
+<li>
+    <a href="{% url 'gestion_pharmacie' %}">
+        <i class="fa fa-cubes"></i> <span>État du Stock</span>
+    </a>
+</li>
+
+<li>
+    <a href="{% url 'ajouter_lot' %}">
+        <i class="fa fa-plus-circle"></i> <span>Réception Fournisseur</span>
+    </a>
+</li>
+
+<li>
+    <a href="{% url 'ajouter_produit' %}">
+        <i class="fa fa-pills"></i> <span>Créer un Médicament</span>
+    </a>
+</li>
+<li class="nav-item">
+    <a href="{% url 'enregistrer_vente' %}" class="nav-link">
+        <i class="fa fa-shopping-cart"></i> <span>Enregistrer Vente</span>
+    </a>
+</li>
+
+<li>
+    <a href="{% url 'dashboard_ventes' %}">
+        <i class="fas fa-chart-line"></i> 
+        <span>Tableau de Bord</span>
+    </a>
+</li>
+
+<li class="nav-item">
+        <a class="nav-link" href="{% url 'liste_ventes' %}">
+            <i class="fas fa-history me-2"></i> Historique Ventes
+        </a>
+    </li>
                 {% endif %}
 
                 {% if fonctionKey == 'receptionniste' %}
@@ -59,6 +97,13 @@
         <i class="fa fa-star"></i> <span>Patients Fidèles</span>
     </a>
 </li>
+<li class="submenu">
+                        <a href="#"><i class="la la-wallet"></i> <span> Gestion Financière </span> <span class="menu-arrow"></span></a>
+                        <ul style="display: none;">
+                            <li><a href="{% url 'dashboard_finance_depense' %}">Journal de Caisse</a></li>
+                            <li><a href="{% url 'creer_depense' %}">Saisir une Dépense</a></li>
+                        </ul>
+                    </li>
                     <li><a href="{% url 'liste_attente_caisse' %}"><i class="fa fa-calculator"></i> <span>Caisse (Examens)</span></a></li>
                     <li class="menu-title"> <span>Gestion Partenaires</span> </li>
                     <li class="submenu">
@@ -111,6 +156,8 @@
         <span>Historique des soins</span>
     </a>
 </li>
+
+
                 {% endif %}
 
                 {% if fonctionKey == 'medecin' %}
@@ -224,6 +271,12 @@
         <span>Tableau de Bord</span>
     </a>
 </li>
+
+<li class="nav-item">
+        <a class="nav-link" href="{% url 'liste_ventes' %}">
+            <i class="fas fa-history me-2"></i> Historique Ventes
+        </a>
+    </li>
                 {% endif %}
 
                 <li class="menu-title"> <span>SESSION</span> </li>
