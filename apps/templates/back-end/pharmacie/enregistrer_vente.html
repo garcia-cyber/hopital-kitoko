@@ -20,7 +20,10 @@
                             <select id="produitSelect" class="form-control">
                                 <option value="">Choisir un produit...</option>
                                 {% for p in produits %}
-                                <option value="{{ p.id }}" data-nom="{{ p.nom }}" data-prix="{{ p.prix_vente }}" data-stock="{{ p.stock_reel }}">
+                                <option value="{{ p.id }}" 
+                                        data-nom="{{ p.nom }}" 
+                                        data-prix="{{ p.prix_vente }}" 
+                                        data-stock="{{ p.stock_reel }}">
                                     {{ p.nom }} (Dispo: {{ p.stock_reel }})
                                 </option>
                                 {% endfor %}
@@ -29,6 +32,7 @@
                             <button type="button" id="btnAjouter" class="btn btn-primary w-100">Ajouter au panier</button>
                         </div>
                     </div>
+
                     <div class="col-lg-8">
                         <div class="card p-3 shadow-sm">
                             <form id="venteForm">
@@ -59,32 +63,65 @@
             let panier = [];
             $('#produitSelect').select2({ width: '100%' });
 
+            // AJOUTER AU PANIER
             $('#btnAjouter').on('click', function() {
                 let p = $('#produitSelect option:selected');
                 let qte = parseInt($('#qte').val());
-                if(!p.val() || isNaN(qte) || qte <= 0) return alert("Données invalides");
+                let stockDispo = parseInt(p.data('stock'));
+                let prix = parseFloat(p.data('prix'));
+
+                if (!p.val()) return alert("Choisissez un produit");
+                if (isNaN(qte) || qte <= 0) return alert("Quantité invalide");
+                if (qte > stockDispo) return alert("Stock insuffisant ! Disponible : " + stockDispo);
+
+                let totalLigne = qte * prix;
+
+                panier.push({ id: p.val(), nom: p.data('nom'), qte: qte, prix: prix });
+
+                $('#panierBody').append(`
+                    <tr data-id="${p.val()}">
+                        <td>${p.data('nom')}</td>
+                        <td>${qte}</td>
+                        <td>${prix.toFixed(2)}</td>
+                        <td>${totalLigne.toFixed(2)}</td>
+                        <td><button type="button" class="btn btn-danger btn-sm delete-btn">X</button></td>
+                    </tr>
+                `);
                 
-                panier.push({ id: p.val(), nom: p.data('nom'), qte: qte, prix: parseFloat(p.data('prix')) });
-                $('#panierBody').append(`<tr data-id="${p.val()}"><td>${p.data('nom')}</td><td>${qte}</td><td>${p.data('prix')}</td><td>${qte * p.data('prix')}</td><td><button class="btn btn-danger btn-sm delete-btn">X</button></td></tr>`);
+                $('#qte').val(''); // Reset quantité
             });
 
-            $(document).on('click', '.delete-btn', function() { $(this).closest('tr').remove(); });
+            // SUPPRIMER LIGNE
+            $(document).on('click', '.delete-btn', function() {
+                let row = $(this).closest('tr');
+                let id = row.data('id');
+                panier = panier.filter(item => item.id != id);
+                row.remove();
+            });
 
+            // VALIDER LA VENTE
             $('#btnValider').on('click', function() {
                 if(panier.length === 0) return alert("Panier vide !");
 
                 fetch("{% url 'enregistrer_vente' %}", {
                     method: "POST",
-                    headers: { "Content-Type": "application/json", "X-CSRFToken": "{{ csrf_token }}" },
+                    headers: { 
+                        "Content-Type": "application/json", 
+                        "X-CSRFToken": "{{ csrf_token }}" 
+                    },
                     body: JSON.stringify({ 
-                        panier_data: JSON.stringify(panier), 
+                        panier_data: panier, 
                         devise: $('#deviseSelect').val() 
                     })
                 })
                 .then(r => r.json())
                 .then(data => {
-                    if(data.status === 'success') { alert(data.message); window.location.reload(); }
-                    else { alert("Erreur: " + data.message); }
+                    if(data.status === 'success') { 
+                        alert(data.message); 
+                        window.location.reload(); 
+                    } else { 
+                        alert("Erreur: " + data.message); 
+                    }
                 });
             });
         });

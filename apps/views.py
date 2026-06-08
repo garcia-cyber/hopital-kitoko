@@ -3220,37 +3220,50 @@ def ajouter_lot(request):
 # =====================================================================================
 @login_required
 def enregistrer_vente(request):
-    # 1. Traitement POST (Validation de la vente)
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-            panier = json.loads(data.get('panier_data', '[]'))
+            # CORRECTION : panier_data est déjà une liste (pas besoin de json.loads)
+            panier = data.get('panier_data', [])
             devise = data.get('devise', 'USD')
+            taux = float(ConfigurationHopital.get_taux())
 
             if not panier:
                 return JsonResponse({'status': 'error', 'message': 'Le panier est vide.'})
 
             with transaction.atomic():
                 montant_total = 0
-                taux = ConfigurationHopital.get_taux() 
-
+                
+                # PREMIÈRE PASSE : Vérification du stock et calcul du total
                 for item in panier:
-                    produit = ProduitPharmacie.objects.get(id=item['id'])
-                    prix = produit.prix_vente
-                    if devise == 'CDF':
-                        prix *= taux
-                    montant_total += (prix * int(item['qte']))
+                    produit = ProduitPharmacie.objects.select_for_update().get(id=item['id'])
+                    
+                    # Annotation dynamique du stock réel pour vérification
+                    stock_actuel = ProduitPharmacie.objects.filter(id=produit.id).annotate(
+                        s=Coalesce(Sum('les_lots__quantite'), 0) - Coalesce(Sum('les_sorties__quantite_vendue'), 0)
+                    ).first().s
+                    
+                    if int(item['qte']) > stock_actuel:
+                        return JsonResponse({'status': 'error', 'message': f'Stock insuffisant pour {produit.nom}'})
 
-                # Création du Paiement avec les champs obligatoires du modèle
+                    # Calcul du prix avec conversion si nécessaire
+                    prix_unitaire = float(produit.prix_vente)
+                    if devise == 'CDF':
+                        prix_unitaire *= taux
+                    
+                    montant_total += (prix_unitaire * int(item['qte']))
+
+                # CRÉATION DU PAIEMENT
                 paiement = Paiement.objects.create(
                     montant_verse=montant_total,
                     devise=devise,
-                    service='SOIN', # Remplace par le service approprié si besoin
+                    service='PHARMACIE',
                     caissier=request.user
                 )
 
+                # CRÉATION DES SORTIES
                 for item in panier:
-                    produit = ProduitPharmacie.objects.select_for_update().get(id=item['id'])
+                    produit = ProduitPharmacie.objects.get(id=item['id'])
                     SortiePharmacie.objects.create(
                         paiement=paiement, 
                         produit=produit, 
@@ -3262,19 +3275,17 @@ def enregistrer_vente(request):
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)})
 
-    # 2. Logique GET (Affichage de la page avec produits et fonctionKey)
+    # Logique GET : Affichage avec calcul du stock
     produits = ProduitPharmacie.objects.annotate(
-        stock_reel=ExpressionWrapper(
-            Coalesce(Sum('les_lots__quantite'), 0) - Coalesce(Sum('les_sorties__quantite_vendue'), 0),
-            output_field=IntegerField()
-        )
+        stock_reel=Coalesce(Sum('les_lots__quantite'), 0) - Coalesce(Sum('les_sorties__quantite_vendue'), 0)
     ).order_by('nom')
 
-    # Récupération du rôle pour l'interface
     role = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+    taux = ConfigurationHopital.get_taux()
 
     return render(request, 'back-end/pharmacie/enregistrer_vente.html', {
         'produits': produits, 
-        'fonctionKey': fonctionKey
+        'fonctionKey': fonctionKey,
+        'taux_actuel': float(taux),
     })
