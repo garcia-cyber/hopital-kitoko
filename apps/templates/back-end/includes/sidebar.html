@@ -93,6 +93,24 @@
         <li><a href="{% url 'ajouter_lit' %}">Ajouter un Lit</a></li>
     </ul>
 </li>
+
+                <li class="menu-title"> 
+    <span>Réception & Soins</span>
+</li>
+
+<li>
+    <a href="{% url 'soin_rapide' %}">
+        <i class="fa fa-medkit"></i> 
+        <span>Soin Rapide (Passage)</span>
+    </a>
+</li>
+
+<li>
+    <a href="{% url 'historique_soins' %}">
+        <i class="fa fa-history"></i> 
+        <span>Historique des soins</span>
+    </a>
+</li>
                 {% endif %}
 
                 {% if fonctionKey == 'medecin' %}
@@ -137,7 +155,15 @@
                     <li class="menu-title"> <span>SOINS INFIRMIERS</span> </li>
                     <li><a href="{% url 'liste_attente_triage' %}"><i class="la la-notes-medical"></i> <span>Liste Triage</span></a></li>
                     <li><a href="{% url 'liste_globale_triage' %}"><i class="la la-list-alt"></i> <span>Registre Global</span></a></li>
-
+                    <li class="menu-title">
+    <span>Espace Infirmier</span>
+</li>
+<li>
+    <a href="{% url 'liste_soins_traitement' %}">
+        <i class="fa fa-stethoscope"></i> 
+        <span>Soins à traiter</span>
+    </a>
+</li>
                     <li class="menu-title"> 
                         <span>Gestion Médicale</span>
                     </li>

@@ -178,6 +178,7 @@ class Paiement(models.Model):
     date_paiement = models.DateTimeField(default=timezone.now)
     caissier = models.ForeignKey(User, on_delete=models.PROTECT)
     reste_a_payer = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0.00'), verbose_name="Dette / Reste à payer")
+    
 
     def save(self, *args, **kwargs):
         is_new = self.pk is None
@@ -637,3 +638,93 @@ class Deces(models.Model):
     class Meta:
         verbose_name = "Certificat de décès"
         verbose_name_plural = "Certificats de décès"
+
+
+
+# ====================================================================
+# ORIENTATION 
+class Orientation(models.Model):
+    DESTINATIONS = (
+        ('PHARMACIE', 'Pharmacie'),
+        ('HOSPITALISATION', 'Hospitalisation'),
+        ('SALLE_SOINS', 'Salle de Soins'),
+        ('BLOC_OPERATOIRE', 'Bloc Opératoire'),
+        ('SORTIE', 'Sortie/Retour à domicile'),
+    )
+
+    consultation = models.OneToOneField(
+        Consultation, 
+        on_delete=models.CASCADE, 
+        related_name='orientation'
+    )
+    # QUI oriente ?
+    medecin_orientateur = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        related_name='orientations_effectuees'
+    )
+    destination = models.CharField(max_length=50, choices=DESTINATIONS)
+    observation = models.TextField(blank=True, null=True)
+    date_orientation = models.DateTimeField(auto_now_add=True)
+    est_admis = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.consultation.triage.patient.noms} orienté par Dr. {self.medecin_orientateur.username}"
+
+
+
+# ============================================================================================
+#
+#
+class SoinOccasionnel(models.Model):
+    paiement = models.ForeignKey(
+        'Paiement', 
+        on_delete=models.CASCADE, 
+        related_name="soins_lies" # Permet de faire paiement.soins_lies.all()
+    )
+    nom_patient = models.CharField(max_length=200)
+    prestation = models.ForeignKey('Prestation', on_delete=models.CASCADE)
+    date_soin = models.DateTimeField(auto_now_add=True)
+    effectue_par = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    est_effectue = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"Soin: {self.nom_patient} - {self.prestation.libelle}"
+
+
+
+# =================================================================================
+#
+# GESTION DE PHARMACIE 
+
+class ProduitPharmacie(models.Model):
+    # Identité du médicament
+    nom = models.CharField(max_length=200, verbose_name="Nom commercial / DCI")
+    forme = models.CharField(max_length=100, help_text="Ex: Comprimé, Sirop, Ampoule, Pommade")
+    dosage = models.CharField(max_length=50, help_text="Ex: 500mg, 250mg/5ml")
+    
+    # Organisation
+    categorie = models.CharField(max_length=100, verbose_name="Catégorie (ex: Antibiotique)")
+    
+    # Gestion financière et stock
+    prix_vente = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Prix de vente unitaire")
+    stock_total = models.PositiveIntegerField(default=0, verbose_name="Stock total actuel")
+
+    class Meta:
+        # On ajoute une contrainte d'unicité sur la combinaison nom + forme + dosage
+        # Pour éviter de créer deux fois le même produit sous des noms légèrement différents
+        unique_together = ('nom', 'forme', 'dosage')
+        verbose_name = "Produit Pharmaceutique"
+
+    def __str__(self):
+        return f"{self.nom} - {self.forme} - {self.dosage}"
+
+class LotPharmacie(models.Model):
+    produit = models.ForeignKey(ProduitPharmacie, on_delete=models.CASCADE, related_name='lots')
+    quantite = models.PositiveIntegerField(default=0)
+    date_peremption = models.DateField()
+    date_entree = models.DateField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.produit.nom} - Exp: {self.date_peremption}"

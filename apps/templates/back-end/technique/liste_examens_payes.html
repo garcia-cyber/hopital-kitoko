@@ -26,14 +26,14 @@
             <div class="content container-fluid">
                 <div class="page-header" style="margin-bottom: 25px;">
                     <h3 style="color: #34495e; font-weight: 700;">{{ titre_page }}</h3>
-                    <p class="text-muted">Console de suivi technique {{ fonctionKey }}</p>
+                    <p class="text-muted">Console de suivi technique</p>
                 </div>
 
                 <div class="row">
                     <div class="col-md-12">
                         <div class="card">
                             <div class="card-header">
-                                <h4 class="card-title mb-0"><i class="fa fa-list-ul mr-2"></i> File d'attente des examens</h4>
+                                <h4 class="card-title mb-0"><i class="fa fa-list-ul mr-2"></i> File d'attente des patients</h4>
                             </div>
                             <div class="card-body p-0">
                                 <div class="table-responsive">
@@ -82,7 +82,7 @@
                                                                 <i class="fa fa-check-circle mr-1"></i> Terminé
                                                             </button>
                                                         {% else %}
-                                                            <a href="{% url 'saisir_resultats_examens' item.id_paiement %}" class="btn btn-medical btn-sm">
+                                                            <a href="{% url 'saisir_resultats_examens' item.consultation_id %}" class="btn btn-medical btn-sm">
                                                                 <i class="fa fa-flask mr-1"></i> Saisir Résultats
                                                             </a>
                                                         {% endif %}
@@ -93,7 +93,7 @@
                                                 <tr>
                                                     <td colspan="5" class="text-center p-5 text-muted">
                                                         <i class="fa fa-hospital-o fa-3x mb-3" style="color: #dee2e6;"></i><br>
-                                                        Aucun examen en attente de traitement.
+                                                        Aucune analyse en attente de traitement.
                                                     </td>
                                                 </tr>
                                             {% endif %}

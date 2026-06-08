@@ -1266,19 +1266,17 @@ def liste_examens_techniques(request):
         return redirect('dashboard')
 
     nom_role = role_user.fonctionKey.roleName.lower()
-    fonctionKey = role_user.fonctionKey.roleName
 
-    # 2. Récupération des paiements
-    paiements_valides = Paiement.objects.filter(
-        service='EXAMENS', 
-        consultation__isnull=False
-    ).select_related('consultation', 'consultation__triage__patient')
+    # 2. On récupère les consultations qui ont au moins un paiement "EXAMENS"
+    # Utilisation de distinct() pour avoir chaque consultation une seule fois
+    consultations_payees = Consultation.objects.filter(
+        paiements__service='EXAMENS'
+    ).distinct().select_related('triage__patient', 'medecin')
 
     historique_technique = []
 
-    for p in paiements_valides:
-        cons = p.consultation
-        # On récupère tous les examens de cette consultation
+    for cons in consultations_payees:
+        # On récupère tous les examens de cette consultation précise
         examens_query = cons.examens.all()
         
         examens_filtrés = []
@@ -1296,29 +1294,28 @@ def liste_examens_techniques(request):
                     'est_deja_fait': (exam.statut == 'TERMINE')
                 })
 
-        # --- NOUVELLE LOGIQUE : Vérifier si tout est traité ---
-        # On considère la fiche comme "Traitée" si elle contient des examens 
-        # et qu'aucun n'est en statut différent de TERMINE
+        # Si le technicien a des examens à traiter pour cette consultation
         if examens_filtrés:
-            # Si on trouve au moins un examen qui n'est PAS terminé, 
-            # alors la fiche n'est pas totalement traitée
+            # On vérifie si tout est fini pour bloquer le bouton
             a_des_examens_en_attente = any(not ex['est_deja_fait'] for ex in examens_filtrés)
             
             historique_technique.append({
-                'id_paiement': p.id,
-                'consultation': cons,
+                'consultation_id': cons.id, # On utilise l'ID de la consultation
                 'patient': cons.triage.patient,
                 'examens': examens_filtrés,
                 'medecin': cons.medecin.username if cons.medecin else "Généraliste",
-                'tout_traite': not a_des_examens_en_attente  # Ce flag servira pour le bouton
+                'tout_traite': not a_des_examens_en_attente
             })
+    nom_role = role_user.fonctionKey.roleName.lower()
+    fonctionKey = role_user.fonctionKey.roleName
 
     context = {
         'historique_technique': historique_technique,
         'examens_presents': len(historique_technique) > 0,
         'titre_page': "Examens à réaliser",
-        'fonctionKey': fonctionKey
+        'fonctionKey' : fonctionKey
     }
+
     return render(request, 'back-end/technique/liste_examens_payes.html', context)
 
 
@@ -3002,3 +2999,134 @@ def modifier_type_patient(request, patient_id):
     fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
     
     return render(request, 'back-end/patient/modifier_type.html', {'patient': patient , 'fonctionKey': fonctionKey})
+
+#
+# ==================================================================================================
+#   SOIN RAPIDE HORS FICHE
+# ==================================================================================================
+@login_required
+def enregistrer_soin_rapide(request):
+    if request.method == 'POST':
+        # Données du form
+        nom_patient = request.POST.get('nom_patient')
+        ids_prestations = request.POST.getlist('prestation_ids')
+        reduction = Decimal(request.POST.get('reduction', '0.00'))
+        devise_paiement = request.POST.get('devise') # 'USD' ou 'CDF'
+        
+        # Récupération des prestations et calcul total
+        prestations = Prestation.objects.filter(id__in=ids_prestations)
+        total_brut = sum(p.prix for p in prestations)
+        
+        # Calcul du net à payer en USD
+        net_usd = total_brut - reduction
+        
+        # Gestion de la devise de paiement
+        if devise_paiement == 'CDF':
+            taux = ConfigurationHopital.get_taux()
+            montant_verse = net_usd * taux
+        else:
+            montant_verse = net_usd
+
+        try:
+            with transaction.atomic():
+                # 1. Création paiement
+                paiement = Paiement.objects.create(
+                    service='SOIN',
+                    montant_verse=montant_verse,
+                    montant_reduction=reduction,
+                    devise=devise_paiement,
+                    caissier=request.user,
+                    reste_a_payer=Decimal('0.00')
+                )
+                
+                # 2. Création des soins
+                for p in prestations:
+                    SoinOccasionnel.objects.create(
+                        paiement=paiement,
+                        nom_patient=nom_patient,
+                        prestation=p,
+                        effectue_par=request.user
+                    )
+            
+            messages.success(request, "Paiement enregistré !")
+            # Redirection vers la facture (remplace 'facture_print' par ton nom d'url)
+            
+
+        except Exception as e:
+            messages.error(request, f"Erreur : {e}")
+            return redirect('soin_rapide')
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    return render(request, 'back-end/soins/soin_rapide.html', {
+        'prestations': Prestation.objects.filter(categorie='SOIN'),
+        'taux': ConfigurationHopital.get_taux() ,
+        'fonctionKey' : fonctionKey,
+    })
+
+
+#
+# =========================================================================================
+# IMPRIMER FACTURE PATIENT OCCASIONNEL
+# =========================================================================================
+@login_required
+def facture_print(request, paiement_id):
+    # On récupère le paiement spécifique
+    paiement = get_object_or_404(Paiement, id=paiement_id)
+    
+    # On récupère les soins liés à ce paiement via le related_name 'soins_lies'
+    soins = paiement.soins_lies.all()
+    
+    # On affiche le template de la facture (que tu as déjà sûrement créé)
+    return render(request, 'back-end/soins/facture_print.html', {
+        'paiement': paiement,
+        'soins': soins
+    })
+
+#
+# =========================================================================================
+# LISTE SOINS PATIENT OCCASIONNEL
+# =========================================================================================
+@login_required
+def liste_soins_traitement(request):
+    # On filtre les soins créés aujourd'hui
+    aujourd_hui = timezone.now().date()
+    soins = SoinOccasionnel.objects.filter(date_soin__date=aujourd_hui).order_by('-date_soin')
+    
+
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    return render(request, 'back-end/soins/liste_soins_traitement.html', {
+        'soins': soins , 
+        'fonctionKey' : fonctionKey
+    })
+
+#
+# ============================================================================================
+# MARQUE TRAITEMENT FAIT 
+# ============================================================================================
+@login_required
+def marquer_fait(request, soin_id):
+    soin = get_object_or_404(SoinOccasionnel, id=soin_id)
+    soin.est_effectue = True
+    soin.save()
+    return redirect('liste_soins_traitement')
+
+#
+# ============================================================================================
+# HISTORIQUE DES SOINS RAPIDE  
+# =============================================================================================
+@login_required
+def historique_soins(request):
+    # On récupère tous les paiements qui ont au moins un soin lié
+    # .distinct() évite les doublons si une requête SQL renvoie plusieurs fois le même paiement
+    paiements = Paiement.objects.filter(soins_lies__isnull=False).distinct().order_by('-date_paiement')
+
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+    
+    return render(request, 'back-end/soins/historique_soins.html', {
+        'paiements': paiements, 
+        'fonctionKey': fonctionKey
+    })

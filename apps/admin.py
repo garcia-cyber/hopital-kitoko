@@ -384,3 +384,105 @@ class DecesAdmin(admin.ModelAdmin):
     
     get_nom_patient.short_description = 'Patient / Défunt'
     get_nom_patient.admin_order_field = 'patient'
+
+
+# ===============================================================================================
+# ORIENTATION
+@admin.register(Orientation)
+class OrientationAdmin(admin.ModelAdmin):
+    # Colonnes affichées dans la liste
+    list_display = (
+        'get_patient_name', 
+        'destination', 
+        'medecin_orientateur', 
+        'date_orientation', 
+        'est_admis'
+    )
+    
+    # Filtres sur le côté droit pour retrouver rapidement les patients
+    list_filter = ('destination', 'est_admis', 'date_orientation', 'medecin_orientateur')
+    
+    # Barre de recherche par nom de patient ou médecin
+    search_fields = ('consultation__triage__patient__noms', 'medecin_orientateur__username')
+    
+    # Permet de modifier 'est_admis' directement depuis la liste sans entrer dans le dossier
+    list_editable = ('est_admis',)
+    
+    # Organise les champs dans le formulaire d'édition
+    fieldsets = (
+        ('Informations Patient', {
+            'fields': ('consultation',)
+        }),
+        ('Détails de l\'orientation', {
+            'fields': ('medecin_orientateur', 'destination', 'observation', 'est_admis')
+        }),
+    )
+
+    # Méthode pour afficher le nom du patient dans la liste
+    def get_patient_name(self, obj):
+        return obj.consultation.triage.patient.noms
+    get_patient_name.short_description = 'Patient'
+
+
+@admin.register(SoinOccasionnel)
+class SoinOccasionnelAdmin(admin.ModelAdmin):
+    # 1. Colonnes affichées dans la liste
+    list_display = (
+        'nom_patient', 
+        'prestation', 
+        'date_soin', 
+        'effectue_par', 
+        'get_paiement_info'
+    )
+    
+    # 2. Filtres latéraux pour trier rapidement les données
+    list_filter = ('date_soin', 'effectue_par', 'prestation__categorie')
+    
+    # 3. Barre de recherche (très utile pour retrouver un patient)
+    search_fields = ('nom_patient', 'prestation__libelle')
+    
+    # 4. Optimisation des requêtes (évite les problèmes de performance N+1)
+    list_select_related = ('paiement', 'prestation', 'effectue_par')
+
+    # 5. Méthode pour afficher le montant du paiement lié dans la liste
+    def get_paiement_info(self, obj):
+        return f"{obj.paiement.montant_verse} {obj.paiement.devise}"
+    
+    get_paiement_info.short_description = "Montant payé"
+
+    # 6. Configuration de la vue détaillée (Formulaire d'édition)
+    readonly_fields = ('date_soin',) # La date ne devrait pas être modifiable
+    
+    fieldsets = (
+        ('Informations Patient', {
+            'fields': ('nom_patient', 'paiement')
+        }),
+        ('Détails du Soin', {
+            'fields': ('prestation', 'date_soin', 'effectue_par')
+        }),
+    )
+
+
+
+# 1. Configuration de l'inline pour gérer les lots dans la fiche Produit
+class LotPharmacieInline(admin.TabularInline):
+    model = LotPharmacie
+    extra = 1
+    readonly_fields = ('date_entree',)
+
+# 2. Configuration de l'admin pour le produit
+@admin.register(ProduitPharmacie)
+class ProduitPharmacieAdmin(admin.ModelAdmin):
+    list_display = ('nom', 'categorie', 'prix_vente', 'stock_total')
+    search_fields = ('nom', 'categorie')
+    list_filter = ('categorie',)
+    inlines = [LotPharmacieInline]
+
+# 3. Configuration de l'admin pour les lots
+@admin.register(LotPharmacie)
+class LotPharmacieAdmin(admin.ModelAdmin):
+    list_display = ('produit', 'quantite', 'date_peremption', 'date_entree')
+    list_filter = ('date_peremption',)
+    search_fields = ('produit__nom',)
+    date_hierarchy = 'date_entree'
+

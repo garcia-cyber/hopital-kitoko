@@ -140,4 +140,12 @@ urlpatterns =[
     path('deces/imprimer/<int:deces_id>/', views.imprimer_deces, name='imprimer_deces'),
     path('deces/payer/<int:deces_id>/', views.enregistrer_paiement_deces, name='enregistrer_paiement_deces'),
 
+    # ====================================
+    # SOINS
+    path('soin-rapide/', views.enregistrer_soin_rapide, name='soin_rapide'),
+    path('soins/liste-traitement/', views.liste_soins_traitement, name='liste_soins_traitement'),
+    path('soin/valider/<int:soin_id>/', views.marquer_fait, name='marquer_fait'),
+    path('soins/historique/', views.historique_soins, name='historique_soins'),
+    path('facture/imprimer/<int:paiement_id>/', views.facture_print, name='facture_print'),
+
  ]

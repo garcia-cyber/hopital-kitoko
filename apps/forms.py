@@ -169,48 +169,6 @@ class ServiceForm(forms.ModelForm):
             raise forms.ValidationError("Ce service existe déjà dans le système.")
         return nom
 
-# ====================================================
-#
-
-# class PatientForm(forms.ModelForm):
-#     class Meta:
-#         model = Patient
-#         # On exclut code_patient et created_by car ils sont gérés automatiquement
-#         fields = ['noms', 'sexe', 'age', 'adresse', 'telephone', 'service']
-        
-#         widgets = {
-#             'noms': forms.TextInput(attrs={
-#                 'class': 'form-control',
-#                 'placeholder': 'Nom, Post-nom et Prénom'
-#             }),
-#             'sexe': forms.Select(attrs={
-#                 'class': 'form-control custom-select'
-#             }),
-#             'age': forms.TextInput(attrs={
-#                 'class': 'form-control',
-#                 'placeholder': 'Ex: 25 ans ou 6 mois'
-#             }),
-#             'telephone': forms.TextInput(attrs={
-#                 'class': 'form-control',
-#                 'placeholder': 'Ex: +243...'
-#             }),
-#             'adresse': forms.Textarea(attrs={
-#                 'class': 'form-control',
-#                 'rows': 3,
-#                 'placeholder': 'Adresse complète du patient'
-#             }),
-#             'service': forms.Select(attrs={
-#                 'class': 'form-control custom-select'
-#             }),
-#         }
-
-#     def __init__(self, *args, **kwargs):
-#         super(PatientForm, self).__init__(*args, **kwargs)
-#         # On peut personnaliser le libellé vide du menu déroulant des services
-#         self.fields['service'].empty_label = "Choisir le service d'orientation"
-
-# ===========================================================================
-#
 class PatientForm(forms.ModelForm):
     class Meta:
         model = Patient
@@ -356,9 +314,7 @@ class ChambreForm(forms.ModelForm):
 class LitForm(forms.ModelForm):
     class Meta:
         model = Lit
-        # On utilise les noms exacts définis dans le modèle Lit
         fields = ['chambre', 'nom_lit', 'est_occupe', 'est_actif']
-        
         widgets = {
             'chambre': forms.Select(attrs={'class': 'form-control'}),
             'nom_lit': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Lit A, Lit 01...'}),
@@ -371,6 +327,24 @@ class LitForm(forms.ModelForm):
             'est_occupe': 'Déjà occupé ?',
             'est_actif': 'Opérationnel / Actif',
         }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        chambre = cleaned_data.get('chambre')
+        nom_lit = cleaned_data.get('nom_lit')
+
+        # Vérifier si un lit avec ce nom existe déjà dans CETTE chambre
+        if chambre and nom_lit:
+            # On cherche un lit avec le même nom dans la même chambre
+            # On exclut le lit actuel (self.instance) pour permettre la modification sans erreur
+            exists = Lit.objects.filter(chambre=chambre, nom_lit__iexact=nom_lit).exclude(pk=self.instance.pk)
+            
+            if exists.exists():
+                raise ValidationError({
+                    'nom_lit': f"Le '{nom_lit}' existe déjà dans la chambre {chambre}."
+                })
+        
+        return cleaned_data
 
 
 
@@ -503,4 +477,31 @@ class ConsultationMaterniteForm(forms.ModelForm):
         exclude = ['dossier_maternite', 'effectue_par', 'date_consultation']
         widgets = {
             'notes': forms.Textarea(attrs={'rows': 3}),
+        }
+
+
+
+# ===============================================================================
+#
+#
+class ProduitPharmacieForm(forms.ModelForm):
+    class Meta:
+        model = ProduitPharmacie
+        fields = ['nom', 'forme', 'dosage', 'categorie', 'prix_vente']
+        widgets = {
+            'nom': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Amoxicilline'}),
+            'forme': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Comprimé'}),
+            'dosage': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: 500mg'}),
+            'categorie': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Antibiotique'}),
+            'prix_vente': forms.NumberInput(attrs={'class': 'form-control'}),
+        }
+
+class LotPharmacieForm(forms.ModelForm):
+    class Meta:
+        model = LotPharmacie
+        fields = ['produit', 'quantite', 'date_peremption']
+        widgets = {
+            'produit': forms.Select(attrs={'class': 'form-control'}),
+            'quantite': forms.NumberInput(attrs={'class': 'form-control'}),
+            'date_peremption': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
         }
