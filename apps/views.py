@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import SetPasswordForm ,UserChangeForm
 from django.contrib import messages
-from django.db.models import Q , Sum ,Prefetch , Count , ExpressionWrapper , OuterRef, Subquery , F , Value ,DecimalField, FloatField
+from django.db.models import Q , Sum ,Prefetch , Count , ExpressionWrapper , OuterRef, Subquery , F , Value ,DecimalField, FloatField ,IntegerField
 from decimal import Decimal , ROUND_HALF_UP , InvalidOperation
 import pytz
 from datetime import timedelta , date
@@ -3163,17 +3163,26 @@ def ajouter_produit(request):
 # ====================================================================================
 @login_required
 def gestion_pharmacie(request):
-    # On annote chaque produit avec son stock total en additionnant ses lots
-    # 'les_lots' correspond au related_name défini dans ton modèle LotPharmacie
+    # 1. Annotation : Calcul des entrées et des sorties séparément
+    # 'les_lots' est le related_name dans LotPharmacie
+    # 'les_sorties' est le related_name dans SortiePharmacie
     produits = ProduitPharmacie.objects.annotate(
-        total_en_stock=Sum('les_lots__quantite')
+        total_entrees=Sum('les_lots__quantite'),
+        total_sorties=Sum('les_sorties__quantite_vendue')
+    ).annotate(
+        # 2. Calcul du stock réel : (Entrées - Sorties)
+        # Coalesce remplace les valeurs NULL par 0
+        stock_reel=ExpressionWrapper(
+            Coalesce('total_entrees', 0) - Coalesce('total_sorties', 0),
+            output_field=IntegerField()
+        )
     ).order_by('nom')
     
     # Gestion des rôles
     role = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
     
-    # Récupération du taux de change via ton modèle de configuration
+    # Récupération du taux de change
     taux_change = ConfigurationHopital.get_taux()
 
     context = {
@@ -3202,3 +3211,48 @@ def ajouter_lot(request):
     fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
 
     return render(request, 'back-end/pharmacie/ajouter_lot.html', {'form': form , 'fonctionKey':fonctionKey}) 
+
+#
+# =====================================================================================
+# VENTE DE PRODUIT 
+# =====================================================================================
+@login_required
+def enregistrer_vente(request):
+    # Annoter le stock pour afficher la valeur réelle
+    produits = ProduitPharmacie.objects.annotate(
+        stock_reel=ExpressionWrapper(
+            Coalesce(Sum('les_lots__quantite'), 0) - Coalesce(Sum('les_sorties__quantite_vendue'), 0),
+            output_field=IntegerField()
+        )
+    ).order_by('nom')
+
+    if request.method == 'POST':
+        produit_id = request.POST.get('produit_id')
+        quantite = int(request.POST.get('quantite'))
+        devise = request.POST.get('devise')
+        
+        produit = produits.get(id=produit_id)
+        
+        if produit.stock_total >= quantite:
+            try:
+                with transaction.atomic():
+                    # Calcul dynamique du montant
+                    prix = produit.prix_vente
+                    if devise == 'CDF':
+                        prix *= ConfigurationHopital.get_taux()
+                    
+                    montant_total = prix * quantite
+                    
+                    p = Paiement.objects.create(montant=montant_total, devise=devise)
+                    SortiePharmacie.objects.create(paiement=p, produit=produit, quantite_vendue=quantite)
+                
+                messages.success(request, "Vente validée.")
+                return redirect('gestion_stock')
+            except Exception as e:
+                messages.error(request, f"Erreur: {e}")
+        else:
+            messages.error(request, "Stock insuffisant.")
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    return render(request, 'back-end/pharmacie/enregistrer_vente.html', {'produits': produits, 'fonctionKey':fonctionKey})

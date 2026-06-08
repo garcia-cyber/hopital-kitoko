@@ -721,18 +721,22 @@ class ProduitPharmacie(models.Model):
         return f"{self.nom} - {self.forme} - {self.dosage}"
     @property
     def stock_total(self):
-        # Si la vue a fait l'annotation, on récupère 'total_en_stock', sinon 0
-        return self.total_en_stock or 0
+        """
+        Retourne le stock réel calculé par la vue (via annotate).
+        Si on n'est pas dans la vue 'gestion_pharmacie', renvoie 0 par défaut.
+        """
+        return getattr(self, 'stock_reel', 0)
 
     @property
     def prix_cdf(self):
-        # Utilise ton taux de change dynamique
+        """Calcule le prix en CDF basé sur le taux actuel."""
         return self.prix_vente * ConfigurationHopital.get_taux()
 
     @property
     def valeur_totale_usd(self):
-        # Utilise la quantité calculée dynamiquement
+        """Calcule la valeur totale du stock en USD."""
         return self.prix_vente * self.stock_total
+
 
 class LotPharmacie(models.Model):
     produit = models.ForeignKey(ProduitPharmacie, on_delete=models.CASCADE, related_name='lots')
@@ -744,3 +748,14 @@ class LotPharmacie(models.Model):
 
     def __str__(self):
         return f"{self.produit.nom} - Exp: {self.date_peremption}"
+
+
+class SortiePharmacie(models.Model):
+    # Chaque vente est liée à un paiement unique
+    paiement = models.OneToOneField('Paiement', on_delete=models.CASCADE, related_name='sortie_stock')
+    produit = models.ForeignKey(ProduitPharmacie, on_delete=models.CASCADE, related_name='les_sorties')
+    quantite_vendue = models.PositiveIntegerField()
+    date_sortie = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Sortie {self.produit.nom} - {self.quantite_vendue} unités"
