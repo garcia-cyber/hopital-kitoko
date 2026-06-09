@@ -8,15 +8,14 @@
     {% include 'back-end/includes/css.html' %}
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { background-color: #f1f5f9 !important; font-family: 'Segoe UI', sans-serif; }
-        .card { border-radius: 16px; border: none; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
-        .table-custom { border-collapse: separate; border-spacing: 0 8px; }
-        .table-custom thead { background: transparent; color: #64748b; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; }
-        .table-custom tbody tr { background: white; border-radius: 12px; }
-        .table-custom td { padding: 1.2rem; vertical-align: middle; }
-        .badge-devise { padding: 0.4rem 0.8rem; border-radius: 6px; font-weight: 600; }
-        .btn-view { background: #e0f2fe; color: #0284c7; border: none; padding: 0.5rem 1rem; border-radius: 8px; transition: 0.3s; }
-        .btn-view:hover { background: #0284c7; color: white; }
+        body { background-color: #f8fafc; font-family: 'Inter', sans-serif; }
+        .card { border-radius: 20px; border: none; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); }
+        .search-box { border-radius: 12px; border: 1px solid #e2e8f0; padding: 0.6rem 1rem; width: 100%; max-width: 300px; }
+        .table thead th { background: #f8fafc; border: none; color: #64748b; font-size: 0.85rem; padding: 1rem; }
+        .table tbody td { padding: 1rem; border-bottom: 1px solid #f1f5f9; }
+        .pill-product { background: #f1f5f9; padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; margin: 2px; display: inline-block; }
+        .btn-invoice { background: #0ea5e9; color: white; padding: 0.4rem 1rem; border-radius: 10px; font-size: 0.85rem; transition: 0.2s; }
+        .btn-invoice:hover { background: #0284c7; color: white; }
     </style>
 </head>
 <body>
@@ -28,49 +27,45 @@
             <div class="content container-fluid">
                 
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <div>
-                        <h4 class="fw-bold text-primary">Historique des Ventes</h4>
-                        <p class="text-muted small">Gestion des transactions Moyanoli Hospital</p>
-                    </div>
-                    <a href="{% url 'enregistrer_vente' %}" class="btn btn-primary">
+                    <h4 class="fw-bold m-0">Historique des Ventes</h4>
+                    <a href="{% url 'enregistrer_vente' %}" class="btn btn-primary rounded-pill">
                         <i class="fas fa-plus me-2"></i>Nouvelle Vente
                     </a>
                 </div>
 
                 <div class="card p-4">
+                    <div class="mb-4 d-flex justify-content-between align-items-center">
+                        <input type="text" id="searchInput" class="search-box" placeholder="Rechercher par produit ou date...">
+                    </div>
+                    
                     <div class="table-responsive">
-                        <table class="table table-custom table-hover">
+                        <table class="table table-hover" id="venteTable">
                             <thead>
                                 <tr>
                                     <th>Date</th>
-                                    <th>ID Transaction</th>
-                                    <th>Montant</th>
-                                    <th>Devise</th>
+                                    <th>Articles vendus</th>
+                                    <th class="text-end">Montant Total</th>
                                     <th class="text-center">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for v in ventes %}
                                 <tr>
-                                    <td><strong>{{ v.date_paiement|date:"d/m/Y" }}</strong> <span class="text-muted ms-1">{{ v.date_paiement|time:"H:i" }}</span></td>
-                                    <td>#TRX-{{ v.id|stringformat:"05d" }}</td>
-                                    <td class="fw-bold">{{ v.montant_verse|floatformat:2 }}</td>
                                     <td>
-                                        {% if v.devise == 'USD' %}
-                                            <span class="badge bg-light text-success badge-devise border border-success">USD</span>
-                                        {% else %}
-                                            <span class="badge bg-light text-primary badge-devise border border-primary">CDF</span>
-                                        {% endif %}
+                                        <div class="fw-bold">{{ v.date_paiement|date:"d/m/Y" }}</div>
+                                        <small class="text-muted">{{ v.date_paiement|time:"H:i" }}</small>
                                     </td>
+                                    <td>
+                                        {% for sortie in v.les_sorties.all %}
+                                            <span class="pill-product"><i class="fas fa-pills me-1"></i>{{ sortie.produit.nom }} (x{{ sortie.quantite_vendue }})</span>
+                                        {% endfor %}
+                                    </td>
+                                    <td class="text-end fw-bold">{{ v.montant_verse|floatformat:2 }} {{ v.devise }}</td>
                                     <td class="text-center">
-                                        <a href="" class="btn-view">
-                                            <i class="fas fa-file-invoice"></i> Facture
+                                        <a href="{% url 'details_facture' v.id %}" target="_blank" class="btn btn-invoice">
+                                            <i class="fas fa-receipt me-1"></i> Facture
                                         </a>
                                     </td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="5" class="text-center py-5 text-muted">Aucune vente enregistrée pour le moment.</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -80,6 +75,17 @@
             </div>
         </div>
     </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        // Recherche en temps réel
+        $("#searchInput").on("keyup", function() {
+            var value = $(this).val().toLowerCase();
+            $("#venteTable tbody tr").filter(function() {
+                $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+            });
+        });
+    </script>
     {% include 'back-end/includes/js.html' %}
 </body>
 </html>

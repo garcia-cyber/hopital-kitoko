@@ -16,6 +16,7 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db.models.functions import Coalesce , Length ,TruncDay, TruncWeek, TruncMonth
 import json
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 
 
 # Create your views here.
@@ -3297,7 +3298,7 @@ def enregistrer_vente(request):
 # =============================================================================================================================
 @login_required
 def dashboard_ventes(request):
-    # 1. Gestion du filtre de période
+    # 1. Gestion du filtre de période (Par défaut: jour)
     periode = request.GET.get('periode', 'jour')
     periodes_map = {
         'jour': TruncDay('date_paiement'),
@@ -3306,36 +3307,39 @@ def dashboard_ventes(request):
     }
     trunc_func = periodes_map.get(periode, TruncDay('date_paiement'))
 
-    # 2. Statistiques dynamiques selon la période
+    # 2. Stats regroupées par période (ex: Somme par jour)
     stats_ventes = Paiement.objects.annotate(date_groupee=trunc_func) \
         .values('date_groupee', 'devise') \
-        .annotate(total=Sum('montant_verse')) \
+        .annotate(total_periode=Sum('montant_verse')) \
         .order_by('-date_groupee')
 
-    # 3. KPIs de synthèse (Aujourd'hui)
+    # 3. Total Général (Somme de toutes les ventes depuis le début)
+    total_general = Paiement.objects.values('devise') \
+        .annotate(grand_total=Sum('montant_verse'))
+
+    # 4. KPIs du jour
     aujourdhui = timezone.now().date()
     ventes_du_jour = Paiement.objects.filter(date_paiement__date=aujourdhui) \
-        .values('devise') \
-        .annotate(total=Sum('montant_verse'))
+        .values('devise').annotate(total=Sum('montant_verse'))
     
     nombre_ventes = Paiement.objects.filter(date_paiement__date=aujourdhui).count()
 
-    # 4. Top 5 Produits
+    # 5. Top 5 Produits
     top_produits = SortiePharmacie.objects.values('produit__nom') \
-        .annotate(total_vendu=Sum('quantite_vendue')) \
-        .order_by('-total_vendu')[:5]
+        .annotate(total_vendu=Sum('quantite_vendue')).order_by('-total_vendu')[:5]
 
-    # 5. Stocks critiques
+    # 6. Stocks critiques
     produits_critiques = ProduitPharmacie.objects.annotate(
         stock_reel=Coalesce(Sum('les_lots__quantite'), 0) - Coalesce(Sum('les_sorties__quantite_vendue'), 0)
     ).filter(stock_reel__lt=5)
 
-    # 6. Gestion des rôles
-    role = Fonction.objects.filter(userKey=request.user).first()
-    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+    # 7. Gestion sécurisée des rôles (fonctionKey)
+    role_obj = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role_obj.fonctionKey.roleName if (role_obj and role_obj.fonctionKey) else "Invité"
 
     context = {
         'stats_ventes': stats_ventes,
+        'total_general': total_general,
         'periode_actuelle': periode,
         'ventes_jour': ventes_du_jour,
         'nb_ventes': nombre_ventes,
@@ -3352,15 +3356,65 @@ def dashboard_ventes(request):
 # ==================================================================================================
 @login_required
 def liste_ventes(request):
-    # On récupère toutes les transactions de paiement
-    ventes = Paiement.objects.all().order_by('-date_paiement')
+    # Utilisation de 'les_sorties' (le related_name défini dans ton modèle)
+    ventes = Paiement.objects.prefetch_related('les_sorties__produit').order_by('-date_paiement')
 
-    # Gestion des rôles
-    role = Fonction.objects.filter(userKey=request.user).first()
-    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+    role_obj = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role_obj.fonctionKey.roleName if (role_obj and role_obj.fonctionKey) else "Invité"
 
-    context = {
+    return render(request, 'back-end/pharmacie/liste_ventes.html', {
         'ventes': ventes,
-        'fonctionKey':fonctionKey 
+        'fonctionKey': fonctionKey 
+    }) 
+
+#
+# ===================================================================================================
+# FACTURATION DES VENTES PRODUITS
+# ===================================================================================================
+@login_required
+def details_facture(request, vente_id):
+    facture = get_object_or_404(Paiement, id=vente_id)
+    details = facture.les_sorties.select_related('produit').all()
+    
+    # On ajoute les propriétés de calcul directement dans la liste avant l'envoi
+    for item in details:
+        # On suppose que ton modèle produit a un champ prix_vente
+        item.prix_unitaire = item.produit.prix_vente 
+        item.total_ligne = item.prix_unitaire * item.quantite_vendue
+        
+    context = {
+        'facture': facture,
+        'details': details,
     }
-    return render(request, 'back-end/pharmacie/liste_ventes.html', context)
+    return render(request, 'back-end/pharmacie/facture_print.html', context)
+
+#
+# ===============================================================================================
+# VALIDER VENTE
+# ===============================================================================================
+@csrf_exempt
+def valider_vente(request):
+    if request.method == 'POST':
+        try:
+            # Récupérer les données envoyées par le JavaScript
+            data = json.loads(request.body)
+            panier = data.get('panier')
+            devise = data.get('devise')
+
+            # 1. Créer le paiement (la facture)
+            paiement = Paiement.objects.create(devise=devise)
+
+            # 2. Enregistrer chaque produit du panier
+            for item in panier:
+                SortiePharmacie.objects.create(
+                    paiement=paiement,
+                    produit_id=item['produit_id'],
+                    quantite_vendue=item['quantite']
+                )
+            
+            return JsonResponse({'success': True})
+        
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)})
+            
+    return JsonResponse({'success': False, 'message': 'Méthode non autorisée'})

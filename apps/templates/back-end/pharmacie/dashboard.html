@@ -26,7 +26,7 @@
             <div class="content container-fluid">
                 
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h4 class="fw-bold">Tableau de Bord Pharmacie</h4>
+                    <h4 class="fw-bold">Tableau de Bord - {{ fonctionKey }}</h4>
                     <div class="btn-group">
                         <a href="?periode=jour" class="btn btn-outline-primary btn-filter {% if periode_actuelle == 'jour' %}active{% endif %}">Jour</a>
                         <a href="?periode=semaine" class="btn btn-outline-primary btn-filter {% if periode_actuelle == 'semaine' %}active{% endif %}">Semaine</a>
@@ -35,18 +35,24 @@
                 </div>
 
                 <div class="row g-3 mb-4">
-                    <div class="col-12 col-md-4">
+                    <div class="col-12 col-md-3">
+                        <div class="card p-3 bg-primary text-white">
+                            <small class="opacity-75">Chiffre d'affaires Total</small>
+                            {% for t in total_general %}
+                                <h4 class="fw-bold">{{ t.grand_total|floatformat:2 }} {{ t.devise }}</h4>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-3">
                         <div class="card p-3 d-flex flex-row align-items-center gap-3">
                             <div class="stat-icon text-primary bg-light"><i class="fas fa-wallet"></i></div>
                             <div>
                                 <small class="text-muted d-block">Recettes (Jour)</small>
-                                {% for v in ventes_jour %}
-                                    <h5 class="mb-0 fw-bold">{{ v.total|floatformat:2 }} {{ v.devise }}</h5>
-                                {% endfor %}
+                                {% for v in ventes_jour %}<h5 class="mb-0 fw-bold">{{ v.total|floatformat:2 }} {{ v.devise }}</h5>{% endfor %}
                             </div>
                         </div>
                     </div>
-                    <div class="col-12 col-md-4">
+                    <div class="col-12 col-md-3">
                         <div class="card p-3 d-flex flex-row align-items-center gap-3">
                             <div class="stat-icon text-success bg-light"><i class="fas fa-notes-medical"></i></div>
                             <div>
@@ -55,7 +61,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-12 col-md-4">
+                    <div class="col-12 col-md-3">
                         <div class="card p-3 d-flex flex-row align-items-center gap-3">
                             <div class="stat-icon text-danger bg-light"><i class="fas fa-exclamation-triangle"></i></div>
                             <div>
@@ -69,24 +75,21 @@
                 <div class="row g-4">
                     <div class="col-12 col-lg-7">
                         <div class="card p-4">
-                            <h6 class="mb-3 fw-bold"><i class="fas fa-chart-bar me-2 text-primary"></i>Évolution des Ventes</h6>
-                            <div class="table-responsive">
-                                <table class="table table-custom">
-                                    <thead><tr><th>Période</th><th>Devise</th><th class="text-end">Total</th></tr></thead>
-                                    <tbody>
-                                        {% for s in stats_ventes %}
-                                        <tr>
-                                            <td>{{ s.date_groupee|date:"d M Y" }}</td>
-                                            <td>{{ s.devise }}</td>
-                                            <td class="text-end fw-bold">{{ s.total|floatformat:2 }}</td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
+                            <h6 class="mb-3 fw-bold"><i class="fas fa-chart-line me-2 text-primary"></i>Évolution des Ventes</h6>
+                            <table class="table table-custom">
+                                <thead><tr><th>Période</th><th>Devise</th><th class="text-end">Total</th></tr></thead>
+                                <tbody>
+                                    {% for s in stats_ventes %}
+                                    <tr>
+                                        <td>{{ s.date_groupee|date:"d M Y" }}</td>
+                                        <td>{{ s.devise }}</td>
+                                        <td class="text-end fw-bold">{{ s.total_periode|floatformat:2 }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
-
                     <div class="col-12 col-lg-5">
                         <div class="card p-4 mb-3">
                             <h6 class="mb-3 fw-bold"><i class="fas fa-trophy me-2 text-warning"></i>Top 5 Ventes</h6>

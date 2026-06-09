@@ -8,11 +8,8 @@
     {% include 'back-end/includes/css.html' %}
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <style>
-        /* Design Médical Épuré */
         .card { border-radius: 12px; border: none; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
         .form-control, .form-select { border-radius: 8px; border: 1px solid #d1d5db; padding: 0.6rem; }
-        .table-responsive { border-radius: 8px; }
-        /* Rendre Select2 compatible avec Bootstrap */
         .select2-container--default .select2-selection--single { height: 40px; padding: 5px; border-radius: 8px; border: 1px solid #d1d5db; }
     </style>
 </head>
@@ -26,7 +23,6 @@
                 <h4 class="mb-4 fw-bold">Nouvelle Vente Pharmacie</h4>
                 
                 <div class="row g-4">
-                    <!-- Colonne formulaire : prend toute la largeur sur mobile, 4 colonnes sur PC -->
                     <div class="col-12 col-lg-4">
                         <div class="card p-4">
                             <h6 class="mb-3 text-primary"><i class="fas fa-plus-circle me-2"></i>Sélection Médicament</h6>
@@ -48,7 +44,6 @@
                         </div>
                     </div>
 
-                    <!-- Colonne panier : prend toute la largeur, s'adapte en dessous ou à côté -->
                     <div class="col-12 col-lg-8">
                         <div class="card p-4">
                             <h6 class="mb-3"><i class="fas fa-list-ul me-2"></i>Détail du Panier</h6>
@@ -65,7 +60,7 @@
                             
                             <div class="row align-items-center">
                                 <div class="col-md-6 mb-3 mb-md-0">
-                                    <label class="form-label">Devise de transaction</label>
+                                    <label class="form-label">Devise</label>
                                     <select name="devise" id="deviseSelect" class="form-select">
                                         <option value="USD">USD ($)</option>
                                         <option value="CDF">CDF (FC)</option>
@@ -84,11 +79,72 @@
         </div>
     </div>
 
-    <!-- Scripts (inchangés, ils fonctionnent déjà) -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
-        // ... (Ton code JavaScript reste identique)
+        $(document).ready(function() {
+            $('#produitSelect').select2({ placeholder: "Rechercher un produit...", width: '100%' });
+
+            // 1. Ajouter au panier
+            $('#btnAjouter').on('click', function() {
+                let option = $('#produitSelect option:selected');
+                let id = option.val();
+                let nom = option.data('nom');
+                let prix = parseFloat(option.data('prix'));
+                let stock = parseInt(option.data('stock'));
+                let qte = parseInt($('#qte').val());
+
+                if (!id) { alert("Sélectionnez un produit"); return; }
+                if (!qte || qte <= 0) { alert("Quantité invalide"); return; }
+                if (qte > stock) { alert("Stock insuffisant !"); return; }
+
+                let totalLigne = prix * qte;
+                let ligne = `<tr data-id="${id}" data-qte="${qte}">
+                                <td>${nom}</td><td>${qte}</td><td>${prix.toFixed(2)}</td>
+                                <td>${totalLigne.toFixed(2)}</td>
+                                <td><button class="btn btn-sm btn-danger btn-supprimer"><i class="fas fa-trash"></i></button></td>
+                            </tr>`;
+                $('#panierBody').append(ligne);
+                $('#qte').val('');
+                $('#produitSelect').val('').trigger('change');
+            });
+
+            // 2. Supprimer ligne
+            $(document).on('click', '.btn-supprimer', function() { $(this).closest('tr').remove(); });
+
+            // 3. Valider la vente
+            $('#btnValider').on('click', function() {
+                let panier = [];
+                $('#panierBody tr').each(function() {
+                    panier.push({ 
+                        id: $(this).data('id'), 
+                        qte: $(this).data('qte') 
+                    });
+                });
+
+                if (panier.length === 0) { alert("Panier vide !"); return; }
+
+                $.ajax({
+                    url: "{% url 'enregistrer_vente' %}",
+                    type: "POST",
+                    headers: { "X-CSRFToken": "{{ csrf_token }}" },
+                    contentType: "application/json",
+                    data: JSON.stringify({ 
+                        panier_data: panier, 
+                        devise: $('#deviseSelect').val() 
+                    }),
+                    success: function(response) {
+                        if(response.status === 'success') {
+                            alert("Vente validée avec succès !");
+                            window.location.reload();
+                        } else {
+                            alert("Erreur : " + response.message);
+                        }
+                    },
+                    error: function() { alert("Erreur de communication avec le serveur."); }
+                });
+            });
+        });
     </script>
 </body>
 </html>
