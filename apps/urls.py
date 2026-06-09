@@ -160,4 +160,9 @@ urlpatterns =[
     path('facture/<int:vente_id>/', views.details_facture, name='details_facture'),
     path('vente/valider/', views.valider_vente, name='valider_vente'),
 
+
+    # =====================================
+    # ORIENTATION
+    path('service/liste-attente/', views.service_destinataire_view, name='service_liste_attente'),
+
  ]

@@ -85,7 +85,7 @@
     <div class="modal fade" id="modal{{ c.id }}" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <form method="POST" action="">
+                <form method="POST" action="{% url 'liste_attente_medecin' %}">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="enregistrer_ordonnance">
                     <input type="hidden" name="consultation_id" value="{{ c.id }}">
@@ -105,6 +105,26 @@
                             <label class="font-weight-bold">Diagnostic Final</label>
                             <input type="text" name="diagnostic_final" class="form-control" required>
                         </div>
+
+                        <div class="form-group mb-3 p-3" style="background: #f8f9fa; border: 1px solid #e9ecef; border-left: 5px solid #28a745;">
+                            <label class="font-weight-bold text-success"><i class="fa fa-map-signs"></i> Orientation</label>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <select name="destination" class="form-control">
+                                        <option value="">-- Choisir une destination --</option>
+                                        <option value="PHARMACIE">Pharmacie</option>
+                                        <option value="HOSPITALISATION">Hospitalisation</option>
+                                        <option value="SALLE_SOINS">Salle de Soins</option>
+                                        <option value="BLOC_OPERATOIRE">Bloc Opératoire</option>
+                                        <option value="SORTIE">Sortie / Domicile</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <input type="text" name="observation_orientation" class="form-control" placeholder="Observations (optionnel)">
+                                </div>
+                            </div>
+                        </div>
+
                         <label class="font-weight-bold">Prescription Médicamenteuse</label>
                         <div id="zone-medicaments-{{ c.id }}">
                             <div class="row mb-2">

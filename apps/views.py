@@ -1757,12 +1757,17 @@ def dashboard_finance_depense(request):
 # ==================================================================================================
 @login_required
 def liste_attente_ordonnance_view(request):
+    # 1. Traitement du formulaire
     if request.method == 'POST' and request.POST.get('action') == 'enregistrer_ordonnance':
         consultation_id = request.POST.get('consultation_id')
         diagnostic = request.POST.get('diagnostic_final')
-        contenu = request.POST.get('contenu_ordonnance', '')
         type_ord = request.POST.get('type_ordonnance')
         
+        # Données orientation
+        destination = request.POST.get('destination')
+        observation_orient = request.POST.get('observation_orientation')
+        
+        # Données médicaments
         noms = request.POST.getlist('nom_medicament[]')
         posologies = request.POST.getlist('posologie[]')
         durees = request.POST.getlist('duree[]')
@@ -1772,18 +1777,17 @@ def liste_attente_ordonnance_view(request):
         if consultation:
             try:
                 with transaction.atomic():
-                    # Mise à jour du diagnostic
+                    # Mise à jour diagnostic
                     consultation.diagnostic_final = diagnostic
                     consultation.save()
                     
-                    # Création de l'ordonnance
+                    # Création ordonnance
                     ordonnance = Ordonnance.objects.create(
                         consultation=consultation,
-                        observation=contenu,
                         type_ordonnance=type_ord
                     )
                     
-                    # Création des médicaments
+                    # Création médicaments
                     for nom, pos, dur in zip(noms, posologies, durees):
                         if nom.strip():
                             Medicament.objects.create(
@@ -1792,19 +1796,31 @@ def liste_attente_ordonnance_view(request):
                                 posologie=pos,
                                 duree=dur
                             )
-                messages.success(request, "Ordonnance enregistrée avec succès.")
+                    
+                    # Enregistrement Orientation (si sélectionnée)
+                    if destination:
+                        Orientation.objects.create(
+                            consultation=consultation,
+                            medecin_orientateur=request.user,
+                            destination=destination,
+                            observation=observation_orient,
+                            est_admis=False
+                        )
+                        
+                messages.success(request, "Traitement complet effectué avec succès.")
             except Exception as e:
-                messages.error(request, f"Erreur lors de l'enregistrement : {str(e)}")
+                messages.error(request, f"Erreur critique : {str(e)}")
         
-        return redirect('liste_attente_ordonnance_view')
+        return redirect('liste_attente_medecin')
 
-    # Récupération des données
+    # 2. Affichage de la liste
     consultations_en_attente = Consultation.objects.filter(
         examens__statut='TERMINE'
     ).prefetch_related('examens', 'ordonnance_set').distinct()
 
+    # Gestion de la fonctionKey
     role = Fonction.objects.filter(userKey=request.user).first()
-    fonctionKey = role.fonctionKey.roleName if role else None 
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None 
     
     return render(request, 'back-end/medecin/liste_attente.html', {
         'consultations_en_attente': consultations_en_attente, 
@@ -3390,7 +3406,7 @@ def details_facture(request, vente_id):
 
 #
 # ===============================================================================================
-# VALIDER VENTE
+# VALIDER VENTE PHARMACIE
 # ===============================================================================================
 @csrf_exempt
 def valider_vente(request):
@@ -3418,3 +3434,49 @@ def valider_vente(request):
             return JsonResponse({'success': False, 'message': str(e)})
             
     return JsonResponse({'success': False, 'message': 'Méthode non autorisée'})
+
+#
+# ===============================================================================================
+# ORIENTATIONS
+# ===============================================================================================
+@login_required
+def service_destinataire_view(request):
+    # 1. GESTION DE LA VALIDATION
+    if request.method == 'POST' and request.POST.get('orientation_id'):
+        orientation_id = request.POST.get('orientation_id')
+        orientation = get_object_or_404(Orientation, id=orientation_id)
+        orientation.est_admis = True
+        orientation.save()
+        return redirect('service_liste_attente')
+
+    # 2. IDENTIFICATION DU RÔLE
+    role_obj = Fonction.objects.filter(userKey=request.user).first()
+    # On normalise en minuscules pour comparer avec notre dictionnaire
+    fonction_nom = role_obj.fonctionKey.roleName.strip().lower() if (role_obj and role_obj.fonctionKey) else ""
+
+    # 3. MAPPING CORRIGÉ (Doit correspondre aux clés de votre modèle Orientation)
+    # Les valeurs ici (PHARMACIE, etc.) DOIVENT correspondre au premier élément de votre tuple DESTINATIONS
+    mapping_roles_services = {
+        'pharmacien': 'PHARMACIE',
+        'infirmier salle soins': 'SALLE_SOINS',
+        'hospitalisation': 'HOSPITALISATION',
+        'bloc opératoire': 'BLOC_OPERATOIRE'
+    }
+    
+    destination_cible = mapping_roles_services.get(fonction_nom)
+
+    # 4. RÉCUPÉRATION
+    if destination_cible:
+        orientations = Orientation.objects.filter(
+            destination=destination_cible,
+            est_admis=False
+        ).prefetch_related(
+            'consultation__ordonnance_set__medicaments'
+        )
+    else:
+        orientations = Orientation.objects.none()
+
+    return render(request, 'back-end/orientation/liste_attente.html', {
+        'orientations': orientations, 
+        'fonctionKey': role_obj.fonctionKey.roleName if role_obj else "Invité"
+    })

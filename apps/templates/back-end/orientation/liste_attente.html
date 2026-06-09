@@ -1,0 +1,85 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Service {{ fonctionKey }} - Liste d'Attente | Moyanoli</title>
+    {% include 'back-end/includes/css.html' %}
+    <style>
+        .card-patient { border-left: 5px solid #2c3e50; transition: 0.3s; margin-bottom: 20px; }
+        .bg-ordonnance { background-color: #f8f9fa; border-left: 3px solid #007bff; padding: 10px; margin-top: 10px; }
+        .service-header { background: #f8f9fa; padding: 20px; border-bottom: 2px solid #e9ecef; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/includes/header.html' %}
+        {% include 'back-end/includes/sidebar.html' %}
+        
+        <div class="page-wrapper">
+            <div class="content container-fluid">
+                <div class="service-header">
+                    <h3>Service : {{ fonctionKey }}</h3>
+                    <p class="text-muted">Gestion des patients orientés pour votre service.</p>
+                </div>
+
+                <div class="row">
+                    {% for o in orientations %}
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card shadow-sm card-patient">
+                            <div class="card-body">
+                                <h5 class="card-title text-primary font-weight-bold">
+                                    {{ o.consultation.triage.patient.noms }}
+                                </h5>
+                                <p class="small text-muted">
+                                    <i class="fa fa-user-md"></i> Orienté par : Dr. {{ o.medecin_orientateur.username }}
+                                </p>
+                                
+                                <div class="bg-light p-2 mb-3 rounded border">
+                                    <p class="font-weight-bold mb-1 small">Observations :</p>
+                                    <p class="small text-italic">{{ o.observation|default:"Aucune observation." }}</p>
+                                </div>
+
+                                <h6 class="font-weight-bold small">Prescriptions :</h6>
+                                {% for ord in o.consultation.ordonnance_set.all %}
+                                    <div class="bg-ordonnance mb-3">
+                                        <p class="mb-1 small font-weight-bold">Ordonnance du {{ ord.date_creation|default:"Date non définie" }}</p>
+                                        <ul class="list-unstyled mb-0">
+                                            {% for med in ord.medicaments.all %}
+                                                <li class="small">
+                                                    <i class="fa fa-pills text-primary"></i> 
+                                                    <strong>{{ med.nom }}</strong> : {{ med.posologie }} (Durée: {{ med.duree }})
+                                                </li>
+                                            {% empty %}
+                                                <li class="text-muted small">Aucun médicament trouvé.</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                {% empty %}
+                                    <p class="text-muted small">Aucune ordonnance.</p>
+                                {% endfor %}
+
+                                <form method="POST" action="{% url 'service_liste_attente' %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="orientation_id" value="{{ o.id }}">
+                                    <button type="submit" class="btn btn-success btn-block">
+                                        <i class="fa fa-check"></i> Marquer comme traité
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="col-12 text-center mt-5">
+                        <div class="alert alert-info">Aucun patient en attente dans ce service.</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% include 'back-end/includes/js.html' %}
+</body>
+</html>

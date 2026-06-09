@@ -279,6 +279,15 @@
     </li>
                 {% endif %}
 
+            {% if fonctionKey == 'pharmacien' or fonctionKey == 'infirmier' or fonctionKey == 'Hospitalisation' %}
+    <li>
+        <a href="{% url 'service_liste_attente' %}">
+            <i class="fa fa-stethoscope"></i> 
+            <span>File d'attente Service</span>
+        </a>
+    </li>
+{% endif %}
+
                 <li class="menu-title"> <span>SESSION</span> </li>
                 <li><a href="{% url 'deco' %}" class="text-danger"><i class="la la-power-off"></i> <span>Déconnexion</span></a></li>
             </ul>

@@ -45,9 +45,21 @@ class DemandeExamenAdmin(admin.ModelAdmin):
     list_display = ('prestation', 'consultation', 'statut', 'date_demande')
     list_filter = ('statut', 'prestation__categorie')
 
-@admin.register(Ordonnance)
-class OrdonnanceAdmin(admin.ModelAdmin):
-    list_display = ('consultation', 'type_ordonnance', 'date_prescrite')
+@admin.register(Orientation)
+class OrientationAdmin(admin.ModelAdmin):
+    list_display = (
+        'get_patient_noms', 
+        'destination', 
+        'medecin_orientateur', 
+        'date_orientation', 
+        'est_admis'
+    )
+    list_filter = ('destination', 'est_admis', 'date_orientation')
+    search_fields = ('consultation__triage__patient__noms',)
+    
+    def get_patient_noms(self, obj):
+        return obj.consultation.triage.patient.noms
+    get_patient_noms.short_description = 'Patient'
 
 admin.site.register(Medicament)
 admin.site.register(LigneMedicament)
@@ -98,5 +110,4 @@ class SortiePharmacieAdmin(admin.ModelAdmin):
 admin.site.register(LotPharmacie)
 admin.site.register(Prestation)
 admin.site.register(Deces)
-admin.site.register(Orientation)
 admin.site.register(SoinOccasionnel)
