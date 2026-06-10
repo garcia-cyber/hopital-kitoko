@@ -3565,7 +3565,7 @@ def historique_bloc_operatoire(request):
 
 #
 # ===========================================================================================================
-#
+# CAISSE POUR PAYER L'OPERATION
 # ===========================================================================================================
 @login_required
 def encaisser_bloc(request, bloc_id):
@@ -3621,4 +3621,45 @@ def encaisser_bloc(request, bloc_id):
         'taux': taux ,
         'fonctionKey' : fonctionKey
     }
-    return render(request, 'back-end/caisse/encaisser_bloc.html', context)
+    return render(request, 'back-end/caisse/encaisser_bloc.html', context) 
+
+#
+# ====================================================================================================
+# REDIGER RAPPORT PAR LE MEDECIN
+# =====================================================================================================
+@login_required
+def rediger_compte_rendu(request, bloc_id):
+    bloc = get_object_or_404(BlocOperatoire, id=bloc_id)
+    
+    if request.method == 'POST':
+        # Enregistrement du rapport et finalisation
+        bloc.acte_realise = request.POST.get('acte_realise')
+        bloc.statut = 'TERMINE' # On passe l'opération à terminé
+        bloc.date_fin = timezone.now() # On horodate la fin
+        bloc.save()
+        return redirect('service_historique') 
+        
+    role_obj = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role_obj.fonctionKey.roleName if (role_obj and role_obj.fonctionKey) else "Invité"
+
+    return render(request, 'back-end/bloc/rediger_rapport.html', {
+        'bloc': bloc, 
+        'fonctionKey': fonctionKey
+    })
+
+#
+# ===================================================================================================
+# VOIR LE RAPPORT REDIGER
+# ====================================================================================================
+@login_required
+def voir_rapport(request, bloc_id):
+    # Récupère l'objet bloc
+    bloc = get_object_or_404(BlocOperatoire, id=bloc_id)
+    
+    role_obj = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role_obj.fonctionKey.roleName if (role_obj and role_obj.fonctionKey) else "Invité"
+
+    return render(request, 'back-end/bloc/voir_rapport.html', {
+        'bloc': bloc ,
+        'fonctionKey' : fonctionKey
+    })

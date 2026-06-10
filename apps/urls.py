@@ -171,6 +171,8 @@ urlpatterns =[
     path('bloc/saisir-compte-rendu/<int:consultation_id>/', views.gerer_bloc_operatoire, name='saisir_compte_rendu_bloc'),
     path('bloc/historique/', views.historique_bloc_operatoire, name='historique_bloc_operatoire'),
     path('caisse/encaisser-bloc/<int:bloc_id>/', views.encaisser_bloc, name='encaisser_bloc'),
+    path('rediger-rapport/<int:bloc_id>/', views.rediger_compte_rendu, name='rediger_rapport'),
+    path('voir-rapport/<int:bloc_id>/', views.voir_rapport, name='voir_rapport'),
 
 
  ]

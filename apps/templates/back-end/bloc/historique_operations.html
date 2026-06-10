@@ -6,6 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
     <title>Suivi des Opérations | Moyanoli</title>
     {% include 'back-end/includes/css.html' %}
+    <style>
+        /* Optimisation responsive */
+        @media (max-width: 768px) {
+            .btn-group-sm { display: flex; flex-direction: column; }
+            .btn-sm { margin-bottom: 5px; width: 100%; }
+        }
+    </style>
 </head>
 <body>
     <div class="main-wrapper">
@@ -14,15 +21,15 @@
         
         <div class="page-wrapper">
             <div class="content container-fluid">
+                
                 <div class="page-header">
                     <div class="row align-items-center">
                         <div class="col">
                             <h3 class="page-title">Suivi des Opérations</h3>
-                            <p class="text-muted">Interventions chirurgicales (En cours et terminées).</p>
                         </div>
                         <div class="col-auto">
                             <form method="GET" class="form-inline">
-                                <input type="text" name="q" class="form-control" placeholder="Rechercher un patient..." value="{{ query }}">
+                                <input type="text" name="q" class="form-control" placeholder="Rechercher patient..." value="{{ query|default:'' }}">
                                 <button type="submit" class="btn btn-primary ml-2"><i class="fa fa-search"></i></button>
                             </form>
                         </div>
@@ -32,9 +39,9 @@
                 <div class="row">
                     <div class="col-12">
                         <div class="card shadow-sm">
-                            <div class="card-body">
+                            <div class="card-body p-0">
                                 <div class="table-responsive">
-                                    <table class="table table-hover table-bordered">
+                                    <table class="table table-hover table-bordered mb-0">
                                         <thead class="thead-light">
                                             <tr>
                                                 <th>Date Prévue</th>
@@ -54,50 +61,34 @@
                                                 <td>{{ op.prestation.libelle|default:"Non défini" }}</td>
                                                 <td>{{ op.chirurgien.username|default:"---" }}</td>
                                                 <td>
-                                                    {% if op.statut == 'TERMINE' %}
-                                                        <span class="badge badge-success">Terminé</span>
-                                                    {% elif op.statut == 'EN_COURS' %}
-                                                        <span class="badge badge-warning text-white">En cours</span>
-                                                    {% else %}
-                                                        <span class="badge badge-secondary">En attente</span>
+                                                    {% if op.statut == 'TERMINE' %}<span class="badge badge-success">Terminé</span>
+                                                    {% elif op.statut == 'EN_COURS' %}<span class="badge badge-warning text-white">En cours</span>
+                                                    {% else %}<span class="badge badge-secondary">En attente</span>
                                                     {% endif %}
                                                 </td>
                                                 <td><span class="badge badge-info">{{ op.prestation.prix|default:"0.00" }} USD</span></td>
                                                 <td class="text-center">
-                                                    <button class="btn btn-sm btn-info" data-toggle="modal" data-target="#modalCR{{ op.id }}">
-                                                        <i class="fa fa-eye"></i> CR
-                                                    </button>
-                                                    {% if fonctionKey == 'receptionniste' %}
-                                                    <a href="{% url 'encaisser_bloc' op.id %}" class="btn btn-sm btn-success ml-1">
-                                                        <i class="fa fa-credit-card"></i> Payer
-                                                    </a>
-                                                    {% endif %}
+                                                    <div class="btn-group-sm">
+                                                        <a href="{% url 'voir_rapport' op.id %}" class="btn btn-sm btn-info">
+                                                            <i class="fa fa-file-text"></i> Voir
+                                                        </a>
+                                                        
+                                                        {% if fonctionKey == 'medecin' %}
+                                                        <a href="{% url 'rediger_rapport' op.id %}" class="btn btn-sm btn-warning ml-1">
+                                                            <i class="fa fa-pencil"></i> Rédiger
+                                                        </a>
+                                                        {% endif %}
+                                                        
+                                                        {% if fonctionKey == 'receptionniste' %}
+                                                        <a href="{% url 'encaisser_bloc' op.id %}" class="btn btn-sm btn-success ml-1">
+                                                            <i class="fa fa-credit-card"></i> Payer
+                                                        </a>
+                                                        {% endif %}
+                                                    </div>
                                                 </td>
                                             </tr>
-
-                                            <div class="modal fade" id="modalCR{{ op.id }}" tabindex="-1" role="dialog">
-                                                <div class="modal-dialog modal-lg" role="document">
-                                                    <div class="modal-content">
-                                                        <div class="modal-header">
-                                                            <h5 class="modal-title">Détails : {{ op.consultation.triage.patient.noms }}</h5>
-                                                            <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
-                                                        </div>
-                                                        <div class="modal-body">
-                                                            <h6>Compte-rendu opératoire :</h6>
-                                                            <p class="p-3 bg-light border rounded">
-                                                                {{ op.acte_realise|default:"Aucun compte-rendu saisi."|linebreaks }}
-                                                            </p>
-                                                        </div>
-                                                        <div class="modal-footer">
-                                                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Fermer</button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
                                             {% empty %}
-                                            <tr>
-                                                <td colspan="7" class="text-center py-4 text-muted">Aucune intervention trouvée.</td>
-                                            </tr>
+                                            <tr><td colspan="7" class="text-center py-4 text-muted">Aucune opération trouvée.</td></tr>
                                             {% endfor %}
                                         </tbody>
                                     </table>
