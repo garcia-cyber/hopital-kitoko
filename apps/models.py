@@ -163,9 +163,10 @@ class Paiement(models.Model):
         ('MATERNITE', 'Maternité'),
         ('DECES', 'Actes de décès'),
         ('EXAMENS', 'Examens'),
+        ('CHIRURGIE', 'Chirurgie'),
         ('CARTE_FIDELITE', 'Achat Carte de Fidélité'), # Nouveau service ajouté
     ]
-
+    bloc_op = models.ForeignKey('BlocOperatoire', on_delete=models.SET_NULL, null=True, blank=True, related_name='paiements')
     patient = models.ForeignKey('Patient', on_delete=models.CASCADE, null=True, blank=True)
     consultation = models.ForeignKey('Consultation', on_delete=models.SET_NULL, null=True, blank=True, related_name='paiements')
     dossier_maternite = models.ForeignKey('Maternite', on_delete=models.SET_NULL, null=True, blank=True, related_name='paiements')

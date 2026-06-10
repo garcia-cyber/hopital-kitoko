@@ -3580,3 +3580,65 @@ def historique_bloc_operatoire(request):
         'fonctionKey' : fonctionKey
     }
     return render(request, 'back-end/bloc/historique_operations.html', context)
+
+
+
+#
+# ===========================================================================================================
+#
+# ===========================================================================================================
+@login_required
+def encaisser_bloc(request, bloc_id):
+    bloc = get_object_or_404(BlocOperatoire, id=bloc_id)
+    consultation = bloc.consultation
+    
+    # Récupération du taux
+    config = ConfigurationHopital.objects.first()
+    taux = config.taux_usd_en_cdf if config and config.taux_usd_en_cdf else Decimal('2500')
+    
+    # Prix de l'intervention
+    prix_chirurgie = bloc.prestation.prix if bloc.prestation else Decimal('0.00')
+    
+    # Calcul du reste à payer pour CE bloc uniquement
+    # On filtre les paiements liés à ce bloc spécifique
+    paiements_bloc = Paiement.objects.filter(bloc_op=bloc)
+    total_verse = paiements_bloc.aggregate(total=Sum('montant_verse'))['total'] or Decimal('0.00')
+    total_reductions = paiements_bloc.aggregate(total=Sum('montant_reduction'))['total'] or Decimal('0.00')
+    
+    reste_a_payer = max(Decimal('0.00'), prix_chirurgie - (total_verse + total_reductions))
+
+    if request.method == 'POST':
+        devise = request.POST.get('devise', 'USD')
+        montant_recu = Decimal(request.POST.get('montant_verse', 0))
+        reduction_usd = Decimal(request.POST.get('montant_reduction', 0))
+        
+        montant_verse_usd = montant_recu / taux if devise == 'CDF' else montant_recu
+        nouveau_reste = reste_a_payer - (montant_verse_usd + reduction_usd)
+        
+        # Création du paiement lié au bloc
+        Paiement.objects.create(
+            patient=consultation.triage.patient,
+            consultation=consultation,
+            bloc_op=bloc, # Lien explicite avec le bloc
+            service='CHIRURGIE',
+            montant_verse=montant_verse_usd,
+            montant_reduction=reduction_usd,
+            reste_a_payer=max(Decimal('0.00'), nouveau_reste),
+            devise=devise,
+            caissier=request.user,
+            date_paiement=timezone.now()
+        )
+
+        messages.success(request, "Paiement du bloc opératoire enregistré.")
+        return redirect('historique_paiements', patient_id=consultation.triage.patient.id)
+    role_obj = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role_obj.fonctionKey.roleName if (role_obj and role_obj.fonctionKey) else "Invité"
+
+    context = {
+        'bloc': bloc,
+        'prix_chirurgie': prix_chirurgie,
+        'reste_a_payer': reste_a_payer,
+        'taux': taux ,
+        'fonctionKey' : fonctionKey
+    }
+    return render(request, 'back-end/caisse/encaisser_bloc.html', context)

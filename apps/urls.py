@@ -170,5 +170,7 @@ urlpatterns =[
     # BLOC OPERATOIRE  
     path('bloc/saisir-compte-rendu/<int:consultation_id>/', views.gerer_bloc_operatoire, name='saisir_compte_rendu_bloc'),
     path('bloc/historique/', views.historique_bloc_operatoire, name='historique_bloc_operatoire'),
+    path('caisse/encaisser-bloc/<int:bloc_id>/', views.encaisser_bloc, name='encaisser_bloc'),
+
 
  ]
