@@ -3231,37 +3231,37 @@ def enregistrer_vente(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-            # CORRECTION : panier_data est déjà une liste (pas besoin de json.loads)
             panier = data.get('panier_data', [])
             devise = data.get('devise', 'USD')
-            taux = float(ConfigurationHopital.get_taux())
-
+            
             if not panier:
                 return JsonResponse({'status': 'error', 'message': 'Le panier est vide.'})
 
+            taux = Decimal(str(ConfigurationHopital.get_taux()))
+
             with transaction.atomic():
-                montant_total = 0
+                montant_total = Decimal('0.00')
                 
-                # PREMIÈRE PASSE : Vérification du stock et calcul du total
+                # 1. Vérification du stock
                 for item in panier:
                     produit = ProduitPharmacie.objects.select_for_update().get(id=item['id'])
                     
-                    # Annotation dynamique du stock réel pour vérification
-                    stock_actuel = ProduitPharmacie.objects.filter(id=produit.id).annotate(
-                        s=Coalesce(Sum('les_lots__quantite'), 0) - Coalesce(Sum('les_sorties__quantite_vendue'), 0)
-                    ).first().s
+                    # Calcul stock réel
+                    stock_actuel = (
+                        produit.les_lots.aggregate(s=Coalesce(Sum('quantite'), 0))['s'] - 
+                        produit.les_sorties.aggregate(s=Coalesce(Sum('quantite_vendue'), 0))['s']
+                    )
                     
                     if int(item['qte']) > stock_actuel:
                         return JsonResponse({'status': 'error', 'message': f'Stock insuffisant pour {produit.nom}'})
 
-                    # Calcul du prix avec conversion si nécessaire
-                    prix_unitaire = float(produit.prix_vente)
+                    prix_u = Decimal(str(produit.prix_vente))
                     if devise == 'CDF':
-                        prix_unitaire *= taux
+                        prix_u *= taux
                     
-                    montant_total += (prix_unitaire * int(item['qte']))
+                    montant_total += (prix_u * int(item['qte']))
 
-                # CRÉATION DU PAIEMENT
+                # 2. Création du paiement (Service PHARMACIE, sans patient ni consultation)
                 paiement = Paiement.objects.create(
                     montant_verse=montant_total,
                     devise=devise,
@@ -3269,7 +3269,7 @@ def enregistrer_vente(request):
                     caissier=request.user
                 )
 
-                # CRÉATION DES SORTIES
+                # 3. Enregistrement des sorties liées au paiement
                 for item in panier:
                     produit = ProduitPharmacie.objects.get(id=item['id'])
                     SortiePharmacie.objects.create(
@@ -3278,24 +3278,22 @@ def enregistrer_vente(request):
                         quantite_vendue=int(item['qte'])
                     )
 
-            return JsonResponse({'status': 'success', 'message': 'Vente validée avec succès.'})
+            return JsonResponse({'status': 'success', 'message': 'Vente standard validée.'})
 
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)})
 
-    # Logique GET : Affichage avec calcul du stock
+    # GET : Liste des produits
     produits = ProduitPharmacie.objects.annotate(
         stock_reel=Coalesce(Sum('les_lots__quantite'), 0) - Coalesce(Sum('les_sorties__quantite_vendue'), 0)
     ).order_by('nom')
-
     role = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
-    taux = ConfigurationHopital.get_taux()
 
     return render(request, 'back-end/pharmacie/enregistrer_vente.html', {
-        'produits': produits, 
-        'fonctionKey': fonctionKey,
-        'taux_actuel': float(taux),
+        'produits': produits,
+        'taux_actuel': float(ConfigurationHopital.get_taux()),
+        'fonctionKey' : fonctionKey
     })
 
 
@@ -3363,8 +3361,10 @@ def dashboard_ventes(request):
 # ==================================================================================================
 @login_required
 def liste_ventes(request):
-    # Utilisation de 'les_sorties' (le related_name défini dans ton modèle)
-    ventes = Paiement.objects.prefetch_related('les_sorties__produit').order_by('-date_paiement')
+    # Filtrage par service pour ne récupérer QUE les paiements de la pharmacie
+    ventes = Paiement.objects.filter(service='PHARMACIE') \
+                             .prefetch_related('les_sorties__produit') \
+                             .order_by('-date_paiement')
 
     role_obj = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role_obj.fonctionKey.roleName if (role_obj and role_obj.fonctionKey) else "Invité"

@@ -164,7 +164,8 @@ class Paiement(models.Model):
         ('DECES', 'Actes de décès'),
         ('EXAMENS', 'Examens'),
         ('CHIRURGIE', 'Chirurgie'),
-        ('CARTE_FIDELITE', 'Achat Carte de Fidélité'), # Nouveau service ajouté
+        ('CARTE_FIDELITE', 'Achat Carte de Fidélité'), 
+        ('PHARMACIE', 'Pharmacie')
     ]
     bloc_op = models.ForeignKey('BlocOperatoire', on_delete=models.SET_NULL, null=True, blank=True, related_name='paiements')
     patient = models.ForeignKey('Patient', on_delete=models.CASCADE, null=True, blank=True)

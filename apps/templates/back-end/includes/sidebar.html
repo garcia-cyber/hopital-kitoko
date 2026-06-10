@@ -163,6 +163,19 @@
     </a>
 </li>
 
+<li>
+    <a href="{% url 'dashboard_ventes' %}">
+        <i class="fas fa-chart-line"></i> 
+        <span>Tableau de Bord</span>
+    </a>
+</li>
+
+<li class="nav-item">
+        <a class="nav-link" href="{% url 'liste_ventes' %}">
+            <i class="fas fa-history me-2"></i> Historique Ventes
+        </a>
+    </li>
+
 
                 {% endif %}
 
@@ -199,6 +212,13 @@
 <li>
     <a href="{% url 'liste_deces' %}">
         <i class="fa fa-list-alt"></i> <span>Registre des Décès</span>
+    </a>
+</li>
+
+
+<li>
+    <a href="{% url 'historique_bloc_operatoire' %}">
+        <i class="fa fa-history"></i> <span>Historique Opérations</span>
     </a>
 </li>
 
