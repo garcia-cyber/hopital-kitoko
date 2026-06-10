@@ -651,6 +651,7 @@ class Orientation(models.Model):
         ('HOSPITALISATION', 'Hospitalisation'),
         ('SALLE_SOINS', 'Salle de Soins'),
         ('BLOC_OPERATOIRE', 'Bloc Opératoire'),
+        ('ACCOUCHEMENT', 'Accouchement'),  # Ajout de l'option ici
         ('SORTIE', 'Sortie/Retour à domicile'),
     )
 
@@ -672,7 +673,7 @@ class Orientation(models.Model):
     est_admis = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"{self.consultation.triage.patient.noms} orienté par Dr. {self.medecin_orientateur.username}"
+        return f"{self.consultation.triage.patient.noms} orienté vers {self.get_destination_display()} par Dr. {self.medecin_orientateur.username}"
 
 
 
@@ -805,3 +806,28 @@ class BlocOperatoire(models.Model):
 
     def __str__(self):
         return f"Bloc: {self.consultation.triage.patient.noms} - {self.statut}"
+
+
+
+class CompteRenduAccouchement(models.Model):
+    consultation = models.OneToOneField(Consultation, on_delete=models.CASCADE, related_name='cr_accouchement')
+    
+    # Liaison avec la prestation (Forfait Maternité)
+    prestation = models.ForeignKey(
+        Prestation, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        limit_choices_to={'categorie': 'MAT'},
+        verbose_name="Forfait / Prestation Maternité"
+    )
+    
+    type_accouchement = models.CharField(
+        max_length=20, 
+        choices=[('NATUREL', 'Accouchement Simple (Voie basse)'), ('CESARIENNE', 'Accouchement par Césarienne')]
+    )
+    details_acte = models.TextField(verbose_name="Détails de l'intervention / Rapport")
+    date_creation = models.DateTimeField(auto_now_add=True)
+    auteur = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+
+    def __str__(self):
+        return f"CR Accouchement - {self.consultation.triage.patient.noms}"

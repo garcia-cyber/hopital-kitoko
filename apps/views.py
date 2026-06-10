@@ -3426,7 +3426,7 @@ def service_destinataire_view(request):
     # 3. LOGIQUE DE FILTRAGE ÉLARGIE
     # Si c'est un infirmier, on autorise plusieurs destinations
     if 'infirmier' in fonction_nom:
-        destinations_autorisees = ['SALLE_SOINS', 'BLOC_OPERATOIRE']
+        destinations_autorisees = ['SALLE_SOINS', 'BLOC_OPERATOIRE','ACCOUCHEMENT']
     elif 'pharmacien' in fonction_nom:
         destinations_autorisees = ['PHARMACIE']
     elif 'hospitalisation' in fonction_nom:
@@ -3459,17 +3459,16 @@ def service_historique_view(request):
 
     # 1. DÉFINITION DES DESTINATIONS AUTORISÉES SELON LE RÔLE
     if 'infirmier' in fonction_nom:
-        destinations_autorisees = ['SALLE_SOINS', 'BLOC_OPERATOIRE']
+        # Ajout de 'ACCOUCHEMENT' ici
+        destinations_autorisees = ['SALLE_SOINS', 'BLOC_OPERATOIRE', 'ACCOUCHEMENT']
     elif 'pharmacien' in fonction_nom:
         destinations_autorisees = ['PHARMACIE']
     elif 'hospitalisation' in fonction_nom:
         destinations_autorisees = ['HOSPITALISATION']
     else:
-        # Cas par défaut ou bloc opératoire seul (si un chirurgien accède à cette vue)
         destinations_autorisees = ['BLOC_OPERATOIRE'] if 'bloc' in fonction_nom else []
 
     # 2. RÉCUPÉRATION DES ADMIS (HISTORIQUE)
-    # On utilise __in pour filtrer sur la liste des destinations autorisées
     orientations = Orientation.objects.filter(
         destination__in=destinations_autorisees,
         est_admis=True
@@ -3661,5 +3660,96 @@ def voir_rapport(request, bloc_id):
 
     return render(request, 'back-end/bloc/voir_rapport.html', {
         'bloc': bloc ,
+        'fonctionKey' : fonctionKey
+    })
+
+#
+# =======================================================================================
+# PRESTATION ACCOUCHEMENT 
+# =======================================================================================
+@login_required
+def saisir_fiche_accouchement_view(request, consultation_id):
+    consultation = get_object_or_404(Consultation, id=consultation_id)
+    # Récupère uniquement les prestations de type MAT
+    prestations = Prestation.objects.filter(categorie='MAT')
+
+    if request.method == 'POST':
+        try:
+            # Récupération de la prestation choisie
+            prestation_id = request.POST.get('prestation_id')
+            prestation = Prestation.objects.get(id=prestation_id)
+
+            # Création de la fiche
+            FicheAccouchement.objects.create(
+                consultation=consultation,
+                prestation=prestation,
+                type_accouchement=request.POST.get('type_accouchement'),
+                sexe_bebe=request.POST.get('sexe_bebe'),
+                poids_bebe=request.POST.get('poids_bebe'),
+                score_apgar=request.POST.get('score_apgar'),
+                notes=request.POST.get('notes')
+            )
+            messages.success(request, "Fiche d'accouchement enregistrée avec succès.")
+            return redirect('service_liste_attente')
+        except Exception as e:
+            messages.error(request, f"Erreur lors de l'enregistrement : {e}")
+    role_obj = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role_obj.fonctionKey.roleName if (role_obj and role_obj.fonctionKey) else "Invité"
+
+    return render(request, 'back-end/accouchement/saisir_fiche.html', {
+        'consultation': consultation,
+        'prestations': prestations ,
+        'fonctionKey' : fonctionKey
+    })
+
+
+#
+# ======================================================================================================
+#
+# ======================================================================================================
+@login_required
+def saisir_cr_accouchement_view(request, consultation_id):
+    consultation = get_object_or_404(Consultation, id=consultation_id)
+    # On récupère les prestations de la catégorie MAT (Forfait Maternité)
+    prestations = Prestation.objects.filter(categorie='MAT')
+    
+    if request.method == 'POST':
+        prestation_id = request.POST.get('prestation_id')
+        type_acc = request.POST.get('type_accouchement')
+        details = request.POST.get('details_acte')
+        
+        if not prestation_id:
+            messages.error(request, "Veuillez sélectionner un forfait de maternité.")
+            return redirect('saisir_cr_accouchement', consultation_id=consultation.id)
+
+        try:
+            with transaction.atomic():
+                # 1. Enregistrement du Compte-rendu
+                CompteRenduAccouchement.objects.create(
+                    consultation=consultation,
+                    prestation=Prestation.objects.get(id=prestation_id),
+                    type_accouchement=type_acc,
+                    details_acte=details,
+                    auteur=request.user
+                )
+                
+                # 2. Marquer l'orientation comme traitée
+                # On cherche l'orientation liée à cette consultation
+                orientation = consultation.orientation
+                if orientation:
+                    orientation.est_admis = True
+                    orientation.save()
+            
+            messages.success(request, "Compte-rendu d'accouchement enregistré avec succès.")
+            return redirect('service_liste_attente')
+            
+        except Exception as e:
+            messages.error(request, f"Erreur critique : {str(e)}")
+    role_obj = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role_obj.fonctionKey.roleName if (role_obj and role_obj.fonctionKey) else "Invité"
+
+    return render(request, 'back-end/accouchement/saisir_cr.html', {
+        'consultation': consultation,
+        'prestations': prestations ,
         'fonctionKey' : fonctionKey
     })

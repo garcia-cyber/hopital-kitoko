@@ -10,6 +10,7 @@
         .card-history { border-left: 5px solid #28a745; transition: 0.3s; margin-bottom: 20px; }
         .bg-ordonnance { background-color: #f8f9fa; border-left: 3px solid #007bff; padding: 10px; margin-top: 10px; }
         .service-header { background: #f8f9fa; padding: 20px; border-bottom: 2px solid #e9ecef; margin-bottom: 20px; }
+        .badge-accouchement { background-color: #17a2b8; color: white; }
     </style>
 </head>
 <body>
@@ -30,6 +31,16 @@
                     <div class="col-md-6 col-lg-4">
                         <div class="card shadow-sm card-history">
                             <div class="card-body">
+                                <div class="mb-2">
+                                    {% if o.destination == 'ACCOUCHEMENT' %}
+                                        <span class="badge badge-accouchement"><i class="fa fa-baby"></i> Accouchement</span>
+                                    {% elif o.destination == 'BLOC_OPERATOIRE' %}
+                                        <span class="badge badge-danger"><i class="fa fa-procedures"></i> Bloc Opératoire</span>
+                                    {% else %}
+                                        <span class="badge badge-secondary"><i class="fa fa-notes-medical"></i> {{ o.get_destination_display }}</span>
+                                    {% endif %}
+                                </div>
+
                                 <h5 class="card-title text-success font-weight-bold">
                                     {{ o.consultation.triage.patient.noms }}
                                 </h5>
@@ -47,10 +58,10 @@
                                     <div class="bg-ordonnance mb-2">
                                         <p class="mb-1 small font-weight-bold">Ordonnance du {{ ord.date_creation|date:"d/m/Y H:i" }}</p>
                                         <ul class="list-unstyled mb-0">
-                                            {% for med in ord.medicaments.all %}
+                                            {% for med in ord.lignes_medicaments.all %}
                                                 <li class="small">
                                                     <i class="fa fa-check-circle text-success"></i> 
-                                                    <strong>{{ med.nom }}</strong> : {{ med.posologie }}
+                                                    <strong>{{ med.nom_medicament }}</strong> : {{ med.posologie }}
                                                 </li>
                                             {% empty %}
                                                 <li class="text-muted small">Aucun médicament.</li>

@@ -174,5 +174,10 @@ urlpatterns =[
     path('rediger-rapport/<int:bloc_id>/', views.rediger_compte_rendu, name='rediger_rapport'),
     path('voir-rapport/<int:bloc_id>/', views.voir_rapport, name='voir_rapport'),
 
+    # =========================================
+    # ACCOUCHEMENT 
+    path('saisir-accouchement/<int:consultation_id>/', views.saisir_fiche_accouchement_view, name='saisir_fiche_accouchement'),
+    path('accouchement/compte-rendu/<int:consultation_id>/', views.saisir_cr_accouchement_view, name='saisir_cr_accouchement'),
+
 
  ]

@@ -151,3 +151,47 @@ class BlocOperatoireAdmin(admin.ModelAdmin):
         return obj.consultation.triage.patient.noms
     get_patient_noms.short_description = 'Patient'
     get_patient_noms.admin_order_field = 'consultation__triage__patient__noms'
+
+
+
+
+@admin.register(CompteRenduAccouchement)
+class CompteRenduAccouchementAdmin(admin.ModelAdmin):
+    # Configuration de l'affichage dans la liste
+    list_display = (
+        'get_patient_name', 
+        'type_accouchement', 
+        'prestation', 
+        'auteur', 
+        'date_creation'
+    )
+    
+    # Ajout de filtres pour faciliter la recherche
+    list_filter = ('type_accouchement', 'date_creation', 'auteur')
+    
+    # Barre de recherche par nom de patient ou détails
+    search_fields = ('consultation__triage__patient__noms', 'details_acte')
+    
+    # Organisation du formulaire de modification
+    readonly_fields = ('date_creation',)
+    fields = (
+        'consultation', 
+        'prestation', 
+        'type_accouchement', 
+        'details_acte', 
+        'auteur', 
+        'date_creation'
+    )
+
+    # Méthode pour afficher le nom du patient dans la liste (accès via la relation consultation)
+    def get_patient_name(self, obj):
+        return obj.consultation.triage.patient.noms
+    get_patient_name.short_description = 'Patient'
+
+    # Optimisation des requêtes pour éviter de trop nombreuses requêtes SQL
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related(
+            'consultation__triage__patient', 
+            'prestation', 
+            'auteur'
+        )
