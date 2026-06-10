@@ -1,18 +1,19 @@
-<!DOCTYPE html>
 {% load static %}
+<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="utf-8">
-    <title>Historique | {{ patient.noms }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historique Financier | {{ patient.noms }}</title>
     {% include 'back-end/includes/css.html' %}
     <style>
-        .card { border: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-        .dash-widget { border-radius: 15px; overflow: hidden; transition: 0.3s; }
-        .dash-widget:hover { transform: translateY(-5px); }
-        .table thead { background-color: #f8f9fa; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.5px; }
-        .badge-soft-info { background-color: #e3f2fd; color: #1e88e5; padding: 6px 12px; border-radius: 6px; font-weight: 600; }
-        .btn-rounded { border-radius: 50px; padding: 8px 20px; }
-        .status-pill { padding: 5px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 500; }
+        .card { border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .alert { border-radius: 10px; }
+        .table-responsive { border-radius: 12px; overflow: hidden; }
+        @media (max-width: 768px) {
+            .page-title { font-size: 1.25rem; }
+            .btn { width: 100%; margin-bottom: 5px; }
+        }
     </style>
 </head>
 <body>
@@ -24,101 +25,92 @@
             <div class="content container-fluid">
                 
                 <div class="page-header mb-4">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h3 class="page-title text-primary">Historique Financier</h3>
-                        <a href="{% url 'enregistrement_patient' %}" class="btn btn-outline-secondary btn-rounded">
-                            <i class="fa fa-arrow-left"></i> Retour
-                        </a>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-3">
-                        <div class="card bg-primary text-white">
-                            <div class="card-body">
-                                <small class="text-white-50">Total Facturé</small>
-                                <h4 class="text-white mt-1">{{ cout_total_usd|floatformat:2 }} $</h4>
-                            </div>
+                    <div class="row align-items-center">
+                        <div class="col-12 col-md-8">
+                            <h3 class="page-title text-primary">Historique : {{ patient.noms }}</h3>
                         </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card bg-success text-white">
-                            <div class="card-body">
-                                <small class="text-white-50">Total Versé</small>
-                                <h4 class="text-white mt-1">{{ total_paye_usd|floatformat:2 }} $</h4>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card bg-danger text-white">
-                            <div class="card-body">
-                                <small class="text-white-50">Reste à payer</small>
-                                <h4 class="text-white mt-1">{{ reste_a_payer_usd|floatformat:2 }} $</h4>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card bg-warning text-white">
-                            <div class="card-body">
-                                <small class="text-white-50">En Francs (CDF)</small>
-                                <h4 class="text-white mt-1">{{ reste_a_payer_cdf }} FC</h4>
-                            </div>
+                        <div class="col-12 col-md-4 text-md-right mt-3 mt-md-0">
+                            <a href="javascript:history.back()" class="btn btn-outline-secondary btn-block-md">
+                                <i class="fa fa-arrow-left"></i> Retour
+                            </a>
                         </div>
                     </div>
                 </div>
 
-                <div class="card mt-4">
+                <div class="row g-3">
+                    <div class="col-12 col-sm-6 col-md-4">
+                        <div class="card bg-primary text-white p-3 h-100">
+                            <small class="text-white-50">Total Global dû</small>
+                            <h4 class="text-white mb-0">{{ cout_total_usd|floatformat:2 }} $</h4>
+                        </div>
+                    </div>
+                    <div class="col-12 col-sm-6 col-md-4">
+                        <div class="card bg-success text-white p-3 h-100">
+                            <small class="text-white-50">Total Versé</small>
+                            <h4 class="text-white mb-0">{{ total_paye_usd|floatformat:2 }} $</h4>
+                        </div>
+                    </div>
+                    <div class="col-12 col-sm-12 col-md-4">
+                        <div class="card bg-danger text-white p-3 h-100">
+                            <small class="text-white-50">Reste à payer Global</small>
+                            <h4 class="text-white mb-0">{{ reste_a_payer_usd|floatformat:2 }} $</h4>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mt-3 g-3">
+                    <div class="col-12 col-md-6">
+                        <div class="alert alert-info d-flex justify-content-between align-items-center">
+                            <span><strong>Consultation:</strong> {{ reste_consultation|floatformat:2 }} $</span>
+                            {% if reste_consultation > 0 and derniere_consultation.id %}
+                                <a href="{% url 'encaisser_examens' derniere_consultation.id %}" class="btn btn-sm btn-info">Payer</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <div class="alert alert-warning d-flex justify-content-between align-items-center">
+                            <span><strong>Bloc:</strong> {{ reste_bloc|floatformat:2 }} $</span>
+                            {% if reste_bloc > 0 and bloc_id is not None %}
+                                <a href="{% url 'encaisser_bloc' bloc_id %}" class="btn btn-sm btn-warning">Payer</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mt-2">
                     <div class="card-body p-0">
                         <div class="table-responsive">
-                            <table class="table table-hover align-middle mb-0">
-                                <thead>
+                            <table class="table table-hover table-striped mb-0">
+                                <thead class="thead-light">
                                     <tr>
-                                        <th class="pl-4">Date</th>
+                                        <th>Date</th>
                                         <th>Service</th>
-                                        <th>Versements & Réduc.</th>
-                                        <th>État Solde</th>
-                                        <th class="text-right pr-4">Actions</th>
+                                        <th>Montant</th>
+                                        <th class="text-right">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for item in paiements_liste %}
                                     <tr>
-                                        <td class="pl-4 font-weight-bold">{{ item.date|date:"d/m/Y" }} <br><small class="text-muted">{{ item.date|date:"H:i" }}</small></td>
-                                        <td><span class="badge-soft-info">{{ item.service }}</span></td>
+                                        <td>{{ item.date_paiement|date:"d/m/Y H:i" }}</td>
+                                        <td><span class="badge badge-info">{{ item.get_service_display }}</span></td>
                                         <td>
-                                            <div class="font-weight-bold">{{ item.montant_verse|floatformat:2 }} {{ item.devise }}</div>
-                                            {% if item.montant_reduction > 0 %}
-                                                <small class="text-danger"><i class="fa fa-tag"></i> -{{ item.montant_reduction|floatformat:2 }} $</small>
-                                            {% endif %}
+                                            <strong>{{ item.montant_verse|floatformat:2 }} {{ item.devise }}</strong>
                                         </td>
-                                        <td>
-                                            {% if item.reste_usd > 0 %}
-                                                <span class="status-pill bg-danger-light text-danger">{{ item.reste_usd|floatformat:2 }} $</span>
-                                            {% else %}
-                                                <span class="status-pill bg-success-light text-success"><i class="fa fa-check"></i> Soldé</span>
-                                            {% endif %}
+                                        <td class="text-right">
+                                            <a href="{% url 'imprimer_recu_direct' item.id %}" target="_blank" class="btn btn-sm btn-outline-dark">
+                                                <i class="fa fa-print"></i>
+                                            </a>
                                         </td>
-                                       <td class="text-right pr-4">
-    {% if forloop.first and reste_a_payer_usd > 0 and derniere_consultation_id %}
-        <a href="{% url 'encaisser_examens_prescrits' derniere_consultation_id %}" class="btn btn-warning btn-sm btn-rounded shadow-sm">
-            <i class="fa fa-plus"></i> Payer reste
-        </a>
-    {% endif %}
-    
-    <a href="{% url 'imprimer_recu_direct' item.id %}" target="_blank" class="btn btn-light btn-sm btn-rounded">
-        <i class="fa fa-print"></i>
-    </a>
-</td>
                                     </tr>
                                     {% empty %}
-                                    <tr><td colspan="5" class="text-center py-5 text-muted">Aucune transaction trouvée.</td></tr>
+                                    <tr><td colspan="4" class="text-center p-4">Aucune transaction trouvée.</td></tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
-                
             </div>
         </div>
     </div>

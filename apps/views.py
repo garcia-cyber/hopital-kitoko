@@ -622,69 +622,49 @@ def payer_fiche(request, patient_id):
 def historique_paiements(request, patient_id):
     patient = get_object_or_404(Patient, id=patient_id)
     
-    # 1. RÉCUPÉRATION DU TAUX
-    config = ConfigurationHopital.objects.first()
-    taux = config.taux_usd_en_cdf if config else Decimal('2500.00')
-    
-    # 2. CALCUL DU COÛT DE LA FICHE
-    try:
-        cout_fiche_usd = Decimal(str(patient.service.prix))
-    except (AttributeError, ValueError, TypeError):
-        prestation_fiche = Prestation.objects.filter(libelle__icontains="Fiche").first()
-        cout_fiche_usd = Decimal(str(prestation_fiche.prix)) if prestation_fiche else Decimal('0.00')
-
-    # 3. CALCUL DU COÛT DE TOUS LES EXAMENS PRESCRITS
-    cout_examens_usd = Prestation.objects.filter(
+    # 1. CALCULS DES COÛTS (Séparés)
+    cout_fiche = Decimal(str(getattr(patient.service, 'prix', 0))) 
+    cout_examens = Prestation.objects.filter(
         demandeexamen__consultation__triage__patient=patient
     ).aggregate(total=Sum('prix'))['total'] or Decimal('0.00')
+    total_consultation = cout_fiche + cout_examens
     
-    # COÛT TOTAL GLOBAL
-    cout_total_usd = cout_fiche_usd + Decimal(str(cout_examens_usd))
-
-    # 4. RÉCUPÉRATION DE LA DERNIÈRE CONSULTATION (Pour le bouton payer)
-    derniere_consultation = Consultation.objects.filter(triage__patient=patient).order_by('-date_creation').first()
-
-    # 5. RÉCUPÉRATION DES VERSEMENTS
-    paiements = Paiement.objects.filter(patient=patient).order_by('date_paiement')
-    historique_detaille = []
-    cumul_acquitte_usd = Decimal('0.00')
+    # Bloc Opératoire
+    bloc = BlocOperatoire.objects.filter(consultation__triage__patient=patient).first()
+    cout_bloc = bloc.prestation.prix if (bloc and bloc.prestation) else Decimal('0.00')
     
-    for p in paiements:
-        montant_v_usd = (p.montant_verse / taux).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP) if p.devise == 'CDF' else p.montant_verse
-        montant_r_usd = p.montant_reduction or Decimal('0.00')
-        montant_total_ligne = montant_v_usd + montant_r_usd
-        cumul_acquitte_usd += montant_total_ligne
-
-        reste_ligne_usd = cout_total_usd - cumul_acquitte_usd
-        
-        historique_detaille.append({
-            'date': p.date_paiement,
-            'service': p.get_service_display(),
-            'montant_verse': p.montant_verse,
-            'montant_reduction': p.montant_reduction,
-            'devise': p.devise,
-            'reste_usd': max(Decimal('0.00'), reste_ligne_usd),
-            'id': p.id
-        })
-
-    historique_detaille.reverse()
-    reste_final_usd = max(Decimal('0.00'), cout_total_usd - cumul_acquitte_usd)
-
-    # Gestion des rôles
-    role = Fonction.objects.filter(userKey=request.user).first()
-    fonctionKey = role.fonctionKey.roleName if role else None
-
+    # 2. CALCULS PAIEMENTS RÉELS
+    paye_cons = Paiement.objects.filter(patient=patient, bloc_op__isnull=True).aggregate(
+        total=Sum('montant_verse') + Sum('montant_reduction')
+    )['total'] or Decimal('0.00')
+    
+    paye_bloc = Paiement.objects.filter(patient=patient, bloc_op__isnull=False).aggregate(
+        total=Sum('montant_verse') + Sum('montant_reduction')
+    )['total'] or Decimal('0.00')
+    
+    # 3. RÉSULTATS
+    reste_consultation = max(Decimal('0.00'), total_consultation - paye_cons)
+    reste_bloc = max(Decimal('0.00'), cout_bloc - paye_bloc)
+    total_reste = reste_consultation + reste_bloc
+    
+    # Liste détaillée
+    paiements_tous = Paiement.objects.filter(patient=patient).order_by('-date_paiement')
+    
+    # Récupération de l'objet consultation pour le bouton payer
+    consultation = Consultation.objects.filter(triage__patient=patient).order_by('-date_creation').first()
+    
     context = {
         'patient': patient,
-        'paiements_liste': historique_detaille,
-        'cout_total_usd': cout_total_usd,
-        'total_paye_usd': cumul_acquitte_usd,
-        'reste_a_payer_usd': reste_final_usd,
-        'reste_a_payer_cdf': (reste_final_usd * taux).quantize(Decimal('1'), rounding=ROUND_HALF_UP),
-        'derniere_consultation_id': derniere_consultation.id if derniere_consultation else None,
-        'fonctionKey': fonctionKey
+        'paiements_liste': paiements_tous,
+        'cout_total_usd': total_consultation + cout_bloc,
+        'total_paye_usd': paye_cons + paye_bloc,
+        'reste_a_payer_usd': total_reste,
+        'reste_consultation': reste_consultation,
+        'reste_bloc': reste_bloc,
+        'derniere_consultation': consultation, # On passe l'objet ici
+        'bloc_id': bloc.id if bloc else None,
+        'fonctionKey': Fonction.objects.filter(userKey=request.user).first().fonctionKey.roleName if Fonction.objects.filter(userKey=request.user).first() else None
     }
-    
     return render(request, 'back-end/finance/historique.html', context)
 
 
