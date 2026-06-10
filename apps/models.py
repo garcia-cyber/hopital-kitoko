@@ -767,3 +767,39 @@ class SortiePharmacie(models.Model):
 
     def __str__(self):
         return f"Sortie {self.produit.nom} - {self.quantite_vendue} unités"
+
+
+
+class BlocOperatoire(models.Model):
+    STATUT_CHOICES = [
+        ('EN_ATTENTE', 'En attente'),
+        ('EN_COURS', 'En cours'),
+        ('TERMINE', 'Terminé'),
+        ('ANNULE', 'Annulé'),
+    ]
+
+    # Relation avec la consultation pour garder l'historique médical
+    consultation = models.OneToOneField('Consultation', on_delete=models.CASCADE, related_name='bloc_op')
+    
+    # Informations pré-opératoires
+    constantes_pre_op = models.TextField(verbose_name="Constantes pré-opératoires")
+    date_programmee = models.DateTimeField(default=timezone.now)
+    
+    # Informations opératoires (remplies après l'acte)
+    acte_realise = models.TextField(blank=True, null=True, verbose_name="Compte-rendu opératoire")
+    chirurgien = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='chirurgies_realisees')
+    
+    # Suivi
+    statut = models.CharField(max_length=20, choices=STATUT_CHOICES, default='EN_ATTENTE')
+    date_fin = models.DateTimeField(null=True, blank=True)
+
+    prestation = models.ForeignKey(
+        'Prestation', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        limit_choices_to={'categorie': 'CHIR'},
+        verbose_name="Type d'intervention"
+    )
+
+    def __str__(self):
+        return f"Bloc: {self.consultation.triage.patient.noms} - {self.statut}"

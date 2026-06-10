@@ -97,7 +97,7 @@ urlpatterns =[
     # TECHNIQUE
     # URL pour l'espace technique (Laboratoire / Radiologie)
     path('technique/examens-a-realiser/', views.liste_examens_techniques, name='liste_examens_techniques'),
-    path('technique/saisir-resultats/<int:paiement_id>/', views.saisir_resultats_examens, name='saisir_resultats_examens'),
+    path('technique/saisir-resultats/<int:consultation_id>/', views.saisir_resultats_examens, name='saisir_resultats_examens'),
 
     # ================================
     # EXAMENS
@@ -164,5 +164,11 @@ urlpatterns =[
     # =====================================
     # ORIENTATION
     path('service/liste-attente/', views.service_destinataire_view, name='service_liste_attente'),
+    path('service/historique/', views.service_historique_view, name='service_historique'),
+
+    # =====================================
+    # BLOC OPERATOIRE  
+    path('bloc/saisir-compte-rendu/<int:consultation_id>/', views.gerer_bloc_operatoire, name='saisir_compte_rendu_bloc'),
+    path('bloc/historique/', views.historique_bloc_operatoire, name='historique_bloc_operatoire'),
 
  ]

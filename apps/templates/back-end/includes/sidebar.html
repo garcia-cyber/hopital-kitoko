@@ -222,6 +222,19 @@
                         </ul>
                     </li>
 
+
+                    <li class="menu-title"><span>Gestion Bloc</span></li>
+<li>
+    <a href="{% url 'service_liste_attente' %}">
+        <i class="fa fa-procedures"></i> <span>Liste d'attente</span>
+    </a>
+</li>
+<li>
+    <a href="{% url 'historique_bloc_operatoire' %}">
+        <i class="fa fa-history"></i> <span>Historique Opérations</span>
+    </a>
+</li>
+
                   
                 {% endif %}
 
@@ -286,6 +299,13 @@
             <span>File d'attente Service</span>
         </a>
     </li>
+
+    <li>
+    <a href="{% url 'service_historique' %}">
+        <i class="fa fa-history"></i> 
+        <span>Historique traité</span>
+    </a>
+</li>
 {% endif %}
 
                 <li class="menu-title"> <span>SESSION</span> </li>

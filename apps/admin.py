@@ -111,3 +111,43 @@ admin.site.register(LotPharmacie)
 admin.site.register(Prestation)
 admin.site.register(Deces)
 admin.site.register(SoinOccasionnel)
+
+@admin.register(BlocOperatoire)
+class BlocOperatoireAdmin(admin.ModelAdmin):
+    # Colonnes affichées dans la liste
+    list_display = (
+        'get_patient_noms', 
+        'prestation', 
+        'chirurgien', 
+        'statut', 
+        'date_programmee', 
+        'date_fin'
+    )
+    
+    # Filtres latéraux pour trier rapidement
+    list_filter = ('statut', 'date_programmee', 'prestation__categorie')
+    
+    # Barre de recherche (utilise les relations pour chercher par nom de patient)
+    search_fields = ('consultation__triage__patient__noms', 'chirurgien__username')
+    
+    # Rendre les champs en lecture seule pour éviter des erreurs après la saisie
+    readonly_fields = ('date_fin',)
+    
+    # Organiser les champs en groupes pour une meilleure lisibilité
+    fieldsets = (
+        ('Informations Patient', {
+            'fields': ('consultation', 'constantes_pre_op')
+        }),
+        ('Détails Opératoires', {
+            'fields': ('prestation', 'acte_realise', 'chirurgien')
+        }),
+        ('Suivi', {
+            'fields': ('statut', 'date_programmee', 'date_fin')
+        }),
+    )
+
+    # Méthode pour afficher le nom du patient dans la liste
+    def get_patient_noms(self, obj):
+        return obj.consultation.triage.patient.noms
+    get_patient_noms.short_description = 'Patient'
+    get_patient_noms.admin_order_field = 'consultation__triage__patient__noms'

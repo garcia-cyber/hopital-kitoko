@@ -1269,24 +1269,23 @@ def liste_examens_techniques(request):
         return redirect('dashboard')
 
     nom_role = role_user.fonctionKey.roleName.lower()
+    fonctionKey = role_user.fonctionKey.roleName
 
     # 2. On récupère les consultations qui ont au moins un paiement "EXAMENS"
-    # Utilisation de distinct() pour avoir chaque consultation une seule fois
     consultations_payees = Consultation.objects.filter(
         paiements__service='EXAMENS'
-    ).distinct().select_related('triage__patient', 'medecin')
+    ).distinct().select_related('triage__patient', 'medecin').prefetch_related('examens__prestation')
 
     historique_technique = []
 
     for cons in consultations_payees:
-        # On récupère tous les examens de cette consultation précise
         examens_query = cons.examens.all()
-        
         examens_filtrés = []
+        
         for exam in examens_query:
             cat = exam.prestation.categorie
             
-            # Filtre par rôle du technicien
+            # Filtre par rôle du technicien (votre logique originale)
             if ('labo' in nom_role and cat == 'LABO') or \
                (('echo' in nom_role or 'echographe' in nom_role) and cat == 'ECHO') or \
                (('radio' in nom_role or 'radiologue' in nom_role) and cat == 'RADIO'):
@@ -1297,26 +1296,23 @@ def liste_examens_techniques(request):
                     'est_deja_fait': (exam.statut == 'TERMINE')
                 })
 
-        # Si le technicien a des examens à traiter pour cette consultation
         if examens_filtrés:
-            # On vérifie si tout est fini pour bloquer le bouton
+            # Vérifie si tout est fini pour le bouton
             a_des_examens_en_attente = any(not ex['est_deja_fait'] for ex in examens_filtrés)
             
             historique_technique.append({
-                'consultation_id': cons.id, # On utilise l'ID de la consultation
+                'consultation_id': cons.id, 
                 'patient': cons.triage.patient,
                 'examens': examens_filtrés,
                 'medecin': cons.medecin.username if cons.medecin else "Généraliste",
                 'tout_traite': not a_des_examens_en_attente
             })
-    nom_role = role_user.fonctionKey.roleName.lower()
-    fonctionKey = role_user.fonctionKey.roleName
 
     context = {
         'historique_technique': historique_technique,
         'examens_presents': len(historique_technique) > 0,
         'titre_page': "Examens à réaliser",
-        'fonctionKey' : fonctionKey
+        'fonctionKey': fonctionKey
     }
 
     return render(request, 'back-end/technique/liste_examens_payes.html', context)
@@ -1327,7 +1323,7 @@ def liste_examens_techniques(request):
 # 
 # ==================================================================================================
 @login_required
-def saisir_resultats_examens(request, paiement_id):
+def saisir_resultats_examens(request, consultation_id):
     # 1. Vérification du rôle du technicien
     role_user = Fonction.objects.filter(userKey=request.user).first()
     if not role_user or not role_user.fonctionKey:
@@ -1337,21 +1333,16 @@ def saisir_resultats_examens(request, paiement_id):
     nom_role = role_user.fonctionKey.roleName.lower()
     fonctionKey = role_user.fonctionKey.roleName
 
-    # 2. Récupération du paiement et de la consultation associée
-    paiement = get_object_or_404(Paiement, id=paiement_id)
-    consultation = paiement.consultation
-
-    if not consultation:
-        messages.error(request, "Aucune consultation associée à ce paiement.")
-        return redirect('liste_examens_techniques')
-
-    # 3. Extraction et filtrage des examens 'EN_COURS' pour ce rôle précis
-    # L'utilisation de select_related('prestation') est cruciale ici pour récupérer 'valeur_normale' sans refaire de requêtes SQL
-    examens_payes = consultation.examens.filter(statut='EN_COURS').select_related('prestation')
+    # 2. Récupération de la consultation
+    consultation = get_object_or_404(Consultation, id=consultation_id)
+    
+    # 3. Extraction et filtrage des examens 'EN_ATTENTE' pour ce rôle précis
+    examens_en_attente = consultation.examens.filter(statut='EN_ATTENTE').select_related('prestation')
     
     examens_a_saisir = []
-    for exam in examens_payes:
+    for exam in examens_en_attente:
         cat = exam.prestation.categorie
+        # Logique de spécialisation retrouvée
         if ('labo' in nom_role or 'laborantin' in nom_role) and cat == 'LABO':
             examens_a_saisir.append(exam)
         elif ('echo' in nom_role or 'echographe' in nom_role) and cat == 'ECHO':
@@ -1359,7 +1350,7 @@ def saisir_resultats_examens(request, paiement_id):
         elif ('radio' in nom_role or 'radiologue' in nom_role) and cat == 'RADIO':
             examens_a_saisir.append(exam)
 
-    # Sécurité : Si l'accès est forcé par URL alors que tout est déjà traité ou hors spécialité
+    # Sécurité : Si accès forcé alors que rien n'est à saisir pour ce rôle
     if not examens_a_saisir:
         messages.error(request, "Aucun examen en attente de saisie pour votre spécialité.")
         return redirect('liste_examens_techniques')
@@ -1374,22 +1365,22 @@ def saisir_resultats_examens(request, paiement_id):
             
             if texte_resultat:
                 exam.resultat = texte_resultat
-                exam.statut = 'TERMINE'  # Passage au statut finalisé
-                exam.technicien = request.user  # Traçabilité du technicien
+                exam.statut = 'TERMINE'
+                exam.technicien = request.user
+                exam.date_realisation = timezone.now()
                 exam.save()
                 examens_traites_count += 1
                 
         if examens_traites_count > 0:
-            messages.success(request, f"Les résultats de ({examens_traites_count}) examen(s) pour {paiement.patient.noms} ont été enregistrés.")
+            messages.success(request, f"Les résultats de ({examens_traites_count}) examen(s) pour {consultation.triage.patient.noms} ont été enregistrés.")
         else:
             messages.warning(request, "Aucun résultat n'a été saisi.")
             
         return redirect('liste_examens_techniques')
 
     context = {
-        'paiement': paiement,
-        'patient': paiement.patient,
         'consultation': consultation,
+        'patient': consultation.triage.patient,
         'examens_a_saisir': examens_a_saisir,
         'fonctionKey': fonctionKey
     }
@@ -3441,42 +3432,151 @@ def valider_vente(request):
 # ===============================================================================================
 @login_required
 def service_destinataire_view(request):
-    # 1. GESTION DE LA VALIDATION
+    # 1. GESTION DE LA VALIDATION (Pas de changement)
     if request.method == 'POST' and request.POST.get('orientation_id'):
-        orientation_id = request.POST.get('orientation_id')
-        orientation = get_object_or_404(Orientation, id=orientation_id)
+        orientation = get_object_or_404(Orientation, id=request.POST.get('orientation_id'))
         orientation.est_admis = True
         orientation.save()
         return redirect('service_liste_attente')
 
     # 2. IDENTIFICATION DU RÔLE
     role_obj = Fonction.objects.filter(userKey=request.user).first()
-    # On normalise en minuscules pour comparer avec notre dictionnaire
     fonction_nom = role_obj.fonctionKey.roleName.strip().lower() if (role_obj and role_obj.fonctionKey) else ""
 
-    # 3. MAPPING CORRIGÉ (Doit correspondre aux clés de votre modèle Orientation)
-    # Les valeurs ici (PHARMACIE, etc.) DOIVENT correspondre au premier élément de votre tuple DESTINATIONS
-    mapping_roles_services = {
-        'pharmacien': 'PHARMACIE',
-        'infirmier salle soins': 'SALLE_SOINS',
-        'hospitalisation': 'HOSPITALISATION',
-        'bloc opératoire': 'BLOC_OPERATOIRE'
-    }
-    
-    destination_cible = mapping_roles_services.get(fonction_nom)
+    # 3. LOGIQUE DE FILTRAGE ÉLARGIE
+    # Si c'est un infirmier, on autorise plusieurs destinations
+    if 'infirmier' in fonction_nom:
+        destinations_autorisees = ['SALLE_SOINS', 'BLOC_OPERATOIRE']
+    elif 'pharmacien' in fonction_nom:
+        destinations_autorisees = ['PHARMACIE']
+    elif 'hospitalisation' in fonction_nom:
+        destinations_autorisees = ['HOSPITALISATION']
+    else:
+        destinations_autorisees = []
 
     # 4. RÉCUPÉRATION
-    if destination_cible:
-        orientations = Orientation.objects.filter(
-            destination=destination_cible,
-            est_admis=False
-        ).prefetch_related(
-            'consultation__ordonnance_set__medicaments'
-        )
-    else:
-        orientations = Orientation.objects.none()
+    # Utilisation de __in pour filtrer sur une liste de valeurs
+    orientations = Orientation.objects.filter(
+        destination__in=destinations_autorisees,
+        est_admis=False
+    ).prefetch_related('consultation__ordonnance_set__medicaments')
 
     return render(request, 'back-end/orientation/liste_attente.html', {
         'orientations': orientations, 
         'fonctionKey': role_obj.fonctionKey.roleName if role_obj else "Invité"
     })
+
+
+#
+# ================================================================================================
+# HISTORIQUE DES DOSSIER ORIENTE ET TRAITE
+# ===============================================================================================
+@login_required
+def service_historique_view(request):
+    role_obj = Fonction.objects.filter(userKey=request.user).first()
+    fonction_nom = role_obj.fonctionKey.roleName.strip().lower() if (role_obj and role_obj.fonctionKey) else ""
+    fonctionKey = role_obj.fonctionKey.roleName if role_obj else "Invité"
+
+    # 1. DÉFINITION DES DESTINATIONS AUTORISÉES SELON LE RÔLE
+    if 'infirmier' in fonction_nom:
+        destinations_autorisees = ['SALLE_SOINS', 'BLOC_OPERATOIRE']
+    elif 'pharmacien' in fonction_nom:
+        destinations_autorisees = ['PHARMACIE']
+    elif 'hospitalisation' in fonction_nom:
+        destinations_autorisees = ['HOSPITALISATION']
+    else:
+        # Cas par défaut ou bloc opératoire seul (si un chirurgien accède à cette vue)
+        destinations_autorisees = ['BLOC_OPERATOIRE'] if 'bloc' in fonction_nom else []
+
+    # 2. RÉCUPÉRATION DES ADMIS (HISTORIQUE)
+    # On utilise __in pour filtrer sur la liste des destinations autorisées
+    orientations = Orientation.objects.filter(
+        destination__in=destinations_autorisees,
+        est_admis=True
+    ).order_by('-date_orientation')
+
+    return render(request, 'back-end/orientation/historique.html', {
+        'orientations': orientations,
+        'fonctionKey': fonctionKey
+    })
+
+
+# 
+# ===================================================================================================
+# BLOC OPERATOIRE
+# ===================================================================================================
+@login_required
+def gerer_bloc_operatoire(request, consultation_id):
+    consultation = get_object_or_404(Consultation, id=consultation_id)
+    
+    # 1. Récupération ou création
+    bloc, created = BlocOperatoire.objects.get_or_create(
+        consultation=consultation,
+        defaults={
+            'constantes_pre_op': f"TA: {consultation.triage.tension_arterielle} | Pouls: {consultation.triage.frequence_cardiaque} | Temp: {consultation.triage.temperature}"
+        }
+    )
+    
+    # 2. Récupération des prestations de type Chirurgie pour le menu
+    prestations_chir = Prestation.objects.filter(categorie='CHIR')
+
+    if request.method == 'POST':
+        # Mise à jour des informations
+        bloc.acte_realise = request.POST.get('acte_realise')
+        bloc.statut = request.POST.get('statut', 'TERMINE')
+        bloc.chirurgien = request.user
+        
+        # Sauvegarde de la prestation choisie
+        prestation_id = request.POST.get('prestation_id')
+        if prestation_id:
+            bloc.prestation_id = prestation_id
+            
+        if bloc.statut == 'TERMINE':
+            bloc.date_fin = timezone.now()
+        
+        bloc.save()
+        
+        # Suggestion : Facturation automatique ici si nécessaire
+        messages.success(request, "Informations de bloc mises à jour avec succès.")
+        return redirect('service_liste_attente')
+
+    role_obj = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role_obj.fonctionKey.roleName if (role_obj and role_obj.fonctionKey) else "Invité"
+
+    context = {
+        'consultation': consultation,
+        'bloc': bloc,
+        'patient': consultation.triage.patient,
+        'fonctionKey': fonctionKey,
+        'prestations_chir': prestations_chir, # Ajouté pour le template
+    }
+    return render(request, 'back-end/bloc/saisir_compte_rendu.html', context)
+
+
+#
+# ==================================================================================================
+# HISTORIQUE DU BLOC OPERATOIRE
+# ==================================================================================================
+@login_required
+def historique_bloc_operatoire(request):
+    # On récupère tout, sauf les annulés, classé par date
+    historique = BlocOperatoire.objects.exclude(statut='ANNULE').select_related(
+        'consultation__triage__patient', 
+        'chirurgien', 
+        'prestation'
+    ).order_by('-date_programmee')
+
+    # Recherche par nom de patient
+    query = request.GET.get('q')
+    if query:
+        historique = historique.filter(consultation__triage__patient__noms__icontains=query)
+
+    role_obj = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role_obj.fonctionKey.roleName if (role_obj and role_obj.fonctionKey) else "Invité"
+
+    context = {
+        'historique': historique,
+        'query': query , 
+        'fonctionKey' : fonctionKey
+    }
+    return render(request, 'back-end/bloc/historique_operations.html', context)

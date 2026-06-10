@@ -8,6 +8,7 @@
     {% include 'back-end/includes/css.html' %}
     <style>
         .card-patient { border-left: 5px solid #2c3e50; transition: 0.3s; margin-bottom: 20px; }
+        .bg-vitals { background-color: #fff3cd; border-left: 3px solid #ffc107; padding: 10px; margin-bottom: 10px; }
         .bg-ordonnance { background-color: #f8f9fa; border-left: 3px solid #007bff; padding: 10px; margin-top: 10px; }
         .service-header { background: #f8f9fa; padding: 20px; border-bottom: 2px solid #e9ecef; margin-bottom: 20px; }
     </style>
@@ -32,32 +33,46 @@
                                 <h5 class="card-title text-primary font-weight-bold">
                                     {{ o.consultation.triage.patient.noms }}
                                 </h5>
+                                
+                                <div class="bg-vitals small">
+                                    <p class="mb-1 font-weight-bold">Signes Vitaux :</p>
+                                    <div class="row">
+                                        <div class="col-6">TA: {{ o.consultation.triage.tension_arterielle }}</div>
+                                        <div class="col-6">Pouls: {{ o.consultation.triage.frequence_cardiaque }}</div>
+                                        <div class="col-6">Temp: {{ o.consultation.triage.temperature }}°C</div>
+                                        <div class="col-6">Poids: {{ o.consultation.triage.poids }}kg</div>
+                                    </div>
+                                </div>
+
                                 <p class="small text-muted">
                                     <i class="fa fa-user-md"></i> Orienté par : Dr. {{ o.medecin_orientateur.username }}
                                 </p>
                                 
                                 <div class="bg-light p-2 mb-3 rounded border">
-                                    <p class="font-weight-bold mb-1 small">Observations :</p>
+                                    <p class="font-weight-bold mb-1 small">Motif / Obs :</p>
                                     <p class="small text-italic">{{ o.observation|default:"Aucune observation." }}</p>
                                 </div>
+
+                                {% if o.destination == 'BLOC_OPERATOIRE' %}
+                                    <div class="alert alert-danger p-2 small text-center mb-2">
+                                        <i class="fa fa-procedures"></i> <strong>Urgence Bloc Opératoire</strong>
+                                    </div>
+                                    <a href="{% url 'saisir_compte_rendu_bloc' o.consultation.id %}" class="btn btn-primary btn-block mb-2">
+                                        <i class="fa fa-notes-medical"></i> Saisir Compte-rendu
+                                    </a>
+                                {% endif %}
 
                                 <h6 class="font-weight-bold small">Prescriptions :</h6>
                                 {% for ord in o.consultation.ordonnance_set.all %}
                                     <div class="bg-ordonnance mb-3">
-                                        <p class="mb-1 small font-weight-bold">Ordonnance du {{ ord.date_creation|default:"Date non définie" }}</p>
                                         <ul class="list-unstyled mb-0">
-                                            {% for med in ord.medicaments.all %}
+                                            {% for med in ord.lignes_medicaments.all %}
                                                 <li class="small">
-                                                    <i class="fa fa-pills text-primary"></i> 
-                                                    <strong>{{ med.nom }}</strong> : {{ med.posologie }} (Durée: {{ med.duree }})
+                                                    <i class="fa fa-pills text-primary"></i> <strong>{{ med.nom_medicament }}</strong> : {{ med.posologie }}
                                                 </li>
-                                            {% empty %}
-                                                <li class="text-muted small">Aucun médicament trouvé.</li>
                                             {% endfor %}
                                         </ul>
                                     </div>
-                                {% empty %}
-                                    <p class="text-muted small">Aucune ordonnance.</p>
                                 {% endfor %}
 
                                 <form method="POST" action="{% url 'service_liste_attente' %}">
@@ -79,7 +94,6 @@
             </div>
         </div>
     </div>
-
     {% include 'back-end/includes/js.html' %}
 </body>
 </html>
