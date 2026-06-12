@@ -36,7 +36,7 @@
                         <div class="col-md-6">
                             <div class="search-container">
                                 <div class="input-group" style="width: auto;">
-                                    <input type="text" id="customSearch" class="form-control" placeholder="Rechercher un patient...">
+                                    <input type="text" id="customSearch" class="form-control" placeholder="Rechercher...">
                                     <div class="input-group-append">
                                         <span class="input-group-text search-addon"><i class="fa fa-search"></i></span>
                                     </div>
@@ -85,7 +85,14 @@
                                             <td>{{ patient.telephone }}</td>
                                             <td>{{ patient.age }} ans</td>
                                             <td><span class="badge badge-modern" style="color: #3182ce; background: #ebf8ff;">{{ patient.service }}</span></td>
-                                            <td><span class="badge badge-modern" style="color: #553c9a; background: #edecf9;">{{ patient.get_type_patient_display }}</span></td>
+                                            <td>
+                                                <span class="badge badge-modern" style="color: #553c9a; background: #edecf9;">{{ patient.get_type_patient_display }}</span>
+                                                {% if patient.type_patient == 'CONVENTIONNE' and patient.entreprise %}
+                                                    <div style="font-size: 0.70rem; color: #718096; margin-top: 5px;">
+                                                        <i class="fa fa-building"></i> {{ patient.entreprise.nom }}
+                                                    </div>
+                                                {% endif %}
+                                            </td>
                                             <td><i class="fa fa-user-circle-o mr-1"></i> {{ patient.created_by.username }}</td>
                                             <td class="text-right">
                                                 <div class="dropdown dropdown-action">
@@ -97,19 +104,21 @@
                                                             <a class="dropdown-item" style="color: #a0aec0;"><i class="fa fa-check-circle m-r-5"></i> Fiche réglée</a>
                                                         {% endif %}
                                                         
+                                                        {% if patient.fiche_payee %}
+                                                            <a class="dropdown-item" href="{% url 'creer_session_soins' patient.id %}" style="color: #2b6cb0;">
+                                                                <i class="fa fa-stethoscope m-r-5"></i> Nouvelle Session Soins
+                                                            </a>
+                                                        {% endif %}
+
                                                         {% if patient.fiche_payee and not patient.a_carte_fidelite %}
                                                             <a class="dropdown-item" href="{% url 'paiement_prestation' patient.id %}" style="color: #d69e2e;"><i class="fa fa-credit-card m-r-5"></i> Payer Carte Fidélité</a>
                                                         {% elif patient.a_carte_fidelite %}
                                                             <a class="dropdown-item" style="color: #a0aec0;"><i class="fa fa-star m-r-5"></i> Carte Fidélité Active</a>
                                                         {% endif %}
-                                                        
                                                         <div class="dropdown-divider"></div>
                                                         <a class="dropdown-item" href="{% url 'historique_paiements' patient.id %}"><i class="fa fa-history m-r-5"></i> Hist. Paiements</a>
                                                         <a class="dropdown-item" href="{% url 'historique_signes_vitaux' patient.id %}"><i class="fa fa-heartbeat m-r-5"></i> Hist. Triage</a>
                                                         <div class="dropdown-divider"></div>
-                                                        {% if patient.fiche_payee and patient.sexe == 'Feminin' or patient.sexe == 'F' %}
-                                                            <a class="dropdown-item" href="{% url 'admettre_maternite' patient.id %}"><i class="fa fa-child m-r-5"></i> Admettre Maternité</a>
-                                                        {% endif %}
                                                         <a class="dropdown-item" href="{% url 'modifier_patient' patient.id %}"><i class="fa fa-pencil m-r-5"></i> Modifier</a>
                                                         {% if patient.fiche_payee %}
                                                             <a class="dropdown-item" href="{% url 'dossier_medical_complet' patient.id %}"><i class="fa fa-eye m-r-5"></i> Dossier Médical</a>

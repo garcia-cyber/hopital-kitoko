@@ -505,3 +505,21 @@ class LotPharmacieForm(forms.ModelForm):
             'quantite': forms.NumberInput(attrs={'class': 'form-control'}),
             'date_peremption': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
         }
+
+
+# ==========================================================================================
+#
+# 
+class PatientForm(forms.ModelForm):
+    class Meta:
+        model = Patient
+        fields = ['noms', 'sexe', 'age', 'adresse', 'telephone', 'entreprise', 'service']
+        widgets = {
+            'noms': forms.TextInput(attrs={'class': 'form-control'}),
+            'sexe': forms.Select(attrs={'class': 'form-control'}),
+            'age': forms.TextInput(attrs={'class': 'form-control'}),
+            'adresse': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'telephone': forms.TextInput(attrs={'class': 'form-control'}),
+            'entreprise': forms.Select(attrs={'class': 'form-control'}),
+            'service': forms.Select(attrs={'class': 'form-control'}), # Liste déroulante des services
+        }

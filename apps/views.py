@@ -27,7 +27,7 @@ from django.views.decorators.csrf import csrf_exempt
 # PAGE D'ACCUEIL
 # ======================================================================================
 def home(request):
-    return render(request , "front-end/index.html")
+    return render(request , "front-end/index.html") 
 
 # 2
 # =====================================================================
@@ -437,43 +437,40 @@ def modifier_service(request, pk):
 # ==================================================================================================
 @login_required
 def enregistrement_patient(request):
-    # Récupération de tous les patients pour le tableau (optimisé)
-    patients = Patient.objects.all().order_by('-date_creation')
+    # Optimisation : on charge l'entreprise associée en une seule requête SQL
+    patients = Patient.objects.select_related('entreprise').all().order_by('-date_creation')
     
     if request.method == 'POST':
         form = PatientForm(request.POST)
         if form.is_valid():
             try:
-                # Enregistrement sécurisé
                 patient = form.save(commit=False)
                 patient.created_by = request.user
-                patient.save()
                 
-                messages.success(request, f"Patient {patient.noms} enregistré avec succès. Matricule : {patient.code_patient}")
+                # Logique métier : Si une entreprise est choisie, on force le type
+                if patient.entreprise:
+                    patient.type_patient = 'CONVENTIONNE'
+                
+                patient.save()
+                messages.success(request, f"Patient {patient.noms} enregistré avec succès.")
                 return redirect('enregistrement_patient')
             except Exception as e:
-                # Capture les erreurs de base de données (ex: contraintes uniques, champs obligatoires manqués)
-                messages.error(request, f"Une erreur technique est survenue lors de la sauvegarde : {str(e)}")
+                messages.error(request, f"Erreur technique : {str(e)}")
         else:
-            # Capture et affiche chaque erreur de validation spécifique (ex: téléphone en doublon)
             for field, errors in form.errors.items():
                 for error in errors:
-                    messages.error(request, f"Erreur dans le champ '{field.capitalize()}': {error}")
+                    messages.error(request, f"Erreur {field}: {error}")
     else:
         form = PatientForm()
 
-    # Vérification de la fonction utilisateur
     role = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
 
-    context = {
+    return render(request, 'back-end/patient/enregistrement_patient.html', {
         'patients': patients,
         'form': form,
-        'segment': 'enregistrement_patient', 
         'fonctionKey': fonctionKey
-    }
-
-    return render(request, 'back-end/patient/enregistrement_patient.html', context)
+    })
 # 18
 # ==================================================================================================
 #  LISTE DES PATIENT(E)S 
@@ -482,24 +479,24 @@ def enregistrement_patient(request):
 def liste_patients(request):
     query = request.GET.get('search')
     
+    # On récupère tous les patients et on pré-charge les données de l'entreprise
+    # pour éviter le problème "N+1" dans le tableau
+    patients = Patient.objects.select_related('entreprise').order_by('-date_creation')
+    
     if query:
-        # Recherche par nom ou par matricule (code_patient)
-        patients = Patient.objects.filter(
+        patients = patients.filter(
             Q(noms__icontains=query) | 
-            Q(code_patient__icontains=query)
-        ).order_by('-date_creation')
-    else:
-        patients = Patient.objects.all().order_by('-date_creation')
-    # verification de la fonction
-    role = Fonction.objects.filter(userKey = request.user).first()
-    fonctionKey = role.fonctionKey.roleName if role else None
+            Q(code_patient__icontains=query) |
+            Q(entreprise__nom__icontains=query) # Permet de chercher par entreprise !
+        )
+    
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if (role and role.fonctionKey) else None
 
-    context = {
+    return render(request, 'back-end/patient/liste_patients.html', {
         'patients': patients,
-        'search_query': query,
-        'fonctionKey' : fonctionKey
-    }
-    return render(request, 'back-end/patient/liste_patients.html', context)
+        'fonctionKey': fonctionKey
+    })
 
 # 19
 # ==================================================================================================
@@ -3753,3 +3750,112 @@ def saisir_cr_accouchement_view(request, consultation_id):
         'prestations': prestations ,
         'fonctionKey' : fonctionKey
     })
+
+
+
+# 
+# =====================================================================================================
+# ENREGISTRE LES PATIENTS DES ENTREPRISES
+# =====================================================================================================
+@login_required
+def enregistrer_patient_entreprise(request):
+    if request.method == 'POST':
+        # On utilise un formulaire lié au modèle Patient
+        form = PatientForm(request.POST)
+        if form.is_valid():
+            # On crée l'instance sans la sauvegarder immédiatement en BDD
+            patient = form.save(commit=False)
+            # On force le type à CONVENTIONNE comme demandé
+            patient.type_patient = 'CONVENTIONNE'
+            patient.save()
+            
+            messages.success(request, f"Le patient {patient.noms} a été enregistré avec succès.")
+            return redirect('enregistrement_patient') # Remplacez par votre URL
+        else:
+            messages.error(request, "Erreur lors de l'enregistrement. Vérifiez les champs.")
+    else:
+        form = PatientForm()
+
+    role_obj = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role_obj.fonctionKey.roleName if (role_obj and role_obj.fonctionKey) else "Invité"
+
+    return render(request, 'back-end/patient/creer_patient_entreprise.html', {
+        'form': form,
+        'titre': "Enregistrer un patient d'entreprise" ,
+        'fonctionKey' : fonctionKey
+    })
+
+
+#
+# =================================================================================================
+# NOUVELLE CONSULTATION
+# =================================================================================================
+@login_required
+def creer_session_soins(request, patient_id):
+    patient = get_object_or_404(Patient, id=patient_id)
+    
+    # 1. Vérification du rôle utilisateur
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+    
+    if fonctionKey not in ['receptionniste', 'caissier', 'admin']:
+        messages.error(request, "Accès refusé : droits insuffisants.")
+        return redirect('liste_patients')
+    
+    # 2. Vérification : Fiche payée obligatoire
+    if not getattr(patient, 'fiche_payee', False):
+        messages.error(request, "Le patient doit d'abord payer sa fiche d'ouverture.")
+        return redirect('enregistrement_patient')
+
+    # 3. Traitement du formulaire
+    if request.method == 'POST':
+        prestation_ids = request.POST.getlist('prestations')
+        
+        if not prestation_ids:
+            messages.error(request, "Veuillez sélectionner au moins une prestation.")
+            return redirect('creer_session_soins', patient_id=patient.id)
+
+        # SÉCURITÉ : Vérification stricte des catégories autorisées
+        if patient.sexe == 'M':
+            # Les hommes n'ont droit qu'aux consultations normales
+            autorisees = Prestation.objects.filter(categorie='CONS').values_list('id', flat=True)
+        else:
+            # Les femmes ont droit aux consultations et maternité
+            autorisees = Prestation.objects.filter(categorie__in=['CONS', 'CONS_MAT']).values_list('id', flat=True)
+
+        # Validation : Vérifier si chaque prestation sélectionnée est dans la liste autorisée
+        for p_id in prestation_ids:
+            if int(p_id) not in autorisees:
+                messages.error(request, "Erreur : Une prestation sélectionnée est invalide pour ce patient.")
+                return redirect('creer_session_soins', patient_id=patient.id)
+
+        try:
+            with transaction.atomic():
+                session = SessionSoins.objects.create(patient=patient)
+                prestations = Prestation.objects.filter(id__in=prestation_ids)
+                
+                lignes = [
+                    LigneFacture(session=session, prestation=p, prix_facture=p.prix) 
+                    for p in prestations
+                ]
+                LigneFacture.objects.bulk_create(lignes)
+                
+            messages.success(request, "Session créée avec succès.")
+            return redirect('paiement_session', session_id=session.id)
+            
+        except Exception as e:
+            messages.error(request, f"Erreur lors de la création : {str(e)}")
+
+    # 4. Chargement des prestations pour le template (Liste blanche)
+    if patient.sexe == 'M':
+        prestations = Prestation.objects.filter(categorie='CONS')
+    else:
+        prestations = Prestation.objects.filter(categorie__in=['CONS', 'CONS_MAT'])
+    
+    return render(request, 'back-end/consultation/creer_session.html', {
+        'patient': patient,
+        'prestations': prestations,
+        'fonctionKey': fonctionKey
+    })
+
+

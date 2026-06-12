@@ -1,7 +1,7 @@
 from django.urls import path
 from .views import *
 from . import views 
-#
+# 
 #
 #  
 urlpatterns =[
@@ -47,6 +47,10 @@ urlpatterns =[
      path('paiement/<int:patient_id>/', views.vue_paiement_carte_fidelite, name='paiement_prestation'),
      path('patients/fideles/', views.liste_patients_avec_carte, name='liste_patients_avec_carte'),
      path('patient/modifier-type/<int:patient_id>/', views.modifier_type_patient, name='modifier_type_patient'),
+     path('patient/entreprise/nouveau/', views.enregistrer_patient_entreprise, name='enregistrer_patient_entreprise'),
+     path('creer-session/<int:patient_id>/', views.creer_session_soins, name='creer_session_soins'),
+
+
 
      # ====================================
      # FINANCE

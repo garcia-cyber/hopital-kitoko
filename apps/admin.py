@@ -18,9 +18,15 @@ class FonctionAdmin(admin.ModelAdmin):
 # 2. GESTION DES PATIENTS ET SERVICES ==================================
 @admin.register(Patient)
 class PatientAdmin(admin.ModelAdmin):
-    list_display = ('code_patient', 'noms', 'sexe', 'type_patient', 'est_en_regle')
+    list_display = ('code_patient', 'noms', 'sexe', 'type_patient', 'est_en_regle_display')
     list_filter = ('type_patient', 'sexe', 'service')
     search_fields = ('noms', 'code_patient')
+
+    # On crée une méthode spécifique pour l'affichage dans l'admin
+    @admin.display(description="En règle", boolean=True)
+    def est_en_regle_display(self, obj):
+        # Appelle la méthode définie dans votre models.py
+        return obj.est_en_regle()
 
 @admin.register(Service)
 class ServiceAdmin(admin.ModelAdmin):
@@ -153,7 +159,7 @@ class BlocOperatoireAdmin(admin.ModelAdmin):
     get_patient_noms.admin_order_field = 'consultation__triage__patient__noms'
 
 
-
+# =========================================================================================================
 
 @admin.register(CompteRenduAccouchement)
 class CompteRenduAccouchementAdmin(admin.ModelAdmin):
@@ -195,3 +201,25 @@ class CompteRenduAccouchementAdmin(admin.ModelAdmin):
             'prestation', 
             'auteur'
         )
+
+
+
+
+# 1. Inline pour ajouter les prestations directement dans la Session de Soins
+class LigneFactureInline(admin.TabularInline):
+    model = LigneFacture
+    extra = 1  # Nombre de lignes vides affichées par défaut
+    readonly_fields = ('prix_facture',) # Le prix est calculé automatiquement
+
+@admin.register(SessionSoins)
+class SessionSoinsAdmin(admin.ModelAdmin):
+    list_display = ('patient', 'date_creation', 'total_a_payer', 'est_payee')
+    list_filter = ('est_payee', 'date_creation')
+    search_fields = ('patient__noms',)
+    inlines = [LigneFactureInline]  # Permet de gérer les prestations dans la page Session
+
+@admin.register(LigneFacture)
+class LigneFactureAdmin(admin.ModelAdmin):
+    list_display = ('session', 'prestation', 'quantite', 'prix_facture')
+    readonly_fields = ('prix_facture',)
+

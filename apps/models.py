@@ -5,7 +5,7 @@ from decimal import Decimal  # Ajout crucial pour la sécurité des calculs fina
 from django.utils import timezone 
 from django.db.models import Sum
 from django.core.exceptions import ValidationError
-from django.conf import settings
+from django.conf import settings 
 
 # 1. CONFIGURATION ET BASE =============================================
 
@@ -112,19 +112,26 @@ class Patient(models.Model):
     adresse = models.TextField()
     telephone = models.CharField(max_length=20)
     
-    # 2. Nouveaux champs pour la gestion financière
+    # 2. Gestion financière
     type_patient = models.CharField(max_length=15, choices=TYPE_CHOICES, default='SIMPLE')
     a_carte_fidelite = models.BooleanField(default=False, verbose_name="Possède carte de fidélité")
-    entreprise = models.ForeignKey('Entreprise', on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Entreprise (si conventionné)")
     
-    # Statuts financiers existants
+    # Relation avec l'entreprise
+    entreprise = models.ForeignKey(
+        'Entreprise', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='patients', 
+        verbose_name="Entreprise (si conventionné)"
+    )
+    
     fiche_payee = models.BooleanField(default=False)
-    
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='patients_crees')
     date_creation = models.DateTimeField(auto_now_add=True)
     date_modification = models.DateTimeField(auto_now=True)
 
-    # --- MÉTHODES EXISTANTES ---
+    # --- MÉTHODES ---
     def save(self, *args, **kwargs):
         if not self.code_patient:
             annee = timezone.now().year
@@ -167,11 +174,13 @@ class Paiement(models.Model):
         ('CARTE_FIDELITE', 'Achat Carte de Fidélité'), 
         ('PHARMACIE', 'Pharmacie')
     ]
+    
     bloc_op = models.ForeignKey('BlocOperatoire', on_delete=models.SET_NULL, null=True, blank=True, related_name='paiements')
     patient = models.ForeignKey('Patient', on_delete=models.CASCADE, null=True, blank=True)
     consultation = models.ForeignKey('Consultation', on_delete=models.SET_NULL, null=True, blank=True, related_name='paiements')
     dossier_maternite = models.ForeignKey('Maternite', on_delete=models.SET_NULL, null=True, blank=True, related_name='paiements')
     deces = models.ForeignKey('Deces', on_delete=models.SET_NULL, null=True, blank=True, related_name='paiements')
+    session = models.ForeignKey('SessionSoins', on_delete=models.SET_NULL, null=True, blank=True, related_name='paiements')
     
     service = models.CharField(max_length=20, choices=SERVICES)
     montant_verse = models.DecimalField(max_digits=15, decimal_places=2)
@@ -180,13 +189,12 @@ class Paiement(models.Model):
     date_paiement = models.DateTimeField(default=timezone.now)
     caissier = models.ForeignKey(User, on_delete=models.PROTECT)
     reste_a_payer = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0.00'), verbose_name="Dette / Reste à payer")
-    
 
     def save(self, *args, **kwargs):
         is_new = self.pk is None
         
-        # LOGIQUE D'AUTOMATISATION
-        if self.service == 'FICHE':
+        # 1. LOGIQUE D'AUTOMATISATION DES SERVICES
+        if self.service == 'FICHE' and self.patient:
             self.patient.fiche_payee = True
             self.patient.save()
             
@@ -199,15 +207,22 @@ class Paiement(models.Model):
                 self.dossier_maternite.est_paye = True
                 self.dossier_maternite.save()
         
-        # --- NOUVELLE LOGIQUE : ACTIVATION CARTE FIDÉLITÉ ---
         elif self.service == 'CARTE_FIDELITE' and self.patient:
             self.patient.a_carte_fidelite = True
             self.patient.type_patient = 'FIDELE'
             self.patient.save()
 
+        # 2. GESTION DE LA SESSION DE SOINS
+        # Si un paiement est lié à une session, on marque la session comme payée
+        if self.session:
+            # On vérifie si le paiement couvre le montant total de la session
+            if self.reste_a_payer <= 0:
+                self.session.est_payee = True
+                self.session.save()
+
         super().save(*args, **kwargs)
         
-        # Création automatique de la facture
+        # 3. Création automatique de la facture
         if is_new:
             from .models import Facture
             Facture.objects.create(
@@ -243,6 +258,30 @@ class SigneVital(models.Model):
     def __str__(self):
         return f"Signes vitaux de {self.patient.noms} le {self.date_prelevement}"
 
+# =================================================================================================================
+class SessionSoins(models.Model):
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
+    date_creation = models.DateTimeField(auto_now_add=True)
+    est_payee = models.BooleanField(default=False)
+    
+    @property
+    def total_a_payer(self):
+        return sum(item.prix_facture for item in self.items.all())
+
+    def __str__(self):
+        return f"Session de {self.patient.noms} du {self.date_creation.strftime('%d/%m/%Y')}"
+
+class LigneFacture(models.Model):
+    session = models.ForeignKey(SessionSoins, related_name="items", on_delete=models.CASCADE)
+    prestation = models.ForeignKey(Prestation, on_delete=models.CASCADE)
+    quantite = models.PositiveIntegerField(default=1)
+    prix_facture = models.DecimalField(max_digits=10, decimal_places=2)
+
+    def save(self, *args, **kwargs):
+        if not self.prix_facture:
+            self.prix_facture = self.prestation.prix * self.quantite
+        super().save(*args, **kwargs)
+
 # 10. CONSULTATION ==================================================
 class Consultation(models.Model):
     # Propriété pour accéder facilement au patient
@@ -260,6 +299,13 @@ class Consultation(models.Model):
     date_creation = models.DateTimeField(default=timezone.now)
     
     consultation_payee = models.BooleanField(default=False, verbose_name="Consultation payée")
+
+    session = models.OneToOneField(SessionSoins, on_delete=models.CASCADE, null=True)
+    
+
+    @property
+    def est_accessible(self):
+        return self.session.est_payee if self.session else False
 
     def __str__(self):
         return f"Consultation de {self.triage.patient.noms} le {self.date_creation.strftime('%d/%m/%Y')}"
@@ -712,23 +758,24 @@ class ProduitPharmacie(models.Model):
     
     # Gestion financière et stock
     prix_vente = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Prix de vente unitaire")
-    stock_total = models.PositiveIntegerField(default=0, verbose_name="Stock total actuel")
+    
+    # Renommé en stock_initial pour ne pas entrer en conflit avec la propriété ci-dessous
+    stock_initial = models.PositiveIntegerField(default=0, verbose_name="Stock total actuel")
 
     class Meta:
-        # On ajoute une contrainte d'unicité sur la combinaison nom + forme + dosage
-        # Pour éviter de créer deux fois le même produit sous des noms légèrement différents
         unique_together = ('nom', 'forme', 'dosage')
         verbose_name = "Produit Pharmaceutique"
 
     def __str__(self):
         return f"{self.nom} - {self.forme} - {self.dosage}"
+
     @property
     def stock_total(self):
         """
-        Retourne le stock réel calculé par la vue (via annotate).
-        Si on n'est pas dans la vue 'gestion_pharmacie', renvoie 0 par défaut.
+        Si la vue a annoté le produit avec 'stock_reel', on l'utilise.
+        Sinon, on retourne la valeur de base 'stock_initial'.
         """
-        return getattr(self, 'stock_reel', 0)
+        return getattr(self, 'stock_reel', self.stock_initial)
 
     @property
     def prix_cdf(self):
@@ -737,12 +784,12 @@ class ProduitPharmacie(models.Model):
 
     @property
     def valeur_totale_usd(self):
-        """Calcule la valeur totale du stock en USD."""
+        """Calcule la valeur totale du stock en USD en utilisant la propriété stock_total."""
         return self.prix_vente * self.stock_total
 
 
 class LotPharmacie(models.Model):
-    produit = models.ForeignKey(ProduitPharmacie, on_delete=models.CASCADE, related_name='lots')
+    #produit = models.ForeignKey(ProduitPharmacie, on_delete=models.CASCADE, related_name='lots')
     quantite = models.PositiveIntegerField(default=0)
     date_peremption = models.DateField()
     date_entree = models.DateField(auto_now_add=True)
@@ -831,3 +878,6 @@ class CompteRenduAccouchement(models.Model):
 
     def __str__(self):
         return f"CR Accouchement - {self.consultation.triage.patient.noms}"
+
+
+
