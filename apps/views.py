@@ -3809,26 +3809,32 @@ def creer_session_soins(request, patient_id):
 
     # 3. Traitement du formulaire
     if request.method == 'POST':
+        # --- PROTECTION ANTI-DOUBLON ---
+        # Empêche la création d'une session identique dans les 10 dernières secondes
+        seuil = timezone.now() - timedelta(seconds=10)
+        doublon = SessionSoins.objects.filter(patient=patient, date_creation__gte=seuil).exists()
+        if doublon:
+            messages.warning(request, "Une session a déjà été créée très récemment pour ce patient.")
+            return redirect('liste_sessions')
+
         prestation_ids = request.POST.getlist('prestations')
-        
         if not prestation_ids:
             messages.error(request, "Veuillez sélectionner au moins une prestation.")
             return redirect('creer_session_soins', patient_id=patient.id)
 
-        # SÉCURITÉ : Vérification stricte des catégories autorisées
-        if patient.sexe == 'M':
-            # Les hommes n'ont droit qu'aux consultations normales
-            autorisees = Prestation.objects.filter(categorie='CONS').values_list('id', flat=True)
-        else:
-            # Les femmes ont droit aux consultations et maternité
-            autorisees = Prestation.objects.filter(categorie__in=['CONS', 'CONS_MAT']).values_list('id', flat=True)
-
-        # Validation : Vérifier si chaque prestation sélectionnée est dans la liste autorisée
+        # Vérification des droits sur les prestations (Sexe)
+        autorisees_qs = Prestation.objects.filter(categorie='CONS')
+        if patient.sexe == 'F':
+            autorisees_qs = autorisees_qs | Prestation.objects.filter(categorie='CONS_MAT')
+        
+        autorisees_ids = autorisees_qs.values_list('id', flat=True)
+        
         for p_id in prestation_ids:
-            if int(p_id) not in autorisees:
-                messages.error(request, "Erreur : Une prestation sélectionnée est invalide pour ce patient.")
+            if int(p_id) not in autorisees_ids:
+                messages.error(request, "Erreur : Une prestation sélectionnée est invalide.")
                 return redirect('creer_session_soins', patient_id=patient.id)
 
+        # Création sécurisée
         try:
             with transaction.atomic():
                 session = SessionSoins.objects.create(patient=patient)
@@ -3840,13 +3846,12 @@ def creer_session_soins(request, patient_id):
                 ]
                 LigneFacture.objects.bulk_create(lignes)
                 
-            messages.success(request, "Session créée avec succès.")
-            return redirect('paiement_session', session_id=session.id)
-            
+                messages.success(request, "Session créée avec succès.")
+                return redirect('paiement_session', session_id=session.id)
         except Exception as e:
-            messages.error(request, f"Erreur lors de la création : {str(e)}")
+            messages.error(request, f"Erreur critique lors de la création : {str(e)}")
 
-    # 4. Chargement des prestations pour le template (Liste blanche)
+    # 4. Chargement des prestations autorisées pour l'affichage
     if patient.sexe == 'M':
         prestations = Prestation.objects.filter(categorie='CONS')
     else:
@@ -3858,4 +3863,102 @@ def creer_session_soins(request, patient_id):
         'fonctionKey': fonctionKey
     })
 
+#
+# ===================================================================================================================
+# LISTE DES SESSIONS
+# ===================================================================================================================
+@login_required
+def liste_sessions(request):
+    # Récupération des sessions avec les relations nécessaires
+    sessions = SessionSoins.objects.prefetch_related('items__prestation', 'paiements').all().order_by('-date_creation')
+    
+    # Calcul dynamique des totaux pour chaque session
+    for session in sessions:
+        # On récupère tous les paiements liés à la session
+        paiements = session.paiements.all()
+        
+        total_paye = paiements.aggregate(Sum('montant_verse'))['montant_verse__sum'] or 0
+        total_red = paiements.aggregate(Sum('montant_reduction'))['montant_reduction__sum'] or 0
+        
+        # Attributs calculés pour l'affichage
+        session.total_verse = total_paye
+        session.total_reductions = total_red
+        session.actuel_reste = max(0, session.total_a_payer - total_paye - total_red)
 
+    # 1. Vérification du rôle utilisateur
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    return render(request, 'back-end/consultation/liste_sessions.html', {
+        'sessions': sessions,
+        'fonctionKey': fonctionKey
+    })
+#
+# ====================================================================================================================
+# PAIEMENT DESE SESSION(CONSULTATION)
+# ====================================================================================================================
+@login_required
+def payer_session(request, session_id):
+    """
+    Vue permettant d'encaisser un paiement pour une session de soins donnée.
+    """
+    # 1. Récupération de la session
+    session = get_object_or_404(SessionSoins, pk=session_id)
+    
+    # 2. Récupération du taux de change actuel
+    taux = ConfigurationHopital.get_taux()
+
+    # 3. Vérification si déjà soldé
+    if session.est_payee:
+        messages.warning(request, "Cette session est déjà soldée.")
+        return redirect('liste_sessions')
+
+    # 4. Traitement du paiement (POST)
+    if request.method == 'POST':
+        try:
+            montant_saisi = Decimal(request.POST.get('montant', 0))
+            reduction = Decimal(request.POST.get('reduction', 0))
+            devise = request.POST.get('devise', 'USD')
+
+            # Conversion si CDF vers USD (base de données en USD)
+            montant_verse = montant_saisi / taux if devise == 'CDF' else montant_saisi
+
+            # Création de l'objet Paiement 
+            # La logique métier (calcul du reste, mise à jour de la session) 
+            # est gérée automatiquement dans Paiement.save()
+            Paiement.objects.create(
+                session=session,
+                patient=session.patient,
+                service='SOIN',
+                montant_verse=montant_verse,
+                montant_reduction=reduction,
+                devise='USD',
+                caissier=request.user
+            )
+            
+            messages.success(request, "Paiement et remise enregistrés avec succès.")
+            return redirect('liste_sessions')
+        except Exception as e:
+            messages.error(request, f"Erreur lors du paiement : {str(e)}")
+
+    # 5. Calculs pour l'affichage (GET)
+    # Somme des versements et réductions déjà effectués
+    total_deja_paye = session.paiements.aggregate(models.Sum('montant_verse'))['montant_verse__sum'] or 0
+    total_reductions = session.paiements.aggregate(models.Sum('montant_reduction'))['montant_reduction__sum'] or 0
+    reste_a_payer = max(0, session.total_a_payer - total_deja_paye - total_reductions)
+    
+    # Calcul du reste en CDF pour l'affichage direct dans le template
+    reste_a_payer_cdf = float(reste_a_payer) * float(taux)
+
+    # 6. Vérification du rôle utilisateur
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    # 7. Rendu de la page
+    return render(request, 'back-end/consultation/payer_session.html', {
+        'session': session,
+        'reste_a_payer': reste_a_payer,
+        'reste_a_payer_cdf': reste_a_payer_cdf,
+        'taux': taux,
+        'fonctionKey': fonctionKey
+    })

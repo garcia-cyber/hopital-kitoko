@@ -39,7 +39,7 @@ urlpatterns =[
 
 
      # ===================================
-     # PATIENT
+     # PATIENT AND SESSION(CONSULTATION)
      path('patients/enregistrement/', views.enregistrement_patient, name='enregistrement_patient'),
      path('patients/modifier/<int:pk>/', views.modifier_patient, name='modifier_patient'),
      path('patients/liste/', views.liste_patients, name='liste_patients'),
@@ -49,6 +49,8 @@ urlpatterns =[
      path('patient/modifier-type/<int:patient_id>/', views.modifier_type_patient, name='modifier_type_patient'),
      path('patient/entreprise/nouveau/', views.enregistrer_patient_entreprise, name='enregistrer_patient_entreprise'),
      path('creer-session/<int:patient_id>/', views.creer_session_soins, name='creer_session_soins'),
+     path('sessions/', views.liste_sessions, name='liste_sessions'),
+     path('paiement/session/<int:session_id>/', views.payer_session, name='paiement_session'),
 
 
 

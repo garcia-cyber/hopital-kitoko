@@ -161,17 +161,10 @@ class Patient(models.Model):
 class Paiement(models.Model):
     CURRENCY = [('USD', 'USD'), ('CDF', 'CDF')]
     SERVICES = [
-        ('FICHE', 'Fiche'), 
-        ('CONSULTATION', 'Consultation'), 
-        ('LABO', 'Labo'), 
-        ('ECHOGRAPHIE', 'Échographie'),
-        ('RADIO', 'Radiographie'), 
-        ('SOIN', 'Soins'),
-        ('MATERNITE', 'Maternité'),
-        ('DECES', 'Actes de décès'),
-        ('EXAMENS', 'Examens'),
-        ('CHIRURGIE', 'Chirurgie'),
-        ('CARTE_FIDELITE', 'Achat Carte de Fidélité'), 
+        ('FICHE', 'Fiche'), ('CONSULTATION', 'Consultation'), ('LABO', 'Labo'),
+        ('ECHOGRAPHIE', 'Échographie'), ('RADIO', 'Radiographie'), ('SOIN', 'Soins'),
+        ('MATERNITE', 'Maternité'), ('DECES', 'Actes de décès'), ('EXAMENS', 'Examens'),
+        ('CHIRURGIE', 'Chirurgie'), ('CARTE_FIDELITE', 'Achat Carte de Fidélité'), 
         ('PHARMACIE', 'Pharmacie')
     ]
     
@@ -197,32 +190,40 @@ class Paiement(models.Model):
         if self.service == 'FICHE' and self.patient:
             self.patient.fiche_payee = True
             self.patient.save()
-            
         elif self.service == 'CONSULTATION' and self.consultation:
             self.consultation.consultation_payee = True
             self.consultation.save()
-            
-        elif self.service == 'MATERNITE' and self.dossier_maternite:
-            if self.reste_a_payer <= 0:
-                self.dossier_maternite.est_paye = True
-                self.dossier_maternite.save()
-        
         elif self.service == 'CARTE_FIDELITE' and self.patient:
             self.patient.a_carte_fidelite = True
             self.patient.type_patient = 'FIDELE'
             self.patient.save()
 
-        # 2. GESTION DE LA SESSION DE SOINS
-        # Si un paiement est lié à une session, on marque la session comme payée
+        # 2. GESTION CENTRALISÉE DE LA SESSION DE SOINS ET DETTES
         if self.session:
-            # On vérifie si le paiement couvre le montant total de la session
+            # Calcul du total dû par le patient pour cette session
+            total_session = self.session.total_a_payer
+            
+            # Somme de tous les paiements et réductions précédents + actuel
+            tous_paiements = self.session.paiements.exclude(pk=self.pk)
+            total_deja_verse = tous_paiements.aggregate(Sum('montant_verse'))['montant_verse__sum'] or 0
+            total_deja_reduit = tous_paiements.aggregate(Sum('montant_reduction'))['montant_reduction__sum'] or 0
+            
+            # Calcul du nouveau reste à payer
+            self.reste_a_payer = max(0, total_session - (total_deja_reduit + self.montant_reduction) - (total_deja_verse + self.montant_verse))
+            
+            # Mise à jour état session
+            self.session.est_payee = (self.reste_a_payer <= 0)
+            self.session.save()
+
+        # 3. GESTION MATERNITÉ
+        if self.service == 'MATERNITE' and self.dossier_maternite:
             if self.reste_a_payer <= 0:
-                self.session.est_payee = True
-                self.session.save()
+                self.dossier_maternite.est_paye = True
+                self.dossier_maternite.save()
 
         super().save(*args, **kwargs)
         
-        # 3. Création automatique de la facture
+        # 4. Création automatique de la facture
         if is_new:
             from .models import Facture
             Facture.objects.create(
