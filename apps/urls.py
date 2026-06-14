@@ -84,15 +84,11 @@ urlpatterns =[
     path('imprimer-consultation/<int:consultation_id>/', views.imprimer_consultation, name='imprimer_consultation'),
     path('medecin/ordonnances-delivrees/', views.liste_ordonnances_delivrees_view, name='liste_ordonnances_delivrees'),
     path('imprimer-resultat/<int:examen_id>/', views.imprimer_resultat, name='imprimer_resultat'),
-    path('ordonnances/liste/', views.liste_ordonnances_prescrites_view, name='liste_ordonnances'),
-    path('modifier-ordonnance/<int:ordonnance_id>/', views.modifier_ordonnance_view, name='modifier_ordonnance'),
     path('medecin/enregistrer-ordonnance/<int:triage_id>/', views.enregistrer_ordonnance_view, name='enregistrer_ordonnance'),
     path('consultation/<int:consultation_id>/ordonnance-urgence/',views.enregistrer_ordonnance_urgence,name='enregistrer_ordonnance_urgence'),
     path('consultations/<int:consultation_id>/prescrire-urgence/', views.prescrire_ordonnance_urgence_rapide, name='prescrire_ordonnance_urgence_rapide'),
-
-
-    path('creer-ordonnance/<int:consultation_id>/', views.creer_ordonnance_view, name='creer_ordonnance'),
     path('medecin/liste-patients/', views.liste_patients_urgence, name='liste_patients_urgence'),
+
     # ================================
     # CAISSE
     path('caisse/file-d-attente/', views.liste_attente_caisse, name='liste_attente_caisse'),
@@ -125,6 +121,9 @@ urlpatterns =[
     # ====================================
     # ORDONNANCE IMPRIMER
     path('ordonnance/imprimer/<int:ordonnance_id>/', views.imprimer_ordonnance, name='imprimer_ordonnance'),
+    path('ordonnances/liste/', views.liste_ordonnances_prescrites_view, name='liste_ordonnances'),
+    path('modifier-ordonnance/<int:ordonnance_id>/', views.modifier_ordonnance_view, name='modifier_ordonnance'),
+    path('creer-ordonnance/<int:consultation_id>/', views.creer_ordonnance_view, name='creer_ordonnance'),
 
 
     # ====================================
@@ -184,6 +183,12 @@ urlpatterns =[
     # ACCOUCHEMENT 
     path('saisir-accouchement/<int:consultation_id>/', views.saisir_fiche_accouchement_view, name='saisir_fiche_accouchement'),
     path('accouchement/compte-rendu/<int:consultation_id>/', views.saisir_cr_accouchement_view, name='saisir_cr_accouchement'),
+
+
+    # ========================================
+    # SOINS(CONSULTATION)
+    path('consultation/details/<int:session_id>/', views.detail_consultation, name='detail_consultation'),
+    path('triage/', views.liste_sessions_infirmier, name='liste_sessions_infirmier'),
 
 
  ]

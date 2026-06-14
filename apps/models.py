@@ -243,21 +243,7 @@ class Facture(models.Model):
     def __str__(self):
         return f"Facture {self.numero_facture} ({self.paiement.get_service_display()})"
 
-# 9. SIGNES VITAUX ==================================================
-class SigneVital(models.Model):
-    patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
-    temperature = models.DecimalField(max_digits=4, decimal_places=1) 
-    poids = models.DecimalField(max_digits=5, decimal_places=2) 
-    tension_arterielle = models.CharField(max_length=10) 
-    frequence_cardiaque = models.IntegerField()
-    frequence_respiratoire = models.IntegerField(null=True, blank=True)
-    saturation_oxygene = models.IntegerField(null=True, blank=True) 
-    date_prelevement = models.DateTimeField(default=timezone.now)
-    infirmier = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
-    est_consulte = models.BooleanField(default=False)
 
-    def __str__(self):
-        return f"Signes vitaux de {self.patient.noms} le {self.date_prelevement}"
 
 # =================================================================================================================
 class SessionSoins(models.Model):
@@ -282,6 +268,24 @@ class LigneFacture(models.Model):
         if not self.prix_facture:
             self.prix_facture = self.prestation.prix * self.quantite
         super().save(*args, **kwargs)
+# 9. SIGNES VITAUX ==================================================
+class SigneVital(models.Model):
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
+    temperature = models.DecimalField(max_digits=4, decimal_places=1) 
+    poids = models.DecimalField(max_digits=5, decimal_places=2) 
+    tension_arterielle = models.CharField(max_length=10) 
+    frequence_cardiaque = models.IntegerField()
+    frequence_respiratoire = models.IntegerField(null=True, blank=True)
+    saturation_oxygene = models.IntegerField(null=True, blank=True) 
+    date_prelevement = models.DateTimeField(default=timezone.now)
+    infirmier = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    est_consulte = models.BooleanField(default=False)
+    session = models.ForeignKey(SessionSoins, on_delete=models.CASCADE, related_name='signes_vitaux', null=True)
+
+    def __str__(self):
+        return f"Signes vitaux de {self.patient.noms} le {self.date_prelevement}"
+
+
 
 # 10. CONSULTATION ==================================================
 class Consultation(models.Model):

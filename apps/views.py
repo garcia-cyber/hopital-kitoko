@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import SetPasswordForm ,UserChangeForm
 from django.contrib import messages
-from django.db.models import Q , Sum ,Prefetch , Count , ExpressionWrapper , OuterRef, Subquery , F , Value ,DecimalField, FloatField ,IntegerField
+from django.db.models import Q , Sum ,Prefetch , Count , ExpressionWrapper , OuterRef, Subquery , F , Value ,DecimalField, FloatField ,IntegerField ,Exists
 from decimal import Decimal , ROUND_HALF_UP , InvalidOperation
 import pytz
 from datetime import timedelta , date
@@ -76,29 +76,43 @@ def deco(request):
 # ==========================================================================
 @login_required
 def dashboard(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
 
-    # verification de la fonction
-    role = Fonction.objects.filter(userKey = request.user).first()
-    fonctionKey = role.fonctionKey.roleName if role else None
+    # Rôle
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else 'visiteur'
+    
+    aujourdhui = timezone.now().date()
+    
+    # 1. Statistiques Globales
+    context = {
+        'fonctionKey': fonctionKey,
+        'total_utilisateurs': User.objects.count(),
+        'total_entreprises': Entreprise.objects.count(),
+        'total_patients': Patient.objects.count(),
+        
+        # 2. Finance
+        'recettes_jour': Paiement.objects.filter(date_paiement__date=aujourdhui).aggregate(
+            usd=Sum('montant_verse', filter=Q(devise='USD')),
+            cdf=Sum('montant_verse', filter=Q(devise='CDF'))
+        ),
+        'depenses_jour': Depense.objects.filter(date_depense__date=aujourdhui).aggregate(
+            usd=Sum('montant', filter=Q(devise='USD')),
+            cdf=Sum('montant', filter=Q(devise='CDF'))
+        ),
+        
+        # 3. Activité Médicale
+        'consultations_jour': Consultation.objects.filter(date_creation__date=aujourdhui).count(),
+        'hospitalisations_en_cours': Hospitalisation.objects.filter(statut='EN_COURS').count(),
+        'bloc_en_cours': BlocOperatoire.objects.filter(statut='EN_COURS').count(),
+        'accouchements_jour': CompteRenduAccouchement.objects.filter(date_creation__date=aujourdhui).count(),
+        
+        # 4. Pharmacie : Alertes stocks (ex: produits avec stock < 5)
+        'alerte_rupture_stock': ProduitPharmacie.objects.filter(stock_initial__lt=5).count(),
+    }
 
-    # compte les nombres des utilisateurs
-    utilisateurs = User.objects.count()
-
-    total_patients = Patient.objects.count()
-
-    # compte les entreprises
-    entreprise = Entreprise.objects.count()
-
-
-
-    return render(request , 'back-end/index.html',
-                  {
-                  'fonctionKey': fonctionKey,
-                  'utilisateurs' : utilisateurs ,
-                  'total_patients' : total_patients ,
-                  'entreprise' : entreprise
-                  }
-                  )
+    return render(request, 'back-end/index.html', context)
 # 5
 # ===========================================================================
 # AJOUTER UTILISATEURS
@@ -619,48 +633,57 @@ def payer_fiche(request, patient_id):
 def historique_paiements(request, patient_id):
     patient = get_object_or_404(Patient, id=patient_id)
     
-    # 1. CALCULS DES COÛTS (Séparés)
-    cout_fiche = Decimal(str(getattr(patient.service, 'prix', 0))) 
+    # Récupération du taux de change (assurez-vous d'avoir une méthode pour cela)
+    taux = Decimal(str(getattr(ConfigurationHopital.objects.first(), 'taux_change', 1660)))
+
+    # 1. CALCULS DES COÛTS (Sécurisation des objets)
+    # Prix de la fiche
+    cout_fiche = Decimal(str(getattr(patient.service, 'prix', 0))) if patient.service else Decimal('0.00')
+    
+    # Prix des examens
     cout_examens = Prestation.objects.filter(
         demandeexamen__consultation__triage__patient=patient
     ).aggregate(total=Sum('prix'))['total'] or Decimal('0.00')
-    total_consultation = cout_fiche + cout_examens
     
-    # Bloc Opératoire
+    # Prix du Bloc (Sécurisation pour éviter l'erreur NoneType)
     bloc = BlocOperatoire.objects.filter(consultation__triage__patient=patient).first()
-    cout_bloc = bloc.prestation.prix if (bloc and bloc.prestation) else Decimal('0.00')
+    cout_bloc = bloc.prestation.prix if (bloc and hasattr(bloc, 'prestation') and bloc.prestation) else Decimal('0.00')
+    
+    total_cout_usd = cout_fiche + cout_examens + cout_bloc
     
     # 2. CALCULS PAIEMENTS RÉELS
-    paye_cons = Paiement.objects.filter(patient=patient, bloc_op__isnull=True).aggregate(
-        total=Sum('montant_verse') + Sum('montant_reduction')
-    )['total'] or Decimal('0.00')
+    paiements = Paiement.objects.filter(patient=patient)
+    recettes = paiements.aggregate(
+        usd=Sum('montant_verse', filter=Q(devise='USD')),
+        cdf=Sum('montant_verse', filter=Q(devise='CDF'))
+    )
     
-    paye_bloc = Paiement.objects.filter(patient=patient, bloc_op__isnull=False).aggregate(
-        total=Sum('montant_verse') + Sum('montant_reduction')
-    )['total'] or Decimal('0.00')
+    total_paye_usd = recettes['usd'] or Decimal('0.00')
+    total_paye_cdf = recettes['cdf'] or Decimal('0.00')
     
-    # 3. RÉSULTATS
-    reste_consultation = max(Decimal('0.00'), total_consultation - paye_cons)
-    reste_bloc = max(Decimal('0.00'), cout_bloc - paye_bloc)
-    total_reste = reste_consultation + reste_bloc
+    # Conversion du payé en CDF vers USD pour calculer la dette totale
+    total_paye_en_usd = total_paye_usd + (total_paye_cdf / taux)
     
-    # Liste détaillée
-    paiements_tous = Paiement.objects.filter(patient=patient).order_by('-date_paiement')
+    # 3. RÉSULTATS ET DETTES
+    reste_a_payer_usd = max(Decimal('0.00'), total_cout_usd - total_paye_en_usd)
+    reste_a_payer_cdf = reste_a_payer_usd * taux
     
-    # Récupération de l'objet consultation pour le bouton payer
+    # Objets pour les boutons d'encaissement
     consultation = Consultation.objects.filter(triage__patient=patient).order_by('-date_creation').first()
     
     context = {
         'patient': patient,
-        'paiements_liste': paiements_tous,
-        'cout_total_usd': total_consultation + cout_bloc,
-        'total_paye_usd': paye_cons + paye_bloc,
-        'reste_a_payer_usd': total_reste,
-        'reste_consultation': reste_consultation,
-        'reste_bloc': reste_bloc,
-        'derniere_consultation': consultation, # On passe l'objet ici
+        'paiements_liste': paiements.order_by('-date_paiement'),
+        'cout_total_usd': total_cout_usd,
+        'total_paye_usd': total_paye_usd,
+        'total_paye_cdf': total_paye_cdf,
+        'reste_a_payer_usd': reste_a_payer_usd,
+        'reste_a_payer_cdf': reste_a_payer_cdf,
+        'est_debiteur': reste_a_payer_usd > 0.01, # Si > 0.01$ de dette
+        'derniere_consultation': consultation,
         'bloc_id': bloc.id if bloc else None,
-        'fonctionKey': Fonction.objects.filter(userKey=request.user).first().fonctionKey.roleName if Fonction.objects.filter(userKey=request.user).first() else None
+        'fonctionKey': Fonction.objects.filter(userKey=request.user).first().fonctionKey.roleName 
+                       if Fonction.objects.filter(userKey=request.user).first() else None
     }
     return render(request, 'back-end/finance/historique.html', context)
 
@@ -3424,6 +3447,8 @@ def service_destinataire_view(request):
     # Si c'est un infirmier, on autorise plusieurs destinations
     if 'infirmier' in fonction_nom:
         destinations_autorisees = ['SALLE_SOINS', 'BLOC_OPERATOIRE','ACCOUCHEMENT']
+    elif 'medecin' in fonction_nom :
+        destinations_autorisees = ['SALLE_SOINS','BLOC_OPERATOIRE','ACCOUCHEMENT']
     elif 'pharmacien' in fonction_nom:
         destinations_autorisees = ['PHARMACIE']
     elif 'hospitalisation' in fonction_nom:
@@ -3962,3 +3987,46 @@ def payer_session(request, session_id):
         'taux': taux,
         'fonctionKey': fonctionKey
     })
+
+
+#
+# ==============================================================================================
+# DETAILS DE CONSULTATION 
+# ==============================================================================================
+@login_required
+def detail_consultation(request, session_id):
+    session = get_object_or_404(SessionSoins, id=session_id)
+    # On récupère tous les signes vitaux du patient lié à cette session
+    historique_signes = SigneVital.objects.filter(patient=session.patient).order_by('-date_prelevement')
+
+
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    return render(request, 'back-end/consultation/details.html', {
+        'session': session,
+        'historique_signes': historique_signes ,
+        'fonctionKey' : fonctionKey
+    })
+
+#
+# ===========================================================================================
+# LISTE DES SESSIONS POUR INFIRMIER 
+# ===========================================================================================
+@login_required
+def liste_sessions_infirmier(request):
+    # On filtre uniquement les sessions qui ont au moins un paiement
+    # On précharge 'items__prestation' pour que le template puisse accéder aux noms
+    sessions = SessionSoins.objects.annotate(
+        a_un_paiement=Exists(Paiement.objects.filter(session=OuterRef('pk')))
+    ).filter(a_un_paiement=True).prefetch_related('items__prestation').order_by('-date_creation')
+
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    return render(request, 'back-end/consultation/liste_sessions_infirmier.html', {
+        'sessions': sessions,
+        'fonctionKey': fonctionKey    
+    })
+
+
