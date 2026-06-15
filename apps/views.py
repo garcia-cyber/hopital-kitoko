@@ -451,8 +451,9 @@ def modifier_service(request, pk):
 # ==================================================================================================
 @login_required
 def enregistrement_patient(request):
-    # Optimisation : on charge l'entreprise associée en une seule requête SQL
-    patients = Patient.objects.select_related('entreprise').all().order_by('-date_creation')
+    # Optimisation : On charge les patients pour le tableau.
+    # Note : Si la liste devient très longue, pense à ajouter un paginator plus tard.
+    patients = Patient.objects.select_related('entreprise', 'created_by').all().order_by('-date_creation')
     
     if request.method == 'POST':
         form = PatientForm(request.POST)
@@ -461,7 +462,7 @@ def enregistrement_patient(request):
                 patient = form.save(commit=False)
                 patient.created_by = request.user
                 
-                # Logique métier : Si une entreprise est choisie, on force le type
+                # Logique métier : Forcer le type si entreprise présente
                 if patient.entreprise:
                     patient.type_patient = 'CONVENTIONNE'
                 
@@ -469,16 +470,18 @@ def enregistrement_patient(request):
                 messages.success(request, f"Patient {patient.noms} enregistré avec succès.")
                 return redirect('enregistrement_patient')
             except Exception as e:
-                messages.error(request, f"Erreur technique : {str(e)}")
+                messages.error(request, f"Erreur lors de l'enregistrement : {str(e)}")
         else:
+            # Affichage des erreurs de validation du formulaire
             for field, errors in form.errors.items():
                 for error in errors:
-                    messages.error(request, f"Erreur {field}: {error}")
+                    messages.error(request, f"{field.capitalize()}: {error}")
     else:
         form = PatientForm()
 
-    role = Fonction.objects.filter(userKey=request.user).first()
-    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+    # Gestion du rôle pour le menu et les accès
+    role_obj = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role_obj.fonctionKey.roleName if (role_obj and role_obj.fonctionKey) else "Invité"
 
     return render(request, 'back-end/patient/enregistrement_patient.html', {
         'patients': patients,
