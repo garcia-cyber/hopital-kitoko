@@ -727,38 +727,45 @@ def imprimer_recu_direct(request, paiement_id):
 # ==================================================================================================
 @login_required
 def liste_attente_triage(request):
-    # On récupère le taux
-    config = ConfigurationHopital.objects.first()
-    taux = config.taux_usd_en_cdf if config else 2300.00
-    
+    # 1. Récupération du taux et du prix de la fiche
+    taux = ConfigurationHopital.get_taux()
+    # On cherche une prestation dont la catégorie est 'ADM' (Administratif) 
+    # et dont le libellé contient 'Fiche'
+    prestation_fiche = Prestation.objects.filter(categorie='ADM', libelle__icontains='Fiche').first()
+    prix_fiche_usd = prestation_fiche.prix if prestation_fiche else Decimal('6.00')
+
     patients_liste = Patient.objects.all().order_by('-date_creation')
     
     for patient in patients_liste:
-        # 1. Vérification du solde Fiche (Logique maintenue)
-        paiements = Paiement.objects.filter(patient=patient, service='FICHE')
+        # A. Règle métier : Qui doit payer ?
+        if patient.type_patient != 'SIMPLE':
+            patient.a_solde_fiche = True
+            patient.total_fiche_usd = 0
+            patient.doit_payer_fiche = False
+        else:
+            patient.doit_payer_fiche = True
+            # B. Calcul du total versé par le patient pour le service FICHE
+            paiements = Paiement.objects.filter(patient=patient, service='FICHE')
+            total_paye_usd = sum([
+                p.montant_verse if p.devise == 'USD' else (p.montant_verse / taux)
+                for p in paiements
+            ])
+            
+            patient.total_fiche_usd = total_paye_usd
+            # C. Vérification du solde (Total >= Prix de la fiche)
+            patient.a_solde_fiche = total_paye_usd >= prix_fiche_usd
         
-        total_usd = 0
-        for p in paiements:
-            if p.devise == 'USD':
-                total_usd += p.montant_verse
-            else:
-                # Conversion stricte : montant CDF / taux
-                total_usd += (p.montant_verse / taux)
-        
-        patient.total_fiche_usd = total_usd
-        # Seuil strict de 6.00 USD
-        patient.a_solde_fiche = total_usd >= 6.00
-        
-        # 2. Vérification signes vitaux (Ajouté sans supprimer le reste)
+        # D. Vérification signes vitaux
         patient.a_signes_vitaux_deja_pris = SigneVital.objects.filter(patient=patient).exists()
 
     # Rôles
     role = Fonction.objects.filter(userKey=request.user).first()
-    fonctionKey = role.fonctionKey.roleName if role else None
+    fonctionKey = role.fonctionKey.roleName if (role and role.fonctionKey) else None
 
     return render(request, 'back-end/infirmerie/liste_attente.html', {
         'patients': patients_liste, 
         'taux': taux,
+        'prix_fiche': prix_fiche_usd,
         'fonctionKey': fonctionKey
     })
 
