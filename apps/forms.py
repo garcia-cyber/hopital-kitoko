@@ -487,22 +487,29 @@ class ConsultationMaterniteForm(forms.ModelForm):
 class ProduitPharmacieForm(forms.ModelForm):
     class Meta:
         model = ProduitPharmacie
-        fields = ['nom', 'forme', 'dosage', 'categorie', 'prix_vente']
+        fields = [
+            'nom', 'forme', 'dosage', 'categorie', 
+            'unites_par_carton', 'prix_achat_unitaire', 'prix_vente_unitaire'
+        ]
         widgets = {
             'nom': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Amoxicilline'}),
             'forme': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Comprimé'}),
             'dosage': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: 500mg'}),
             'categorie': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Antibiotique'}),
-            'prix_vente': forms.NumberInput(attrs={'class': 'form-control'}),
+            'unites_par_carton': forms.NumberInput(attrs={'class': 'form-control'}),
+            'prix_achat_unitaire': forms.NumberInput(attrs={'class': 'form-control'}),
+            'prix_vente_unitaire': forms.NumberInput(attrs={'class': 'form-control'}),
         }
 
 class LotPharmacieForm(forms.ModelForm):
     class Meta:
         model = LotPharmacie
-        fields = ['produit', 'quantite', 'date_peremption']
+        # Remplace 'quantite' par les nouveaux noms de champs
+        fields = ['produit', 'numero_lot', 'quantite_initiale', 'date_peremption']
         widgets = {
             'produit': forms.Select(attrs={'class': 'form-control'}),
-            'quantite': forms.NumberInput(attrs={'class': 'form-control'}),
+            'numero_lot': forms.TextInput(attrs={'class': 'form-control'}),
+            'quantite_initiale': forms.NumberInput(attrs={'class': 'form-control'}),
             'date_peremption': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
         }
 

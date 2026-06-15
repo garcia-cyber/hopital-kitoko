@@ -45,10 +45,13 @@
         <tbody>
             {% for item in details %}
             <tr>
-                <td>{{ item.produit.nom }}</td>
+                <td>
+                    <strong>{{ item.lot.produit.nom }}</strong><br>
+                    <small class="text-muted">{{ item.lot.produit.dosage }} - {{ item.lot.produit.forme }}</small>
+                </td>
                 <td class="text-center">{{ item.quantite_vendue }}</td>
-                <td class="text-end">{{ item.prix_unitaire|floatformat:2 }}</td>
-                <td class="text-end">{{ item.total_ligne|floatformat:2 }}</td>
+                <td class="text-end">{{ item.prix_unitaire|floatformat:2 }} {{ facture.devise }}</td>
+                <td class="text-end">{{ item.total_ligne|floatformat:2 }} {{ facture.devise }}</td>
             </tr>
             {% endfor %}
         </tbody>

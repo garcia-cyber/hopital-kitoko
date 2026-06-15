@@ -29,8 +29,13 @@
                             <select id="produitSelect" class="form-control mb-3">
                                 <option value="">Choisir un produit...</option>
                                 {% for p in produits %}
-                                <option value="{{ p.id }}" data-nom="{{ p.nom }}" data-prix="{{ p.prix_vente }}" data-stock="{{ p.stock_reel }}">
-                                    {{ p.nom }} (Stock: {{ p.stock_reel }})
+                                <option value="{{ p.id }}" 
+                                        data-nom="{{ p.nom }}" 
+                                        data-prix="{{ p.prix_vente_unitaire }}" 
+                                        data-stock="{{ p.stock_reel }}"
+                                        data-forme="{{ p.forme }}" 
+                                        data-dosage="{{ p.dosage }}">
+                                    {{ p.nom }} ({{ p.forme }} - {{ p.dosage }}) | Stock: {{ p.stock_reel }}
                                 </option>
                                 {% endfor %}
                             </select>
@@ -50,25 +55,29 @@
                             <div class="table-responsive">
                                 <table class="table table-hover align-middle">
                                     <thead class="table-light">
-                                        <tr><th>Produit</th><th>Qté</th><th>Prix</th><th>Total</th><th>Action</th></tr>
+                                        <tr><th>Produit</th><th>Qté</th><th>Prix (USD)</th><th>Total</th><th>Action</th></tr>
                                     </thead>
                                     <tbody id="panierBody"></tbody>
                                 </table>
                             </div>
-                            
                             <hr class="my-4">
                             
-                            <div class="row align-items-center">
-                                <div class="col-md-6 mb-3 mb-md-0">
+                            <div class="row g-3">
+                                <div class="col-md-4">
                                     <label class="form-label">Devise</label>
                                     <select name="devise" id="deviseSelect" class="form-select">
                                         <option value="USD">USD ($)</option>
                                         <option value="CDF">CDF (FC)</option>
                                     </select>
                                 </div>
-                                <div class="col-md-6">
-                                    <button type="button" id="btnValider" class="btn btn-success w-100 py-2">
-                                        <i class="fas fa-check-circle me-2"></i>Valider la Vente
+                                <div class="col-md-4">
+                                    <label class="form-label">Montant Versé</label>
+                                    <input type="number" id="montantVerse" class="form-control" value="0.00" step="0.01">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">&nbsp;</label>
+                                    <button type="button" id="btnValider" class="btn btn-success w-100">
+                                        <i class="fas fa-check-circle me-2"></i>Valider
                                     </button>
                                 </div>
                             </div>
@@ -84,64 +93,69 @@
     <script>
         $(document).ready(function() {
             $('#produitSelect').select2({ placeholder: "Rechercher un produit...", width: '100%' });
+            const TAUX = parseFloat("{{ taux_actuel }}");
 
-            // 1. Ajouter au panier
+            function mettreAJourMontant() {
+                let total = 0;
+                let devise = $('#deviseSelect').val();
+                
+                $('#panierBody tr').each(function() {
+                    let prixU = parseFloat($(this).data('prix'));
+                    let qte = parseInt($(this).data('qte'));
+                    let sousTotal = prixU * qte;
+                    
+                    if (devise === 'CDF') sousTotal *= TAUX;
+                    
+                    $(this).find('td:nth-child(4)').text(sousTotal.toFixed(2));
+                    total += sousTotal;
+                });
+                $('#montantVerse').val(total.toFixed(2));
+            }
+
+            $('#deviseSelect').on('change', mettreAJourMontant);
+
             $('#btnAjouter').on('click', function() {
-                let option = $('#produitSelect option:selected');
-                let id = option.val();
-                let nom = option.data('nom');
-                let prix = parseFloat(option.data('prix'));
-                let stock = parseInt(option.data('stock'));
-                let qte = parseInt($('#qte').val());
+                let opt = $('#produitSelect option:selected');
+                let id = opt.val();
+                let qteInput = parseInt($('#qte').val());
+                let stock = parseInt(opt.data('stock'));
 
-                if (!id) { alert("Sélectionnez un produit"); return; }
-                if (!qte || qte <= 0) { alert("Quantité invalide"); return; }
-                if (qte > stock) { alert("Stock insuffisant !"); return; }
+                if (!id || isNaN(qteInput) || qteInput <= 0) return alert("Données invalides");
+                if (qteInput > stock) return alert("Stock insuffisant !");
 
-                let totalLigne = prix * qte;
-                let ligne = `<tr data-id="${id}" data-qte="${qte}">
-                                <td>${nom}</td><td>${qte}</td><td>${prix.toFixed(2)}</td>
-                                <td>${totalLigne.toFixed(2)}</td>
-                                <td><button class="btn btn-sm btn-danger btn-supprimer"><i class="fas fa-trash"></i></button></td>
-                            </tr>`;
-                $('#panierBody').append(ligne);
-                $('#qte').val('');
-                $('#produitSelect').val('').trigger('change');
+                let ligneExistante = $('#panierBody tr[data-id="' + id + '"]');
+                if (ligneExistante.length > 0) {
+                    let nouvelleQte = parseInt(ligneExistante.data('qte')) + qteInput;
+                    if (nouvelleQte > stock) return alert("Stock insuffisant !");
+                    ligneExistante.data('qte', nouvelleQte).find('td:nth-child(2)').text(nouvelleQte);
+                } else {
+                    $('#panierBody').append(`<tr data-id="${id}" data-qte="${qteInput}" data-prix="${opt.data('prix')}">
+                        <td><strong>${opt.data('nom')}</strong><br><small class="text-muted">${opt.data('forme')} - ${opt.data('dosage')}</small></td>
+                        <td>${qteInput}</td><td>${opt.data('prix')}</td><td>0.00</td>
+                        <td><button class="btn btn-sm btn-danger btn-supprimer"><i class="fas fa-trash"></i></button></td>
+                    </tr>`);
+                }
+                mettreAJourMontant();
             });
 
-            // 2. Supprimer ligne
-            $(document).on('click', '.btn-supprimer', function() { $(this).closest('tr').remove(); });
+            $(document).on('click', '.btn-supprimer', function() { $(this).closest('tr').remove(); mettreAJourMontant(); });
 
-            // 3. Valider la vente
             $('#btnValider').on('click', function() {
                 let panier = [];
                 $('#panierBody tr').each(function() {
-                    panier.push({ 
-                        id: $(this).data('id'), 
-                        qte: $(this).data('qte') 
-                    });
+                    panier.push({ id: $(this).data('id'), qte: $(this).data('qte') });
                 });
-
-                if (panier.length === 0) { alert("Panier vide !"); return; }
 
                 $.ajax({
                     url: "{% url 'enregistrer_vente' %}",
                     type: "POST",
                     headers: { "X-CSRFToken": "{{ csrf_token }}" },
                     contentType: "application/json",
-                    data: JSON.stringify({ 
-                        panier_data: panier, 
-                        devise: $('#deviseSelect').val() 
-                    }),
-                    success: function(response) {
-                        if(response.status === 'success') {
-                            alert("Vente validée avec succès !");
-                            window.location.reload();
-                        } else {
-                            alert("Erreur : " + response.message);
-                        }
-                    },
-                    error: function() { alert("Erreur de communication avec le serveur."); }
+                    data: JSON.stringify({ panier_data: panier, devise: $('#deviseSelect').val(), montant_verse: $('#montantVerse').val() }),
+                    success: function(res) {
+                        if(res.status === 'success') { alert("Validé ! Reste : " + res.dette); window.location.reload(); }
+                        else { alert(res.message); }
+                    }
                 });
             });
         });

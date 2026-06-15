@@ -3174,19 +3174,23 @@ def ajouter_produit(request):
 @login_required
 def gestion_pharmacie(request):
     # 1. Annotation : Calcul des entrées et des sorties séparément
-    # 'les_lots' est le related_name dans LotPharmacie
-    # 'les_sorties' est le related_name dans SortiePharmacie
+    # On utilise 'les_lots__quantite_initiale' et 'les_lots__sorties__quantite_vendue'
+    # pour traverser les relations correctement.
     produits = ProduitPharmacie.objects.annotate(
-        total_entrees=Sum('les_lots__quantite'),
-        total_sorties=Sum('les_sorties__quantite_vendue')
+        total_entrees=Sum('les_lots__quantite_initiale'),
+        total_sorties=Sum('les_lots__sorties__quantite_vendue')
     ).annotate(
         # 2. Calcul du stock réel : (Entrées - Sorties)
-        # Coalesce remplace les valeurs NULL par 0
+        # Coalesce transforme les valeurs NULL en 0
         stock_reel=ExpressionWrapper(
             Coalesce('total_entrees', 0) - Coalesce('total_sorties', 0),
             output_field=IntegerField()
         )
     ).order_by('nom')
+    
+    # Calcul de la valeur totale pour chaque produit avant de passer au template
+    for p in produits:
+        p.valeur_totale = p.stock_reel * p.prix_vente_unitaire
     
     # Gestion des rôles
     role = Fonction.objects.filter(userKey=request.user).first()
@@ -3233,67 +3237,84 @@ def enregistrer_vente(request):
             data = json.loads(request.body)
             panier = data.get('panier_data', [])
             devise = data.get('devise', 'USD')
+            montant_verse = Decimal(str(data.get('montant_verse', 0)))
             
             if not panier:
                 return JsonResponse({'status': 'error', 'message': 'Le panier est vide.'})
+            if montant_verse < 0:
+                return JsonResponse({'status': 'error', 'message': 'Le montant versé ne peut pas être négatif.'})
 
             taux = Decimal(str(ConfigurationHopital.get_taux()))
 
             with transaction.atomic():
                 montant_total = Decimal('0.00')
                 
-                # 1. Vérification du stock
+                # 1. PRE-VALIDATION : Vérification du stock pour TOUS les articles avant de créer quoi que ce soit
                 for item in panier:
-                    produit = ProduitPharmacie.objects.select_for_update().get(id=item['id'])
+                    lot = LotPharmacie.objects.select_for_update().filter(
+                        produit_id=item['id'], 
+                        quantite_actuelle__gte=int(item['qte'])
+                    ).first()
                     
-                    # Calcul stock réel
-                    stock_actuel = (
-                        produit.les_lots.aggregate(s=Coalesce(Sum('quantite'), 0))['s'] - 
-                        produit.les_sorties.aggregate(s=Coalesce(Sum('quantite_vendue'), 0))['s']
-                    )
-                    
-                    if int(item['qte']) > stock_actuel:
+                    if not lot:
+                        produit = ProduitPharmacie.objects.get(id=item['id'])
                         return JsonResponse({'status': 'error', 'message': f'Stock insuffisant pour {produit.nom}'})
 
-                    prix_u = Decimal(str(produit.prix_vente))
+                    # Calcul du prix
+                    prix_u = Decimal(str(lot.produit.prix_vente_unitaire))
                     if devise == 'CDF':
                         prix_u *= taux
-                    
                     montant_total += (prix_u * int(item['qte']))
 
-                # 2. Création du paiement (Service PHARMACIE, sans patient ni consultation)
+                # 2. Validation montant versé
+                if montant_verse > montant_total:
+                    return JsonResponse({'status': 'error', 'message': 'Le montant versé est supérieur au total à payer.'})
+
+                # 3. Création du paiement
+                reste_a_payer = montant_total - montant_verse
                 paiement = Paiement.objects.create(
-                    montant_verse=montant_total,
+                    montant_verse=montant_verse,
                     devise=devise,
                     service='PHARMACIE',
-                    caissier=request.user
+                    caissier=request.user,
+                    reste_a_payer=reste_a_payer
                 )
 
-                # 3. Enregistrement des sorties liées au paiement
+                # 4. Enregistrement des sorties (le save() de SortiePharmacie déclenche MouvementStock)
                 for item in panier:
-                    produit = ProduitPharmacie.objects.get(id=item['id'])
+                    lot = LotPharmacie.objects.select_for_update().filter(
+                        produit_id=item['id'], 
+                        quantite_actuelle__gte=int(item['qte'])
+                    ).first()
+                    
                     SortiePharmacie.objects.create(
                         paiement=paiement, 
-                        produit=produit, 
-                        quantite_vendue=int(item['qte'])
+                        lot=lot, 
+                        quantite_vendue=int(item['qte']),
+                        vendu_par=request.user
                     )
 
-            return JsonResponse({'status': 'success', 'message': 'Vente standard validée.'})
+            return JsonResponse({
+                'status': 'success', 
+                'message': 'Vente validée avec succès.',
+                'dette': str(reste_a_payer)
+            })
 
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)})
 
     # GET : Liste des produits
     produits = ProduitPharmacie.objects.annotate(
-        stock_reel=Coalesce(Sum('les_lots__quantite'), 0) - Coalesce(Sum('les_sorties__quantite_vendue'), 0)
+        stock_reel=Sum('les_lots__quantite_actuelle')
     ).order_by('nom')
+    
     role = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
 
     return render(request, 'back-end/pharmacie/enregistrer_vente.html', {
         'produits': produits,
         'taux_actuel': float(ConfigurationHopital.get_taux()),
-        'fonctionKey' : fonctionKey
+        'fonctionKey': fonctionKey
     })
 
 
@@ -3303,7 +3324,7 @@ def enregistrer_vente(request):
 # =============================================================================================================================
 @login_required
 def dashboard_ventes(request):
-    # 1. Gestion du filtre de période (Par défaut: jour)
+    # 1. Gestion du filtre de période
     periode = request.GET.get('periode', 'jour')
     periodes_map = {
         'jour': TruncDay('date_paiement'),
@@ -3312,48 +3333,60 @@ def dashboard_ventes(request):
     }
     trunc_func = periodes_map.get(periode, TruncDay('date_paiement'))
 
-    # 2. Stats regroupées par période (ex: Somme par jour)
-    stats_ventes = Paiement.objects.annotate(date_groupee=trunc_func) \
-        .values('date_groupee', 'devise') \
-        .annotate(total_periode=Sum('montant_verse')) \
-        .order_by('-date_groupee')
-
-    # 3. Total Général (Somme de toutes les ventes depuis le début)
+    # 2. Total Général ventilé par devise
+    # Assure-toi que 'devise' est bien un champ dans ton modèle Paiement
     total_general = Paiement.objects.values('devise') \
         .annotate(grand_total=Sum('montant_verse'))
 
-    # 4. KPIs du jour
+    # 3. Ventes par Utilisateur (Traçabilité)
+    ventes_par_utilisateur = Paiement.objects.values('les_sorties__vendu_par__username', 'devise') \
+        .annotate(total_vendu=Sum('montant_verse')) \
+        .order_by('-total_vendu')
+
+    # 4. Stats des ventes regroupées par période et devise
+    stats_ventes = Paiement.objects.annotate(date_groupee=trunc_func) \
+        .values('date_groupee', 'devise') \
+        .annotate(total_periode=Sum('montant_verse')) \
+        .order_by('-date_groupee', 'devise')
+
+    # 5. Top 5 Produits par Bénéfice
+    top_benefices = SortiePharmacie.objects.values('lot__produit__nom') \
+        .annotate(
+            benefice_total=Sum(
+                (F('lot__produit__prix_vente_unitaire') - F('lot__produit__prix_achat_unitaire')) 
+                * F('quantite_vendue'),
+                output_field=DecimalField()
+            )
+        ).order_by('-benefice_total')[:5]
+
+    # 6. Dettes en cours
+    dettes_en_cours = Paiement.objects.filter(reste_a_payer__gt=0) \
+        .prefetch_related('les_sorties__vendu_par')
+
+    # 7. Stocks critiques
+    produits_critiques = LotPharmacie.objects.filter(quantite_actuelle__lt=5) \
+        .select_related('produit')
+
+    # 8. KPIs du jour
     aujourdhui = timezone.now().date()
-    ventes_du_jour = Paiement.objects.filter(date_paiement__date=aujourdhui) \
-        .values('devise').annotate(total=Sum('montant_verse'))
-    
     nombre_ventes = Paiement.objects.filter(date_paiement__date=aujourdhui).count()
 
-    # 5. Top 5 Produits
-    top_produits = SortiePharmacie.objects.values('produit__nom') \
-        .annotate(total_vendu=Sum('quantite_vendue')).order_by('-total_vendu')[:5]
-
-    # 6. Stocks critiques
-    produits_critiques = ProduitPharmacie.objects.annotate(
-        stock_reel=Coalesce(Sum('les_lots__quantite'), 0) - Coalesce(Sum('les_sorties__quantite_vendue'), 0)
-    ).filter(stock_reel__lt=5)
-
-    # 7. Gestion sécurisée des rôles (fonctionKey)
+    # 9. Rôle
     role_obj = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role_obj.fonctionKey.roleName if (role_obj and role_obj.fonctionKey) else "Invité"
 
     context = {
         'stats_ventes': stats_ventes,
         'total_general': total_general,
-        'periode_actuelle': periode,
-        'ventes_jour': ventes_du_jour,
-        'nb_ventes': nombre_ventes,
-        'top_produits': top_produits,
+        'ventes_par_utilisateur': ventes_par_utilisateur,
+        'top_benefices': top_benefices,
+        'dettes_en_cours': dettes_en_cours,
         'produits_critiques': produits_critiques,
+        'nb_ventes': nombre_ventes,
+        'periode_actuelle': periode,
         'fonctionKey': fonctionKey
     }
     return render(request, 'back-end/pharmacie/dashboard.html', context)
-
 
 # 
 # ==================================================================================================
@@ -3361,9 +3394,9 @@ def dashboard_ventes(request):
 # ==================================================================================================
 @login_required
 def liste_ventes(request):
-    # Filtrage par service pour ne récupérer QUE les paiements de la pharmacie
+    # Correction ici : le chemin correct est les_sorties -> lot -> produit
     ventes = Paiement.objects.filter(service='PHARMACIE') \
-                             .prefetch_related('les_sorties__produit') \
+                             .prefetch_related('les_sorties__lot__produit') \
                              .order_by('-date_paiement')
 
     role_obj = Fonction.objects.filter(userKey=request.user).first()
@@ -3372,7 +3405,7 @@ def liste_ventes(request):
     return render(request, 'back-end/pharmacie/liste_ventes.html', {
         'ventes': ventes,
         'fonctionKey': fonctionKey 
-    }) 
+    })
 
 #
 # ===================================================================================================
@@ -3381,12 +3414,17 @@ def liste_ventes(request):
 @login_required
 def details_facture(request, vente_id):
     facture = get_object_or_404(Paiement, id=vente_id)
-    details = facture.les_sorties.select_related('produit').all()
+    details = facture.les_sorties.select_related('lot__produit').all()
     
-    # On ajoute les propriétés de calcul directement dans la liste avant l'envoi
     for item in details:
-        # On suppose que ton modèle produit a un champ prix_vente
-        item.prix_unitaire = item.produit.prix_vente 
+        # Données du médicament
+        produit = item.lot.produit
+        item.nom_medicament = produit.nom
+        item.forme_medicament = produit.forme
+        item.dosage_medicament = produit.dosage
+        
+        # Calculs financiers
+        item.prix_unitaire = produit.prix_vente_unitaire 
         item.total_ligne = item.prix_unitaire * item.quantite_vendue
         
     context = {
@@ -3403,19 +3441,19 @@ def details_facture(request, vente_id):
 def valider_vente(request):
     if request.method == 'POST':
         try:
-            # Récupérer les données envoyées par le JavaScript
             data = json.loads(request.body)
             panier = data.get('panier')
             devise = data.get('devise')
 
-            # 1. Créer le paiement (la facture)
+            # 1. Créer le paiement
             paiement = Paiement.objects.create(devise=devise)
 
-            # 2. Enregistrer chaque produit du panier
+            # 2. Enregistrer les sorties en utilisant le lot
             for item in panier:
                 SortiePharmacie.objects.create(
                     paiement=paiement,
-                    produit_id=item['produit_id'],
+                    # ICI : utilise 'lot_id' au lieu de 'produit_id'
+                    lot_id=item['lot_id'], 
                     quantite_vendue=item['quantite']
                 )
             
@@ -4028,5 +4066,40 @@ def liste_sessions_infirmier(request):
         'sessions': sessions,
         'fonctionKey': fonctionKey    
     })
+
+#
+# ===============================================================================================
+# PAIEMENT DES DETTES COTE VENTE MEDICAMENT 
+# ===============================================================================================
+@login_required
+def ajouter_paiement_dette(request, paiement_id):
+    paiement = get_object_or_404(Paiement, id=paiement_id)
+    
+    # On récupère le taux actuel (depuis ton modèle de configuration)
+    taux = Decimal(str(ConfigurationHopital.get_taux()))
+
+    if request.method == 'POST':
+        montant_saisi = Decimal(str(request.POST.get('montant')))
+        devise_paiement = request.POST.get('devise_paiement') # USD ou CDF
+
+        # 1. Conversion du montant saisi en USD (la devise de la vente)
+        montant_en_usd = montant_saisi
+        if devise_paiement == 'CDF':
+            montant_en_usd = montant_saisi / taux
+
+        # 2. Vérification
+        if montant_en_usd > paiement.reste_a_payer:
+            messages.error(request, f"Le montant saisi ({montant_saisi} {devise_paiement}) dépasse la dette restante en USD.")
+            return redirect('liste_ventes')
+
+        # 3. Sauvegarde
+        with transaction.atomic():
+            paiement.reste_a_payer -= montant_en_usd
+            paiement.montant_verse += montant_en_usd
+            paiement.save()
+            
+            messages.success(request, "Dette mise à jour avec succès.")
+            
+        return redirect('liste_ventes')
 
 

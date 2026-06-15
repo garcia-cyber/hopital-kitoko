@@ -101,19 +101,70 @@ admin.site.register(Maternite)
 admin.site.register(ConsultationMaternite)
 
 # 6. PHARMACIE ET AUTRES ===============================================
+
+
 @admin.register(ProduitPharmacie)
 class ProduitPharmacieAdmin(admin.ModelAdmin):
-    list_display = ('nom', 'dosage', 'prix_vente', 'stock_total')
+    list_display = (
+        'nom',
+        'forme',
+        'dosage',
+        'categorie',
+        'prix_achat_unitaire',
+        'prix_vente_unitaire',
+        'devise',
+        'date_enregistrement'
+    )
+    list_filter = ('categorie', 'devise')
+    search_fields = ('nom', 'forme', 'dosage')
+    ordering = ('nom',)
+
+
+
+
+@admin.register(MouvementStock)
+class MouvementStockAdmin(admin.ModelAdmin):
+    list_display = (
+        'lot',
+        'type_mouvement',
+        'quantite_unites',
+        'effectue_par',
+        'date_mouvement'
+    )
+    list_filter = (
+        'type_mouvement',
+        'date_mouvement'
+    )
+    search_fields = (
+        'lot__produit__nom',
+        'lot__numero_lot'
+    )
+    ordering = ('-date_mouvement',)
+
 
 @admin.register(SortiePharmacie)
 class SortiePharmacieAdmin(admin.ModelAdmin):
-    list_display = ('produit', 'quantite_vendue', 'date_sortie', 'get_montant_paiement')
+    list_display = (
+        'paiement',
+        'lot',
+        'quantite_vendue',
+        'vendu_par',
+        'date_sortie'
+    )
+    list_filter = ('date_sortie',)
+    search_fields = (
+        'lot__produit__nom',
+        'lot__numero_lot'
+    )
+    ordering = ('-date_sortie',)
 
-    def get_montant_paiement(self, obj):
-        return f"{obj.paiement.montant_verse} {obj.paiement.devise}"
-    get_montant_paiement.short_description = 'Montant Total'
-
-admin.site.register(LotPharmacie)
+@admin.register(LotPharmacie)
+class LotPharmacieAdmin(admin.ModelAdmin):
+    # 'quantite_actuelle' est affiché ici pour voir si le stock est bien à 16
+    list_display = ('produit', 'numero_lot', 'quantite_initiale', 'quantite_actuelle', 'date_peremption')
+    list_filter = ('produit',)
+    readonly_fields = ('quantite_actuelle',)
+    
 admin.site.register(Prestation)
 admin.site.register(Deces)
 admin.site.register(SoinOccasionnel)

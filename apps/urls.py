@@ -164,6 +164,7 @@ urlpatterns =[
     path('ventes/', views.liste_ventes, name='liste_ventes'),
     path('facture/<int:vente_id>/', views.details_facture, name='details_facture'),
     path('vente/valider/', views.valider_vente, name='valider_vente'),
+    path('payer-dette/<int:paiement_id>/', views.ajouter_paiement_dette, name='ajouter_paiement_dette'),
 
 
     # =====================================

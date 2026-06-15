@@ -7,6 +7,7 @@ from django.db.models import Sum
 from django.core.exceptions import ValidationError
 from django.conf import settings 
 
+
 # 1. CONFIGURATION ET BASE =============================================
 
 class ConfigurationHopital(models.Model):
@@ -747,82 +748,114 @@ class SoinOccasionnel(models.Model):
         return f"Soin: {self.nom_patient} - {self.prestation.libelle}"
 
 
-
-# =================================================================================
+# =======================================================================================================================
 #
 # GESTION DE PHARMACIE 
+#
+# =======================================================================================================================
 
 class ProduitPharmacie(models.Model):
-    # Identité du médicament
+    DEVISE_CHOICES = [('USD', 'USD'), ('CDF', 'CDF')]
+    
     nom = models.CharField(max_length=200, verbose_name="Nom commercial / DCI")
-    forme = models.CharField(max_length=100, help_text="Ex: Comprimé, Sirop, Ampoule, Pommade")
-    dosage = models.CharField(max_length=50, help_text="Ex: 500mg, 250mg/5ml")
-    
-    # Organisation
-    categorie = models.CharField(max_length=100, verbose_name="Catégorie (ex: Antibiotique)")
-    
-    # Gestion financière et stock
-    prix_vente = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Prix de vente unitaire")
-    
-    # Renommé en stock_initial pour ne pas entrer en conflit avec la propriété ci-dessous
-    stock_initial = models.PositiveIntegerField(default=0, verbose_name="Stock total actuel")
+    forme = models.CharField(max_length=100)
+    dosage = models.CharField(max_length=50)
+    categorie = models.CharField(max_length=100)
+    unites_par_carton = models.PositiveIntegerField(default=1)
+    devise = models.CharField(max_length=3, choices=DEVISE_CHOICES, default='USD')
+    prix_achat_unitaire = models.DecimalField(max_digits=12, decimal_places=2)
+    prix_vente_unitaire = models.DecimalField(max_digits=12, decimal_places=2)
+    enregistre_par = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    date_enregistrement = models.DateTimeField(auto_now_add=True)
+    stock_initial = models.PositiveIntegerField(default=0)
 
     class Meta:
         unique_together = ('nom', 'forme', 'dosage')
-        verbose_name = "Produit Pharmaceutique"
 
     def __str__(self):
-        return f"{self.nom} - {self.forme} - {self.dosage}"
+        return f"{self.nom} - {self.dosage}"
 
     @property
-    def stock_total(self):
-        """
-        Si la vue a annoté le produit avec 'stock_reel', on l'utilise.
-        Sinon, on retourne la valeur de base 'stock_initial'.
-        """
-        return getattr(self, 'stock_reel', self.stock_initial)
+    def prix_vente_cdf(self):
+        return self.prix_vente_unitaire * ConfigurationHopital.get_taux()
 
-    @property
-    def prix_cdf(self):
-        """Calcule le prix en CDF basé sur le taux actuel."""
-        return self.prix_vente * ConfigurationHopital.get_taux()
-
-    @property
-    def valeur_totale_usd(self):
-        """Calcule la valeur totale du stock en USD en utilisant la propriété stock_total."""
-        return self.prix_vente * self.stock_total
-
-
+# --- 3. LOT ---
 class LotPharmacie(models.Model):
-    #produit = models.ForeignKey(ProduitPharmacie, on_delete=models.CASCADE, related_name='lots')
-    quantite = models.PositiveIntegerField(default=0)
+    produit = models.ForeignKey(ProduitPharmacie, related_name='les_lots', on_delete=models.CASCADE)
+    numero_lot = models.CharField(max_length=100)
+    quantite_initiale = models.PositiveIntegerField(default=0)
+    quantite_actuelle = models.PositiveIntegerField(default=0)
     date_peremption = models.DateField()
     date_entree = models.DateField(auto_now_add=True)
-    produit = models.ForeignKey(ProduitPharmacie, related_name='les_lots', on_delete=models.CASCADE)
-    
+
+    def save(self, *args, **kwargs):
+        # Si c'est la création d'un nouveau lot, on synchronise la quantité actuelle
+        if not self.pk:
+            self.quantite_actuelle = self.quantite_initiale
+        super().save(*args, **kwargs)
+
+    class Meta:
+        ordering = ['date_peremption']
 
     def __str__(self):
-        return f"{self.produit.nom} - Exp: {self.date_peremption}"
+        return f"{self.produit.nom} | Lot: {self.numero_lot} | Stock: {self.quantite_actuelle}"
 
+# --- 4. MOUVEMENT DE STOCK ---
+class MouvementStock(models.Model):
+    TYPE_MOUVEMENT = (('ENTREE', 'Entrée'), ('SORTIE', 'Sortie'), ('AJUSTEMENT', 'Ajustement'))
+    
+    lot = models.ForeignKey(LotPharmacie, on_delete=models.PROTECT, related_name='mouvements')
+    type_mouvement = models.CharField(max_length=20, choices=TYPE_MOUVEMENT)
+    quantite_unites = models.IntegerField()
+    effectue_par = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    date_mouvement = models.DateTimeField(auto_now_add=True)
 
+    def save(self, *args, **kwargs):
+        self.lot.quantite_actuelle += self.quantite_unites
+        self.lot.save()
+        super().save(*args, **kwargs)
+
+# --- 5. SORTIE PHARMACIE ---
 class SortiePharmacie(models.Model):
-    # CHANGEMENT ICI : ForeignKey permet d'avoir plusieurs lignes liées au même paiement
-    paiement = models.ForeignKey(
-        'Paiement', 
-        on_delete=models.CASCADE, 
-        related_name='les_sorties' # Tu peux renommer related_name ici
-    )
-    produit = models.ForeignKey(
-        ProduitPharmacie, 
-        on_delete=models.CASCADE, 
-        related_name='les_sorties'
-    )
+    paiement = models.ForeignKey('Paiement', on_delete=models.CASCADE, related_name='les_sorties')
+    lot = models.ForeignKey('LotPharmacie', on_delete=models.PROTECT, related_name='sorties')
     quantite_vendue = models.PositiveIntegerField()
     date_sortie = models.DateTimeField(auto_now_add=True)
+    vendu_par = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+
+    def save(self, *args, **kwargs):
+        # 1. Vérification de sécurité avant toute opération
+        if self.lot.quantite_actuelle < self.quantite_vendue:
+            raise ValueError(f"Stock insuffisant pour le lot {self.lot.numero_lot}. "
+                             f"Disponible: {self.lot.quantite_actuelle}, Demandé: {self.quantite_vendue}")
+
+        # 2. Décrémentation directe du lot (Source de vérité)
+        # On le fait avant de créer le mouvement pour éviter les décalages
+        self.lot.quantite_actuelle -= self.quantite_vendue
+        self.lot.save(update_fields=['quantite_actuelle'])
+
+        # 3. Sauvegarde de l'instance de sortie
+        super().save(*args, **kwargs)
+
+        # 4. Création du mouvement d'historique
+        # On utilise des imports locaux si nécessaire pour éviter les erreurs d'import circulaire
+        from .models import MouvementStock
+        MouvementStock.objects.create(
+            lot=self.lot, 
+            type_mouvement='SORTIE', 
+            quantite_unites=-self.quantite_vendue, 
+            effectue_par=self.vendu_par
+        )
 
     def __str__(self):
-        return f"Sortie {self.produit.nom} - {self.quantite_vendue} unités"
+        return f"Sortie {self.quantite_vendue} unités de {self.lot.produit.nom} le {self.date_sortie}"
 
+
+# ******************************************************************************************************************** 
+# 
+# FIN DE LA PARTIE PHARMACIE 
+#
+# *********************************************************************************************************************
 
 
 class BlocOperatoire(models.Model):
