@@ -11,6 +11,7 @@
         .fin-val { display: block; font-size: 0.85rem; }
         .text-reduction { color: #dc3545; }
         .text-verse { color: #28a745; }
+        .btn-print { margin-top: 8px; font-size: 0.75rem; display: inline-block; }
     </style>
 </head>
 <body>
@@ -31,7 +32,7 @@
                                         <th>Patient</th>
                                         <th>Examens</th>
                                         <th>Détails Financiers</th>
-                                        <th>Reste à Payer</th>
+                                        <th>État Financier</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
@@ -59,6 +60,11 @@
                                                     (<small>{% widthratio d.reste_usd 1 taux %} CDF</small>)
                                                 </span>
                                             {% endif %}
+                                            
+                                            <br>
+                                            <a href="{% url 'imprimer_rapport_complet' d.id %}" target="_blank" class="btn btn-sm btn-info btn-print">
+                                                <i class="fa fa-print"></i> Imprimer Reçu
+                                            </a>
                                         </td>
                                         <td>
                                             {% if d.reste_usd > 0 %}

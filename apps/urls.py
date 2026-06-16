@@ -203,6 +203,8 @@ urlpatterns =[
     path('historique-technicien/', views.historique_examen_externe_technicien, name='historique_examen_externe_technicien'),
     path('encaisser-examen-externe/<int:demande_id>/', views.encaisser_examen_externe, name='encaisser_examen'),
     path('liste-facturation/', views.liste_facturation, name='liste_facturation'),
+    path('imprimer-rapport/<int:demande_id>/', views.imprimer_rapport_complet, name='imprimer_rapport_complet'),
+
 
 
 

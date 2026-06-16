@@ -4435,3 +4435,21 @@ def liste_facturation(request):
         'taux': taux,
         'fonctionKey': fonctionKey
     })
+
+
+#
+# ===============================================================================================
+# IMPRIMER RESULTAT
+# ===============================================================================================
+@login_required
+def imprimer_rapport_complet(request, demande_id):
+    demande = get_object_or_404(DemandeExamenExterne, id=demande_id)
+    # Récupération des paiements et résultats liés à cette demande
+    paiements = demande.paiements.all()
+    resultats = demande.resultats_examens.all()
+    
+    return render(request, 'back-end/client/imprimer_rapport.html', {
+        'demande': demande,
+        'paiements': paiements,
+        'resultats': resultats,
+    })
