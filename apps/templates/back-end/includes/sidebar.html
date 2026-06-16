@@ -299,6 +299,20 @@
                     <li class="menu-title"> <span>TECHNIQUE / LABO</span> </li>
                     <li><a href="{% url 'liste_examens_techniques' %}"><i class="la la-flask"></i> <span>Examens à réaliser</span></a></li>
                     <li><a href="{% url 'historique_examens' %}"><i class="la la-history"></i> <span>Historique Examens</span></a></li>
+                    <li>
+    <a href="{% url 'liste_examens_technicien' %}">
+        <i class="fa fa-stethoscope"></i> 
+        <span>Examens à externe</span>
+    </a>
+</li>
+
+                <li>
+   <a href="{% url 'historique_examen_externe_technicien' %}">
+    <i class="fa fa-history"></i> <span>Historique Externe</span>
+</a>
+</li>
+
+
                 {% endif %}
 
                 {% if fonctionKey == 'receptionniste' or fonctionKey == 'infirmier' or fonctionKey == 'admin' %}

@@ -198,6 +198,12 @@ urlpatterns =[
     path('client-externe/nouveau/', views.enregistrer_client_externe, name='enregistrer_client_externe'),
     path('client-externe/creer-demande/<int:client_id>/', views.creer_demande_examen, name='creer_demande_examen'),
     path('liste-demandes/', views.liste_demandes_externes, name='liste_demandes_externes'),
+    path('liste-examens/', views.liste_examens_technicien, name='liste_examens_technicien'),
+    path('saisir-rapport/<int:demande_id>/<int:prestation_id>/', views.saisir_rapport, name='saisir_rapport'),
+    path('historique-technicien/', views.historique_examen_externe_technicien, name='historique_examen_externe_technicien'),
+    path('encaisser-examen-externe/<int:demande_id>/', views.encaisser_examen_externe, name='encaisser_examen'),
+    path('liste-facturation/', views.liste_facturation, name='liste_facturation'),
+
 
 
  ]

@@ -961,3 +961,31 @@ class DemandeExamenExterne(models.Model):
 
 
 
+class ExamenExterneResultat(models.Model):
+    # Lien vers la demande globale (le contenant principal)
+    demande = models.ForeignKey(
+        'DemandeExamenExterne', 
+        on_delete=models.CASCADE, 
+        related_name='resultats_examens'
+    )
+    # L'examen spécifique (ex: Hémogramme, Échographie abdominale)
+    prestation = models.ForeignKey('Prestation', on_delete=models.CASCADE)
+    
+    # Détails du résultat
+    statut = models.CharField(
+        max_length=20, 
+        default='EN_ATTENTE', 
+        choices=[('EN_ATTENTE', 'En attente'), ('TERMINE', 'Terminé')]
+    )
+    rapport = models.TextField(verbose_name="Résultat / Rapport d'examen")
+    date_resultat = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Résultat: {self.prestation.libelle} - {self.demande.client.noms}"
+
+    class Meta:
+        verbose_name = "Résultat d'examen externe"
+        verbose_name_plural = "Résultats des examens externes"
+
+
+

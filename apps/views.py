@@ -4190,3 +4190,248 @@ def liste_demandes_externes(request):
         'fonctionKey': fonctionKey
     }
     return render(request, 'back-end/client/liste_demandes.html', context)
+
+
+#
+# ========================================================================================
+# LISTE DE DEMANDE EXTERNE
+# ========================================================================================
+@login_required
+def liste_examens_technicien(request):
+    role_obj = Fonction.objects.filter(userKey=request.user).first()
+    if not role_obj or not role_obj.fonctionKey:
+        return render(request, 'back-end/error.html', {'message': "Accès refusé."})
+
+    # On récupère le nom de sa fonction (ex: "Laborantin", "Radiologue")
+    role_name = role_obj.fonctionKey.roleName.upper()
+    
+    # On définit la catégorie à filtrer selon le rôle
+    # Vérifie bien que ces codes correspondent à tes choix dans Prestation.CATEGORIES
+    cat_cible = None
+    if 'LABO' in role_name: cat_cible = 'LABO'
+    elif 'RADIO' in role_name: cat_cible = 'RADIO'
+    elif 'ECHO' in role_name: cat_cible = 'ECHO'
+
+    # Récupération des demandes qui contiennent au moins une prestation de cette catégorie
+    demandes = DemandeExamenExterne.objects.filter(
+        prestations__categorie=cat_cible
+    ).distinct().order_by('-date_demande')
+
+    historique_technique = []
+
+    for dem in demandes:
+        # On ne garde que les examens de la catégorie du technicien
+        examens_filtres = dem.prestations.filter(categorie=cat_cible)
+        
+        if examens_filtres.exists():
+            historique_technique.append({
+                'id': dem.id,
+                'patient': dem.client.noms,
+                'date': dem.date_demande,
+                'examens': examens_filtres,
+                'statut': dem.statut
+            })
+
+    return render(request, 'back-end/client/liste_examens_technicien.html', {
+        'historique_technique': historique_technique,
+        'fonctionKey': role_obj.fonctionKey.roleName,
+        'cat_cible': cat_cible
+    })
+
+
+#
+# =========================================================================================================
+# RESULTAT EXAMEN 
+# =========================================================================================================
+@login_required
+def saisir_rapport(request, demande_id, prestation_id):
+    # 1. On récupère la demande globale et la prestation spécifique
+    demande = get_object_or_404(DemandeExamenExterne, id=demande_id)
+    prestation = get_object_or_404(Prestation, id=prestation_id)
+    
+    # 2. On récupère ou on crée l'objet résultat associé à ce couple (demande + prestation)
+    # Cela évite les erreurs si le résultat n'a pas encore été initialisé
+    resultat, created = ExamenExterneResultat.objects.get_or_create(
+        demande=demande,
+        prestation=prestation,
+        defaults={'rapport': '', 'statut': 'EN_ATTENTE'}
+    )
+    
+    # 3. Traitement du formulaire
+    if request.method == 'POST':
+        rapport_texte = request.POST.get('rapport')
+        
+        # Enregistrement des données
+        resultat.rapport = rapport_texte
+        resultat.statut = 'TERMINE'  # On valide l'examen
+        resultat.save()
+        
+        # Optionnel : Vérification globale pour passer la demande en TERMINE si tous les examens sont faits
+        # Si tu veux que la demande passe en "TERMINE" globalement quand tous les examens le sont :
+        # if not demande.resultats_examens.filter(statut='EN_ATTENTE').exists():
+        #     demande.statut = 'TERMINE'
+        #     demande.save()
+            
+        return redirect('liste_examens_technicien')
+        
+    # 4. Affichage de la page
+
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    return render(request, 'back-end/client/saisir_rapport.html', {
+        'demande': demande,
+        'prestation': prestation,
+        'resultat': resultat ,
+        'fonctionKey' : fonctionKey
+    })
+
+#
+# ========================================================================================================
+# HISTORIQUE DES RESULTATS EXTERNE 
+# ========================================================================================================
+@login_required
+def historique_examen_externe_technicien(request):
+    # 1. Vérification du rôle
+    role_obj = Fonction.objects.filter(userKey=request.user).first()
+    if not role_obj or not role_obj.fonctionKey:
+        return render(request, 'back-end/error.html', {'message': "Accès refusé."})
+
+    role_name = role_obj.fonctionKey.roleName.upper()
+    cat_cible = 'LABO' if 'LABO' in role_name else 'RADIO' if 'RADIO' in role_name else 'ECHO'
+
+    # 2. Récupération des demandes
+    demandes = DemandeExamenExterne.objects.filter(
+        prestations__categorie=cat_cible
+    ).distinct().order_by('-date_demande')
+
+    historique_technique = []
+
+    for dem in demandes:
+        # On récupère tous les examens de la demande
+        tous_les_examens = dem.prestations.all() 
+        
+        details_examens = []
+        for p in tous_les_examens:
+            # On cherche le résultat pour cette prestation précise
+            res = ExamenExterneResultat.objects.filter(demande=dem, prestation=p).first()
+            
+            details_examens.append({
+                'prestation': p,
+                'statut': res.statut if res else 'EN_ATTENTE',
+                'id_resultat': res.id if res else None,
+                'rapport': res.rapport if res else None, # Pour afficher le texte
+                'est_ma_categorie': (p.categorie == cat_cible)
+            })
+
+        historique_technique.append({
+            'id': dem.id,
+            'patient': dem.client.noms,
+            'date': dem.date_demande,
+            'details': details_examens
+        })
+
+    return render(request, 'back-end/client/historique_examen_externe_technicien.html', {
+        'historique_technique': historique_technique,
+        'fonctionKey': role_obj.fonctionKey.roleName,
+        'cat_cible': cat_cible
+    })
+
+# 
+# ==================================================================================
+# PAIEMENT DES L'EXAMEN EXTERNE
+# ==================================================================================
+@login_required
+def encaisser_examen_externe(request, demande_id):
+    demande = get_object_or_404(DemandeExamenExterne, id=demande_id)
+    # Récupération du taux et conversion en Decimal pour la précision financière
+    taux = Decimal(str(ConfigurationHopital.get_taux()))
+    
+    # Gestion du rôle utilisateur
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+    
+    # Calcul du reste à payer
+    stats = demande.paiements.aggregate(
+        total_verse=Sum('montant_verse'),
+        total_reduit=Sum('montant_reduction')
+    )
+    reste_a_payer = demande.total_a_payer - ((stats['total_verse'] or 0) + (stats['total_reduit'] or 0))
+
+    if request.method == 'POST':
+        devise = request.POST.get('devise') 
+        montant_saisi = Decimal(request.POST.get('montant_verse', 0))
+        reduction = Decimal(request.POST.get('montant_reduction', 0))
+        
+        # Conversion du montant versé en USD si la devise est en CDF
+        montant_verse_usd = (montant_saisi / taux) if devise == 'CDF' else montant_saisi
+        
+        # VÉRIFICATION : Le total ne doit pas dépasser le reste à payer (avec petite tolérance)
+        if (montant_verse_usd + reduction) > (reste_a_payer + Decimal('0.01')):
+            return render(request, 'back-end/client/encaisser_examen.html', {
+                'demande': demande, 
+                'reste_a_payer': reste_a_payer, 
+                'taux': taux,
+                'fonctionKey': fonctionKey,
+                'prestations': demande.prestations.all(),
+                'error': f"Le total dépasse le reste à payer ({reste_a_payer:.2f} $)."
+            })
+
+        # Enregistrement du paiement
+        Paiement.objects.create(
+            demande_examen_externe=demande,
+            service='EXAMEN_EXTERNE',
+            montant_verse=montant_verse_usd,
+            montant_reduction=reduction,
+            caissier=request.user,
+            devise=devise
+        )
+        return redirect('liste_facturation')
+
+    # Rendu initial de la page
+    return render(request, 'back-end/client/encaisser_examen.html', {
+        'demande': demande,
+        'reste_a_payer': reste_a_payer,
+        'taux': taux, 
+        'fonctionKey': fonctionKey,
+        'prestations': demande.prestations.all()
+    })
+
+#
+# ======================================================================================
+# LISTE DE FACTURATION 
+# ======================================================================================
+@login_required
+def liste_facturation(request):
+    # Récupération du taux et conversion en float pour le calcul
+    taux_val = ConfigurationHopital.get_taux()
+    taux = float(taux_val) if taux_val else 1.0
+    
+    # Définition d'un champ décimal commun pour éviter les erreurs de type
+    decimal_field = DecimalField(max_digits=12, decimal_places=2)
+
+    # Calcul des totaux avec cast explicite pour chaque opération
+    demandes = DemandeExamenExterne.objects.annotate(
+        total_verse=Coalesce(
+            Sum('paiements__montant_verse', output_field=decimal_field), 
+            Value(0.0, output_field=decimal_field)
+        ),
+        total_reduit=Coalesce(
+            Sum('paiements__montant_reduction', output_field=decimal_field), 
+            Value(0.0, output_field=decimal_field)
+        )
+    ).annotate(
+        reste_usd=ExpressionWrapper(
+            F('total_a_payer') - (F('total_verse') + F('total_reduit')),
+            output_field=decimal_field
+        )
+    ).prefetch_related('prestations').order_by('-date_demande')
+
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+    
+    return render(request, 'back-end/client/liste_facturation.html', {
+        'demandes': demandes,
+        'taux': taux,
+        'fonctionKey': fonctionKey
+    })

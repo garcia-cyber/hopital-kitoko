@@ -302,3 +302,18 @@ class DemandeExamenExterneAdmin(admin.ModelAdmin):
 
     # Optionnel : Calculer le total automatiquement si tu veux qu'il s'affiche
     readonly_fields = ('total_a_payer',)
+
+# ====================================================================================
+#
+#
+class ExamenExterneResultatInline(admin.TabularInline):
+    model = ExamenExterneResultat
+    extra = 0  # Ne pas ajouter de lignes vides inutiles
+    readonly_fields = ('date_resultat',)
+
+
+@admin.register(ExamenExterneResultat)
+class ExamenExterneResultatAdmin(admin.ModelAdmin):
+    list_display = ('demande', 'prestation', 'statut', 'date_resultat')
+    list_filter = ('statut', 'prestation__categorie')
+    search_fields = ('demande__client__noms', 'prestation__libelle')
