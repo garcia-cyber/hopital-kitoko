@@ -4479,3 +4479,45 @@ def imprimer_rapport_complet(request, demande_id):
         'paiements': paiements,
         'resultats': resultats,
     })
+
+
+
+#
+# ==================================================================================================
+# IMPRIMER ORDONNANCE 
+# ==================================================================================================
+@login_required
+def imprimer_ordonnance_urgence(request, pk):
+    ordonnance = get_object_or_404(
+        Ordonnance.objects.select_related('consultation__triage__patient', 'consultation__medecin').prefetch_related('medicaments'),
+        pk=pk
+    )
+    return render(request, 'back-end/medecin/imprimer_ordonnance.html', {'ord': ordonnance})
+
+#
+# ==============================================================================================
+# MODIFICATION ORDONNACE D'URGENCE
+# ==============================================================================================
+@login_required
+def modifier_ordonnance_urgence(request, pk):
+    ordonnance = get_object_or_404(
+        Ordonnance.objects.select_related('consultation__triage__patient', 'consultation__medecin'),
+        pk=pk
+    )
+
+    if request.method == 'POST':
+        form = OrdonnanceFormUrgence(request.POST, instance=ordonnance)
+        if form.is_valid():
+            form.save()
+            return redirect('liste_ordonnances_urgence')
+    else:
+        form = OrdonnanceFormUrgence(instance=ordonnance)
+
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    return render(request, 'back-end/medecin/modifier_ordonnance_urgence.html', {
+        'form': form,
+        'ordonnance': ordonnance,
+        'fonctionKey': fonctionKey
+    })

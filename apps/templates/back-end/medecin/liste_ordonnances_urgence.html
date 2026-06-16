@@ -111,9 +111,13 @@
                                             <a href="{% url 'detail_consultation_view' ord.consultation.id %}" class="btn btn-sm btn-outline-primary">
                                                 <i class="fa fa-eye"></i> Voir consultation
                                             </a>
-                                            <a href="#" class="btn btn-sm btn-outline-secondary">
+                                            <a href="{% url 'imprimer_ordonnance' ord.id%}" target="_blank" class="btn btn-sm btn-outline-secondary">
                                                 <i class="fa fa-print"></i> Imprimer
                                             </a>
+
+                                            <a href="{% url 'modifier_ordonnance' ord.id %}" class="btn btn-sm btn-outline-warning">
+    <i class="fa fa-edit"></i> Modifier
+</a>
                                         </td>
                                     </tr>
                                     {% empty %}

@@ -561,3 +561,17 @@ class DemandeExamenForm(forms.ModelForm):
             # Utilisation de 'selectmultiple' pour permettre de choisir plusieurs examens
             'prestations': forms.SelectMultiple(attrs={'class': 'form-control select2'}),
         }
+
+
+# ============================================================
+#
+#
+
+class OrdonnanceFormUrgence(forms.ModelForm):
+    class Meta:
+        model = Ordonnance
+        fields = ['diagnostic', 'observation']  # ⚠️ pas de medicaments ici
+        widgets = {
+            'diagnostic': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'observation': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }

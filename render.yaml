@@ -3,7 +3,7 @@ services:
     name: apps # Remplace par le nom de ton projet
     runtime: python
     buildCommand: ./build.sh
-    startCommand: gunicorn conf.wsgi:application
+    startCommand: gunicorn conf.wsgi:application --bind 0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.13.0
