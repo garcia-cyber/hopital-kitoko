@@ -4170,3 +4170,23 @@ def creer_demande_examen(request, client_id):
         'prestations_radio': Prestation.objects.filter(categorie='RADIO'),
         'prestations_echo': Prestation.objects.filter(categorie='ECHO'),
     })
+
+#
+# ==================================================================================
+# LISTE DE DEMANDE EXAMEN
+# ==================================================================================
+@login_required
+def liste_demandes_externes(request):
+    # CORRECTION : Remplacement de 'date_creation' par 'date_demande'
+    # pour correspondre à la structure de votre modèle.
+    demandes = DemandeExamenExterne.objects.all().order_by('-date_demande')
+
+    # 1. Gestion des rôles
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+    
+    context = {
+        'demandes': demandes,
+        'fonctionKey': fonctionKey
+    }
+    return render(request, 'back-end/client/liste_demandes.html', context)

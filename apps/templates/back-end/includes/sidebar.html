@@ -134,6 +134,11 @@
         <span>Nouvel Examen Externe</span>
     </a>
 </li>
+<li class="{% if request.resolver_match.url_name == 'liste_demandes_externes' %}active{% endif %}">
+    <a href="{% url 'liste_demandes_externes' %}">
+        <i class="fa fa-list"></i> <span>Liste des demandes</span>
+    </a>
+</li>
 
                     <li class="menu-title"> 
                         <span>Gestion Médicale</span>

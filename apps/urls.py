@@ -197,6 +197,7 @@ urlpatterns =[
     #
     path('client-externe/nouveau/', views.enregistrer_client_externe, name='enregistrer_client_externe'),
     path('client-externe/creer-demande/<int:client_id>/', views.creer_demande_examen, name='creer_demande_examen'),
+    path('liste-demandes/', views.liste_demandes_externes, name='liste_demandes_externes'),
 
 
  ]
