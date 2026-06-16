@@ -164,7 +164,7 @@ class LotPharmacieAdmin(admin.ModelAdmin):
     list_display = ('produit', 'numero_lot', 'quantite_initiale', 'quantite_actuelle', 'date_peremption')
     list_filter = ('produit',)
     readonly_fields = ('quantite_actuelle',)
-    
+
 admin.site.register(Prestation)
 admin.site.register(Deces)
 admin.site.register(SoinOccasionnel)
@@ -274,3 +274,31 @@ class LigneFactureAdmin(admin.ModelAdmin):
     list_display = ('session', 'prestation', 'quantite', 'prix_facture')
     readonly_fields = ('prix_facture',)
 
+# ======================================================================================
+# 
+#
+# INFORMATION DU CLIENT EXTERNE 
+
+@admin.register(ClientExterne)
+class ClientExterneAdmin(admin.ModelAdmin):
+    list_display = ('noms', 'sexe','poids','age','telephone', 'date_enregistrement')
+    search_fields = ('noms', 'telephone')
+    list_filter = ('date_enregistrement',)
+    ordering = ('-date_enregistrement',)
+
+@admin.register(DemandeExamenExterne)
+class DemandeExamenExterneAdmin(admin.ModelAdmin):
+    list_display = ('client', 'get_prestations', 'total_a_payer', 'statut', 'date_demande')
+    list_filter = ('statut', 'date_demande')
+    search_fields = ('client__noms', 'client__telephone')
+    
+    # Permet de voir facilement les prestations sélectionnées
+    filter_horizontal = ('prestations',) 
+    
+    # Méthode pour afficher la liste des prestations dans la table admin
+    def get_prestations(self, obj):
+        return ", ".join([p.libelle for p in obj.prestations.all()])
+    get_prestations.short_description = 'Examens demandés'
+
+    # Optionnel : Calculer le total automatiquement si tu veux qu'il s'affiche
+    readonly_fields = ('total_a_payer',)

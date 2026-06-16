@@ -192,4 +192,11 @@ urlpatterns =[
     path('triage/', views.liste_sessions_infirmier, name='liste_sessions_infirmier'),
 
 
+    # ======================================
+    # CLIENT EXTERNE 
+    #
+    path('client-externe/nouveau/', views.enregistrer_client_externe, name='enregistrer_client_externe'),
+    path('client-externe/creer-demande/<int:client_id>/', views.creer_demande_examen, name='creer_demande_examen'),
+
+
  ]

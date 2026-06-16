@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+    <title>Demande d'examens - Moyanoli Médicale</title>
+    {% include 'back-end/includes/css.html' %}
+    </head>
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/includes/header.html' %}
+        {% include 'back-end/includes/sidebar.html' %}
+        
+        <div class="page-wrapper">
+            <div class="content container-fluid">
+                <div class="page-header">
+                    <div class="row">
+                        <div class="col-sm-12">
+                            <h3 class="page-title">Examens Techniques</h3>
+                            <ul class="breadcrumb">
+                                <li class="breadcrumb-item"><a href="#">Accueil</a></li>
+                                <li class="breadcrumb-item active">Nouvelle demande - {{ client.noms }}</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-8 offset-md-2">
+                        <div class="card shadow-sm">
+                            <div class="card-header bg-white border-bottom">
+                                <h4 class="card-title mb-0">Sélectionner les examens pour {{ client.noms }}</h4>
+                            </div>
+                            <div class="card-body">
+                                <form method="POST">
+                                    {% csrf_token %}
+                                    
+                                    <div class="form-group">
+                                        <label>Examens (Maintenez Ctrl pour en sélectionner plusieurs) <span class="text-danger">*</span></label>
+                                        {{ form.prestations }}
+                                    </div>
+                                    
+                                    <div class="alert alert-info">
+                                        <i class="fa fa-info-circle"></i> Le total sera calculé automatiquement lors de la validation.
+                                    </div>
+
+                                    <div class="submit-section text-center mt-4">
+                                        <a href="{% url 'enregistrer_client_externe' %}" class="btn btn-secondary mr-2">Annuler</a>
+                                        <button type="submit" class="btn btn-primary submit-btn">Générer la demande</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% include 'back-end/includes/js.html' %}
+    
+    <script>
+        $(document).ready(function() {
+            // Si tu utilises select2, décommente la ligne suivante :
+            // $('select[name="prestations"]').select2();
+        });
+    </script>
+</body>
+</html>

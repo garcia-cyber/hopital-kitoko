@@ -166,11 +166,14 @@ class Paiement(models.Model):
         ('ECHOGRAPHIE', 'Échographie'), ('RADIO', 'Radiographie'), ('SOIN', 'Soins'),
         ('MATERNITE', 'Maternité'), ('DECES', 'Actes de décès'), ('EXAMENS', 'Examens'),
         ('CHIRURGIE', 'Chirurgie'), ('CARTE_FIDELITE', 'Achat Carte de Fidélité'), 
-        ('PHARMACIE', 'Pharmacie')
+        ('PHARMACIE', 'Pharmacie'), ('EXAMEN_EXTERNE', 'Examen Externe') # Ajouté pour clarté
     ]
     
     bloc_op = models.ForeignKey('BlocOperatoire', on_delete=models.SET_NULL, null=True, blank=True, related_name='paiements')
     patient = models.ForeignKey('Patient', on_delete=models.CASCADE, null=True, blank=True)
+    # Champ ajouté pour lier au nouveau modèle
+    demande_examen_externe = models.ForeignKey('DemandeExamenExterne', on_delete=models.SET_NULL, null=True, blank=True, related_name='paiements')
+    
     consultation = models.ForeignKey('Consultation', on_delete=models.SET_NULL, null=True, blank=True, related_name='paiements')
     dossier_maternite = models.ForeignKey('Maternite', on_delete=models.SET_NULL, null=True, blank=True, related_name='paiements')
     deces = models.ForeignKey('Deces', on_delete=models.SET_NULL, null=True, blank=True, related_name='paiements')
@@ -201,22 +204,32 @@ class Paiement(models.Model):
 
         # 2. GESTION CENTRALISÉE DE LA SESSION DE SOINS ET DETTES
         if self.session:
-            # Calcul du total dû par le patient pour cette session
-            total_session = self.session.total_a_payer
-            
-            # Somme de tous les paiements et réductions précédents + actuel
             tous_paiements = self.session.paiements.exclude(pk=self.pk)
             total_deja_verse = tous_paiements.aggregate(Sum('montant_verse'))['montant_verse__sum'] or 0
             total_deja_reduit = tous_paiements.aggregate(Sum('montant_reduction'))['montant_reduction__sum'] or 0
             
-            # Calcul du nouveau reste à payer
-            self.reste_a_payer = max(0, total_session - (total_deja_reduit + self.montant_reduction) - (total_deja_verse + self.montant_verse))
-            
-            # Mise à jour état session
+            self.reste_a_payer = max(0, self.session.total_a_payer - (total_deja_reduit + self.montant_reduction) - (total_deja_verse + self.montant_verse))
             self.session.est_payee = (self.reste_a_payer <= 0)
             self.session.save()
 
-        # 3. GESTION MATERNITÉ
+        # 3. GESTION DES EXAMENS EXTERNES
+        if self.demande_examen_externe:
+            # Calcul du total dû pour cette demande spécifique
+            total_due = self.demande_examen_externe.total_a_payer
+            
+            # Somme des paiements déjà effectués pour cette demande
+            paiements_existants = self.demande_examen_externe.paiements.exclude(pk=self.pk)
+            total_deja_verse = paiements_existants.aggregate(Sum('montant_verse'))['montant_verse__sum'] or 0
+            
+            # Mise à jour du reste à payer
+            self.reste_a_payer = max(0, total_due - (total_deja_verse + self.montant_verse))
+            
+            # Mise à jour du statut de la demande
+            if self.reste_a_payer <= 0:
+                self.demande_examen_externe.statut = 'PAYE'
+                self.demande_examen_externe.save()
+
+        # 4. GESTION MATERNITÉ
         if self.service == 'MATERNITE' and self.dossier_maternite:
             if self.reste_a_payer <= 0:
                 self.dossier_maternite.est_paye = True
@@ -224,16 +237,13 @@ class Paiement(models.Model):
 
         super().save(*args, **kwargs)
         
-        # 4. Création automatique de la facture
+        # 5. Création automatique de la facture
         if is_new:
             from .models import Facture
             Facture.objects.create(
                 paiement=self,
                 numero_facture=f"FAC-{timezone.now().strftime('%y%m%d')}-{self.id}"
             )
-
-    def __str__(self):
-        return f"Paiement {self.id} - {self.montant_verse} {self.devise} ({self.get_service_display()})"
 
 # 8. FACTURE =======================================================
 class Facture(models.Model):
@@ -916,6 +926,38 @@ class CompteRenduAccouchement(models.Model):
 
     def __str__(self):
         return f"CR Accouchement - {self.consultation.triage.patient.noms}"
+
+
+# ====================================================================
+class ClientExterne(models.Model):
+    # Juste le nécessaire pour identifier la personne de passage
+    noms = models.CharField(max_length=150, verbose_name="Nom complet")
+    TYPESEXE = [
+        ('M', 'Masculin') , 
+        ('F' , 'Feminin')
+    ]
+    sexe = models.CharField(max_length = 20 , choices = TYPESEXE , blank=True, null=True)
+    poids = models.CharField(max_length = 15 , blank=True, null=True)
+    age = models.CharField(max_length = 15 , blank=True, null=True)
+    telephone = models.CharField(max_length=20, blank=True, null=True)
+    date_enregistrement = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"{self.noms} (Externe)"
+
+class DemandeExamenExterne(models.Model):
+    STATUT_CHOICES = [('EN_ATTENTE', 'En attente'), ('PAYE', 'Payé'), ('TERMINE', 'Terminé')]
+    
+    # On lie à la personne de passage, pas au Patient du système
+    client = models.ForeignKey(ClientExterne, on_delete=models.CASCADE, related_name='demandes')
+    prestations = models.ManyToManyField('Prestation', verbose_name="Examens choisis")
+    
+    total_a_payer = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    statut = models.CharField(max_length=15, choices=STATUT_CHOICES, default='EN_ATTENTE')
+    date_demande = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Demande pour {self.client.noms} - {self.statut}"
 
 
 

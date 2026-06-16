@@ -4113,3 +4113,65 @@ def ajouter_paiement_dette(request, paiement_id):
         return redirect('liste_ventes')
 
 
+# 
+# ===========================================================================================================
+# ENREGISTREMENT DU PATIENT EXTERNE POUR LES EXAMENS 
+# =========================================================================================================== 
+@login_required
+def enregistrer_client_externe(request):
+    if request.method == 'POST':
+        form = ClientExterneForm(request.POST)
+        if form.is_valid():
+            client = form.save()
+            # On redirige vers la création de la demande en passant l'ID du client
+            return redirect('creer_demande_examen', client_id=client.id)
+    else:
+        form = ClientExterneForm()
+    
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    return render(request, 'back-end/client/enregistrer_client.html', {'form': form, 'fonctionKey' : fonctionKey})
+
+
+# 
+# ===========================================================================================================
+# ENREGISTREMENT EXEMAN DU PATIENT EXTERNE 
+# =========================================================================================================== 
+@login_required
+def creer_demande_examen(request, client_id):
+    client = get_object_or_404(ClientExterne, id=client_id)
+    # Récupérer la fonctionKey (si elle est stockée dans la session)
+    fonction_key = request.session.get('fonctionKey')
+    
+    if request.method == 'POST':
+        form = DemandeExamenForm(request.POST)
+        # On filtre ici aussi lors de la soumission pour éviter les erreurs
+        form.fields['prestations'].queryset = Prestation.objects.filter(
+            categorie__in=['LABO', 'ECHO', 'RADIO']
+        )
+        
+        if form.is_valid():
+            demande = form.save(commit=False)
+            demande.client = client
+            demande.save()
+            form.save_m2m()
+            
+            # Calcul du total
+            total = demande.prestations.aggregate(Sum('prix'))['prix__sum'] or 0
+            demande.total_a_payer = total
+            demande.save()
+            
+            return redirect('liste_demandes_externes')
+    else:
+        form = DemandeExamenForm()
+        # Filtrage crucial : on ne montre que Labo, Radio et Écho
+        form.fields['prestations'].queryset = Prestation.objects.filter(
+            categorie__in=['LABO', 'ECHO', 'RADIO']
+        )
+    
+    return render(request, 'back-end/client/creer_demande.html', {
+        'form': form, 
+        'client': client,
+        'fonctionKey': fonction_key # Transmis au template
+    })

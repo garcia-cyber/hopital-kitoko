@@ -530,3 +530,34 @@ class PatientForm(forms.ModelForm):
             'entreprise': forms.Select(attrs={'class': 'form-control'}),
             'service': forms.Select(attrs={'class': 'form-control'}), # Liste déroulante des services
         }
+
+
+
+# ===================================================================
+#
+#
+class ClientExterneForm(forms.ModelForm):
+    class Meta:
+        model = ClientExterne
+        fields = ['noms', 'sexe','poids','age','telephone']
+        widgets = {
+            'noms': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nom complet du client'}),
+            'telephone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Numéro de téléphone'}),
+            'age': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Age du client'}),
+            'sexe' : forms.Select(attrs={'class': 'form-control'}),
+            'poids' : forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'poids'}), 
+        }
+
+
+
+# =================================================================
+#
+#
+class DemandeExamenForm(forms.ModelForm):
+    class Meta:
+        model = DemandeExamenExterne
+        fields = ['prestations']
+        widgets = {
+            # Utilisation de 'selectmultiple' pour permettre de choisir plusieurs examens
+            'prestations': forms.SelectMultiple(attrs={'class': 'form-control select2'}),
+        }
