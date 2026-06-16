@@ -211,10 +211,25 @@
                               <li><a href="{% url 'liste_consultations' %}"><i class="la la-history"></i> <span>Historique Consultations</span></a></li>
                     <li><a href="{% url 'liste_hospitalisations' %}"><i class="la la-bed"></i> <span>Suivi Hospitalisations</span></a></li>
                     <li><a href="{% url 'liste_ordonnances' %}"><i class="la la-file-text"></i> <span>Liste des Ordonnances</span></a></li>
+                    <li>
+    <a href="{% url 'liste_ordonnances_urgence' %}">
+        <i class="la la-notes-medical"></i> 
+        <span>Ordonnances Urgentes</span>
+    </a>
+</li>
                     <li class="{% if request.resolver_match.url_name == 'liste_attente_medecin' %}active{% endif %}">
-                        <a href="{% url 'liste_attente_medecin' %}"><i class="fa fa-clock"></i> <span>Liste d'attente</span></a>
-                    </li>
-                    <li><a href="{% url 'liste_patients_urgence' %}"><i class="fas fa-user-injured"></i> <span>Liste des Patients</span></a></li>
+    <a href="{% url 'liste_attente_medecin' %}">
+        <i class="fas fa-clock"></i> 
+        <span>Liste d'attente</span>
+    </a>
+</li>
+
+<li class="{% if request.resolver_match.url_name == 'liste_patients_urgence' %}active{% endif %}">
+    <a href="{% url 'liste_patients_urgence' %}">
+        <i class="fas fa-user-injured"></i> 
+        <span>Liste des Patients</span>
+    </a>
+</li>
 
                     <li class="menu-title"> 
                         <span>Gestion Médicale</span>

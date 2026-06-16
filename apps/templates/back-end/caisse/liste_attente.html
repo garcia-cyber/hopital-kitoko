@@ -94,7 +94,11 @@
                                                         <small class="text-muted">{{ c.triage.patient.age }} ans</small>
                                                     </td>
                                                     <td>
-                                                        <i class="fa fa-user-md text-primary"></i> Dr. {{ c.medecin.get_full_name|default:c.medecin.username }}
+                                                        {% if c.medecin %}
+                                                            <i class="fa fa-user-md text-primary"></i> Dr. {{ c.medecin.get_full_name|default:c.medecin.username }}
+                                                        {% else %}
+                                                            <i class="fa fa-user-md text-muted"></i> <small>Non assigné</small>
+                                                        {% endif %}
                                                     </td>
                                                     <td>
                                                         <span class="badge badge-warning">
@@ -103,7 +107,7 @@
                                                     </td>
                                                     <td>
                                                         <strong class="text-danger" style="font-size: 16px;">
-                                                            {{ c.reste_a_payer|floatformat:2 }} USD
+                                                            {{ c.total_a_payer|default:"0.00"|floatformat:2 }} USD
                                                         </strong>
                                                     </td>
                                                     <td class="text-right">
@@ -116,7 +120,7 @@
                                                 <tr>
                                                     <td colspan="7" class="text-center text-muted py-5">
                                                         <i class="fa fa-check-circle fa-3x text-success"></i>
-                                                        <h5 class="text-secondary font-weight-normal">La file d'attente est vide</h5>
+                                                        <h5 class="text-secondary font-weight-normal">Aucun examen en attente de paiement</h5>
                                                     </td>
                                                 </tr>
                                                 {% endfor %}

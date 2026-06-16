@@ -1078,13 +1078,17 @@ def liste_consultations_terminees(request):
 # MEDECIN  DETAILS CONSULTATION 
 # ==================================================================================================
 @login_required
-def detail_consultation(request, pk):
-    # On récupère la consultation avec ses relations pour éviter trop de requêtes SQL
+def detail_consultation_view(request, pk):
+    # On récupère la consultation avec ses relations pour optimiser les requêtes
     consultation = get_object_or_404(
-        Consultation.objects.select_related('triage__patient', 'medecin').prefetch_related('examens__prestation'), 
+        Consultation.objects.select_related('triage__patient', 'medecin').prefetch_related('examens__prestation'),
         pk=pk
     )
-    return render(request, 'back-end/medecin/detail_consultation.html', {'c': consultation})
+
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role else None
+
+    return render(request, 'back-end/medecin/detail_consultation.html', {'c': consultation, 'fonctionKey':fonctionKey})
 
 
 # 32
@@ -1102,8 +1106,8 @@ def liste_ordonnances_urgence(request):
         'consultation__triage__patient',
         'consultation__medecin'
     ).prefetch_related(
-        'medicaments' # Utilise le nom exact de ton champ ManyToMany ou Related_name ici
-    ).order_by('-date_prescrite') # CORRECTION ICI
+        'medicaments'
+    ).order_by('-date_prescrite')
 
     # 2. Recherche par nom de patient ou code patient
     if query:
@@ -1132,6 +1136,7 @@ def liste_ordonnances_urgence(request):
         'fonctionKey': fonctionKey
     }
     return render(request, 'back-end/medecin/liste_ordonnances_urgence.html', context)
+
 
 # 33
 # ==================================================================================================
@@ -1220,32 +1225,17 @@ def encaisser_examens_prescrits(request, consultation_id):
 # ==================================================================================================
 @login_required
 def liste_attente_caisse(request):
-    # Annotations avec typage explicite (DecimalField)
-    consultations_a_payer = Consultation.objects.annotate(
-        total_prescrit=Coalesce(
-            Sum('examens__prestation__prix'), 
-            Value(0.00, output_field=DecimalField())
-        ),
-        total_verse=Coalesce(
-            Sum('paiements__montant_verse'), 
-            Value(0.00, output_field=DecimalField())
-        ),
-        total_reductions=Coalesce(
-            Sum('paiements__montant_reduction'), 
-            Value(0.00, output_field=DecimalField())
-        )
+    # 1. On récupère les consultations qui ont des examens
+    # On calcule le total dû uniquement sur les examens liés à la consultation
+    consultations_a_payer = Consultation.objects.filter(
+        examens__isnull=False  # Il faut qu'il y ait des examens
     ).annotate(
-        # Calcul du total réellement couvert (Versements + Réductions)
-        total_couvert=F('total_verse') + F('total_reductions')
-    ).annotate(
-        # Calcul du reste à payer dynamique
-        reste_a_payer=ExpressionWrapper(
-            F('total_prescrit') - F('total_couvert'),
-            output_field=DecimalField(max_digits=12, decimal_places=2)
+        total_a_payer=Coalesce(
+            Sum(F('examens__prestation__prix') * F('examens__quantite')),
+            Value(0.00, output_field=DecimalField())
         )
     ).filter(
-        # On ne garde que les consultations qui ont encore une dette
-        reste_a_payer__gt=0
+        total_a_payer__gt=0  # Seulement ceux qui ont un prix > 0
     ).distinct().order_by('-date_creation')
 
     # Gestion de la recherche
@@ -1256,7 +1246,11 @@ def liste_attente_caisse(request):
             Q(triage__patient__code_patient__icontains=query)
         )
 
-    # Récupération du rôle
+    # Note: J'ai retiré le calcul du reste à payer basé sur les paiements 
+    # car il n'y a pas de lien direct entre Paiement et Consultation pour les examens
+    # dans tes modèles actuels. 
+    # Ton template affichera maintenant le total dû calculé dynamiquement.
+
     role = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role.fonctionKey.roleName if role else None
 
@@ -1281,43 +1275,73 @@ def liste_examens_techniques(request):
     nom_role = role_user.fonctionKey.roleName.lower()
     fonctionKey = role_user.fonctionKey.roleName
 
-    # 2. On récupère les consultations qui ont au moins un paiement "EXAMENS"
+    # 2. Récupération des consultations avec examens
     consultations_payees = Consultation.objects.filter(
-        paiements__service='EXAMENS'
+        examens__isnull=False
     ).distinct().select_related('triage__patient', 'medecin').prefetch_related('examens__prestation')
 
     historique_technique = []
 
     for cons in consultations_payees:
+        patient = cons.triage.patient
         examens_query = cons.examens.all()
         examens_filtrés = []
-        
+
         for exam in examens_query:
-            cat = exam.prestation.categorie
-            
-            # Filtre par rôle du technicien (votre logique originale)
+            cat = str(exam.prestation.categorie).upper()
+
+            # 🔒 Blocage pour patient SIMPLE : examen visible seulement si un paiement existe
+            if patient.type_patient == 'SIMPLE':
+                paiement_examen = Paiement.objects.filter(
+                    patient=patient,
+                    consultation=cons,
+                    service__in=['LABO', 'ECHO', 'RADIO', 'EXAMENS'],
+                    montant_verse__gt=0   # ✅ condition : il a versé quelque chose
+                ).exists()
+                if not paiement_examen:
+                    continue  # Aucun paiement → examen non affiché
+
+            # 🎯 Filtrage par rôle du technicien
             if ('labo' in nom_role and cat == 'LABO') or \
                (('echo' in nom_role or 'echographe' in nom_role) and cat == 'ECHO') or \
                (('radio' in nom_role or 'radiologue' in nom_role) and cat == 'RADIO'):
-                
+
                 examens_filtrés.append({
                     'id_examen': exam.id,
                     'libelle': exam.prestation.libelle,
                     'est_deja_fait': (exam.statut == 'TERMINE')
                 })
 
+        # 4. Ajout du patient si examens filtrés
         if examens_filtrés:
-            # Vérifie si tout est fini pour le bouton
             a_des_examens_en_attente = any(not ex['est_deja_fait'] for ex in examens_filtrés)
-            
+
+            info_pat = {
+                'nom': patient.noms,
+                'code': patient.code_patient,
+                'type': patient.get_type_patient_display(),
+                'genre': patient.get_sexe_display(),
+                'age': patient.age,
+                'info_financiere': None
+            }
+
+            # 💵 Infos financières selon type de patient
+            if patient.type_patient == 'CONVENTIONNE' and patient.entreprise:
+                info_pat['info_financiere'] = f"Entreprise: {patient.entreprise.nom}"
+            elif patient.type_patient == 'FIDELE':
+                info_pat['info_financiere'] = "Patient Fidèle"
+            elif patient.type_patient == 'SIMPLE':
+                info_pat['info_financiere'] = "Examen affiché car paiement partiel effectué"
+
             historique_technique.append({
-                'consultation_id': cons.id, 
-                'patient': cons.triage.patient,
+                'consultation_id': cons.id,
+                'patient': info_pat,
                 'examens': examens_filtrés,
                 'medecin': cons.medecin.username if cons.medecin else "Généraliste",
                 'tout_traite': not a_des_examens_en_attente
             })
 
+    # 5. Rendu de la page
     context = {
         'historique_technique': historique_technique,
         'examens_presents': len(historique_technique) > 0,
@@ -1326,6 +1350,7 @@ def liste_examens_techniques(request):
     }
 
     return render(request, 'back-end/technique/liste_examens_payes.html', context)
+
 
 
 # 37
@@ -2413,41 +2438,36 @@ def liste_entreprises_view(request):
     return render(request, 'back-end/entreprise/liste_entreprises.html', {'entreprises': entreprises, 'fonctionKey':fonctionKey})
 
 
+
+
 #
 # ======================================================================================
 # MEDECIN ORDONNANCE D'URGENCES
 # ======================================================================================
 @login_required
-def enregistrer_ordonnance_urgence(request, patient_id):
-    # On récupère le patient par son ID
-    patient = get_object_or_404(Patient, pk=patient_id)
-    
+def enregistrer_ordonnance_urgence(request, consultation_id):
+    # On récupère la consultation par son ID
+    consultation = get_object_or_404(Consultation, pk=consultation_id)
+    patient = consultation.patient  # grâce à la propriété définie dans ton modèle
+
     if request.method == 'POST':
         diagnostic = request.POST.get('diagnostic')
         observation = request.POST.get('observation')
-        
+
         noms = request.POST.getlist('nom')
         posologies = request.POST.getlist('posologie')
         durees = request.POST.getlist('duree')
 
         with transaction.atomic():
-            # Cas A : Si vous voulez lier à la dernière consultation du patient
-            # consultation = Consultation.objects.filter(triage__patient=patient).latest('date_creation')
-            
-            # Cas B : Création d'une consultation d'urgence si aucune n'est active
-            consultation = Consultation.objects.create(
-                triage=patient.triage_set.latest('id'), # Assurez-vous d'avoir ce lien
-                medecin=request.user,
-                motif_consultation="Urgence médicale"
-            )
-
+            # Création de l’ordonnance liée à la consultation existante
             ordonnance = Ordonnance.objects.create(
                 consultation=consultation,
                 type_ordonnance='URGENCE',
                 diagnostic=diagnostic,
                 observation=observation
             )
-            
+
+            # Ajout des médicaments
             for i in range(len(noms)):
                 if noms[i]:
                     Medicament.objects.create(
@@ -2456,15 +2476,20 @@ def enregistrer_ordonnance_urgence(request, patient_id):
                         posologie=posologies[i],
                         duree=durees[i]
                     )
-        
-        return redirect('detail_patient', pk=patient.pk)
+
+        # Redirection vers la fiche patient après enregistrement
+        #return redirect('detail_patient', pk=patient.pk)
+
+    # Récupération du rôle utilisateur pour l’affichage
     role = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
 
     return render(request, 'back-end/medecin/creer_ordonnance_urgence.html', {
-        'patient': patient ,
-        'fonctionKey' : fonctionKey
+        'patient': patient,
+        'consultation': consultation,
+        'fonctionKey': fonctionKey
     })
+
 
 
 #
@@ -3480,7 +3505,7 @@ def valider_vente(request):
 # ===============================================================================================
 @login_required
 def service_destinataire_view(request):
-    # 1. GESTION DE LA VALIDATION (Pas de changement)
+    # 1. GESTION DE LA VALIDATION
     if request.method == 'POST' and request.POST.get('orientation_id'):
         orientation = get_object_or_404(Orientation, id=request.POST.get('orientation_id'))
         orientation.est_admis = True
@@ -3491,25 +3516,26 @@ def service_destinataire_view(request):
     role_obj = Fonction.objects.filter(userKey=request.user).first()
     fonction_nom = role_obj.fonctionKey.roleName.strip().lower() if (role_obj and role_obj.fonctionKey) else ""
 
-    # 3. LOGIQUE DE FILTRAGE ÉLARGIE
-    # Si c'est un infirmier, on autorise plusieurs destinations
-    if 'infirmier' in fonction_nom:
-        destinations_autorisees = ['SALLE_SOINS', 'BLOC_OPERATOIRE','ACCOUCHEMENT']
-    elif 'medecin' in fonction_nom :
-        destinations_autorisees = ['SALLE_SOINS','BLOC_OPERATOIRE','ACCOUCHEMENT']
-    elif 'pharmacien' in fonction_nom:
+    # 3. LOGIQUE DE FILTRAGE
+    if 'pharmacien' in fonction_nom:
         destinations_autorisees = ['PHARMACIE']
+    elif 'infirmier' in fonction_nom or 'medecin' in fonction_nom:
+        destinations_autorisees = ['SALLE_SOINS', 'BLOC_OPERATOIRE', 'ACCOUCHEMENT']
     elif 'hospitalisation' in fonction_nom:
         destinations_autorisees = ['HOSPITALISATION']
     else:
         destinations_autorisees = []
 
-    # 4. RÉCUPÉRATION
-    # Utilisation de __in pour filtrer sur une liste de valeurs
+    # 4. RÉCUPÉRATION (Synchronisé sur 'medicaments')
     orientations = Orientation.objects.filter(
         destination__in=destinations_autorisees,
         est_admis=False
-    ).prefetch_related('consultation__ordonnance_set__medicaments')
+    ).select_related(
+        'consultation__triage__patient',
+        'consultation__medecin'
+    ).prefetch_related(
+        'consultation__ordonnance_set__medicaments' # UTILISATION DE 'medicaments'
+    )
 
     return render(request, 'back-end/orientation/liste_attente.html', {
         'orientations': orientations, 
