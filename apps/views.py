@@ -4141,37 +4141,32 @@ def enregistrer_client_externe(request):
 @login_required
 def creer_demande_examen(request, client_id):
     client = get_object_or_404(ClientExterne, id=client_id)
-    # Récupérer la fonctionKey (si elle est stockée dans la session)
-    fonction_key = request.session.get('fonctionKey')
+    
+    # 1. Gestion des rôles (Préservation de ta logique originale)
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
     
     if request.method == 'POST':
-        form = DemandeExamenForm(request.POST)
-        # On filtre ici aussi lors de la soumission pour éviter les erreurs
-        form.fields['prestations'].queryset = Prestation.objects.filter(
-            categorie__in=['LABO', 'ECHO', 'RADIO']
-        )
+        # 2. Récupération des IDs via les checkboxes
+        ids_prestations = request.POST.getlist('prestations')
         
-        if form.is_valid():
-            demande = form.save(commit=False)
-            demande.client = client
-            demande.save()
-            form.save_m2m()
+        if ids_prestations:
+            # Création de la demande
+            demande = DemandeExamenExterne.objects.create(client=client)
+            demande.prestations.set(ids_prestations)
             
-            # Calcul du total
+            # Calcul automatique du total
             total = demande.prestations.aggregate(Sum('prix'))['prix__sum'] or 0
             demande.total_a_payer = total
             demande.save()
             
             return redirect('liste_demandes_externes')
-    else:
-        form = DemandeExamenForm()
-        # Filtrage crucial : on ne montre que Labo, Radio et Écho
-        form.fields['prestations'].queryset = Prestation.objects.filter(
-            categorie__in=['LABO', 'ECHO', 'RADIO']
-        )
     
+    # 3. Récupération des données pour le template avec le contrôle des rôles
     return render(request, 'back-end/client/creer_demande.html', {
-        'form': form, 
         'client': client,
-        'fonctionKey': fonction_key # Transmis au template
+        'fonctionKey': fonctionKey, # Réintégré
+        'prestations_labo': Prestation.objects.filter(categorie='LABO'),
+        'prestations_radio': Prestation.objects.filter(categorie='RADIO'),
+        'prestations_echo': Prestation.objects.filter(categorie='ECHO'),
     })
