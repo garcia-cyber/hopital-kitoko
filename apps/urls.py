@@ -51,6 +51,13 @@ urlpatterns =[
      path('creer-session/<int:patient_id>/', views.creer_session_soins, name='creer_session_soins'),
      path('sessions/', views.liste_sessions, name='liste_sessions'),
      path('paiement/session/<int:session_id>/', views.payer_session, name='paiement_session'),
+     path('patients/fideles/dette', views.liste_patients_fideles, name='liste_patients_fideles'),
+
+      path(
+        'patients/conventionnes/',
+        views.liste_conventionnes_par_entreprise,
+        name='liste_conventionnes'
+    ),
 
 
 

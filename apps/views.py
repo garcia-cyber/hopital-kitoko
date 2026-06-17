@@ -17,6 +17,7 @@ from django.db.models.functions import Coalesce , Length ,TruncDay, TruncWeek, T
 import json
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.utils import timezone
 
 
 # Create your views here.
@@ -4520,4 +4521,89 @@ def modifier_ordonnance_urgence(request, pk):
         'form': form,
         'ordonnance': ordonnance,
         'fonctionKey': fonctionKey
+    })
+
+#
+# ===================================================================================
+# LISTE DES CONVENTIONNES PAR ENTREPRISE
+# ===================================================================================
+@login_required
+def liste_conventionnes_par_entreprise(request):
+    mois = timezone.now().month
+    annee = timezone.now().year
+
+    consultations = Consultation.objects.filter(
+        triage__patient__type_patient='CONVENTIONNE',
+        date_creation__year=annee,
+        date_creation__month=mois
+    ).select_related('triage__patient__entreprise').prefetch_related('examens__prestation')
+
+    entreprises_data = {}
+
+    for cons in consultations:
+        patient = cons.triage.patient
+        entreprise = patient.entreprise.nom if patient.entreprise else "Sans entreprise"
+
+        montant_total = sum(
+            ex.prestation.prix * ex.quantite
+            for ex in cons.examens.all()
+            if ex.prestation and ex.prestation.prix
+        )
+
+        if entreprise not in entreprises_data:
+            entreprises_data[entreprise] = {
+                'patients': [],
+                'somme': 0
+            }
+
+        entreprises_data[entreprise]['patients'].append(patient)
+        entreprises_data[entreprise]['somme'] += montant_total
+
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    return render(request, 'back-end/entreprise/liste_conventionnes.html', {
+        'entreprises_data': entreprises_data,
+        'mois': mois,
+        'annee': annee , 
+        'fonctionKey' : fonctionKey
+    })
+
+#
+# ========================================================================================
+# LISTE DE PATIENTS FIDELE POUR VOIR LES DETTES
+# =========================================================================================
+@login_required
+def liste_patients_fideles(request):
+    mois = timezone.now().month
+    annee = timezone.now().year
+
+    # Filtrer les consultations des patients fidèles ce mois
+    consultations = Consultation.objects.filter(
+        triage__patient__type_patient='FIDELE',
+        date_creation__year=annee,
+        date_creation__month=mois
+    ).prefetch_related('examens__prestation')
+
+    patients_data = []
+
+    for cons in consultations:
+        patient = cons.triage.patient
+        montant_total = sum(
+            ex.prestation.prix * ex.quantite
+            for ex in cons.examens.all()
+            if ex.prestation and ex.prestation.prix
+        )
+        patients_data.append({
+            'patient': patient,
+            'montant_total': montant_total
+        })
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    return render(request, 'back-end/patient/liste_fideles.html', {
+        'patients_data': patients_data,
+        'mois': mois,
+        'annee': annee ,
+        'fonctionKey' : fonctionKey
     })
