@@ -167,7 +167,7 @@ class Paiement(models.Model):
         ('MATERNITE', 'Maternité'), ('DECES', 'Actes de décès'), ('EXAMENS', 'Examens'),
         ('CHIRURGIE', 'Chirurgie'), ('CARTE_FIDELITE', 'Achat Carte de Fidélité'), 
         ('PHARMACIE', 'Pharmacie'), ('EXAMEN_EXTERNE', 'Examen Externe'),
-        ('ENTREPRISE', 'Paiement Entreprise')  # ✅ Nouveau service
+        ('ENTREPRISE', 'Paiement Entreprise')
     ]
     
     bloc_op = models.ForeignKey('BlocOperatoire', on_delete=models.SET_NULL, null=True, blank=True, related_name='paiements')
@@ -177,8 +177,6 @@ class Paiement(models.Model):
     dossier_maternite = models.ForeignKey('Maternite', on_delete=models.SET_NULL, null=True, blank=True, related_name='paiements')
     deces = models.ForeignKey('Deces', on_delete=models.SET_NULL, null=True, blank=True, related_name='paiements')
     session = models.ForeignKey('SessionSoins', on_delete=models.SET_NULL, null=True, blank=True, related_name='paiements')
-
-    # ✅ Nouveau champ pour lier un paiement directement à une entreprise
     entreprise = models.ForeignKey('Entreprise', on_delete=models.CASCADE, null=True, blank=True, related_name='paiements')
 
     service = models.CharField(max_length=20, choices=SERVICES)
@@ -192,7 +190,7 @@ class Paiement(models.Model):
     def save(self, *args, **kwargs):
         is_new = self.pk is None
 
-        # --- LOGIQUE EXISTANTE (patients, consultations, etc.) ---
+        # --- LOGIQUE EXISTANTE (Ne rien toucher) ---
         if self.service == 'FICHE' and self.patient:
             self.patient.fiche_payee = True
             self.patient.save()
@@ -226,13 +224,23 @@ class Paiement(models.Model):
                 self.dossier_maternite.est_paye = True
                 self.dossier_maternite.save()
 
-        # --- ✅ NOUVELLE LOGIQUE ENTREPRISE ---
+        # --- ✅ LOGIQUE ENTREPRISE CORRIGÉE ---
         if self.service == 'ENTREPRISE' and self.entreprise:
-            # Déduire le montant payé ET la réduction
-            montant_net = (self.montant_verse or Decimal('0.00')) - (self.montant_reduction or Decimal('0.00'))
-            self.entreprise.dette_mensuelle = max(Decimal('0.00'), self.entreprise.dette_mensuelle - montant_net)
+            # 1. Conversion du montant versé en USD si nécessaire
+            montant_usd = self.montant_verse
+            if self.devise == 'CDF':
+                from .models import ConfigurationHopital
+                taux = ConfigurationHopital.get_taux()
+                montant_usd = self.montant_verse / taux
+
+            # 2. Le total qui réduit la dette = (Montant payé en USD) + (Réduction en USD)
+            total_a_deduire = montant_usd + self.montant_reduction
+            
+            # 3. Mise à jour de la dette
+            self.entreprise.dette_mensuelle = max(Decimal('0.00'), self.entreprise.dette_mensuelle - total_a_deduire)
             self.entreprise.save()
 
+        # --- SAUVEGARDE DU PAIEMENT ---
         super().save(*args, **kwargs)
 
         # --- FACTURE AUTOMATIQUE ---

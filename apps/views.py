@@ -4528,7 +4528,6 @@ def modifier_ordonnance_urgence(request, pk):
 # LISTE DES CONVENTIONNES PAR ENTREPRISE
 # ===================================================================================
 @login_required
-@login_required
 def liste_conventionnes_par_entreprise(request):
     mois = timezone.now().month
     annee = timezone.now().year
@@ -4584,53 +4583,40 @@ def liste_conventionnes_par_entreprise(request):
 # ==========================================================================================
 @login_required
 def payer_dette_entreprise(request, entreprise_id):
+    # 1. Récupération de l'objet
     entreprise = get_object_or_404(Entreprise, pk=entreprise_id)
 
+    # 2. Traitement du formulaire POST
     if request.method == "POST":
-        montant = Decimal(request.POST.get("montant"))
-        devise = request.POST.get("devise", "USD")
-        reduction = Decimal(request.POST.get("reduction", "0"))
+        try:
+            # On récupère les données brutes
+            montant = Decimal(request.POST.get("montant", "0"))
+            devise = request.POST.get("devise", "USD")
+            reduction = Decimal(request.POST.get("reduction", "0"))
 
-        # ✅ Conversion uniquement pour la vérification
-        if devise == "CDF":
-            taux = ConfigurationHopital.get_taux()
-            montant_usd_equivalent = montant / taux
-        else:
-            montant_usd_equivalent = montant
-
-        # ✅ Vérification du montant par rapport à la dette (en USD)
-        dette_restante = entreprise.dette_mensuelle
-        montant_net_usd = montant_usd_equivalent - reduction
-
-        if montant_net_usd > dette_restante:
-            messages.error(
-                request,
-                f"Le montant payé équivalent ({montant_net_usd} USD) dépasse la dette restante ({dette_restante} USD)."
+            # Création du paiement (le calcul de la dette est géré dans models.py)
+            Paiement.objects.create(
+                entreprise=entreprise,
+                service="ENTREPRISE",
+                montant_verse=montant,
+                montant_reduction=reduction,
+                devise=devise,
+                caissier=request.user
             )
+
+            messages.success(request, "Paiement enregistré avec succès.")
             return redirect('payer_dette_entreprise', entreprise_id=entreprise.id)
 
-        # ✅ Création du paiement (on garde la devise réelle entrée par l’utilisateur)
-        Paiement.objects.create(
-            entreprise=entreprise,
-            service="ENTREPRISE",
-            montant_verse=montant,              # conserve le montant tel qu’il a été payé
-            montant_reduction=reduction,
-            devise=devise,                      # conserve la devise choisie
-            caissier=request.user
-        )
+        except Exception as e:
+            messages.error(request, f"Erreur lors du traitement : {str(e)}")
+            return redirect('payer_dette_entreprise', entreprise_id=entreprise.id)
 
-        # ✅ Mise à jour de la dette en USD
-        entreprise.dette_mensuelle = max(Decimal('0.00'), entreprise.dette_mensuelle - montant_net_usd)
-        entreprise.save()
-
-        messages.success(
-            request,
-            f"Paiement enregistré : {montant} {devise}, réduction {reduction} USD. Nouvelle dette : {entreprise.dette_mensuelle} USD."
-        )
-        return redirect('liste_conventionnes')
-
+    # 3. Préparation du contexte (GET)
     role = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    # On rafraîchit l'objet depuis la base pour être certain d'avoir la dernière dette
+    entreprise.refresh_from_db()
 
     return render(request, 'back-end/entreprise/payer_dette.html', {
         'entreprise': entreprise,
@@ -4638,6 +4624,26 @@ def payer_dette_entreprise(request, entreprise_id):
         'fonctionKey': fonctionKey
     })
 
+#
+# ======================================================================================
+# HISTORIQUE DE CHAQUE INFORMATIONS PAR ENTREPRISE 
+# ======================================================================================
+@login_required
+def historique_entreprise(request, entreprise_id):
+    entreprise = get_object_or_404(Entreprise, pk=entreprise_id)
+    
+    # Récupérer toutes les consultations des patients appartenant à cette entreprise
+    # On suppose que ton modèle Patient a un ForeignKey vers Entreprise
+    consultations = entreprise.patients.all().prefetch_related('consultations__paiements')
+    
+    # Récupérer l'historique complet des paiements de dette
+    historique_paiements = entreprise.paiements.all().order_by('-date_paiement')
+    
+    return render(request, 'back-end/entreprise/historique.html', {
+        'entreprise': entreprise,
+        'consultations': consultations,
+        'historique_paiements': historique_paiements
+    })
 
 #
 # ========================================================================================
