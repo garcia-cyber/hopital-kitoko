@@ -3278,15 +3278,18 @@ def enregistrer_vente(request):
             if not panier:
                 return JsonResponse({'status': 'error', 'message': 'Le panier est vide.'})
             if montant_verse < 0:
-                return JsonResponse({'status': 'error', 'message': 'Le montant versé ne peut pas être négatif.'})
+                return JsonResponse({'status': 'error', 'message': 'Montant versé invalide.'})
 
             taux = Decimal(str(ConfigurationHopital.get_taux()))
 
+            # Utilisation de la transaction pour garantir la cohérence
             with transaction.atomic():
                 montant_total = Decimal('0.00')
+                items_a_vendre = [] 
                 
-                # 1. PRE-VALIDATION : Vérification du stock pour TOUS les articles avant de créer quoi que ce soit
+                # 1. Validation du stock et calcul du total
                 for item in panier:
+                    # select_for_update() verrouille le lot pour éviter les ventes simultanées
                     lot = LotPharmacie.objects.select_for_update().filter(
                         produit_id=item['id'], 
                         quantite_actuelle__gte=int(item['qte'])
@@ -3296,15 +3299,16 @@ def enregistrer_vente(request):
                         produit = ProduitPharmacie.objects.get(id=item['id'])
                         return JsonResponse({'status': 'error', 'message': f'Stock insuffisant pour {produit.nom}'})
 
-                    # Calcul du prix
                     prix_u = Decimal(str(lot.produit.prix_vente_unitaire))
                     if devise == 'CDF':
                         prix_u *= taux
+                    
                     montant_total += (prix_u * int(item['qte']))
+                    items_a_vendre.append({'lot': lot, 'qte': int(item['qte'])})
 
-                # 2. Validation montant versé
+                # 2. Validation financière
                 if montant_verse > montant_total:
-                    return JsonResponse({'status': 'error', 'message': 'Le montant versé est supérieur au total à payer.'})
+                    return JsonResponse({'status': 'error', 'message': 'Le montant versé dépasse le total.'})
 
                 # 3. Création du paiement
                 reste_a_payer = montant_total - montant_verse
@@ -3316,17 +3320,13 @@ def enregistrer_vente(request):
                     reste_a_payer=reste_a_payer
                 )
 
-                # 4. Enregistrement des sorties (le save() de SortiePharmacie déclenche MouvementStock)
-                for item in panier:
-                    lot = LotPharmacie.objects.select_for_update().filter(
-                        produit_id=item['id'], 
-                        quantite_actuelle__gte=int(item['qte'])
-                    ).first()
-                    
+                # 4. Enregistrement des sorties
+                # IMPORTANT : Le save() de SortiePharmacie décrémente le stock une seule fois.
+                for item in items_a_vendre:
                     SortiePharmacie.objects.create(
                         paiement=paiement, 
-                        lot=lot, 
-                        quantite_vendue=int(item['qte']),
+                        lot=item['lot'], 
+                        quantite_vendue=item['qte'],
                         vendu_par=request.user
                     )
 
@@ -3340,6 +3340,7 @@ def enregistrer_vente(request):
             return JsonResponse({'status': 'error', 'message': str(e)})
 
     # GET : Liste des produits
+    from django.db.models import Sum
     produits = ProduitPharmacie.objects.annotate(
         stock_reel=Sum('les_lots__quantite_actuelle')
     ).order_by('nom')

@@ -6,6 +6,8 @@ from django.utils import timezone
 from django.db.models import Sum
 from django.core.exceptions import ValidationError
 from django.conf import settings 
+from django.db import transaction
+
 
 
 # 1. CONFIGURATION ET BASE =============================================
@@ -808,7 +810,7 @@ class ProduitPharmacie(models.Model):
 
 # --- 3. LOT ---
 class LotPharmacie(models.Model):
-    produit = models.ForeignKey(ProduitPharmacie, related_name='les_lots', on_delete=models.CASCADE)
+    produit = models.ForeignKey('ProduitPharmacie', related_name='les_lots', on_delete=models.CASCADE)
     numero_lot = models.CharField(max_length=100)
     quantite_initiale = models.PositiveIntegerField(default=0)
     quantite_actuelle = models.PositiveIntegerField(default=0)
@@ -816,7 +818,6 @@ class LotPharmacie(models.Model):
     date_entree = models.DateField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
-        # Si c'est la création d'un nouveau lot, on synchronise la quantité actuelle
         if not self.pk:
             self.quantite_actuelle = self.quantite_initiale
         super().save(*args, **kwargs)
@@ -826,6 +827,7 @@ class LotPharmacie(models.Model):
 
     def __str__(self):
         return f"{self.produit.nom} | Lot: {self.numero_lot} | Stock: {self.quantite_actuelle}"
+
 
 # --- 4. MOUVEMENT DE STOCK ---
 class MouvementStock(models.Model):
@@ -838,8 +840,8 @@ class MouvementStock(models.Model):
     date_mouvement = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
-        self.lot.quantite_actuelle += self.quantite_unites
-        self.lot.save()
+        # CORRECTION : On ne modifie plus le stock ici.
+        # Le mouvement est juste un historique.
         super().save(*args, **kwargs)
 
 # --- 5. SORTIE PHARMACIE ---
@@ -851,31 +853,29 @@ class SortiePharmacie(models.Model):
     vendu_par = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
 
     def save(self, *args, **kwargs):
-        # 1. Vérification de sécurité avant toute opération
-        if self.lot.quantite_actuelle < self.quantite_vendue:
-            raise ValueError(f"Stock insuffisant pour le lot {self.lot.numero_lot}. "
-                             f"Disponible: {self.lot.quantite_actuelle}, Demandé: {self.quantite_vendue}")
+        # Utilisation de transaction pour éviter les erreurs de concurrence
+        with transaction.atomic():
+            # On récupère le lot à jour avec verrouillage (select_for_update)
+            lot_verrouille = LotPharmacie.objects.select_for_update().get(pk=self.lot.pk)
+            
+            # Vérification de sécurité
+            if lot_verrouille.quantite_actuelle < self.quantite_vendue:
+                raise ValueError(f"Stock insuffisant pour le lot {self.lot.numero_lot}.")
 
-        # 2. Décrémentation directe du lot (Source de vérité)
-        # On le fait avant de créer le mouvement pour éviter les décalages
-        self.lot.quantite_actuelle -= self.quantite_vendue
-        self.lot.save(update_fields=['quantite_actuelle'])
+            # Décrémentation unique
+            lot_verrouille.quantite_actuelle -= self.quantite_vendue
+            lot_verrouille.save(update_fields=['quantite_actuelle'])
 
-        # 3. Sauvegarde de l'instance de sortie
-        super().save(*args, **kwargs)
+            # Sauvegarde de la sortie
+            super().save(*args, **kwargs)
 
-        # 4. Création du mouvement d'historique
-        # On utilise des imports locaux si nécessaire pour éviter les erreurs d'import circulaire
-        from .models import MouvementStock
-        MouvementStock.objects.create(
-            lot=self.lot, 
-            type_mouvement='SORTIE', 
-            quantite_unites=-self.quantite_vendue, 
-            effectue_par=self.vendu_par
-        )
-
-    def __str__(self):
-        return f"Sortie {self.quantite_vendue} unités de {self.lot.produit.nom} le {self.date_sortie}"
+            # Création du mouvement d'historique
+            MouvementStock.objects.create(
+                lot=self.lot, 
+                type_mouvement='SORTIE', 
+                quantite_unites=-self.quantite_vendue, 
+                effectue_par=self.vendu_par
+            )
 
 
 # ******************************************************************************************************************** 
