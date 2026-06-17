@@ -4528,6 +4528,7 @@ def modifier_ordonnance_urgence(request, pk):
 # LISTE DES CONVENTIONNES PAR ENTREPRISE
 # ===================================================================================
 @login_required
+@login_required
 def liste_conventionnes_par_entreprise(request):
     mois = timezone.now().month
     annee = timezone.now().year
@@ -4542,7 +4543,8 @@ def liste_conventionnes_par_entreprise(request):
 
     for cons in consultations:
         patient = cons.triage.patient
-        entreprise = patient.entreprise.nom if patient.entreprise else "Sans entreprise"
+        entreprise = patient.entreprise if patient.entreprise else None
+        entreprise_nom = entreprise.nom if entreprise else "Sans entreprise"
 
         montant_total = sum(
             ex.prestation.prix * ex.quantite
@@ -4550,14 +4552,21 @@ def liste_conventionnes_par_entreprise(request):
             if ex.prestation and ex.prestation.prix
         )
 
-        if entreprise not in entreprises_data:
-            entreprises_data[entreprise] = {
+        if entreprise_nom not in entreprises_data:
+            entreprises_data[entreprise_nom] = {
                 'patients': [],
-                'somme': 0
+                'somme': 0,
+                'entreprise_obj': entreprise
             }
 
-        entreprises_data[entreprise]['patients'].append(patient)
-        entreprises_data[entreprise]['somme'] += montant_total
+        entreprises_data[entreprise_nom]['patients'].append(patient)
+        entreprises_data[entreprise_nom]['somme'] += montant_total
+
+    # ✅ Mise à jour de la dette mensuelle dans Entreprise
+    for data in entreprises_data.values():
+        if data['entreprise_obj']:
+            data['entreprise_obj'].dette_mensuelle = data['somme']
+            data['entreprise_obj'].save()
 
     role = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
@@ -4565,9 +4574,70 @@ def liste_conventionnes_par_entreprise(request):
     return render(request, 'back-end/entreprise/liste_conventionnes.html', {
         'entreprises_data': entreprises_data,
         'mois': mois,
-        'annee': annee , 
-        'fonctionKey' : fonctionKey
+        'annee': annee,
+        'fonctionKey': fonctionKey
     })
+
+#
+# ==========================================================================================
+# PAEIMENT PAR ENTREPRISE LA DETTE 
+# ==========================================================================================
+@login_required
+def payer_dette_entreprise(request, entreprise_id):
+    entreprise = get_object_or_404(Entreprise, pk=entreprise_id)
+
+    if request.method == "POST":
+        montant = Decimal(request.POST.get("montant"))
+        devise = request.POST.get("devise", "USD")
+        reduction = Decimal(request.POST.get("reduction", "0"))
+
+        # ✅ Conversion uniquement pour la vérification
+        if devise == "CDF":
+            taux = ConfigurationHopital.get_taux()
+            montant_usd_equivalent = montant / taux
+        else:
+            montant_usd_equivalent = montant
+
+        # ✅ Vérification du montant par rapport à la dette (en USD)
+        dette_restante = entreprise.dette_mensuelle
+        montant_net_usd = montant_usd_equivalent - reduction
+
+        if montant_net_usd > dette_restante:
+            messages.error(
+                request,
+                f"Le montant payé équivalent ({montant_net_usd} USD) dépasse la dette restante ({dette_restante} USD)."
+            )
+            return redirect('payer_dette_entreprise', entreprise_id=entreprise.id)
+
+        # ✅ Création du paiement (on garde la devise réelle entrée par l’utilisateur)
+        Paiement.objects.create(
+            entreprise=entreprise,
+            service="ENTREPRISE",
+            montant_verse=montant,              # conserve le montant tel qu’il a été payé
+            montant_reduction=reduction,
+            devise=devise,                      # conserve la devise choisie
+            caissier=request.user
+        )
+
+        # ✅ Mise à jour de la dette en USD
+        entreprise.dette_mensuelle = max(Decimal('0.00'), entreprise.dette_mensuelle - montant_net_usd)
+        entreprise.save()
+
+        messages.success(
+            request,
+            f"Paiement enregistré : {montant} {devise}, réduction {reduction} USD. Nouvelle dette : {entreprise.dette_mensuelle} USD."
+        )
+        return redirect('liste_conventionnes')
+
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    return render(request, 'back-end/entreprise/payer_dette.html', {
+        'entreprise': entreprise,
+        'dette': entreprise.dette_mensuelle,
+        'fonctionKey': fonctionKey
+    })
+
 
 #
 # ========================================================================================

@@ -58,6 +58,12 @@ urlpatterns =[
         views.liste_conventionnes_par_entreprise,
         name='liste_conventionnes'
     ),
+     path(
+    'entreprise/<int:entreprise_id>/payer/',
+    views.payer_dette_entreprise,
+    name='payer_dette_entreprise'
+),
+
 
 
 

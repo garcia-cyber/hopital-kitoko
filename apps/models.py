@@ -166,19 +166,21 @@ class Paiement(models.Model):
         ('ECHOGRAPHIE', 'Échographie'), ('RADIO', 'Radiographie'), ('SOIN', 'Soins'),
         ('MATERNITE', 'Maternité'), ('DECES', 'Actes de décès'), ('EXAMENS', 'Examens'),
         ('CHIRURGIE', 'Chirurgie'), ('CARTE_FIDELITE', 'Achat Carte de Fidélité'), 
-        ('PHARMACIE', 'Pharmacie'), ('EXAMEN_EXTERNE', 'Examen Externe') # Ajouté pour clarté
+        ('PHARMACIE', 'Pharmacie'), ('EXAMEN_EXTERNE', 'Examen Externe'),
+        ('ENTREPRISE', 'Paiement Entreprise')  # ✅ Nouveau service
     ]
     
     bloc_op = models.ForeignKey('BlocOperatoire', on_delete=models.SET_NULL, null=True, blank=True, related_name='paiements')
     patient = models.ForeignKey('Patient', on_delete=models.CASCADE, null=True, blank=True)
-    # Champ ajouté pour lier au nouveau modèle
     demande_examen_externe = models.ForeignKey('DemandeExamenExterne', on_delete=models.SET_NULL, null=True, blank=True, related_name='paiements')
-    
     consultation = models.ForeignKey('Consultation', on_delete=models.SET_NULL, null=True, blank=True, related_name='paiements')
     dossier_maternite = models.ForeignKey('Maternite', on_delete=models.SET_NULL, null=True, blank=True, related_name='paiements')
     deces = models.ForeignKey('Deces', on_delete=models.SET_NULL, null=True, blank=True, related_name='paiements')
     session = models.ForeignKey('SessionSoins', on_delete=models.SET_NULL, null=True, blank=True, related_name='paiements')
-    
+
+    # ✅ Nouveau champ pour lier un paiement directement à une entreprise
+    entreprise = models.ForeignKey('Entreprise', on_delete=models.CASCADE, null=True, blank=True, related_name='paiements')
+
     service = models.CharField(max_length=20, choices=SERVICES)
     montant_verse = models.DecimalField(max_digits=15, decimal_places=2)
     montant_reduction = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -189,8 +191,8 @@ class Paiement(models.Model):
 
     def save(self, *args, **kwargs):
         is_new = self.pk is None
-        
-        # 1. LOGIQUE D'AUTOMATISATION DES SERVICES
+
+        # --- LOGIQUE EXISTANTE (patients, consultations, etc.) ---
         if self.service == 'FICHE' and self.patient:
             self.patient.fiche_payee = True
             self.patient.save()
@@ -202,48 +204,47 @@ class Paiement(models.Model):
             self.patient.type_patient = 'FIDELE'
             self.patient.save()
 
-        # 2. GESTION CENTRALISÉE DE LA SESSION DE SOINS ET DETTES
         if self.session:
             tous_paiements = self.session.paiements.exclude(pk=self.pk)
             total_deja_verse = tous_paiements.aggregate(Sum('montant_verse'))['montant_verse__sum'] or 0
             total_deja_reduit = tous_paiements.aggregate(Sum('montant_reduction'))['montant_reduction__sum'] or 0
-            
             self.reste_a_payer = max(0, self.session.total_a_payer - (total_deja_reduit + self.montant_reduction) - (total_deja_verse + self.montant_verse))
             self.session.est_payee = (self.reste_a_payer <= 0)
             self.session.save()
 
-        # 3. GESTION DES EXAMENS EXTERNES
         if self.demande_examen_externe:
-            # Calcul du total dû pour cette demande spécifique
             total_due = self.demande_examen_externe.total_a_payer
-            
-            # Somme des paiements déjà effectués pour cette demande
             paiements_existants = self.demande_examen_externe.paiements.exclude(pk=self.pk)
             total_deja_verse = paiements_existants.aggregate(Sum('montant_verse'))['montant_verse__sum'] or 0
-            
-            # Mise à jour du reste à payer
             self.reste_a_payer = max(0, total_due - (total_deja_verse + self.montant_verse))
-            
-            # Mise à jour du statut de la demande
             if self.reste_a_payer <= 0:
                 self.demande_examen_externe.statut = 'PAYE'
                 self.demande_examen_externe.save()
 
-        # 4. GESTION MATERNITÉ
         if self.service == 'MATERNITE' and self.dossier_maternite:
             if self.reste_a_payer <= 0:
                 self.dossier_maternite.est_paye = True
                 self.dossier_maternite.save()
 
+        # --- ✅ NOUVELLE LOGIQUE ENTREPRISE ---
+        if self.service == 'ENTREPRISE' and self.entreprise:
+            # Déduire le montant payé ET la réduction
+            montant_net = (self.montant_verse or Decimal('0.00')) - (self.montant_reduction or Decimal('0.00'))
+            self.entreprise.dette_mensuelle = max(Decimal('0.00'), self.entreprise.dette_mensuelle - montant_net)
+            self.entreprise.save()
+
         super().save(*args, **kwargs)
-        
-        # 5. Création automatique de la facture
+
+        # --- FACTURE AUTOMATIQUE ---
         if is_new:
             from .models import Facture
             Facture.objects.create(
                 paiement=self,
                 numero_facture=f"FAC-{timezone.now().strftime('%y%m%d')}-{self.id}"
             )
+
+
+
 
 # 8. FACTURE =======================================================
 class Facture(models.Model):
@@ -600,6 +601,14 @@ class Entreprise(models.Model):
     nom = models.CharField(max_length=255, verbose_name="Nom de l'entreprise")
     contact_responsable = models.CharField(max_length=100, verbose_name="Numéro du responsable")
     date_enregistrement = models.DateTimeField(default=timezone.now, verbose_name="Date d'enregistrement")
+    dette_mensuelle = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name="Dette mensuelle", 
+        null = True , 
+        blank = True
+    )
 
     def __str__(self):
         return self.nom

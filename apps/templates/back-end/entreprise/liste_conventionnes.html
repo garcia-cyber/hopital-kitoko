@@ -9,7 +9,7 @@
     <style>
         /* Optimisation pour les petits écrans */
         @media (max-width: 767px) {
-            .table thead { display: none; } /* Cache les titres sur mobile pour gagner de la place */
+            .table thead { display: none; }
             .table, .table tbody, .table tr, .table td { display: block; width: 100%; }
             .table tr { margin-bottom: 15px; border-bottom: 2px solid #dee2e6; background: #f9f9f9; padding: 10px; }
             .table td { text-align: right; padding-left: 50%; position: relative; border: none; }
@@ -30,9 +30,17 @@
 
             <div class="row">
                 {% for entreprise, data in entreprises_data.items %}
-                    <div class="col-12"> <div class="card mb-4 shadow-sm">
-                            <div class="card-header bg-primary text-white">
+                    <div class="col-12">
+                        <div class="card mb-4 shadow-sm">
+                            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                                 <h5 class="mb-0">Entreprise : {{ entreprise }}</h5>
+                                {% if data.entreprise_obj %}
+                                    <!-- ✅ Bouton Payer -->
+                                    <a href="{% url 'payer_dette_entreprise' data.entreprise_obj.id %}" 
+                                       class="btn btn-warning btn-sm">
+                                        <i class="fa fa-credit-card"></i> Payer
+                                    </a>
+                                {% endif %}
                             </div>
                             <div class="card-body">
                                 <div class="d-flex justify-content-between mb-3">

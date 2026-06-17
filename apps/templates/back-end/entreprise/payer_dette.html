@@ -1,0 +1,89 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Paiement Entreprise</title>
+    {% include 'back-end/includes/css.html' %}
+</head>
+<body>
+<div class="main-wrapper">
+    {% include 'back-end/includes/header.html' %}
+    {% include 'back-end/includes/sidebar.html' %}
+
+    <div class="page-wrapper">
+        <div class="content container-fluid">
+            <h3>Paiement de la dette - {{ entreprise.nom }}</h3>
+            <p><strong>Dette actuelle :</strong> {{ dette }} USD</p>
+
+            <!-- ✅ Bloc pour afficher les messages Django -->
+            {% if messages %}
+                <div>
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <!-- ✅ Formulaire de paiement -->
+            <form method="post">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="montant">Montant à payer</label>
+                    <input type="number" step="0.01" name="montant" id="montant" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="devise">Devise</label>
+                    <select name="devise" id="devise" class="form-control">
+                        <option value="USD">USD</option>
+                        <option value="CDF">CDF</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="reduction">Réduction (USD)</label>
+                    <input type="number" step="0.01" name="reduction" id="reduction" class="form-control" value="0">
+                </div>
+                <button type="submit" class="btn btn-success">Valider le paiement</button>
+            </form>
+
+            <!-- ✅ Historique des paiements entreprise -->
+            <hr>
+            <h4>Historique des paiements</h4>
+            <div class="table-responsive">
+                <table class="table table-striped table-bordered">
+                    <thead class="thead-dark">
+                        <tr>
+                            <th>Date</th>
+                            <th>Montant</th>
+                            <th>Devise</th>
+                            <th>Réduction (USD)</th>
+                            <th>Caissier</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for paiement in entreprise.paiements.all %}
+                            <tr>
+                                <td>{{ paiement.date_paiement|date:"d/m/Y H:i" }}</td>
+                                <td>{{ paiement.montant_verse }}</td>
+                                <td>{{ paiement.devise }}</td>
+                                <td>{{ paiement.montant_reduction }}</td>
+                                <td>{{ paiement.caissier.username }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center">Aucun paiement enregistré pour cette entreprise.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+{% include 'back-end/includes/js.html' %}
+</body>
+</html>
