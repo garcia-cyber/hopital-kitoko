@@ -133,7 +133,8 @@
                                                         {% endfor %}
                                                     </ul>
                                                     <hr class="my-1">
-                                                    <small class="text-dark font-weight-bold">Total : {{ c.total_examens_a_payer }} USD/FC</small>
+                                                    {% if fonctionKey == 'admin' %}
+                                                    <small class="text-dark font-weight-bold">Total : {{ c.total_examens_a_payer }} USD/FC</small>{% endif%}
                                                 {% else %}
                                                     <span class="text-muted" style="font-size: 12px;">Aucun examen</span>
                                                 {% endif %}

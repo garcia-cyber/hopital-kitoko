@@ -71,6 +71,19 @@
                                 {% endif %}
 
                                 <div class="footer-card">
+                                    {% if fonctionKey == 'medecin' %}
+                                    {% if o.destination == 'BLOC_OPERATOIRE' %}
+                                        <a href="{% url 'saisir_compte_rendu_bloc' o.consultation.id %}" class="btn btn-primary btn-block mb-2">
+                                            <i class="fa fa-notes-medical"></i> Saisir Compte Rendu
+                                        </a>
+                                    {% elif o.destination == 'ACCOUCHEMENT' %}
+                                        <a href="{% url 'saisir_fiche_accouchement' o.consultation.id %}" class="btn btn-primary btn-block mb-2">
+                                            <i class="fa fa-notes-medical"></i> Fiche accouchement
+                                        </a>
+                                    {% endif %}
+                                    {% endif %}
+
+
                                     <form method="POST" action="{% url 'service_liste_attente' %}">
                                         {% csrf_token %}
                                         <input type="hidden" name="orientation_id" value="{{ o.id }}">

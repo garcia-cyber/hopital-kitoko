@@ -7,7 +7,6 @@
     <title>Suivi des Opérations | Moyanoli</title>
     {% include 'back-end/includes/css.html' %}
     <style>
-        /* Optimisation responsive */
         @media (max-width: 768px) {
             .btn-group-sm { display: flex; flex-direction: column; }
             .btn-sm { margin-bottom: 5px; width: 100%; }
@@ -49,7 +48,7 @@
                                                 <th>Intervention</th>
                                                 <th>Chirurgien</th>
                                                 <th>Statut</th>
-                                                <th>Coût</th>
+                                                <th>État Financier</th>
                                                 <th class="text-center">Actions</th>
                                             </tr>
                                         </thead>
@@ -66,7 +65,13 @@
                                                     {% else %}<span class="badge badge-secondary">En attente</span>
                                                     {% endif %}
                                                 </td>
-                                                <td><span class="badge badge-info">{{ op.prestation.prix|default:"0.00" }} USD</span></td>
+                                                <td>
+                                                    {% if op.reste_a_payer > 0 %}
+                                                        <span class="badge badge-warning">{{ op.reste_a_payer|floatformat:2 }} USD restants</span>
+                                                    {% else %}
+                                                        <span class="badge badge-success">Soldé</span>
+                                                    {% endif %}
+                                                </td>
                                                 <td class="text-center">
                                                     <div class="btn-group-sm">
                                                         <a href="{% url 'voir_rapport' op.id %}" class="btn btn-sm btn-info">
@@ -80,9 +85,15 @@
                                                         {% endif %}
                                                         
                                                         {% if fonctionKey == 'receptionniste' %}
-                                                        <a href="{% url 'encaisser_bloc' op.id %}" class="btn btn-sm btn-success ml-1">
-                                                            <i class="fa fa-credit-card"></i> Payer
-                                                        </a>
+                                                            {% if op.reste_a_payer > 0 %}
+                                                            <a href="{% url 'encaisser_bloc' op.id %}" class="btn btn-sm btn-success ml-1">
+                                                                <i class="fa fa-credit-card"></i> Payer
+                                                            </a>
+                                                            {% else %}
+                                                            <button class="btn btn-sm btn-secondary ml-1" disabled>
+                                                                <i class="fa fa-check"></i> Payé
+                                                            </button>
+                                                            {% endif %}
                                                         {% endif %}
                                                     </div>
                                                 </td>

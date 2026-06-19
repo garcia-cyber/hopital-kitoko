@@ -81,7 +81,7 @@
                                             <strong>Nouveau reste :</strong> <span id="nouveau_reste">{{ reste_a_payer|floatformat:2 }}</span> USD
                                         </div>
 
-                                        <button type="submit" class="btn btn-danger btn-block">
+                                        <button type="submit" id="btn_submit" class="btn btn-danger btn-block">
                                             <i class="fa fa-check"></i> Enregistrer le paiement
                                         </button>
                                     </div>
@@ -102,11 +102,25 @@
             const devise = document.getElementById('select_devise').value;
             const inputVal = parseFloat(document.getElementById('mt_input').value) || 0;
             const reduction = parseFloat(document.getElementById('mt_reduction').value) || 0;
+            const btnSubmit = document.getElementById('btn_submit');
             
             let montantVerseUsd = (devise === 'CDF') ? (inputVal / taux) : inputVal;
-            const reste = detteInitiale - (montantVerseUsd + reduction);
+            const totalAColler = montantVerseUsd + reduction;
+            const reste = detteInitiale - totalAColler;
             
+            // Mise à jour de l'affichage
             document.getElementById('nouveau_reste').innerText = Math.max(0, reste).toFixed(2);
+
+            // SÉCURITÉ : Désactiver le bouton si le montant dépasse la dette
+            if (totalAColler > (detteInitiale + 0.001)) {
+                btnSubmit.disabled = true;
+                btnSubmit.classList.replace('btn-danger', 'btn-secondary');
+                btnSubmit.innerText = "Montant invalide";
+            } else {
+                btnSubmit.disabled = false;
+                btnSubmit.classList.replace('btn-secondary', 'btn-danger');
+                btnSubmit.innerText = "Enregistrer le paiement";
+            }
         }
         </script>
     </body>

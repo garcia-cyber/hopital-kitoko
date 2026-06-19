@@ -87,6 +87,8 @@
             <i class="fas fa-history me-2"></i> Historique Ventes
         </a>
     </li>
+    <li><a href="{% url 'liste_consultations' %}"><i class="la la-history"></i> <span>Historique Consultations</span></a></li>
+
                 {% endif %}
 
                 {% if fonctionKey == 'receptionniste' %}
@@ -232,7 +234,7 @@
                     <li class="{% if request.resolver_match.url_name == 'liste_attente_medecin' %}active{% endif %}">
     <a href="{% url 'liste_attente_medecin' %}">
         <i class="fas fa-clock"></i> 
-        <span>Liste d'attente</span>
+        <span>Liste d'attente examen</span>
     </a>
 </li>
 

@@ -3527,7 +3527,7 @@ def valider_vente(request):
 # ===============================================================================================
 @login_required
 def service_destinataire_view(request):
-    # 1. GESTION DE LA VALIDATION
+    # 1. GESTION DE LA VALIDATION (Marquer comme traité)
     if request.method == 'POST' and request.POST.get('orientation_id'):
         orientation = get_object_or_404(Orientation, id=request.POST.get('orientation_id'))
         orientation.est_admis = True
@@ -3538,7 +3538,12 @@ def service_destinataire_view(request):
     role_obj = Fonction.objects.filter(userKey=request.user).first()
     fonction_nom = role_obj.fonctionKey.roleName.strip().lower() if (role_obj and role_obj.fonctionKey) else ""
 
-    # 3. LOGIQUE DE FILTRAGE
+    # 3. LOGIQUE DE FILTRAGE DES SERVICES
+    # Liste des services nécessitant une saisie de compte rendu
+    services_avec_compte_rendu = ['bloc', 'accouchement']
+    doit_saisir_compte_rendu = any(s in fonction_nom for s in services_avec_compte_rendu)
+
+    # Définition des destinations autorisées par rôle
     if 'pharmacien' in fonction_nom:
         destinations_autorisees = ['PHARMACIE']
     elif 'infirmier' in fonction_nom or 'medecin' in fonction_nom:
@@ -3548,7 +3553,7 @@ def service_destinataire_view(request):
     else:
         destinations_autorisees = []
 
-    # 4. RÉCUPÉRATION (Synchronisé sur 'medicaments')
+    # 4. RÉCUPÉRATION DES ORIENTATIONS
     orientations = Orientation.objects.filter(
         destination__in=destinations_autorisees,
         est_admis=False
@@ -3556,12 +3561,14 @@ def service_destinataire_view(request):
         'consultation__triage__patient',
         'consultation__medecin'
     ).prefetch_related(
-        'consultation__ordonnance_set__medicaments' # UTILISATION DE 'medicaments'
+        'consultation__ordonnance_set__medicaments'
     )
 
+    # 5. RENDU DU TEMPLATE
     return render(request, 'back-end/orientation/liste_attente.html', {
         'orientations': orientations, 
-        'fonctionKey': role_obj.fonctionKey.roleName if role_obj else "Invité"
+        'fonctionKey': role_obj.fonctionKey.roleName if role_obj else "Invité",
+        'doit_saisir_compte_rendu': doit_saisir_compte_rendu
     })
 
 
@@ -3656,26 +3663,43 @@ def gerer_bloc_operatoire(request, consultation_id):
 # ==================================================================================================
 @login_required
 def historique_bloc_operatoire(request):
-    # On récupère tout, sauf les annulés, classé par date
+    # 1. Récupération de l'historique de base
+    # On exclut les annulés et on optimise les accès aux relations (select_related)
     historique = BlocOperatoire.objects.exclude(statut='ANNULE').select_related(
         'consultation__triage__patient', 
         'chirurgien', 
         'prestation'
     ).order_by('-date_programmee')
 
-    # Recherche par nom de patient
+    # 2. Recherche par nom de patient
     query = request.GET.get('q')
     if query:
         historique = historique.filter(consultation__triage__patient__noms__icontains=query)
 
+    # 3. Calcul dynamique du reste à payer pour chaque opération
+    # C'est ici que l'on vérifie combien a été payé pour chaque bloc individuellement
+    for op in historique:
+        prix_total = op.prestation.prix if op.prestation else Decimal('0.00')
+        
+        # Somme des paiements et des réductions pour ce bloc précis
+        paiements_du_bloc = Paiement.objects.filter(bloc_op=op)
+        total_verse = paiements_du_bloc.aggregate(total=Sum('montant_verse'))['total'] or Decimal('0.00')
+        total_reductions = paiements_du_bloc.aggregate(total=Sum('montant_reduction'))['total'] or Decimal('0.00')
+        
+        # On injecte l'attribut calculé directement dans l'objet pour l'utiliser dans le template
+        op.reste_a_payer = max(Decimal('0.00'), prix_total - (total_verse + total_reductions))
+
+    # 4. Gestion des rôles utilisateur
     role_obj = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role_obj.fonctionKey.roleName if (role_obj and role_obj.fonctionKey) else "Invité"
 
+    # 5. Préparation du contexte
     context = {
         'historique': historique,
-        'query': query , 
-        'fonctionKey' : fonctionKey
+        'query': query,
+        'fonctionKey': fonctionKey
     }
+    
     return render(request, 'back-end/bloc/historique_operations.html', context)
 
 
@@ -3686,37 +3710,54 @@ def historique_bloc_operatoire(request):
 # ===========================================================================================================
 @login_required
 def encaisser_bloc(request, bloc_id):
+    # 1. Vérification de l'existence de l'objet
     bloc = get_object_or_404(BlocOperatoire, id=bloc_id)
     consultation = bloc.consultation
     
-    # Récupération du taux
+    # 2. Récupération de la configuration (Taux)
     config = ConfigurationHopital.objects.first()
     taux = config.taux_usd_en_cdf if config and config.taux_usd_en_cdf else Decimal('2500')
     
-    # Prix de l'intervention
+    # 3. Calcul du reste à payer (Calcul basé sur l'historique des paiements de ce bloc)
     prix_chirurgie = bloc.prestation.prix if bloc.prestation else Decimal('0.00')
-    
-    # Calcul du reste à payer pour CE bloc uniquement
-    # On filtre les paiements liés à ce bloc spécifique
     paiements_bloc = Paiement.objects.filter(bloc_op=bloc)
+    
     total_verse = paiements_bloc.aggregate(total=Sum('montant_verse'))['total'] or Decimal('0.00')
     total_reductions = paiements_bloc.aggregate(total=Sum('montant_reduction'))['total'] or Decimal('0.00')
     
     reste_a_payer = max(Decimal('0.00'), prix_chirurgie - (total_verse + total_reductions))
 
+    # 4. Traitement du formulaire
     if request.method == 'POST':
+        # Vérification si le bloc est déjà totalement payé (sécurité supplémentaire)
+        if reste_a_payer <= 0:
+            messages.warning(request, "Ce bloc est déjà soldé.")
+            return redirect('historique_paiements', patient_id=consultation.triage.patient.id)
+
         devise = request.POST.get('devise', 'USD')
-        montant_recu = Decimal(request.POST.get('montant_verse', 0))
-        reduction_usd = Decimal(request.POST.get('montant_reduction', 0))
+        try:
+            montant_recu = Decimal(request.POST.get('montant_verse', 0))
+            reduction_usd = Decimal(request.POST.get('montant_reduction', 0))
+        except:
+            messages.error(request, "Format de montant invalide.")
+            return redirect('encaisser_bloc', bloc_id=bloc.id)
         
+        # Conversion du montant versé en USD
         montant_verse_usd = montant_recu / taux if devise == 'CDF' else montant_recu
-        nouveau_reste = reste_a_payer - (montant_verse_usd + reduction_usd)
+        total_a_deduire = montant_verse_usd + reduction_usd
         
-        # Création du paiement lié au bloc
+        # VÉRIFICATION : Le paiement ne doit pas dépasser le reste à payer
+        if total_a_deduire > (reste_a_payer + Decimal('0.01')):
+            messages.error(request, f"Erreur : Le montant total ({total_a_deduire:.2f} USD) dépasse le reste à payer ({reste_a_payer:.2f} USD).")
+            return redirect('encaisser_bloc', bloc_id=bloc.id)
+        
+        # Création du paiement
+        nouveau_reste = reste_a_payer - total_a_deduire
+        
         Paiement.objects.create(
             patient=consultation.triage.patient,
             consultation=consultation,
-            bloc_op=bloc, # Lien explicite avec le bloc
+            bloc_op=bloc,
             service='CHIRURGIE',
             montant_verse=montant_verse_usd,
             montant_reduction=reduction_usd,
@@ -3726,8 +3767,10 @@ def encaisser_bloc(request, bloc_id):
             date_paiement=timezone.now()
         )
 
-        messages.success(request, "Paiement du bloc opératoire enregistré.")
+        messages.success(request, "Paiement du bloc opératoire enregistré avec succès.")
         return redirect('historique_paiements', patient_id=consultation.triage.patient.id)
+
+    # 5. Gestion des rôles (pour le template)
     role_obj = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role_obj.fonctionKey.roleName if (role_obj and role_obj.fonctionKey) else "Invité"
 
@@ -3735,8 +3778,8 @@ def encaisser_bloc(request, bloc_id):
         'bloc': bloc,
         'prix_chirurgie': prix_chirurgie,
         'reste_a_payer': reste_a_payer,
-        'taux': taux ,
-        'fonctionKey' : fonctionKey
+        'taux': taux,
+        'fonctionKey': fonctionKey
     }
     return render(request, 'back-end/caisse/encaisser_bloc.html', context) 
 
