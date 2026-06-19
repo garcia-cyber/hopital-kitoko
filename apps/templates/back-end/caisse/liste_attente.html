@@ -51,7 +51,7 @@
                                     <input type="text" name="q" class="form-control" placeholder="Rechercher par nom de patient, code unique ou médecin..." value="{{ request.GET.q }}">
                                     <div class="input-group-append">
                                         <button class="btn btn-primary" type="submit">
-                                            <i class="fa fa-search"></i> Filtrer la file d'attente
+                                            <i class="fa fa-search"></i> Filtrer
                                         </button>
                                         {% if request.GET.q %}
                                             <a href="?" class="btn btn-secondary">Réinitialiser</a>
@@ -75,7 +75,7 @@
                                                     <th>Nom du Patient</th>
                                                     <th>Médecin</th>
                                                     <th>Statut</th>
-                                                    <th>Net à Payer</th>
+                                                    <th>Reste à Payer</th>
                                                     <th class="text-right">Action</th>
                                                 </tr>
                                             </thead>
@@ -86,9 +86,7 @@
                                                         <strong>{{ c.date_creation|date:"d/m/Y" }}</strong><br>
                                                         <small class="text-muted">{{ c.date_creation|date:"H:i" }}</small>
                                                     </td>
-                                                    <td>
-                                                        <span class="badge badge-light-info">{{ c.triage.patient.code_patient }}</span>
-                                                    </td>
+                                                    <td><span class="badge badge-light-info">{{ c.triage.patient.code_patient }}</span></td>
                                                     <td>
                                                         <strong>{{ c.triage.patient.noms }}</strong><br>
                                                         <small class="text-muted">{{ c.triage.patient.age }} ans</small>
@@ -101,13 +99,11 @@
                                                         {% endif %}
                                                     </td>
                                                     <td>
-                                                        <span class="badge badge-warning">
-                                                            <i class="fa fa-clock-o"></i> À Facturer
-                                                        </span>
+                                                        <span class="badge badge-warning">À Facturer</span>
                                                     </td>
                                                     <td>
                                                         <strong class="text-danger" style="font-size: 16px;">
-                                                            {{ c.total_a_payer|default:"0.00"|floatformat:2 }} USD
+                                                            {{ c.reste_a_payer|floatformat:2 }} USD
                                                         </strong>
                                                     </td>
                                                     <td class="text-right">

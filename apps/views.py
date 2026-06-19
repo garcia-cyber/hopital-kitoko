@@ -1247,19 +1247,33 @@ def encaisser_examens_prescrits(request, consultation_id):
 @login_required
 def liste_attente_caisse(request):
     # 1. On récupère les consultations qui ont des examens
-    # On calcule le total dû uniquement sur les examens liés à la consultation
+    # J'ai remis la structure de base complète
     consultations_a_payer = Consultation.objects.filter(
-        examens__isnull=False  # Il faut qu'il y ait des examens
-    ).annotate(
+        examens__isnull=False
+    ).distinct().order_by('-date_creation')
+
+    # 2. Annotation du total dû et du total payé
+    # J'utilise 'paiements' avec un 's' comme indiqué dans ton erreur FieldError
+    consultations_a_payer = consultations_a_payer.annotate(
         total_a_payer=Coalesce(
             Sum(F('examens__prestation__prix') * F('examens__quantite')),
             Value(0.00, output_field=DecimalField())
+        ),
+        total_deja_paye=Coalesce(
+            Sum('paiements__montant_verse') + Sum('paiements__montant_reduction'),
+            Value(0.00, output_field=DecimalField())
         )
-    ).filter(
-        total_a_payer__gt=0  # Seulement ceux qui ont un prix > 0
-    ).distinct().order_by('-date_creation')
+    )
 
-    # Gestion de la recherche
+    # 3. Calcul du reste à payer
+    consultations_a_payer = consultations_a_payer.annotate(
+        reste_a_payer=F('total_a_payer') - F('total_deja_paye')
+    )
+
+    # 4. Filtrage : Seulement ceux qui ont un reste > 0
+    consultations_a_payer = consultations_a_payer.filter(reste_a_payer__gt=0)
+
+    # 5. Gestion de la recherche
     query = request.GET.get('q')
     if query:
         consultations_a_payer = consultations_a_payer.filter(
@@ -1267,17 +1281,14 @@ def liste_attente_caisse(request):
             Q(triage__patient__code_patient__icontains=query)
         )
 
-    # Note: J'ai retiré le calcul du reste à payer basé sur les paiements 
-    # car il n'y a pas de lien direct entre Paiement et Consultation pour les examens
-    # dans tes modèles actuels. 
-    # Ton template affichera maintenant le total dû calculé dynamiquement.
-
+    # 6. Gestion des rôles
     role = Fonction.objects.filter(userKey=request.user).first()
-    fonctionKey = role.fonctionKey.roleName if role else None
+    fonctionKey = role.fonctionKey.roleName if (role and role.fonctionKey) else None
 
     context = {
         'consultations': consultations_a_payer,
-        'fonctionKey': fonctionKey
+        'fonctionKey': fonctionKey,
+        'query': query
     }
     
     return render(request, 'back-end/caisse/liste_attente.html', context)
