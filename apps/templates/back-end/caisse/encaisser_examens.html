@@ -1,98 +1,115 @@
 <!DOCTYPE html>
 {% load static %}
 <html lang="fr">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
-        <title>Moyanoli - Encaissement Examens</title>
-        {% include 'back-end/includes/css.html' %}
-    </head>
-    <body>
-        <div class="main-wrapper">
-            {% include 'back-end/includes/header.html' %}
-            {% include 'back-end/includes/sidebar.html' %}
-            
-            <div class="page-wrapper">
-                <div class="content container-fluid">
-                    <div class="page-header d-flex justify-content-between align-items-center">
-                        <h3 class="page-title">Validation du Paiement</h3>
-                        <a href="{% url 'historique_paiements' consultation.triage.patient.id %}" class="btn btn-secondary">
-                            <i class="fa fa-arrow-left"></i> Retour à l'historique
-                        </a>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moyanoli - Encaissement</title>
+    {% include 'back-end/includes/css.html' %}
+    <style>
+        body { background-color: #f4f7f6; }
+        .card { border-radius: 15px; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .card-header { background-color: #fff; border-bottom: 1px solid #eee; font-weight: bold; padding: 1.5rem; }
+        .input-group-text { background-color: #f8f9fa; border: 1px solid #ced4da; }
+        .summary-box { background: #eef2f7; border-left: 5px solid #0d6efd; padding: 15px; border-radius: 8px; }
+        .result-highlight { background: #f0f4ff; border: 2px dashed #0d6efd; padding: 20px; border-radius: 12px; }
+    </style>
+</head>
+<body>
+    <div class="main-wrapper">
+        {% include 'back-end/includes/header.html' %}
+        {% include 'back-end/includes/sidebar.html' %}
+        
+        <div class="page-wrapper">
+            <div class="content container-fluid">
+                
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h3 class="page-title text-primary">Validation du Paiement</h3>
+                        <p class="text-muted">Gestion des encaissements examens - Patient : {{ consultation.triage.patient.nom_complet }}</p>
                     </div>
+                    <a href="{% url 'historique_paiements' consultation.triage.patient.id %}" class="btn btn-outline-secondary">
+                        <i class="fa fa-arrow-left"></i> Retour
+                    </a>
+                </div>
 
-                    <form method="POST" id="formEncaissement">
-                        {% csrf_token %}
-                        <div class="row">
-                            <div class="col-lg-8">
-                                <div class="card shadow-sm border-0">
-                                    <div class="card-header bg-primary text-white">Détails de la Prescription</div>
-                                    <div class="card-body">
-                                        <table class="table table-bordered">
-                                            <thead class="thead-light">
-                                                <tr><th>Examen</th><th>Prix Unitaire</th></tr>
+                <form method="POST" id="formEncaissement">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-lg-8">
+                            <div class="card h-100">
+                                <div class="card-header">Détails de la Prescription</div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover align-middle">
+                                            <thead class="table-light">
+                                                <tr><th>Examen</th><th class="text-end">Prix</th></tr>
                                             </thead>
                                             <tbody>
                                                 {% for exam in consultation.examens.all %}
                                                 <tr>
                                                     <td>{{ exam.prestation.libelle }}</td>
-                                                    <td>{{ exam.prestation.prix }} USD</td>
+                                                    <td class="text-end fw-bold">{{ exam.prestation.prix }} USD</td>
                                                 </tr>
                                                 {% endfor %}
                                             </tbody>
                                         </table>
-                                        <div class="alert alert-info mt-3">
-                                            <strong>Total Dû (Reste à payer) : {{ reste_a_payer_usd|floatformat:2 }} USD</strong>
-                                        </div>
                                     </div>
-                                </div>
-                            </div>
-
-                            <div class="col-lg-4">
-                                <div class="card shadow-sm border-success">
-                                    <div class="card-body">
-                                        <h5 class="text-success mb-3">Gestion du Paiement</h5>
-                                        
-                                        <input type="hidden" id="dette_globale" value="{{ reste_a_payer_usd }}">
-                                        <input type="hidden" id="taux_du_jour" value="{{ taux }}">
-
-                                        <div class="form-group">
-                                            <label>Devise</label>
-                                            <select name="devise" id="select_devise" class="form-control" onchange="calculerReste()">
-                                                <option value="USD">USD</option>
-                                                <option value="CDF">CDF (Taux: {{ taux }})</option>
-                                            </select>
-                                        </div>
-
-                                        <div class="form-group">
-                                            <label>Montant versé</label>
-                                            <input type="number" id="mt_input" name="montant_verse" class="form-control" step="0.01" required oninput="calculerReste()">
-                                        </div>
-
-                                        <div class="form-group">
-                                            <label>Réduction (USD)</label>
-                                            <input type="number" name="montant_reduction" id="mt_reduction" class="form-control" step="0.01" value="0" oninput="calculerReste()">
-                                        </div>
-
-                                        <div class="alert alert-warning">
-                                            <strong>Nouveau reste :</strong> <span id="nouveau_reste">{{ reste_a_payer_usd|floatformat:2 }}</span> USD
-                                        </div>
-
-                                        <button type="submit" class="btn btn-success btn-block">
-                                            <i class="fa fa-check"></i> Enregistrer le paiement
-                                        </button>
+                                    <div class="summary-box mt-4">
+                                        <h5 class="m-0 text-primary">Total à payer : <span id="total_du">{{ reste_a_payer_usd|floatformat:2 }}</span> USD</h5>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </form>
-                </div>
+
+                        <div class="col-lg-4">
+                            <div class="card h-100">
+                                <div class="card-body p-4">
+                                    <h5 class="mb-4 text-dark"><i class="fa fa-cash-register me-2 text-success"></i> Saisie Caisse</h5>
+                                    
+                                    <input type="hidden" id="dette_globale" value="{{ reste_a_payer_usd }}">
+                                    <input type="hidden" id="taux_du_jour" value="{{ taux }}">
+
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold small text-uppercase">Devise</label>
+                                        <select name="devise" id="select_devise" class="form-select form-select-lg" onchange="calculerReste()">
+                                            <option value="USD">USD ($)</option>
+                                            <option value="CDF">CDF (FC) - Taux: {{ taux }}</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold small text-uppercase">Montant versé</label>
+                                        <div class="input-group input-group-lg">
+                                            <input type="number" id="mt_input" name="montant_verse" class="form-control" step="0.01" value="0" required oninput="calculerReste()">
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold small text-uppercase">Réduction (USD)</label>
+                                        <input type="number" name="montant_reduction" id="mt_reduction" class="form-control form-control-lg" step="0.01" value="0" oninput="calculerReste()">
+                                    </div>
+
+                                    <div class="result-highlight text-center my-4">
+                                        <small class="text-muted d-block mb-1">Reste à payer</small>
+                                        <h2 class="m-0 text-primary fw-bold"><span id="nouveau_reste">{{ reste_a_payer_usd|floatformat:2 }}</span> <small>USD</small></h2>
+                                    </div>
+
+                                    <button type="submit" id="btn_submit" class="btn btn-success btn-lg w-100 py-3">
+                                        <i class="fa fa-check-circle me-2"></i> Encaisser le paiement
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
             </div>
         </div>
+    </div>
 
-        {% include 'back-end/includes/js.html' %}
-        
-        <script>
+    {% include 'back-end/includes/js.html' %}
+    
+    <script>
         function calculerReste() {
             const detteInitiale = parseFloat(document.getElementById('dette_globale').value) || 0;
             const taux = parseFloat(document.getElementById('taux_du_jour').value) || 1;
@@ -100,14 +117,22 @@
             const inputVal = parseFloat(document.getElementById('mt_input').value) || 0;
             const reduction = parseFloat(document.getElementById('mt_reduction').value) || 0;
             
-            // Si devise est CDF, on divise le montant versé par le taux pour obtenir la valeur en USD
             let montantVerseUsd = (devise === 'CDF') ? (inputVal / taux) : inputVal;
-            
             const reste = detteInitiale - (montantVerseUsd + reduction);
             
-            // Mise à jour de l'affichage
-            document.getElementById('nouveau_reste').innerText = Math.max(0, reste).toFixed(2);
+            const affichage = document.getElementById('nouveau_reste');
+            const btn = document.getElementById('btn_submit');
+            
+            affichage.innerText = Math.max(0, reste).toFixed(2);
+            
+            if (reste < 0) {
+                affichage.style.color = "red";
+                btn.disabled = true;
+            } else {
+                affichage.style.color = "inherit";
+                btn.disabled = false;
+            }
         }
-        </script>
-    </body>
+    </script>
+</body>
 </html>

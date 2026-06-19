@@ -58,10 +58,20 @@ class Prestation(models.Model):
         ('SOIN', 'Soins'), 
         ('ECHO', 'Échographie'), 
         ('RADIO', 'Radiologie'),
+        ('SCAN', 'Scanner'),
+        ('IRM', 'IRM'),
+        ('CARDIO', 'Cardiographie'),
+        ('GYNECO', 'Gynécographie'),
+        ('ONCO', 'Oncologie'),
+        ('ORTHO', 'Orthopédie'),
+        ('DERMA', 'Dermatologie'),
+        ('OPHTA', 'Ophtalmologie'),
+        ('PSY', 'Psychiatrie'),
+        ('KINE', 'Rééducation / Kinésithérapie'),
         ('MED', 'Acte Médical'),      
         ('CHIR', 'Acte Chirurgical'),
-        ('CONS_MAT', 'Consultation Maternité'), # Nouvelle catégorie
-        ('MAT', 'Forfait Maternité / Accouchement'), # Catégorie existante
+        ('CONS_MAT', 'Consultation Maternité'), 
+        ('MAT', 'Forfait Maternité / Accouchement'), 
     ]
     
     libelle = models.CharField(max_length=200, verbose_name="Libellé")
@@ -84,6 +94,7 @@ class Prestation(models.Model):
     class Meta:
         verbose_name = "Prestation"
         verbose_name_plural = "Prestations"
+
 
 # 5. SERVICE =======================================================
 class Service(models.Model):

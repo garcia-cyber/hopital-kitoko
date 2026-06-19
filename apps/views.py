@@ -1168,14 +1168,15 @@ def prescrire_ordonnance_urgence_rapide(request, consultation_id):
 # ==================================================================================================
 @login_required
 def encaisser_examens_prescrits(request, consultation_id):
+    # Récupération de l'objet consultation
     consultation = get_object_or_404(Consultation, id=consultation_id)
     examens = consultation.examens.all()
     
-    # Récupération du taux
+    # 1. Récupération de la configuration pour le taux (Logique conservée)
     config = ConfigurationHopital.objects.first()
     taux = config.taux_usd_en_cdf if config and config.taux_usd_en_cdf else Decimal('2500')
     
-    # Calculs financiers
+    # 2. Calculs financiers (Logique conservée)
     total_prescrit = examens.aggregate(total=Sum('prestation__prix'))['total'] or Decimal('0.00')
     total_verse = Paiement.objects.filter(consultation=consultation).aggregate(total=Sum('montant_verse'))['total'] or Decimal('0.00')
     total_reductions = Paiement.objects.filter(consultation=consultation).aggregate(total=Sum('montant_reduction'))['total'] or Decimal('0.00')
@@ -1183,40 +1184,59 @@ def encaisser_examens_prescrits(request, consultation_id):
     reste_a_payer_usd = total_prescrit - (total_verse + total_reductions)
 
     if request.method == 'POST':
-        devise = request.POST.get('devise', 'USD')
-        montant_recu = Decimal(request.POST.get('montant_verse', 0))
-        reduction_usd = Decimal(request.POST.get('montant_reduction', 0))
-        
-        # 1. Conversion
-        montant_verse_usd = montant_recu / taux if devise == 'CDF' else montant_recu
-        
-        # 2. Calcul du nouveau reste après ce paiement
-        nouveau_reste = reste_a_payer_usd - (montant_verse_usd + reduction_usd)
-        
-        # 3. Création du paiement (Force le service à 'EXAMENS')
-        Paiement.objects.create(
-            patient=consultation.triage.patient,
-            consultation=consultation,
-            service='EXAMENS', # Force la valeur
-            montant_verse=montant_verse_usd,
-            montant_reduction=reduction_usd,
-            reste_a_payer=max(Decimal('0.00'), nouveau_reste), # Enregistre le solde
-            devise=devise,
-            caissier=request.user,
-            date_paiement=timezone.now()
-        )
+        try:
+            devise = request.POST.get('devise', 'USD')
+            montant_recu = Decimal(request.POST.get('montant_verse', 0))
+            reduction_usd = Decimal(request.POST.get('montant_reduction', 0))
+            
+            # Validation : montants négatifs
+            if montant_recu < 0 or reduction_usd < 0:
+                messages.error(request, "Les montants ne peuvent pas être négatifs.")
+                return redirect('encaisser_examens', consultation_id=consultation.id)
 
-        messages.success(request, "Paiement enregistré avec succès.")
-        return redirect('historique_paiements', patient_id=consultation.triage.patient.id)
+            # Conversion du montant reçu en USD
+            montant_verse_usd = montant_recu / taux if devise == 'CDF' else montant_recu
+            total_encaisse = montant_verse_usd + reduction_usd
 
+            # Validation : Vérification du solde avant encaissement
+            if total_encaisse > reste_a_payer_usd:
+                messages.error(request, f"Erreur : Le montant total ({total_encaisse:.2f} USD) dépasse le reste à payer ({reste_a_payer_usd:.2f} USD).")
+                return redirect('encaisser_examens', consultation_id=consultation.id)
+
+            # 3. Création du paiement (Logique forcée conservée)
+            nouveau_reste = reste_a_payer_usd - total_encaisse
+            
+            Paiement.objects.create(
+                patient=consultation.triage.patient,
+                consultation=consultation,
+                service='EXAMENS',
+                montant_verse=montant_verse_usd,
+                montant_reduction=reduction_usd,
+                reste_a_payer=max(Decimal('0.00'), nouveau_reste),
+                devise=devise,
+                caissier=request.user,
+                date_paiement=timezone.now()
+            )
+
+            messages.success(request, "Paiement enregistré avec succès.")
+            return redirect('historique_paiements', patient_id=consultation.triage.patient.id)
+
+        except Exception as e:
+            messages.error(request, f"Une erreur technique est survenue : {str(e)}")
+            return redirect('encaisser_examens', consultation_id=consultation.id)
+
+    # Récupération des informations sur l'utilisateur pour le template (Logique conservée)
     role = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role.fonctionKey.roleName if role else None
 
+    # Context complet avec toutes vos variables d'origine
     context = {
         'consultation': consultation,
         'reste_a_payer_usd': reste_a_payer_usd,
         'taux': taux,
-        'fonctionKey': fonctionKey
+        'fonctionKey': fonctionKey,
+        'examens': examens, # Ajouté : nécessaire pour afficher la liste des examens
+        'total_prescrit': total_prescrit
     }
     return render(request, 'back-end/caisse/encaisser_examens.html', context)
 
