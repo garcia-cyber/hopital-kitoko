@@ -4885,35 +4885,83 @@ def historique_entreprise(request, entreprise_id):
 # =========================================================================================
 @login_required
 def liste_patients_fideles(request):
+    # 1. Traitement du paiement (POST)
+    if request.method == 'POST':
+        try:
+            consultation_id = request.POST.get('consultation_id')
+            montant_verse = Decimal(request.POST.get('montant', 0))
+            reduction = Decimal(request.POST.get('reduction', 0))
+            devise = request.POST.get('devise', 'USD')
+            
+            cons = Consultation.objects.get(id=consultation_id)
+            
+            # Conversion en USD si le paiement est en CDF
+            montant_en_usd = montant_verse
+            if devise == 'CDF':
+                taux = ConfigurationHopital.get_taux()
+                montant_en_usd = montant_verse / taux
+
+            # Création du paiement lié à CETTE consultation
+            Paiement.objects.create(
+                consultation=cons,
+                patient=cons.triage.patient,
+                service='CONSULTATION',
+                montant_verse=montant_en_usd,
+                montant_reduction=reduction,
+                devise=devise,
+                date_paiement=timezone.now(),
+                caissier=request.user,
+            )
+            messages.success(request, f"Paiement de {montant_verse} {devise} enregistré pour {cons.triage.patient.noms}.")
+            return redirect('liste_patients_fideles')
+        except Exception as e:
+            messages.error(request, f"Erreur lors du paiement : {e}")
+
+    # 2. Préparation des données pour l'affichage
     mois = timezone.now().month
     annee = timezone.now().year
 
-    # Filtrer les consultations des patients fidèles ce mois
     consultations = Consultation.objects.filter(
         triage__patient__type_patient='FIDELE',
         date_creation__year=annee,
         date_creation__month=mois
-    ).prefetch_related('examens__prestation')
+    ).prefetch_related('paiements', 'examens__prestation') 
 
     patients_data = []
-
     for cons in consultations:
         patient = cons.triage.patient
+        # Calcul du coût total des prestations pour cette consultation
         montant_total = sum(
-            ex.prestation.prix * ex.quantite
-            for ex in cons.examens.all()
-            if ex.prestation and ex.prestation.prix
+            ex.prestation.prix * ex.quantite 
+            for ex in cons.examens.all() 
+            if ex.prestation
         )
+        
+        # Calcul du total payé + remise via related_name 'paiements'
+        totaux = cons.paiements.aggregate(
+            paye=Sum('montant_verse'), 
+            remise=Sum('montant_reduction')
+        )
+        
+        paye = totaux['paye'] or 0
+        remise = totaux['remise'] or 0
+        reste_a_payer = montant_total - (paye + remise)
+
         patients_data.append({
+            'consultation_id': cons.id,
             'patient': patient,
-            'montant_total': montant_total
+            'montant_total': montant_total,
+            'reste_a_payer': max(Decimal('0.00'), reste_a_payer)
         })
+
+    # 3. Vérification des droits
     role = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
 
+    # 4. Rendu avec TOUTES les variables nécessaires
     return render(request, 'back-end/patient/liste_fideles.html', {
         'patients_data': patients_data,
         'mois': mois,
-        'annee': annee ,
-        'fonctionKey' : fonctionKey
+        'annee': annee,
+        'fonctionKey': fonctionKey
     })
