@@ -317,3 +317,50 @@ class ExamenExterneResultatAdmin(admin.ModelAdmin):
     list_display = ('demande', 'prestation', 'statut', 'date_resultat')
     list_filter = ('statut', 'prestation__categorie')
     search_fields = ('demande__client__noms', 'prestation__libelle')
+
+
+# ==================================================================================
+#
+#
+@admin.register(FicheAccouchement)
+class FicheAccouchementAdmin(admin.ModelAdmin):
+    list_display = (
+        'consultation',
+        'prestation',
+        'type_accouchement',
+        'sexe_bebe',
+        'poids_bebe',
+        'score_apgar',
+        'date_creation',
+        'auteur'
+    )
+    list_filter = (
+        'type_accouchement',
+        'sexe_bebe',
+        'date_creation',
+        'prestation'
+    )
+    search_fields = (
+        'consultation__triage__patient__noms',
+        'notes',
+        'auteur__username'
+    )
+    ordering = ('-date_creation',)
+    date_hierarchy = 'date_creation'
+    readonly_fields = ('date_creation',)
+
+    fieldsets = (
+        ("Informations générales", {
+            'fields': ('consultation', 'prestation', 'type_accouchement', 'auteur')
+        }),
+        ("Données bébé", {
+            'fields': ('sexe_bebe', 'poids_bebe', 'score_apgar')
+        }),
+        ("Notes", {
+            'fields': ('notes',)
+        }),
+        ("Métadonnées", {
+            'fields': ('date_creation',),
+            'classes': ('collapse',)
+        }),
+    )

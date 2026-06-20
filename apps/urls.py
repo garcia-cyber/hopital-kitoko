@@ -200,6 +200,11 @@ urlpatterns =[
     # ACCOUCHEMENT 
     path('saisir-accouchement/<int:consultation_id>/', views.saisir_fiche_accouchement_view, name='saisir_fiche_accouchement'),
     path('accouchement/compte-rendu/<int:consultation_id>/', views.saisir_cr_accouchement_view, name='saisir_cr_accouchement'),
+    path('accouchement/liste-cr/', views.liste_cr_accouchement_view, name='liste_cr_accouchement'),
+    path('accouchement/payer/<int:cr_id>/', views.payer_accouchement_view, name='payer_accouchement'),
+    path('voir-cr/<int:consultation_id>/', views.voir_cr_accouchement_view, name='voir_cr_accouchement'),
+    path('accouchement/fiches/', views.liste_fiches_accouchement_view, name='liste_fiches_accouchement'),
+    path('accouchement/fiche/<int:fiche_id>/', views.detail_fiche_accouchement_view, name='detail_fiche_accouchement'),
 
 
     # ========================================

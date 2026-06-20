@@ -77,7 +77,7 @@
                                             <i class="fa fa-notes-medical"></i> Saisir Compte Rendu
                                         </a>
                                     {% elif o.destination == 'ACCOUCHEMENT' %}
-                                        <a href="{% url 'saisir_fiche_accouchement' o.consultation.id %}" class="btn btn-primary btn-block mb-2">
+                                        <a href="{% url 'saisir_cr_accouchement' o.consultation.id %}" class="btn btn-primary btn-block mb-2">
                                             <i class="fa fa-notes-medical"></i> Fiche accouchement
                                         </a>
                                     {% endif %}

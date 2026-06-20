@@ -3837,41 +3837,56 @@ def voir_rapport(request, bloc_id):
 
 #
 # =======================================================================================
-# PRESTATION ACCOUCHEMENT 
+# PRESTATION ACCOUCHEMENT  (saisir fiche accouchement apres acouchement)
 # =======================================================================================
 @login_required
 def saisir_fiche_accouchement_view(request, consultation_id):
     consultation = get_object_or_404(Consultation, id=consultation_id)
-    # Récupère uniquement les prestations de type MAT
+    # Récupère uniquement les prestations de type MAT (forfait maternité)
     prestations = Prestation.objects.filter(categorie='MAT')
 
     if request.method == 'POST':
+        prestation_id = request.POST.get('prestation_id')
+        type_acc = request.POST.get('type_accouchement')
+        sexe_bebe = request.POST.get('sexe_bebe')
+        poids_bebe = request.POST.get('poids_bebe')
+        score_apgar = request.POST.get('score_apgar')
+        notes = request.POST.get('notes')
+
+        # Vérification des champs obligatoires
+        if not prestation_id or not type_acc or not poids_bebe:
+            messages.error(request, "Veuillez remplir tous les champs obligatoires.")
+            return redirect('saisir_fiche_accouchement', consultation_id=consultation.id)
+
         try:
-            # Récupération de la prestation choisie
-            prestation_id = request.POST.get('prestation_id')
             prestation = Prestation.objects.get(id=prestation_id)
 
-            # Création de la fiche
             FicheAccouchement.objects.create(
                 consultation=consultation,
                 prestation=prestation,
-                type_accouchement=request.POST.get('type_accouchement'),
-                sexe_bebe=request.POST.get('sexe_bebe'),
-                poids_bebe=request.POST.get('poids_bebe'),
-                score_apgar=request.POST.get('score_apgar'),
-                notes=request.POST.get('notes')
+                type_accouchement=type_acc,
+                sexe_bebe=sexe_bebe,
+                poids_bebe=poids_bebe,
+                score_apgar=score_apgar if score_apgar else None,
+                notes=notes,
+                auteur=request.user
             )
             messages.success(request, "Fiche d'accouchement enregistrée avec succès.")
             return redirect('service_liste_attente')
+
+        except Prestation.DoesNotExist:
+            messages.error(request, "La prestation sélectionnée est invalide.")
         except Exception as e:
             messages.error(request, f"Erreur lors de l'enregistrement : {e}")
+
+    # Récupération du rôle de l'utilisateur
     role_obj = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role_obj.fonctionKey.roleName if (role_obj and role_obj.fonctionKey) else "Invité"
 
     return render(request, 'back-end/accouchement/saisir_fiche.html', {
         'consultation': consultation,
-        'prestations': prestations ,
-        'fonctionKey' : fonctionKey
+        'prestations': prestations,
+        'fonctionKey': fonctionKey
     })
 
 
@@ -3926,7 +3941,151 @@ def saisir_cr_accouchement_view(request, consultation_id):
         'fonctionKey' : fonctionKey
     })
 
+#
+# ====================================================================================================
+# LISTE DES FICHES ACCOUCHEMENT 
+# =====================================================================================================
+@login_required
+def liste_fiches_accouchement_view(request):
+    query = request.GET.get('q', '')
+    fiches = FicheAccouchement.objects.all().order_by('-date_creation')
 
+    # Recherche par patient ou notes
+    if query:
+        fiches = fiches.filter(
+            Q(consultation__triage__patient__noms__icontains=query) |
+            Q(notes__icontains=query)
+        )
+
+    # Pagination : 10 fiches par page
+    paginator = Paginator(fiches, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    # Récupération du rôle de l'utilisateur
+    role_obj = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role_obj.fonctionKey.roleName if (role_obj and role_obj.fonctionKey) else "Invité"
+
+    return render(request, 'back-end/accouchement/liste_fiches.html', {
+        'page_obj': page_obj,
+        'query': query , 
+        'fonctionKey' : fonctionKey
+    })
+
+#
+# =====================================================================================================
+# DETAIL DE LA FICHE D'ACCOUCHEMENT
+# ===================================================================================================== 
+@login_required
+def detail_fiche_accouchement_view(request, fiche_id):
+    fiche = get_object_or_404(FicheAccouchement, id=fiche_id)
+
+    role_obj = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role_obj.fonctionKey.roleName if (role_obj and role_obj.fonctionKey) else "Invité"
+
+    return render(request, 'back-end/accouchement/detail_fiche.html', {
+        'fiche': fiche , 
+        'fonctionKey' : fonctionKey
+    })
+
+
+#
+# ======================================================================================================
+#
+# ======================================================================================================
+@login_required
+def liste_cr_accouchement_view(request):
+    # Ajout de 'prestation' dans le select_related
+    liste_cr = CompteRenduAccouchement.objects.select_related(
+        'consultation__triage__patient', 'auteur', 'prestation'
+    ).order_by('-date_creation')
+    
+    role_obj = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role_obj.fonctionKey.roleName if (role_obj and role_obj.fonctionKey) else "Invité"
+
+    return render(request, 'back-end/accouchement/liste_cr.html', {
+        'liste_cr': liste_cr,
+        'fonctionKey': fonctionKey
+    })
+
+#
+# ====================================================================================================
+# PAYER ACCOUCHEMENT
+# ====================================================================================================
+@login_required
+def payer_accouchement_view(request, cr_id):
+    cr = get_object_or_404(CompteRenduAccouchement, id=cr_id)
+    taux = ConfigurationHopital.get_taux()
+    
+    # 1. Calculer le reste à payer actuel pour ce compte-rendu
+    # Prix total du forfait
+    total_forfait = cr.prestation.prix
+    # Somme des paiements déjà effectués
+    paiements_precedents = Paiement.objects.filter(compte_rendu=cr)
+    total_deja_paye = paiements_precedents.aggregate(Sum('montant_verse'))['montant_verse__sum'] or Decimal('0.00')
+    
+    # Reste à payer en USD
+    reste_a_payer_usd = total_forfait - total_deja_paye
+
+    if request.method == 'POST':
+        montant_saisi = Decimal(request.POST.get('montant_verse', 0))
+        montant_reduction = Decimal(request.POST.get('montant_reduction', 0))
+        devise = request.POST.get('devise', 'USD')
+        
+        # 2. Conversion du montant saisi en USD pour comparaison
+        montant_en_usd = montant_saisi
+        if devise == 'CDF':
+            montant_en_usd = montant_saisi / taux
+            
+        # 3. Vérification : le total (paiement + réduction) ne doit pas dépasser le reste
+        if (montant_en_usd + montant_reduction) > reste_a_payer_usd:
+            messages.error(request, f"Le montant saisi dépasse la dette restante ({reste_a_payer_usd:.2f} USD).")
+        else:
+            try:
+                Paiement.objects.create(
+                    patient=cr.consultation.triage.patient,
+                    compte_rendu=cr,
+                    service='MATERNITE',
+                    montant_verse=montant_en_usd, # On enregistre en USD
+                    montant_reduction=montant_reduction,
+                    devise=devise,
+                    caissier=request.user,
+                    date_paiement=timezone.now(),
+                    reste_a_payer=max(Decimal('0.00'), reste_a_payer_usd - (montant_en_usd + montant_reduction))
+                )
+                messages.success(request, "Paiement enregistré avec succès.")
+                return redirect('liste_cr_accouchement')
+            except Exception as e:
+                messages.error(request, f"Erreur système : {e}")
+
+    # Récupération du rôle pour le template
+    role_obj = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role_obj.fonctionKey.roleName if (role_obj and role_obj.fonctionKey) else "Invité"
+
+    return render(request, 'back-end/accouchement/payer_cr.html', {
+        'cr': cr,
+        'reste_a_payer': reste_a_payer_usd,
+        'taux': taux,
+        'fonctionKey': fonctionKey
+    })
+
+#
+# ====================================================================================================
+# VOIR LE COMPTE RENDU 
+# ====================================================================================================
+@login_required
+def voir_cr_accouchement_view(request, consultation_id):
+    # Récupère le compte-rendu associé à la consultation
+    cr = get_object_or_404(CompteRenduAccouchement, consultation__id=consultation_id)
+    
+    # Récupération du rôle pour le template (si nécessaire)
+    role_obj = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role_obj.fonctionKey.roleName if (role_obj and role_obj.fonctionKey) else "Invité"
+
+    return render(request, 'back-end/accouchement/voir_cr.html', {
+        'cr': cr,
+        'fonctionKey': fonctionKey
+    })
 
 # 
 # =====================================================================================================

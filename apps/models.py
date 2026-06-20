@@ -198,6 +198,13 @@ class Paiement(models.Model):
     devise = models.CharField(max_length=3, choices=CURRENCY, default='USD')
     date_paiement = models.DateTimeField(default=timezone.now)
     caissier = models.ForeignKey(User, on_delete=models.PROTECT)
+    compte_rendu = models.OneToOneField(
+        'CompteRenduAccouchement', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='paiement'
+    )
     reste_a_payer = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0.00'), verbose_name="Dette / Reste à payer")
 
     def save(self, *args, **kwargs):
@@ -930,6 +937,8 @@ class BlocOperatoire(models.Model):
     def __str__(self):
         return f"Bloc: {self.consultation.triage.patient.noms} - {self.statut}"
 
+# ===============================================================================
+# ACCOUCHEMENT 
 
 
 class CompteRenduAccouchement(models.Model):
@@ -954,6 +963,60 @@ class CompteRenduAccouchement(models.Model):
 
     def __str__(self):
         return f"CR Accouchement - {self.consultation.triage.patient.noms}"
+
+
+
+from django.db import models
+from django.conf import settings
+
+class FicheAccouchement(models.Model):
+    consultation = models.ForeignKey(
+        'Consultation',
+        on_delete=models.CASCADE,
+        related_name='fiches_accouchement'
+    )
+    prestation = models.ForeignKey(
+        'Prestation',
+        on_delete=models.SET_NULL,
+        null=True,
+        limit_choices_to={'categorie': 'MAT'},
+        verbose_name="Forfait Maternité"
+    )
+    type_accouchement = models.CharField(
+        max_length=20,
+        choices=[('NATUREL', 'Accouchement Naturel'), ('CESARIENNE', 'Césarienne')],
+        verbose_name="Type d'accouchement"
+    )
+    sexe_bebe = models.CharField(
+        max_length=1,
+        choices=[('M', 'Masculin'), ('F', 'Féminin')],
+        verbose_name="Sexe du bébé"
+    )
+    poids_bebe = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        verbose_name="Poids du bébé (kg)"
+    )
+    score_apgar = models.PositiveIntegerField(
+        blank=True,
+        null=True,
+        verbose_name="Score Apgar"
+    )
+    notes = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Notes / Complications"
+    )
+    date_creation = models.DateTimeField(auto_now_add=True)
+    auteur = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        verbose_name="Auteur de la fiche"
+    )
+
+    def __str__(self):
+        return f"Fiche Accouchement - {self.consultation.triage.patient.noms}"
 
 
 # ====================================================================
