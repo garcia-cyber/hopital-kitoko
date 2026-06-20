@@ -1,5 +1,5 @@
-<!DOCTYPE html>
 {% load static %}
+<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="utf-8">
@@ -24,7 +24,7 @@
         
         <div class="page-wrapper">
             <div class="content container-fluid">
-                <div class="page-header">
+                <div class="page-header d-flex justify-content-between align-items-center">
                     <h3 class="page-title">Historique des examens : {{ fonctionKey }}</h3>
                 </div>
 
@@ -41,46 +41,47 @@
                                         <th class="pl-4">ID Demande</th>
                                         <th>Patient</th>
                                         <th>Date</th>
-                                        <th>Détails des examens et résultats</th>
-                                    </tr>
+                                        <th>Détails</th>
+                                        <th>Action</th> </tr>
                                 </thead>
                                 <tbody>
                                     {% for item in historique_technique %}
                                     <tr>
                                         <td class="pl-4 font-weight-bold text-primary">#{{ item.id }}</td>
-                                        <td><div class="font-weight-bold">{{ item.patient }}</div></td>
+                                        <td>
+                                            <div class="font-weight-bold">{{ item.patient }}</div>
+                                        </td>
                                         <td>{{ item.date|date:"d M Y" }} <br> <small class="text-muted">{{ item.date|date:"H:i" }}</small></td>
                                         <td>
                                             {% for d in item.details %}
                                             <div class="examen-row">
                                                 <div class="d-flex justify-content-between align-items-center">
                                                     <span><strong>{{ d.prestation.libelle }}</strong></span>
-                                                    <div>
-                                                        {% if d.statut == 'TERMINE' %}
-                                                            <span class="badge badge-success badge-status">Terminé</span>
-                                                        {% else %}
-                                                            <span class="badge badge-warning badge-status">À faire</span>
-                                                            {% if d.est_ma_categorie %}
-                                                                <a href="{% url 'saisir_rapport' item.id d.prestation.id %}" class="btn btn-sm btn-outline-primary ml-2">
-                                                                    <i class="fa fa-edit"></i> Saisir
-                                                                </a>
-                                                            {% endif %}
-                                                        {% endif %}
-                                                    </div>
+                                                    {% if d.statut == 'TERMINE' %}
+                                                        <span class="badge badge-success badge-status">Terminé</span>
+                                                    {% else %}
+                                                        <span class="badge badge-warning badge-status">En attente</span>
+                                                    {% endif %}
                                                 </div>
-                                                
                                                 {% if d.statut == 'TERMINE' and d.rapport %}
-                                                    <div class="rapport-box">
-                                                        {{ d.rapport|linebreaksbr }}
-                                                    </div>
+                                                    <div class="rapport-box">{{ d.rapport|linebreaksbr }}</div>
                                                 {% endif %}
                                             </div>
                                             {% endfor %}
                                         </td>
+                                        <td>
+                                            {% if is_medecin %}
+                                                <a href="{% url 'prescrire_ordonnance_client_externe' item.id %}" class="btn btn-sm btn-outline-primary">
+                                                    <i class="fa fa-prescription"></i> Prescrire
+                                                </a>
+                                            {% else %}
+                                                <small class="text-muted">Accès restreint</small>
+                                            {% endif %}
+                                        </td>
                                     </tr>
                                     {% empty %}
                                     <tr>
-                                        <td colspan="4" class="text-center py-4">Aucun historique disponible.</td>
+                                        <td colspan="5" class="text-center py-4">Aucun historique disponible.</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>

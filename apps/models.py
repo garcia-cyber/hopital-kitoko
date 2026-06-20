@@ -1080,3 +1080,29 @@ class ExamenExterneResultat(models.Model):
 
 
 
+
+
+class OrdonnanceExterne(models.Model):
+    """Ordonnance destinée à un client externe"""
+    # Liaison avec le client externe au lieu du patient interne
+    client = models.ForeignKey(ClientExterne, on_delete=models.CASCADE, related_name='ordonnances_externes')
+    medecin = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    date_creation = models.DateTimeField(auto_now_add=True)
+    note_globale = models.TextField(blank=True, null=True, help_text="Instructions générales")
+    
+    class Meta:
+        verbose_name = "Ordonnance Client Externe"
+        ordering = ['-date_creation']
+
+    def __str__(self):
+        return f"Ordonnance #{self.id} - {self.client.noms}"
+
+class OrdonnanceItem(models.Model):
+    """Détails des médicaments ou examens"""
+    ordonnance = models.ForeignKey(OrdonnanceExterne, on_delete=models.CASCADE, related_name='items')
+    designation = models.CharField(max_length=255, verbose_name="Médicament ou Examen")
+    posologie = models.TextField(verbose_name="Posologie / Instructions")
+    quantite = models.CharField(max_length=50, blank=True, null=True, verbose_name="Quantité")
+
+    def __str__(self):
+        return f"{self.designation} pour {self.ordonnance.client.noms}"

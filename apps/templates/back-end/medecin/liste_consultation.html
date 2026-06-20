@@ -7,6 +7,10 @@
         <title>Patients Prêts - Moyanoli Médicale</title>
         
         {% include 'back-end/includes/css.html' %}
+        <style>
+            /* Correction pour que la recherche personnalisée fonctionne bien avec DataTables */
+            .dataTables_filter { display: none; } 
+        </style>
     </head>
     <body>
         <div class="main-wrapper">
@@ -17,7 +21,6 @@
             <div class="page-wrapper">
                 <div class="content container-fluid">
                 
-                    <!-- Page Header -->
                     <div class="page-header">
                         <div class="row align-items-center">
                             <div class="col">
@@ -30,21 +33,19 @@
                         </div>
                     </div>
 
-                    <!-- Barre de recherche -->
                     <div class="row filter-row">
                         <div class="col-sm-6 col-md-12">  
                             <div class="form-group form-focus">
-                                <input type="text" class="form-control floating" id="searchWaitingList" placeholder="Rechercher un patient en attente...">
+                                <input type="text" class="form-control floating" id="searchWaitingList" placeholder="Rechercher un patient...">
                                 <label class="focus-label">Recherche rapide</label>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Tableau des Patients en attente -->
                     <div class="row">
                         <div class="col-md-12">
                             <div class="table-responsive">
-                                <table class="table table-striped custom-table mb-0 datatable" id="waitingTable">
+                                <table class="table table-striped custom-table mb-0" id="waitingTable">
                                     <thead>
                                         <tr>
                                             <th>Ordre</th>
@@ -79,7 +80,7 @@
                                         </tr>
                                         {% empty %}
                                         <tr>
-                                            <td colspan="8" class="text-center text-muted">Aucun patient en attente dans la file du triage.</td>
+                                            <td colspan="8" class="text-center text-muted">Aucun patient en attente.</td>
                                         </tr>
                                         {% endfor %}
                                     </tbody>
@@ -95,10 +96,25 @@
 
         <script>
             $(document).ready(function() {
-                if ($.fn.DataTable.isDataTable('#waitingTable')) {
+                // Initialisation sécurisée de DataTables
+                if (typeof $.fn.DataTable !== 'undefined') {
+                    // Détruire l'instance si elle existe déjà pour éviter les conflits d'initialisation
+                    if ($.fn.DataTable.isDataTable('#waitingTable')) {
+                        $('#waitingTable').DataTable().destroy();
+                    }
+
+                    // Initialisation de la table
                     var table = $('#waitingTable').DataTable({
-                        "ordering": false // Conserve l'ordre d'arrivée du triage (date_prelevement)
+                        "ordering": false,
+                        "paging": true,
+                        "searching": true,
+                        "info": false,
+                        "language": {
+                            "paginate": { "next": "Suivant", "previous": "Précédent" }
+                        }
                     });
+
+                    // Lien entre ton champ de recherche et DataTables
                     $('#searchWaitingList').on('keyup', function() {
                         table.search(this.value).draw();
                     });

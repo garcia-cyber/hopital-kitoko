@@ -4559,12 +4559,26 @@ def historique_examen_externe_technicien(request):
         return render(request, 'back-end/error.html', {'message': "Accès refusé."})
 
     role_name = role_obj.fonctionKey.roleName.upper()
-    cat_cible = 'LABO' if 'LABO' in role_name else 'RADIO' if 'RADIO' in role_name else 'ECHO'
+    
+    # Déterminer si l'utilisateur est un médecin ou un technicien
+    is_medecin = 'MEDECIN' in role_name or 'DOCTEUR' in role_name
+    
+    # Définir la catégorie cible pour le technicien
+    cat_cible = None
+    if 'LABO' in role_name: cat_cible = 'LABO'
+    elif 'RADIO' in role_name: cat_cible = 'RADIO'
+    elif 'ECHO' in role_name: cat_cible = 'ECHO'
 
     # 2. Récupération des demandes
-    demandes = DemandeExamenExterne.objects.filter(
-        prestations__categorie=cat_cible
-    ).distinct().order_by('-date_demande')
+    if is_medecin:
+        demandes = DemandeExamenExterne.objects.all().order_by('-date_demande')
+    elif cat_cible:
+        demandes = DemandeExamenExterne.objects.filter(
+            prestations__categorie=cat_cible
+        ).distinct().order_by('-date_demande')
+    else:
+        # Si ce n'est ni médecin ni technicien reconnu
+        return render(request, 'back-end/error.html', {'message': "Accès non autorisé pour ce profil."})
 
     historique_technique = []
 
@@ -4574,27 +4588,33 @@ def historique_examen_externe_technicien(request):
         
         details_examens = []
         for p in tous_les_examens:
-            # On cherche le résultat pour cette prestation précise
+            # Recherche du résultat
             res = ExamenExterneResultat.objects.filter(demande=dem, prestation=p).first()
             
             details_examens.append({
                 'prestation': p,
                 'statut': res.statut if res else 'EN_ATTENTE',
                 'id_resultat': res.id if res else None,
-                'rapport': res.rapport if res else None, # Pour afficher le texte
-                'est_ma_categorie': (p.categorie == cat_cible)
+                'rapport': res.rapport if res else None,
+                # Autorisation d'édition/visualisation : le médecin voit tout, le technicien seulement sa catégorie
+                'est_ma_categorie': is_medecin or (p.categorie == cat_cible)
             })
 
+        # Reconstruction de l'objet historique complet
         historique_technique.append({
             'id': dem.id,
-            'patient': dem.client.noms,
+            'client': dem.client, # Informations complètes du client (objet)
+            'patient': dem.client.noms, # Gardé pour compatibilité
             'date': dem.date_demande,
-            'details': details_examens
+            'details': details_examens,
+            'medecin_demandeur': dem.medecin_demandeur if hasattr(dem, 'medecin_demandeur') else "Non spécifié",
+            'type_urgence': getattr(dem, 'urgence', 'Standard') # Exemple d'info supplémentaire
         })
 
     return render(request, 'back-end/client/historique_examen_externe_technicien.html', {
         'historique_technique': historique_technique,
         'fonctionKey': role_obj.fonctionKey.roleName,
+        'is_medecin': is_medecin,
         'cat_cible': cat_cible
     })
 
@@ -4965,3 +4985,122 @@ def liste_patients_fideles(request):
         'annee': annee,
         'fonctionKey': fonctionKey
     })
+
+
+#
+# ================================================================================================
+# PRESCRIRE ORDONNANCE POUR LE CLIENT EXTERNE 
+# ================================================================================================
+@login_required
+def prescrire_ordonnance_client_externe(request, client_id):
+    """
+    Vue dédiée à la prescription pour les clients externes.
+    Utilise le suffixe _externe pour éviter tout conflit avec les patients internes.
+    """
+    # Récupération du client externe
+    client = get_object_or_404(ClientExterne, id=client_id)
+    
+    if request.method == 'POST':
+        try:
+            # 1. Création de l'en-tête de l'ordonnance
+            ordonnance = OrdonnanceExterne.objects.create(
+                client=client,
+                medecin=request.user,
+                note_globale=request.POST.get('note_globale', '').strip()
+            )
+            
+            # 2. Récupération des données du formulaire dynamique
+            designations = request.POST.getlist('designation[]')
+            posologies = request.POST.getlist('posologie[]')
+            quantites = request.POST.getlist('quantite[]')
+            
+            # 3. Enregistrement des items (médicaments/examens)
+            # On boucle sur la longueur de la liste la plus longue (designations)
+            for i in range(len(designations)):
+                designation = designations[i].strip()
+                if designation: # On n'enregistre que si le nom n'est pas vide
+                    OrdonnanceItem.objects.create(
+                        ordonnance=ordonnance,
+                        designation=designation,
+                        posologie=posologies[i].strip() if i < len(posologies) else "",
+                        quantite=quantites[i].strip() if i < len(quantites) else ""
+                    )
+            
+            messages.success(request, f"Ordonnance enregistrée pour {client.noms}.")
+            # Redirection vers la fiche du client externe (ajuste le nom selon ton projet)
+            return redirect('detail_client_externe', client_id=client.id)
+            
+        except Exception as e:
+            messages.error(request, f"Une erreur est survenue lors de l'enregistrement : {e}")
+            return render(request, 'back-end/client/prescrire.html', {'client': client})
+
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    # Si GET, on affiche simplement la page de prescription
+    return render(request, 'back-end/client/prescrire_ordonnance_client_externe.html', {'client': client , 'fonctionKey' : fonctionKey})
+
+#
+# ==========================================================================================================
+# DETAIL CLIENT EXTERNE
+# ===========================================================================================================
+@login_required
+def detail_client_externe(request, client_id):
+    # 1. Récupération du client
+    client = get_object_or_404(ClientExterne, id=client_id)
+    
+    # 2. Récupération du rôle de l'utilisateur pour la sidebar/header
+    role_obj = Fonction.objects.filter(userKey=request.user).first()
+    fonction_key = role_obj.fonctionKey.roleName if role_obj and role_obj.fonctionKey else "Utilisateur"
+    
+    # 3. Récupération optionnelle des ordonnances liées à ce client
+    # Cela te permettra d'afficher la liste des ordonnances sur la page de détail
+    ordonnances = client.ordonnances_externes.all()
+
+    context = {
+        'client': client,
+        'fonctionKey': fonction_key,
+        'ordonnances': ordonnances,
+    }
+    
+    return render(request, 'back-end/client/detail_client.html', context)
+
+#
+# ==========================================================================================================
+# 
+# ===========================================================================================================
+@login_required
+def liste_ordonnances_externes_client(request):
+    # Récupère toutes les ordonnances, de la plus récente à la plus ancienne
+    ordonnances = OrdonnanceExterne.objects.all().order_by('-date_creation')
+    
+    # Récupération du rôle pour le menu
+    role_obj = Fonction.objects.filter(userKey=request.user).first()
+    fonction_key = role_obj.fonctionKey.roleName if role_obj and role_obj.fonctionKey else "Utilisateur"
+    
+    return render(request, 'back-end/client/liste_ordonnances_client.html', {
+        'ordonnances': ordonnances,
+        'fonctionKey': fonction_key
+    })
+
+
+#
+# ===========================================================================================================
+# CONSULTATION 
+# ============================================================================================================
+@login_required
+def consulter_ordonnance_externe(request, ordonnance_id):
+    # 1. Récupération de l'ordonnance
+    ordonnance = get_object_or_404(OrdonnanceExterne, id=ordonnance_id)
+    
+    # 2. Récupération du rôle pour le menu
+    role_obj = Fonction.objects.filter(userKey=request.user).first()
+    fonction_key = role_obj.fonctionKey.roleName if role_obj and role_obj.fonctionKey else "Utilisateur"
+    
+    context = {
+        'ordonnance': ordonnance,
+        'fonctionKey': fonction_key,
+    }
+    
+    # 3. Retourne le template de consultation
+    return render(request, 'back-end/client/consulter_ordonnance.html', context)

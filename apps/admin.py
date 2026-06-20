@@ -364,3 +364,38 @@ class FicheAccouchementAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+
+# =============================================================
+# 
+#
+#
+
+class OrdonnanceItemInline(admin.TabularInline):
+    model = OrdonnanceItem
+    extra = 1  # Nombre de lignes vides affichées par défaut pour ajouter des items
+    min_num = 1 # Oblige à avoir au moins un item pour valider
+
+@admin.register(OrdonnanceExterne)
+class OrdonnanceExterneAdmin(admin.ModelAdmin):
+    list_display = ('id', 'client', 'medecin', 'date_creation')
+    list_filter = ('date_creation', 'medecin')
+    search_fields = ('client__noms', 'medecin__username')
+    readonly_fields = ('date_creation',)
+    
+    # Intégration de l'inline
+    inlines = [OrdonnanceItemInline]
+
+    fieldsets = (
+        ('Informations Générales', {
+            'fields': ('client', 'medecin', 'date_creation')
+        }),
+        ('Notes', {
+            'fields': ('note_globale',)
+        }),
+    )
+
+# Enregistrement optionnel si tu veux gérer les items individuellement hors de l'ordonnance
+@admin.register(OrdonnanceItem)
+class OrdonnanceItemAdmin(admin.ModelAdmin):
+    list_display = ('designation', 'ordonnance', 'posologie', 'quantite')
+    search_fields = ('designation', 'ordonnance__client__noms')

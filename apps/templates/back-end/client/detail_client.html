@@ -1,0 +1,83 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <title>Détails Client - {{ client.noms }}</title>
+    {% include 'back-end/includes/css.html' %}
+</head>
+<body>
+<div class="main-wrapper">
+    {% include 'back-end/includes/header.html' %}
+    {% include 'back-end/includes/sidebar.html' %}
+
+    <div class="page-wrapper">
+        <div class="content container-fluid">
+            <div class="page-header d-flex justify-content-between align-items-center">
+                <h3 class="page-title">Fiche Client : {{ client.noms }}</h3>
+                <a href="{% url 'prescrire_ordonnance_client_externe' client.id %}" class="btn btn-primary">
+                    <i class="fa fa-prescription"></i> Nouvelle Ordonnance
+                </a>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5>Informations</h5>
+                            <hr>
+                            <p><strong>Sexe :</strong> {{ client.get_sexe_display|default:"Non spécifié" }}</p>
+                            <p><strong>Âge :</strong> {{ client.age|default:"-" }} ans</p>
+                            <p><strong>Poids :</strong> {{ client.poids|default:"-" }} kg</p>
+                            <p><strong>Téléphone :</strong> {{ client.telephone|default:"Non renseigné" }}</p>
+                            <p><strong>Enregistré le :</strong> {{ client.date_enregistrement|date:"d M Y" }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5>Historique des Ordonnances</h5>
+                            <hr>
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Médecin</th>
+                                            <th>Détails</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for ord in ordonnances %}
+                                        <tr>
+                                            <td>{{ ord.date_creation|date:"d/m/Y H:i" }}</td>
+                                            <td>{{ ord.medecin.get_full_name|default:ord.medecin.username }}</td>
+                                            <td>
+                                                <ul class="list-unstyled">
+                                                    {% for item in ord.items.all %}
+                                                        <li>- {{ item.designation }} ({{ item.posologie }})</li>
+                                                    {% endfor %}
+                                                </ul>
+                                            </td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="3" class="text-center">Aucune ordonnance pour ce client.</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% include 'back-end/includes/js.html' %}
+</body>
+</html>

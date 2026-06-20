@@ -230,8 +230,10 @@ urlpatterns =[
     path('encaisser-examen-externe/<int:demande_id>/', views.encaisser_examen_externe, name='encaisser_examen'),
     path('liste-facturation/', views.liste_facturation, name='liste_facturation'),
     path('imprimer-rapport/<int:demande_id>/', views.imprimer_rapport_complet, name='imprimer_rapport_complet'),
-
-
+    path('client/detail/<int:client_id>/', views.detail_client_externe, name='detail_client_externe'),
+    path('client/<int:client_id>/prescrire/', views.prescrire_ordonnance_client_externe, name='prescrire_ordonnance_client_externe'),
+    path('ordonnances/liste-client/', views.liste_ordonnances_externes_client, name='liste_ordonnances_externes_client'),
+    path('ordonnance/consulter/<int:ordonnance_id>/', views.consulter_ordonnance_externe, name='consulter_ordonnance_externe'),
 
 
  ]

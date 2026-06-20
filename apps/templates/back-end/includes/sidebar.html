@@ -89,6 +89,12 @@
     </li>
     <li><a href="{% url 'liste_consultations' %}"><i class="la la-history"></i> <span>Historique Consultations</span></a></li>
 
+             <li>
+    <a href="{% url 'liste_ordonnances_externes_client' %}">
+        <i class="fa fa-list"></i> <span>Ordonnances client</span>
+    </a>
+</li>
+
                 {% endif %}
 
                 {% if fonctionKey == 'receptionniste' %}
@@ -223,6 +229,8 @@
 
 
 
+
+
                 {% endif %}
 
                 {% if fonctionKey == 'medecin' %}
@@ -231,6 +239,12 @@
                               <li><a href="{% url 'liste_consultations' %}"><i class="la la-history"></i> <span>Historique Consultations</span></a></li>
                     <li><a href="{% url 'liste_hospitalisations' %}"><i class="la la-bed"></i> <span>Suivi Hospitalisations</span></a></li>
                     <li><a href="{% url 'liste_ordonnances' %}"><i class="la la-file-text"></i> <span>Liste des Ordonnances</span></a></li>
+
+                    <li>
+    <a href="{% url 'liste_ordonnances_externes_client' %}">
+        <i class="fa fa-list"></i> <span>Ordonnances client</span>
+    </a>
+</li>
                     <li>
     <a href="{% url 'liste_ordonnances_urgence' %}">
         <i class="la la-notes-medical"></i> 
@@ -294,6 +308,11 @@
         <span>Fiches Accouchement</span>
     </a>
 </li>
+
+<li><a href="{% url 'historique_examen_externe_technicien' %}"><i class="la la-history"></i> <span>Examens externe</span></a></li>
+
+
+
 
                 {% endif %}
 
