@@ -3,8 +3,20 @@
 <html lang="fr">
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
     <title>Détails Client - {{ client.noms }}</title>
     {% include 'back-end/includes/css.html' %}
+    <style>
+        /* CSS Responsive */
+        @media (max-width: 767px) {
+            .page-header { flex-direction: column; align-items: flex-start !important; gap: 15px; }
+            .btn { width: 100%; }
+            .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            td, th { font-size: 12px; white-space: nowrap; }
+        }
+        .ordonnance-list { padding-left: 15px; margin-bottom: 0; }
+        .ordonnance-list li { font-size: 12px; color: #555; }
+    </style>
 </head>
 <body>
 <div class="main-wrapper">
@@ -21,50 +33,52 @@
             </div>
 
             <div class="row">
-                <div class="col-md-4">
+                <div class="col-md-4 col-12">
                     <div class="card">
                         <div class="card-body">
                             <h5>Informations</h5>
                             <hr>
-                            <p><strong>Sexe :</strong> {{ client.get_sexe_display|default:"Non spécifié" }}</p>
                             <p><strong>Âge :</strong> {{ client.age|default:"-" }} ans</p>
-                            <p><strong>Poids :</strong> {{ client.poids|default:"-" }} kg</p>
-                            <p><strong>Téléphone :</strong> {{ client.telephone|default:"Non renseigné" }}</p>
+                            <p><strong>Téléphone :</strong> {{ client.telephone|default:"-" }}</p>
                             <p><strong>Enregistré le :</strong> {{ client.date_enregistrement|date:"d M Y" }}</p>
                         </div>
                     </div>
                 </div>
 
-                <div class="col-md-8">
+                <div class="col-md-8 col-12">
                     <div class="card">
                         <div class="card-body">
                             <h5>Historique des Ordonnances</h5>
                             <hr>
                             <div class="table-responsive">
-                                <table class="table table-hover">
+                                <table class="table table-hover table-bordered">
                                     <thead>
                                         <tr>
                                             <th>Date</th>
-                                            <th>Médecin</th>
-                                            <th>Détails</th>
+                                            <th>Détails des médicaments</th>
+                                            <th>Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {% for ord in ordonnances %}
                                         <tr>
                                             <td>{{ ord.date_creation|date:"d/m/Y H:i" }}</td>
-                                            <td>{{ ord.medecin.get_full_name|default:ord.medecin.username }}</td>
                                             <td>
-                                                <ul class="list-unstyled">
+                                                <ul class="ordonnance-list">
                                                     {% for item in ord.items.all %}
-                                                        <li>- {{ item.designation }} ({{ item.posologie }})</li>
+                                                        <li><strong>{{ item.designation }}</strong>: {{ item.posologie }}</li>
                                                     {% endfor %}
                                                 </ul>
+                                            </td>
+                                            <td>
+                                                <a href="{% url 'consulter_ordonnance_externe' ord.id %}" class="btn btn-sm btn-info">
+                                                    <i class="fa fa-eye"></i> Voir
+                                                </a>
                                             </td>
                                         </tr>
                                         {% empty %}
                                         <tr>
-                                            <td colspan="3" class="text-center">Aucune ordonnance pour ce client.</td>
+                                            <td colspan="3" class="text-center">Aucune ordonnance.</td>
                                         </tr>
                                         {% endfor %}
                                     </tbody>
@@ -77,7 +91,6 @@
         </div>
     </div>
 </div>
-
 {% include 'back-end/includes/js.html' %}
 </body>
 </html>
