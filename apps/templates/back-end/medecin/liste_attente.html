@@ -24,7 +24,7 @@
             <div class="content container-fluid">
                 <div class="page-header d-flex justify-content-between align-items-center mb-4">
                     <h3>Ordonnances en Attente</h3>
-                    <input type="text" id="searchInput" class="form-control w-25" placeholder="🔍 Rechercher...">
+                    <input type="text" id="searchInput" class="form-control w-25" placeholder="🔍 Rechercher un patient...">
                 </div>
 
                 <div class="card shadow-sm">
@@ -90,43 +90,63 @@
                     <input type="hidden" name="action" value="enregistrer_ordonnance">
                     <input type="hidden" name="consultation_id" value="{{ c.id }}">
                     <div class="modal-header" style="background: #2c3e50; color: white;">
-                        <h5 class="modal-title">Ordonnance : {{ c.triage.patient.noms }}</h5>
+                        <h5 class="modal-title">Traitement : {{ c.triage.patient.noms }}</h5>
                         <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
                     </div>
                     <div class="modal-body">
-                        <div class="form-group mb-3">
-                            <label class="font-weight-bold">Type d'ordonnance</label>
-                            <select name="type_ordonnance" class="form-control" required>
-                                <option value="URGENCE">Ordonnance d’Urgence</option>
-                                <option value="DEFINITIVE" selected>Ordonnance Définitive</option>
-                            </select>
-                        </div>
-                        <div class="form-group mb-3">
-                            <label class="font-weight-bold">Diagnostic Final</label>
-                            <input type="text" name="diagnostic_final" class="form-control" required>
+                        <div class="row">
+                            <div class="col-md-6 form-group">
+                                <label>Type d'ordonnance</label>
+                                <select name="type_ordonnance" class="form-control" required>
+                                    <option value="URGENCE">Urgence</option>
+                                    <option value="DEFINITIVE" selected>Définitive</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 form-group">
+                                <label>Diagnostic Final</label>
+                                <input type="text" name="diagnostic_final" class="form-control" required>
+                            </div>
                         </div>
 
                         <div class="form-group mb-3 p-3" style="background: #f8f9fa; border: 1px solid #e9ecef; border-left: 5px solid #28a745;">
                             <label class="font-weight-bold text-success"><i class="fa fa-map-signs"></i> Orientation</label>
                             <div class="row">
                                 <div class="col-md-6">
-                                    <select name="destination" class="form-control">
-    <option value="">-- Choisir une destination --</option>
-    <option value="PHARMACIE">Pharmacie</option>
-    <option value="HOSPITALISATION">Hospitalisation</option>
-    <option value="SALLE_SOINS">Salle de Soins</option>
-    <option value="BLOC_OPERATOIRE">Bloc Opératoire</option>
-    <option value="ACCOUCHEMENT">Accouchement</option> 
-    <option value="SORTIE">Sortie / Domicile</option>
-</select>
+                                    <select name="destination" class="form-control" onchange="toggleLit(this, '{{ c.id }}')">
+                                        <option value="">-- Choisir une destination --</option>
+                                        <option value="PHARMACIE">Pharmacie</option>
+                                        <option value="Hospitalisation">Hospitalisation</option>
+                                        <option value="SALLE_SOINS">Salle de Soins</option>
+                                        <option value="BLOC_OPERATOIRE">Bloc Opératoire</option>
+                                        <option value="SORTIE">Sortie</option>
+                                    </select>
                                 </div>
                                 <div class="col-md-6">
-                                    <input type="text" name="observation_orientation" class="form-control" placeholder="Observations (optionnel)">
+                                    <input type="text" name="observation_orientation" class="form-control" placeholder="Observations">
+                                </div>
+                            </div>
+                            
+                            <div class="row mt-3" id="zone-lit-{{ c.id }}" style="display:none;">
+                                <div class="col-md-6">
+                                    <label class="font-weight-bold">Date d'entrée</label>
+                                    <input type="datetime-local" name="date_entree" class="form-control" value="{{ now|date:'Y-m-d\TH:i' }}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="font-weight-bold">Lit disponible</label>
+                                    <select name="lit_id" class="form-control">
+                                        {% for lit in lits_disponibles %}
+                                            <option value="{{ lit.id }}">{{ lit.nom_lit }} ({{ lit.chambre.nom_chambre }})</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-12 mt-2">
+                                    <label class="font-weight-bold">Motif d'admission</label>
+                                    <textarea name="motif_admission" class="form-control" rows="2"></textarea>
                                 </div>
                             </div>
                         </div>
 
-                        <label class="font-weight-bold">Prescription Médicamenteuse</label>
+                        <label class="font-weight-bold">Prescription</label>
                         <div id="zone-medicaments-{{ c.id }}">
                             <div class="row mb-2">
                                 <div class="col"><input type="text" name="nom_medicament[]" class="form-control" placeholder="Médicament" required></div>
@@ -134,11 +154,11 @@
                                 <div class="col"><input type="text" name="duree[]" class="form-control" placeholder="Durée" required></div>
                             </div>
                         </div>
-                        <button type="button" class="btn btn-info btn-sm mt-2" onclick="ajouterLigne('{{ c.id }}')">+ Ajouter un médicament</button>
+                        <button type="button" class="btn btn-info btn-sm mt-2" onclick="ajouterLigne('{{ c.id }}')">+ Ajouter médicament</button>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Fermer</button>
-                        <button type="submit" class="btn btn-success">Enregistrer & Valider</button>
+                        <button type="submit" class="btn btn-success">Valider le Traitement</button>
                     </div>
                 </form>
             </div>
@@ -152,10 +172,13 @@
             let filter = this.value.toUpperCase();
             let rows = document.querySelector("#tablePatients tbody").rows;
             for (let i = 0; i < rows.length; i++) {
-                let nameCol = rows[i].cells[1].innerText.toUpperCase();
-                rows[i].style.display = nameCol.indexOf(filter) > -1 ? "" : "none";
+                rows[i].style.display = rows[i].cells[1].innerText.toUpperCase().indexOf(filter) > -1 ? "" : "none";
             }
         });
+
+        function toggleLit(select, id) {
+            document.getElementById('zone-lit-' + id).style.display = (select.value === 'Hospitalisation') ? 'flex' : 'none';
+        }
 
         function ajouterLigne(id) {
             const zone = document.getElementById('zone-medicaments-' + id);

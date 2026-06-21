@@ -132,6 +132,7 @@ urlpatterns =[
     path('hospitalisations/admettre/', views.admettre_patient, name='admettre_patient'),
     path('hospitalisation/<int:pk>/', views.detail_hospitalisation, name='detail_hospitalisation'),
     path('hospitalisation/<int:pk>/ajouter-suivi/', views.ajouter_suivi, name='ajouter_suivi'),
+    path('hospitalisation/modifier/<int:hospitalisation_id>/', views.modifier_hospitalisation_view, name='modifier_hospitalisation') ,
 
 
     # ====================================

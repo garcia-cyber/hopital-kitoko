@@ -16,23 +16,17 @@
         .btn-finished { background: #e9ecef; color: #6c757d; cursor: not-allowed; border-radius: 6px; padding: 6px 15px; border: none; }
         .badge-type { font-size: 10px; padding: 3px 8px; border-radius: 4px; }
         .info-financiere { font-size: 11px; font-weight: 600; display: block; margin-top: 4px; }
-        .info-financiere.simple { color: #dc3545; }        /* Rouge pour patient simple */
-        .info-financiere.fidele { color: #28a745; }        /* Vert pour patient fidèle */
-        .info-financiere.conventionne { color: #17a2b8; }  /* Bleu turquoise pour patient conventionné */
+        .info-financiere.simple { color: #dc3545; }
+        .info-financiere.fidele { color: #28a745; }
+        .info-financiere.conventionne { color: #17a2b8; }
+        
+        /* Responsive Table */
         @media (max-width: 768px) {
             .table thead { display: none; }
             .table, .table tbody, .table tr, .table td { display: block; width: 100%; }
             .table tr { margin-bottom: 15px; border-bottom: 1px solid #f0f0f0; }
             .table td { text-align: right; padding-left: 50%; position: relative; }
-            .table td::before {
-                content: attr(data-label);
-                position: absolute;
-                left: 15px;
-                width: 45%;
-                text-align: left;
-                font-weight: bold;
-                color: #6c757d;
-            }
+            .table td::before { content: attr(data-label); position: absolute; left: 15px; width: 45%; text-align: left; font-weight: bold; color: #6c757d; }
         }
     </style>
 </head>
@@ -48,6 +42,17 @@
                     <p class="text-muted">Console de suivi technique</p>
                 </div>
 
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <div class="input-group">
+                            <input type="text" id="searchPatient" class="form-control" placeholder="Rechercher par nom ou code...">
+                            <div class="input-group-append">
+                                <span class="input-group-text"><i class="fa fa-search"></i></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="row">
                     <div class="col-md-12">
                         <div class="card">
@@ -56,7 +61,7 @@
                             </div>
                             <div class="card-body p-0">
                                 <div class="table-responsive">
-                                    <table class="table table-hover mb-0">
+                                    <table class="table table-hover mb-0" id="tablePatients">
                                         <thead>
                                             <tr>
                                                 <th>Patient</th>
@@ -78,18 +83,9 @@
                                                             <div>
                                                                 <span class="badge badge-secondary badge-type">{{ item.patient.type }}</span>
                                                                 {% if item.patient.info_financiere %}
-                                                                    <span class="info-financiere 
-                                                                        {% if item.patient.type == 'Patient Simple' %}simple{% endif %}
-                                                                        {% if item.patient.type == 'Patient Fidèle' %}fidele{% endif %}
-                                                                        {% if item.patient.type == 'Patient Conventionné' %}conventionne{% endif %}
-                                                                    ">
-                                                                        {% if item.patient.type == 'Patient Simple' %}
-                                                                            <i class="fa fa-exclamation-triangle"></i>
-                                                                        {% else %}
-                                                                            <i class="fa fa-info-circle"></i>
-                                                                        {% endif %}
-                                                                        {{ item.patient.info_financiere }}
-                                                                    </span>
+                                                                <span class="info-financiere {% if item.patient.type == 'Patient Simple' %}simple{% elif item.patient.type == 'Patient Fidèle' %}fidele{% else %}conventionne{% endif %}">
+                                                                    <i class="fa fa-info-circle"></i> {{ item.patient.info_financiere }}
+                                                                </span>
                                                                 {% endif %}
                                                             </div>
                                                         </div>
@@ -97,9 +93,7 @@
                                                 </td>
                                                 <td data-label="Bio">
                                                     {{ item.patient.genre|default:"N/A" }} <br>
-                                                    {% if item.patient.age %}
-                                                        <small class="text-muted">{{ item.patient.age }} ans</small>
-                                                    {% endif %}
+                                                    {% if item.patient.age %}<small class="text-muted">{{ item.patient.age }} ans</small>{% endif %}
                                                 </td>
                                                 <td data-label="Examens">
                                                     {% for ex in item.examens %}
@@ -117,9 +111,7 @@
                                                 </td>
                                                 <td data-label="Action" class="text-center">
                                                     {% if item.tout_traite %}
-                                                        <button class="btn btn-finished btn-sm" disabled>
-                                                            <i class="fa fa-check-circle mr-1"></i> Terminé
-                                                        </button>
+                                                        <button class="btn btn-finished btn-sm" disabled><i class="fa fa-check-circle mr-1"></i> Terminé</button>
                                                     {% else %}
                                                         <a href="{% url 'saisir_resultats_examens' item.consultation_id %}" class="btn btn-medical btn-sm">
                                                             <i class="fa fa-flask mr-1"></i> Saisir Résultats
@@ -145,6 +137,17 @@
             </div>
         </div>
     </div>
+
     {% include 'back-end/includes/js.html' %}
+    
+    <script>
+        document.getElementById('searchPatient').addEventListener('keyup', function() {
+            let filter = this.value.toLowerCase();
+            let rows = document.querySelectorAll('#tablePatients tbody tr');
+            rows.forEach(row => {
+                row.style.display = row.innerText.toLowerCase().includes(filter) ? '' : 'none';
+            });
+        });
+    </script>
 </body>
 </html>

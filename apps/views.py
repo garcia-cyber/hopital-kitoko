@@ -1455,7 +1455,7 @@ def saisir_resultats_examens(request, consultation_id):
 
 # 38
 # ==================================================================================================
-# 
+# DOSSIER RESULTAT PATIENT
 # ==================================================================================================
 @login_required
 def dossier_resultats_patient(request, patient_id):
@@ -1815,7 +1815,7 @@ def dashboard_finance_depense(request):
 # ==================================================================================================
 @login_required
 def liste_attente_ordonnance_view(request):
-    # 1. Traitement du formulaire
+    # 1. Traitement du formulaire (POST)
     if request.method == 'POST' and request.POST.get('action') == 'enregistrer_ordonnance':
         consultation_id = request.POST.get('consultation_id')
         diagnostic = request.POST.get('diagnostic_final')
@@ -1830,22 +1830,23 @@ def liste_attente_ordonnance_view(request):
         posologies = request.POST.getlist('posologie[]')
         durees = request.POST.getlist('duree[]')
         
+        # Récupération de la consultation
         consultation = Consultation.objects.filter(id=consultation_id).first()
         
         if consultation:
             try:
                 with transaction.atomic():
-                    # Mise à jour diagnostic
+                    # A. Mise à jour diagnostic
                     consultation.diagnostic_final = diagnostic
                     consultation.save()
                     
-                    # Création ordonnance
+                    # B. Création ordonnance
                     ordonnance = Ordonnance.objects.create(
                         consultation=consultation,
                         type_ordonnance=type_ord
                     )
                     
-                    # Création médicaments
+                    # C. Création médicaments
                     for nom, pos, dur in zip(noms, posologies, durees):
                         if nom.strip():
                             Medicament.objects.create(
@@ -1855,8 +1856,24 @@ def liste_attente_ordonnance_view(request):
                                 duree=dur
                             )
                     
-                    # Enregistrement Orientation (si sélectionnée)
+                    # D. Logique d'orientation et Hospitalisation
                     if destination:
+                        # Gestion spécifique si hospitalisation
+                        if destination == 'Hospitalisation':
+                            lit_id = request.POST.get('lit_id')
+                            date_entree = request.POST.get('date_entree')
+                            motif_admission = request.POST.get('motif_admission')
+                            
+                            if lit_id:
+                                Hospitalisation.objects.create(
+                                    patient=consultation.patient,
+                                    lit_id=lit_id,
+                                    date_entree=date_entree if date_entree else timezone.now(),
+                                    motif_admission=motif_admission if motif_admission else diagnostic,
+                                    statut='EN_COURS'
+                                )
+                        
+                        # Enregistrement de l'objet Orientation pour l'historique
                         Orientation.objects.create(
                             consultation=consultation,
                             medecin_orientateur=request.user,
@@ -1865,24 +1882,31 @@ def liste_attente_ordonnance_view(request):
                             est_admis=False
                         )
                         
-                messages.success(request, "Traitement complet effectué avec succès.")
+                    messages.success(request, "Traitement complet effectué avec succès.")
             except Exception as e:
                 messages.error(request, f"Erreur critique : {str(e)}")
         
         return redirect('liste_attente_medecin')
 
-    # 2. Affichage de la liste
+    # 2. Affichage de la liste (GET)
+    # Filtre sur examens terminés et optimisation des requêtes
     consultations_en_attente = Consultation.objects.filter(
         examens__statut='TERMINE'
     ).prefetch_related('examens', 'ordonnance_set').distinct()
 
-    # Gestion de la fonctionKey
+    # Récupération des lits disponibles
+    lits_disponibles = Lit.objects.filter(est_occupe=False)
+
+    # Récupération de la fonctionKey pour le contrôle d'accès/menu
     role = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None 
     
+    # Rendu final avec tout le contexte nécessaire
     return render(request, 'back-end/medecin/liste_attente.html', {
         'consultations_en_attente': consultations_en_attente, 
-        'fonctionKey': fonctionKey 
+        'lits_disponibles': lits_disponibles,
+        'fonctionKey': fonctionKey,
+        'now': timezone.now()
     })
 
  
@@ -2258,7 +2282,9 @@ def liste_hospitalisations(request):
     return render(request, 'back-end/hospitalisation/liste_hospitalisations.html', {
         'hospitalisations': hospitalisations,
         'fonctionKey': fonctionKey
-    })
+    }) 
+
+
 
 
 #
@@ -5086,7 +5112,7 @@ def liste_ordonnances_externes_client(request):
 
 #
 # ===========================================================================================================
-# CONSULTATION 
+# CONSULTATION ORDONNANCE EXTERNE 
 # ============================================================================================================
 @login_required
 def consulter_ordonnance_externe(request, ordonnance_id):
@@ -5104,3 +5130,60 @@ def consulter_ordonnance_externe(request, ordonnance_id):
     
     # 3. Retourne le template de consultation
     return render(request, 'back-end/client/consulter_ordonnance.html', context)
+
+#
+# ============================================================================================================
+# MODIFICATION DE L'HOSPITALISATION 
+# ============================================================================================================
+@login_required
+def modifier_hospitalisation_view(request, hospitalisation_id):
+    # 1. Récupérer l'hospitalisation
+    hospitalisation = get_object_or_404(Hospitalisation, id=hospitalisation_id)
+    
+    if request.method == 'POST':
+        try:
+            # Récupération des données du formulaire
+            nouveau_lit_id = request.POST.get('lit_id')
+            nouveau_motif = request.POST.get('motif_admission')
+            nouveau_statut = request.POST.get('statut')
+            nouvelle_date = request.POST.get('date_entree')
+            
+            # Gestion des lits : Si le lit change
+            if int(nouveau_lit_id) != hospitalisation.lit.id:
+                # Libérer l'ancien lit
+                ancien_lit = hospitalisation.lit
+                ancien_lit.est_occupe = False
+                ancien_lit.save()
+                
+                # Occuper le nouveau lit
+                nouveau_lit = Lit.objects.get(id=nouveau_lit_id)
+                nouveau_lit.est_occupe = True
+                nouveau_lit.save()
+                
+                hospitalisation.lit = nouveau_lit
+            
+            # Mise à jour des autres champs
+            hospitalisation.date_entree = nouvelle_date
+            hospitalisation.motif_admission = nouveau_motif
+            hospitalisation.statut = nouveau_statut
+            hospitalisation.save()
+            
+            messages.success(request, "Hospitalisation mise à jour avec succès.")
+            return redirect('liste_hospitalisations')
+            
+        except Exception as e:
+            messages.error(request, f"Erreur lors de la modification : {str(e)}")
+
+    # 2. Récupération des lits pour le template
+    # On prend tous les lits libres OU le lit actuel du patient
+    lits = Lit.objects.filter(est_occupe=False) | Lit.objects.filter(id=hospitalisation.lit.id)
+
+    # 3. Gestion des droits d'accès (ton système de rôle)
+    role_obj = Fonction.objects.filter(userKey=request.user).first()
+    fonction_key = role_obj.fonctionKey.roleName if role_obj and role_obj.fonctionKey else "Utilisateur"
+
+    return render(request, 'back-end/hospitalisation/modifier_hospitalisation.html', {
+        'hosp': hospitalisation,
+        'lits': lits,
+        'fonctionKey': fonction_key
+    })

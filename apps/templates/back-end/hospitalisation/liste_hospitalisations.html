@@ -17,6 +17,9 @@
         .btn-outline-danger:hover { background: #ff5b5b; color: white; }
         .btn-outline-primary { border-radius: 8px; border: 1px solid #5a8dee; color: #5a8dee; }
         .btn-outline-primary:hover { background: #5a8dee; color: white; }
+        /* Style pour le bouton modifier */
+        .btn-outline-warning { border-radius: 8px; border: 1px solid #ffbc34; color: #ffbc34; }
+        .btn-outline-warning:hover { background: #ffbc34; color: white; }
     </style>
 </head>
 <body>
@@ -26,6 +29,7 @@
         
         <div class="page-wrapper">
             <div class="content container-fluid">
+                {% if fonctionKey == 'medecin' %}
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
                         <h3 class="page-title">Suivi des Séjours</h3>
@@ -33,6 +37,7 @@
                     </div>
                     <a href="{% url 'admettre_patient' %}" class="btn btn-primary shadow-sm"><i class="la la-plus"></i> Nouvelle Admission</a>
                 </div>
+                {% endif %}
 
                 <div class="card">
                     <div class="card-body p-0">
@@ -62,7 +67,7 @@
                                         </td>
                                         <td>{{ hosp.date_entree|date:"d M, Y" }}</td>
                                         <td><span class="badge badge-soft-dark">{{ hosp.nombre_jours }} j</span></td>
-                                        <td class="font-weight-bold text-dark">{{ hosp.cout_total|floatformat:0 }} FC</td>
+                                        <td class="font-weight-bold text-dark">{{ hosp.cout_total|floatformat:0 }} usd</td>
                                         <td>
                                             {% if hosp.statut == 'EN_COURS' %}
                                                 <span class="badge badge-soft-success text-success">En cours</span>
@@ -74,15 +79,23 @@
                                         </td>
                                         <td class="text-right">
                                             {% if hosp.statut == 'EN_COURS' %}
-                                            {% if fonctionKey == 'infirmier'%}
-                                                <a href="{% url 'detail_hospitalisation' hosp.id %}" class="btn btn-sm btn-outline-primary mr-1" title="Suivi quotidien">
-                                                    <i class="la la-stethoscope"></i> Suivi
+                                                
+                                                {% if fonctionKey == 'medecin' or fonctionKey == 'admin' or fonctionKey == 'receptionniste' %}
+                                                <a href="{% url 'modifier_hospitalisation' hosp.id %}" class="btn btn-sm btn-outline-warning mr-1" title="Modifier">
+                                                    <i class="la la-edit"></i>
                                                 </a>
                                                 {% endif %}
+
+                                                {% if fonctionKey == 'infirmier'%}
+                                                    <a href="{% url 'detail_hospitalisation' hosp.id %}" class="btn btn-sm btn-outline-primary mr-1" title="Suivi quotidien">
+                                                        <i class="la la-stethoscope"></i> Suivi
+                                                    </a>
+                                                {% endif %}
+                                                
                                                 {% if fonctionKey == 'receptionniste' or fonctionKey == 'admin'%}
-                                                <a href="#" class="btn btn-sm btn-outline-danger" title="Clôturer le séjour">
-                                                    <i class="la la-door-open"></i> Sortie
-                                                </a>
+                                                    <a href="#" class="btn btn-sm btn-outline-danger" title="Clôturer le séjour">
+                                                        <i class="la la-door-open"></i> Sortie
+                                                    </a>
                                                 {% endif %}
                                             {% else %}
                                                 <a href="{% url 'detail_hospitalisation' hosp.id %}" class="btn btn-sm btn-outline-info">
