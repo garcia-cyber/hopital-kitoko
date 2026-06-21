@@ -110,11 +110,13 @@
                                                 </button>
                                                 <div id="clinique_{{ c.id }}" class="collapse mt-2" style="min-width: 250px; font-size: 12px; background: #fdfdfd; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
                                                     <strong>Motif :</strong> {{ c.motif_consultation }}<br><br>
+                                                    <strong>Antecedent :</strong> {{ c.antecedent }}<br><br>
                                                     <strong>Histoire maladie :</strong> {{ c.histoire_maladie }}<br><br>
-                                                    <strong>Examen physique :</strong> {{ c.examen_physique }}<br><br>
                                                     {% if c.complement_d_anamnese %}
                                                         <strong>Complément Anamnèse :</strong> {{ c.complement_d_anamnese }}<br><br>
                                                     {% endif %}
+                                                    <strong>Examen physique :</strong> {{ c.examen_physique }}<br><br>
+                                                    
                                                     <strong class="text-danger">Hypothèse Diag :</strong> {{ c.hypothese_diagnostique }}
                                                 </div>
                                             </td>
