@@ -614,7 +614,9 @@ class SuiviQuotidien(models.Model):
     etat_general = models.TextField(verbose_name="État général du patient")
     constantes_du_jour = models.TextField(verbose_name="Constantes (TA, Pouls, Temp...)")
     soins_effectues = models.TextField(verbose_name="Soins et médicaments administrés")
-    
+    ta = models.CharField(max_length=20, verbose_name="TA", default="N/A")
+    pouls = models.CharField(max_length=20, verbose_name="Pouls", default="N/A")
+    temp = models.CharField(max_length=20, verbose_name="Temp (°C)", default="N/A")
     class Meta:
         verbose_name = "Suivi Quotidien"
         verbose_name_plural = "Suivis Quotidiens"

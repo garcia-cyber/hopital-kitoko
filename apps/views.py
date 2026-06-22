@@ -2360,30 +2360,60 @@ def detail_hospitalisation(request, pk):
     })
 #
 # ===========================================================================================
-# ADD SUIVI
+# ADD SUIVI PAR L'INFIRMIER  
 # ============================================================================================
 @login_required
 def ajouter_suivi(request, pk):
+    # 1. Vérification des droits d'accès
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+    
+    # Redirection immédiate si non autorisé
+    if fonctionKey not in ['infirmier', 'medecin', 'admin']:
+        messages.error(request, "Accès refusé : vous n'êtes pas autorisé à modifier le suivi.")
+        return redirect('detail_hospitalisation', pk=pk)
+
     if request.method == 'POST':
+        # 2. Récupération de l'hospitalisation
         hosp = get_object_or_404(Hospitalisation, pk=pk)
         
-        # Récupération sécurisée avec vérification minimale
-        constantes = request.POST.get('constantes_du_jour')
+        # 3. Récupération des données du formulaire
+        ta_val = request.POST.get('ta')
+        pouls_val = request.POST.get('pouls')
+        temp_val = request.POST.get('temp')
         etat = request.POST.get('etat_general')
+        soins = request.POST.get('soins_effectues', '')
         
-        if constantes and etat:
-            SuiviQuotidien.objects.create(
-                hospitalisation=hosp,
-                infirmier=request.user,
-                etat_general=etat,
-                constantes_du_jour=constantes,
-                soins_effectues=request.POST.get('soins_effectues', '') # Optionnel
-            )
-            messages.success(request, "Suivi quotidien enregistré.")
+        # 4. Validation des champs obligatoires
+        if all([ta_val, pouls_val, temp_val, etat]):
+            try:
+                # Création d'une synthèse textuelle
+                synthese = f"TA: {ta_val} | Pouls: {pouls_val} | Temp: {temp_val}°C"
+                
+                # 5. Enregistrement dans les champs dédiés
+                SuiviQuotidien.objects.create(
+                    hospitalisation=hosp,
+                    infirmier=request.user,
+                    ta=ta_val,
+                    pouls=pouls_val,
+                    temp=temp_val,
+                    etat_general=etat,
+                    constantes_du_jour=synthese,
+                    soins_effectues=soins
+                )
+                
+                messages.success(request, "Le suivi quotidien a été enregistré avec succès.")
+                
+            except Exception as e:
+                messages.error(request, f"Une erreur technique est survenue : {e}")
         else:
-            messages.error(request, "Veuillez remplir au moins les constantes et l'état général.")
+            messages.error(request, "Erreur : Veuillez remplir tous les champs obligatoires (TA, Pouls, Temp, État).")
             
+        # Redirection finale après traitement du POST
         return redirect('detail_hospitalisation', pk=pk)
+    
+    # Redirection si la méthode n'est pas POST
+    return redirect('detail_hospitalisation', pk=pk)
 
 #
 # ===========================================================================================
