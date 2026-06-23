@@ -399,3 +399,74 @@ class OrdonnanceExterneAdmin(admin.ModelAdmin):
 class OrdonnanceItemAdmin(admin.ModelAdmin):
     list_display = ('designation', 'ordonnance', 'posologie', 'quantite')
     search_fields = ('designation', 'ordonnance__client__noms')
+
+
+# ====================================================================
+#
+@admin.register(Kardex)
+class KardexAdmin(admin.ModelAdmin):
+    # Affiche les colonnes principales dans la liste
+    list_display = ('medicament', 'hospitalisation', 'est_actif', 'matin', 'midi', 'soir', 'date_debut')
+    
+    # Ajoute des filtres sur le côté droit
+    list_filter = ('est_actif', 'matin', 'midi', 'soir')
+    
+    # Permet de chercher par médicament ou nom de patient (si le champ existe)
+    search_fields = ('medicament', 'hospitalisation__patient__noms')
+    
+    # Permet de modifier ces champs directement depuis la liste
+    list_editable = ('est_actif', 'matin', 'midi', 'soir')
+    
+    # Organise le formulaire d'édition
+    fieldsets = (
+        ('Informations Médicament', {
+            'fields': ('hospitalisation', 'medicament', 'posologie', 'voie_administration')
+        }),
+        ('Fréquence de prise', {
+            'fields': ('matin', 'midi', 'soir')
+        }),
+        ('Statut', {
+            'fields': ('est_actif', 'date_fin')
+        }),
+    )
+
+# ====================================================================
+#
+@admin.register(RendezVous)
+class RendezVousAdmin(admin.ModelAdmin):
+    list_display = ('hospitalisation', 'date_rdv', 'enregistre_par')
+    list_filter = ('date_rdv',)
+    search_fields = ('hospitalisation__patient__noms', 'motif')
+    readonly_fields = ('enregistre_par',)
+
+    def save_model(self, request, obj, form, change):
+        # Enregistre automatiquement l'utilisateur connecté comme auteur du RDV
+        if not obj.enregistre_par:
+            obj.enregistre_par = request.user
+        super().save_model(request, obj, form, change)
+
+# ====================================================================
+#
+@admin.register(OrdonnanceSortie)
+class OrdonnanceSortieAdmin(admin.ModelAdmin):
+    # Affiche les colonnes dans la liste des ordonnances
+    list_display = ('hospitalisation', 'medecin_nom', 'date_creation', 'date_prochain_rdv')
+    
+    # Ajoute un filtre sur la droite pour retrouver rapidement les ordonnances
+    list_filter = ('date_creation', 'date_prochain_rdv')
+    
+    # Barre de recherche pour trouver par nom de patient (via la relation hospitalisation)
+    search_fields = ('hospitalisation__patient__noms', 'medecin_nom')
+    
+    # Organisation des champs lors de l'édition
+    fieldsets = (
+        ('Informations Générales', {
+            'fields': ('hospitalisation', 'medecin_nom')
+        }),
+        ('Contenu Médical', {
+            'fields': ('prescriptions', 'recommandations', 'date_prochain_rdv')
+        }),
+    )
+
+    # Lecture seule pour les champs créés automatiquement
+    readonly_fields = ('date_creation',)

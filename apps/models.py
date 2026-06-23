@@ -433,6 +433,9 @@ class Medicament(models.Model):
         return f"{self.nom} ({self.statut})"
 
 
+
+
+
 # 13. LIGNE MEDICAMENT =============================================
 class LigneMedicament(models.Model):
     STATUT_MEDOC = [
@@ -558,6 +561,7 @@ class Hospitalisation(models.Model):
     motif_admission = models.TextField()
     statut = models.CharField(max_length=20, choices=STATUT_CHOICES, default='EN_COURS')
     observations = models.TextField(blank=True, null=True)
+    est_actif = models.BooleanField(default=True)
 
     def save(self, *args, **kwargs):
         """
@@ -624,6 +628,54 @@ class SuiviQuotidien(models.Model):
 
     def __str__(self):
         return f"Suivi de {self.hospitalisation.patient.noms} le {self.date_suivi.strftime('%d/%m/%Y')}"
+
+
+# =============================================================================================
+#
+class Kardex(models.Model):
+    hospitalisation = models.ForeignKey('Hospitalisation', on_delete=models.CASCADE, related_name='kardex_items')
+    medicament = models.CharField(max_length=200)
+    posologie = models.CharField(max_length=100)
+    voie_administration = models.CharField(max_length=50)
+    
+    # Dates essentielles
+    date_debut = models.DateTimeField(auto_now_add=True , null = True , blank = True) # Date et heure d'enregistrement automatique
+    date_fin = models.DateTimeField(null=True, blank=True)
+    
+    # Statut
+    matin = models.BooleanField(default=False)
+    midi = models.BooleanField(default=False)
+    soir = models.BooleanField(default=False)
+    est_actif = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"{self.medicament} ({self.date_debut.strftime('%d/%m %H:%M')})"
+
+# =======================================================================================
+#
+class RendezVous(models.Model):
+    hospitalisation = models.ForeignKey('Hospitalisation', on_delete=models.CASCADE)
+    date_rdv = models.DateTimeField()
+    motif = models.CharField(max_length=200)
+    note = models.TextField(blank=True, null=True)
+    
+    # Nouveau champ pour enregistrer l'utilisateur
+    enregistre_par = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True
+    )
+
+    def est_urgent(self):
+        # On calcule la différence entre la date du RDV et maintenant
+        delta = self.date_rdv - timezone.now()
+        # Alerte si le rendez-vous est dans moins de 24h (86400 secondes) 
+        # et qu'il n'est pas encore passé
+        return 0 < delta.total_seconds() < 86400
+
+    def __str__(self):
+        return f"RDV pour {self.hospitalisation.patient.noms} le {self.date_rdv}"
 
 # =======================================================================================
 # Entreprise
@@ -966,11 +1018,7 @@ class CompteRenduAccouchement(models.Model):
 
     def __str__(self):
         return f"CR Accouchement - {self.consultation.triage.patient.noms}"
-
-
-
-from django.db import models
-from django.conf import settings
+# ===================================================================================================
 
 class FicheAccouchement(models.Model):
     consultation = models.ForeignKey(
@@ -1109,3 +1157,29 @@ class OrdonnanceItem(models.Model):
 
     def __str__(self):
         return f"{self.designation} pour {self.ordonnance.client.noms}"
+
+
+# ========================================================================================
+#
+class OrdonnanceSortie(models.Model):
+    hospitalisation = models.OneToOneField(
+        Hospitalisation, 
+        on_delete=models.CASCADE, 
+        related_name='ordonnance_sortie'
+    )
+    date_creation = models.DateTimeField(auto_now_add=True)
+    
+    # Contenu détaillé
+    prescriptions = models.TextField(verbose_name="Médicaments prescrits")
+    recommandations = models.TextField(verbose_name="Conseils et hygiène de vie")
+    date_prochain_rdv = models.DateField(null=True, blank=True, verbose_name="Date de suivi")
+    
+    # Médecin émetteur (optionnel, selon votre gestion des utilisateurs)
+    medecin_nom = models.CharField(max_length=255, blank=True)
+
+    def __str__(self):
+        return f"Sortie - {self.hospitalisation.patient.noms}"
+
+    class Meta:
+        verbose_name = "Ordonnance de Sortie"
+        verbose_name_plural = "Ordonnances de Sortie"

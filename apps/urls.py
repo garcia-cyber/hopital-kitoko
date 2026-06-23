@@ -132,6 +132,13 @@ urlpatterns =[
     path('hospitalisations/admettre/', views.admettre_patient, name='admettre_patient'),
     path('hospitalisation/<int:pk>/', views.detail_hospitalisation, name='detail_hospitalisation'),
     path('hospitalisation/<int:pk>/ajouter-suivi/', views.ajouter_suivi, name='ajouter_suivi'),
+    path('ajouter-kardex/<int:hosp_id>/', views.ajouter_kardex, name='ajouter_kardex'),
+    path('update-kardex/<int:kardex_id>/', views.update_kardex, name='update_kardex'),
+    path('hospitalisation/finir/<int:hosp_id>/', views.finir_hospitalisation, name='finir_hospitalisation'),
+    path('creer-rdv/<int:hosp_id>/', views.creer_rendez_vous, name='creer_rdv'),
+    path('ordonnance-sortie/<int:hosp_id>/', views.creer_ordonnance_sortie, name='creer_ordonnance_sortie'),
+    path('liste-rdv/', views.liste_rendez_vous, name='liste_rendez_vous'),
+    path('liste-ordonnances-sortie/', views.liste_ordonnances_sortie, name='liste_ordonnances_sortie'),
     path('hospitalisation/modifier/<int:hospitalisation_id>/', views.modifier_hospitalisation_view, name='modifier_hospitalisation'),
 
 

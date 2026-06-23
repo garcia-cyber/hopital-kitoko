@@ -2333,28 +2333,35 @@ def dossier_medical_complet(request, patient_id):
 # ============================================================================================
 @login_required
 def detail_hospitalisation(request, pk):
-    # On garde ton select_related pour optimiser l'hospitalisation
+    # 1. Récupération de l'hospitalisation avec toutes les relations nécessaires
     hosp = get_object_or_404(
         Hospitalisation.objects.select_related('patient', 'lit__chambre__type_chambre'), 
         pk=pk
     )
     
-    # 1. On récupère TOUTES les ordonnances du patient, triées par date (récentes d'abord)
-    # 2. On utilise prefetch_related pour charger les médicaments en une seule fois
+    # 2. Récupération des ordonnances (avec médicaments pré-chargés)
     ordonnances = Ordonnance.objects.filter(
         consultation__triage__patient=hosp.patient
     ).prefetch_related('medicaments').order_by('-date_prescrite')
     
-    # Récupérer tout le carnet de suivi
-    suivis = hosp.suivis_journaliers.all()
+    # 3. Récupération du Kardex (Historique complet)
+    kardex_items = Kardex.objects.filter(hospitalisation=hosp).order_by('-id')
     
-    # Gestion du rôle (optimisable via un middleware plus tard, mais OK pour le moment)
+    # 4. Gestion des suivis avec Pagination
+    suivis_list = hosp.suivis_journaliers.all().order_by('-date_suivi')
+    paginator = Paginator(suivis_list, 5) 
+    page_number = request.GET.get('page')
+    suivis = paginator.get_page(page_number)
+    
+    # 5. Gestion des rôles et autorisations
     role = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
 
+    # 6. Rendu final avec toutes les variables conservées
     return render(request, 'back-end/hospitalisation/detail.html', {
         'hosp': hosp,
-        'ordonnances': ordonnances, # On passe la liste
+        'ordonnances': ordonnances,
+        'kardex_items': kardex_items,
         'suivis': suivis, 
         'fonctionKey': fonctionKey
     })
@@ -2416,7 +2423,189 @@ def ajouter_suivi(request, pk):
     return redirect('detail_hospitalisation', pk=pk)
 
 #
+# ============================================================================================
+# KARDEX (FICHE DE TRAITEMENT)
+# ============================================================================================
+@login_required
+def ajouter_kardex(request, hosp_id):
+    # 1. Récupération de l'hospitalisation
+    hosp = get_object_or_404(Hospitalisation, id=hosp_id)
+    
+    # 2. Sécurité : Vérifier si l'hospitalisation est encore active
+    if not hosp.est_actif:
+        messages.error(request, "Attention : Impossible d'ajouter un traitement, cette hospitalisation est terminée.")
+        return redirect('detail_hospitalisation', pk=hosp.id)
+    
+    # 3. Traitement de l'ajout
+    if request.method == 'POST':
+        medicament = request.POST.get('medicament')
+        posologie = request.POST.get('posologie')
+        voie = request.POST.get('voie')
+        
+        # Validation basique
+        if medicament and posologie:
+            Kardex.objects.create(
+                hospitalisation=hosp,
+                medicament=medicament,
+                posologie=posologie,
+                voie_administration=voie,
+                matin='matin' in request.POST,
+                midi='midi' in request.POST,
+                soir='soir' in request.POST,
+                est_actif=True  # Le traitement est actif par défaut à la création
+            )
+            messages.success(request, "Traitement ajouté au Kardex avec succès.")
+        else:
+            messages.warning(request, "Veuillez remplir tous les champs obligatoires.")
+            
+        return redirect('detail_hospitalisation', pk=hosp.id)
+    
+    # Si la méthode n'est pas POST, on redirige simplement
+    return redirect('detail_hospitalisation', pk=hosp.id)
+
+# 
 # ===========================================================================================
+#   GESTION DES RENDEZ-VOUS
+# ===========================================================================================
+@login_required
+def creer_rendez_vous(request, hosp_id):
+    hosp = get_object_or_404(Hospitalisation, id=hosp_id)
+    
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+    
+    if fonctionKey not in ['medecin', 'admin']:
+        messages.error(request, "Accès refusé.")
+        return redirect('detail_hospitalisation', pk=hosp.id)
+    
+    if request.method == 'POST':
+        date_rdv = request.POST.get('date_rdv')
+        motif = request.POST.get('motif')
+        note = request.POST.get('note')
+        
+        if date_rdv and motif:
+            # VÉRIFICATION : Le rendez-vous existe-t-il déjà pour cette hospitalisation ?
+            if RendezVous.objects.filter(hospitalisation=hosp).exists():
+                messages.warning(request, "Un rendez-vous est déjà planifié pour cette hospitalisation.")
+                return redirect('creer_ordonnance_sortie', hosp_id=hosp.id)
+            
+            # Création si aucun rendez-vous n'existe
+            RendezVous.objects.create(
+                hospitalisation=hosp,
+                date_rdv=date_rdv,
+                motif=motif,
+                note=note,
+                enregistre_par=request.user
+            )
+            messages.success(request, "Rendez-vous enregistré avec succès.")
+            return redirect('creer_ordonnance_sortie', hosp_id=hosp.id)
+        else:
+            messages.error(request, "Veuillez remplir la date et le motif.")
+            
+    return render(request, 'back-end/hospitalisation/creer_rdv.html', {
+        'hosp': hosp,
+        'fonctionKey': fonctionKey
+    })
+
+#
+# ===============================================================================================
+# ORDONNANCE DE SORTIE 
+# ===============================================================================================
+@login_required
+def creer_ordonnance_sortie(request, hosp_id):
+    hosp = get_object_or_404(Hospitalisation, id=hosp_id)
+    if request.method == 'POST':
+        # Logique pour sauvegarder l'ordonnance
+        ordonnance = Ordonnance.objects.create(
+            hospitalisation=hosp,
+            type_ordonnance='SORTIE',
+            contenu=request.POST.get('contenu')
+        )
+        return redirect('dossier_patient', hosp_id=hosp.id)
+
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    return render(request, 'back-end/hospitalisation/creer_ordonnance.html', {'hosp': hosp, 'fonctionKey':fonctionKey})
+
+
+#
+# ===========================================================================================
+# LISTE DE RENDEZ-VOUS
+# ===========================================================================================
+@login_required
+def liste_rendez_vous(request):
+    # Récupérer tous les rendez-vous futurs ou récents
+    rendez_vous = RendezVous.objects.all().order_by('date_rdv')
+    
+    # On transmet la date actuelle pour comparer dans le template
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    return render(request, 'back-end/hospitalisation/liste_rdv.html', {
+        'rendez_vous': rendez_vous,
+        'maintenant': timezone.now() ,
+        'fonctionKey' : fonctionKey
+    })
+
+#
+# ============================================================================================
+# LISTE ORDONNANCE DE SORTIE 
+# ============================================================================================
+@login_required
+def liste_ordonnances_sortie(request):
+    # Récupère toutes les ordonnances, en pré-chargeant l'hospitalisation pour optimiser la base
+    ordonnances = OrdonnanceSortie.objects.select_related('hospitalisation__patient').all().order_by('-date_creation')
+    
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    return render(request, 'back-end/hospitalisation/liste_ordonnances_sortie.html', {
+        'ordonnances': ordonnances , 
+        'fonctionKey' : fonctionKey
+    })
+
+#
+# ============================================================================================
+# MODIFIER KARDEX
+# ============================================================================================
+@login_required
+def update_kardex(request, kardex_id):
+    item = get_object_or_404(Kardex, id=kardex_id)
+    
+    if request.method == 'POST':
+        # Si c'est le bouton STOP qui est cliqué
+        if 'stop_traitement' in request.POST:
+            item.est_actif = False
+            item.save()
+        # Sinon, c'est la mise à jour des cases à cocher
+        else:
+            item.matin = 'matin' in request.POST
+            item.midi = 'midi' in request.POST
+            item.soir = 'soir' in request.POST
+            item.save()
+            
+    return redirect('detail_hospitalisation', pk=item.hospitalisation.id)
+
+#
+# ============================================================================================
+# METTRE FIN AU TRAITEMENT
+# ============================================================================================
+@login_required
+def finir_hospitalisation(request, hosp_id):
+    if request.method == 'POST':
+        hosp = get_object_or_404(Hospitalisation, id=hosp_id)
+        
+        # On désactive l'hospitalisation
+        hosp.est_actif = False
+        # Si tu as un champ date_fin dans ton modèle Hospitalisation
+        hosp.date_fin = timezone.now() 
+        hosp.save()
+        
+    return redirect('detail_hospitalisation', pk=hosp_id)
+
+#
+# ============================================================================================
 # IMPRIMER ORDONNANCE 
 # ============================================================================================
 @login_required
