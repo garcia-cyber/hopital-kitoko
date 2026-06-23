@@ -14,6 +14,8 @@
         .btn-sm { border-radius: 6px; }
         .avatar-info { background: #eef2ff; color: #5a8dee; padding: 5px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; }
         .badge { padding: 0.5em 1em; border-radius: 50px; font-weight: 500; }
+        .text-debt { color: #dc3545; font-weight: bold; }
+        .text-paid { color: #28a745; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -48,6 +50,7 @@
                                         <th>Date Entrée</th>
                                         <th>Durée</th>
                                         <th>Coût Total</th>
+                                        <th>Reste à payer</th>
                                         <th>Statut</th>
                                         <th class="text-right">Actions</th>
                                     </tr>
@@ -65,7 +68,16 @@
                                         </td>
                                         <td>{{ hosp.date_entree|date:"d M, Y" }}</td>
                                         <td><span class="badge badge-soft-dark">{{ hosp.nombre_jours }} j</span></td>
-                                        <td class="font-weight-bold">{{ hosp.cout_total|floatformat:0 }} usd</td>
+                                        <td>{{ hosp.cout_total|floatformat:0 }} USD</td>
+                                        <td>
+                                            {% with reste=hosp.get_reste_a_payer %}
+                                                {% if reste > 0 %}
+                                                    <span class="text-debt">{{ reste|floatformat:2 }} USD</span>
+                                                {% else %}
+                                                    <span class="text-paid">PAYÉ</span>
+                                                {% endif %}
+                                            {% endwith %}
+                                        </td>
                                         <td>
                                             {% if hosp.statut == 'EN_COURS' %}<span class="badge badge-soft-success text-success">En cours</span>
                                             {% elif hosp.statut == 'TERMINE' %}<span class="badge badge-soft-info text-info">Terminé</span>
@@ -76,19 +88,27 @@
                                                 {% if fonctionKey == 'medecin' or fonctionKey == 'admin' %}
                                                     <a href="{% url 'modifier_hospitalisation' hosp.id %}" class="btn btn-sm btn-outline-warning" title="Modifier"><i class="la la-edit"></i></a>
                                                 {% endif %}
-                                                {% if fonctionKey == 'infirmier' or fonctionKey == 'medecin'%}
-                                                    <a href="{% url 'detail_hospitalisation' hosp.id %}" class="btn btn-sm btn-outline-primary"><i class="la la-stethoscope"></i> Suivi</a>
+                                                
+                                                {% if fonctionKey == 'infirmier' or fonctionKey == 'medecin' %}
+                                                    <a href="{% url 'detail_hospitalisation' hosp.id %}" class="btn btn-sm btn-outline-primary" title="Suivi"><i class="la la-stethoscope"></i></a>
                                                 {% endif %}
+                                                
                                                 {% if fonctionKey == 'receptionniste' or fonctionKey == 'admin' %}
-                                                    <a href="#" class="btn btn-sm btn-outline-danger" title="Sortie"><i class="la la-door-open"></i></a>
+                                                    <a href="{% url 'payer_hospitalisation' hosp.id %}" class="btn btn-sm btn-outline-danger" title="Encaisser"><i class="la la-money-bill"></i></a>
+                                                    
+                                                    {% if hosp.get_reste_a_payer <= 0 %}
+                                                        <a href="{% url 'finir_hospitalisation' hosp.id %}" class="btn btn-sm btn-success" title="Valider Sortie"><i class="la la-door-open"></i></a>
+                                                    {% else %}
+                                                        <button class="btn btn-sm btn-secondary" disabled title="Paiement incomplet"><i class="la la-lock"></i></button>
+                                                    {% endif %}
                                                 {% endif %}
                                             {% else %}
-                                                <a href="{% url 'detail_hospitalisation' hosp.id %}" class="btn btn-sm btn-light"><i class="la la-eye"></i></a>
+                                                <a href="{% url 'detail_hospitalisation' hosp.id %}" class="btn btn-sm btn-light" title="Voir"><i class="la la-eye"></i></a>
                                             {% endif %}
                                         </td>
                                     </tr>
                                     {% empty %}
-                                    <tr><td colspan="7" class="text-center py-5">Aucune donnée disponible.</td></tr>
+                                    <tr><td colspan="8" class="text-center py-5">Aucune donnée disponible.</td></tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
@@ -98,7 +118,6 @@
             </div>
         </div>
     </div>
-
     <script>
         document.getElementById('searchInput').addEventListener('keyup', function() {
             let filter = this.value.toLowerCase();

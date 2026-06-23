@@ -403,32 +403,31 @@ class OrdonnanceItemAdmin(admin.ModelAdmin):
 
 # ====================================================================
 #
+
+class AdministrationKardexInline(admin.TabularInline):
+    """Permet de voir et modifier les administrations directement dans la fiche du médicament"""
+    model = AdministrationKardex
+    extra = 1  # Ajoute une ligne vide par défaut pour une nouvelle saisie
+    fields = ('date_admin', 'matin', 'midi', 'soir')
+    ordering = ('-date_admin',)
+
 @admin.register(Kardex)
 class KardexAdmin(admin.ModelAdmin):
-    # Affiche les colonnes principales dans la liste
-    list_display = ('medicament', 'hospitalisation', 'est_actif', 'matin', 'midi', 'soir', 'date_debut')
-    
-    # Ajoute des filtres sur le côté droit
-    list_filter = ('est_actif', 'matin', 'midi', 'soir')
-    
-    # Permet de chercher par médicament ou nom de patient (si le champ existe)
+    list_display = ('medicament', 'patient_nom', 'posologie', 'est_actif', 'date_prescription')
+    list_filter = ('est_actif', 'date_prescription')
     search_fields = ('medicament', 'hospitalisation__patient__noms')
-    
-    # Permet de modifier ces champs directement depuis la liste
-    list_editable = ('est_actif', 'matin', 'midi', 'soir')
-    
-    # Organise le formulaire d'édition
-    fieldsets = (
-        ('Informations Médicament', {
-            'fields': ('hospitalisation', 'medicament', 'posologie', 'voie_administration')
-        }),
-        ('Fréquence de prise', {
-            'fields': ('matin', 'midi', 'soir')
-        }),
-        ('Statut', {
-            'fields': ('est_actif', 'date_fin')
-        }),
-    )
+    inlines = [AdministrationKardexInline] # Lie les administrations au médicament
+
+    def patient_nom(self, obj):
+        return obj.hospitalisation.patient.noms
+    patient_nom.short_description = 'Patient'
+
+@admin.register(AdministrationKardex)
+class AdministrationKardexAdmin(admin.ModelAdmin):
+    list_display = ('kardex', 'date_admin', 'matin', 'midi', 'soir')
+    list_filter = ('date_admin', 'matin', 'midi', 'soir')
+    search_fields = ('kardex__medicament', 'kardex__hospitalisation__patient__noms')
+    date_hierarchy = 'date_admin' # Ajoute une navigation par date en haut de page
 
 # ====================================================================
 #

@@ -12,6 +12,8 @@
         .pagination .page-link { color: #0d6efd; }
         .btn-xs { padding: .15rem .4rem; font-size: .75rem; }
         .table-danger { opacity: 0.8; }
+        .admin-form { display: flex; gap: 3px; align-items: center; justify-content: center; }
+        .cell-date { font-size: 0.70rem; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -25,12 +27,7 @@
                     <h3 class="mb-0">Dossier de suivi : {{ hosp.patient.noms }}</h3>
                     <div>
                         {% if fonctionKey == 'medecin' or fonctionKey == 'admin' %}
-                            <a href="{% url 'creer_rdv' hosp.id %}" class="btn btn-info text-white me-2">
-                                <i class="fa fa-calendar"></i> Prendre RDV
-                            </a>
-                        {% endif %}
-
-                        {% if fonctionKey == 'medecin' or fonctionKey == 'admin' %}
+                            <a href="{% url 'creer_rdv' hosp.id %}" class="btn btn-info text-white me-2"><i class="fa fa-calendar"></i> Prendre RDV</a>
                             <form method="POST" action="{% url 'finir_hospitalisation' hosp.id %}" class="d-inline" onsubmit="return confirm('Confirmer la fin de l\'hospitalisation ?');">
                                 {% csrf_token %}
                                 <button type="submit" class="btn btn-danger me-2">Terminer l'Hospitalisation</button>
@@ -59,7 +56,7 @@
                         </div>
 
                         <div class="card shadow-sm">
-                            <div class="card-header bg-dark text-white">Kardex (Fiche de traitement)</div>
+                            <div class="card-header bg-dark text-white">Cardex (Suivi Chronologique)</div>
                             <div class="card-body p-2">
                                 {% if fonctionKey == 'infirmier' or fonctionKey == 'admin' %}
                                     <form method="POST" action="{% url 'ajouter_kardex' hosp.id %}" class="mb-3 p-2 border rounded bg-light">
@@ -69,61 +66,47 @@
                                             <div class="col-6"><input type="text" name="posologie" class="form-control form-control-sm" placeholder="Dosage" required></div>
                                             <div class="col-6"><input type="text" name="voie" class="form-control form-control-sm" placeholder="Voie" required></div>
                                         </div>
-                                        <div class="mt-2 d-flex justify-content-between align-items-center">
-                                            <div>
-                                                <label class="me-1"><input type="checkbox" name="matin"> M</label>
-                                                <label class="me-1"><input type="checkbox" name="midi"> M</label>
-                                                <label><input type="checkbox" name="soir"> S</label>
-                                            </div>
-                                            <button type="submit" class="btn btn-sm btn-success">Ajouter</button>
-                                        </div>
+                                        <button type="submit" class="btn btn-sm btn-success w-100 mt-2">Ajouter</button>
                                     </form>
                                 {% endif %}
 
                                 <div class="table-responsive">
-                                    <table class="table table-sm table-hover mb-0 align-middle">
-                                        <thead class="table-light">
-                                            <tr><th>Médicament</th><th>Prises</th><th>Action</th></tr>
+                                    <table class="table table-bordered table-sm align-middle">
+                                        <thead>
+                                            <tr>
+                                                <th>Médicament</th>
+                                                {% for jour in jours %}
+                                                    <th class="text-center cell-date">{{ jour|date:"d/m" }}</th>
+                                                {% endfor %}
+                                            </tr>
                                         </thead>
                                         <tbody>
-                                            {% for item in kardex_items %}
-                                            <tr class="{% if not item.est_actif %}table-danger{% endif %}">
-                                                <td>
-                                                    <strong>{{ item.medicament }}</strong><br>
-                                                    <small>{{ item.posologie }}</small><br>
-                                                    <small class="text-muted">🕒 {{ item.date_debut|date:"d/m H:i" }}</small>
-                                                </td>
-                                                <td>
+                                            {% for row in kardex_data %}
+                                            <tr class="{% if not row.est_actif %}table-danger{% endif %}">
+                                                <td style="font-size: 0.8rem;">
+                                                    <strong>{{ row.medicament }}</strong><br>{{ row.posologie }}
+                                                    <br>
                                                     {% if fonctionKey == 'infirmier' or fonctionKey == 'admin' %}
-                                                        <form method="POST" action="{% url 'update_kardex' item.id %}">
+                                                        <form method="POST" action="{% url 'changer_statut_kardex' row.id %}" class="mt-1">
                                                             {% csrf_token %}
-                                                            <input type="checkbox" name="matin" {% if item.matin %}checked{% endif %} onchange="this.form.submit()">
-                                                            <input type="checkbox" name="midi" {% if item.midi %}checked{% endif %} onchange="this.form.submit()">
-                                                            <input type="checkbox" name="soir" {% if item.soir %}checked{% endif %} onchange="this.form.submit()">
+                                                            <button type="submit" class="btn btn-xs {% if row.est_actif %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
+                                                                {% if row.est_actif %}Arrêter{% else %}Réactiver{% endif %}
+                                                            </button>
                                                         </form>
-                                                    {% else %}
-                                                        {% if item.matin %}<span class="badge bg-light text-dark">M</span>{% endif %}
-                                                        {% if item.midi %}<span class="badge bg-light text-dark">M</span>{% endif %}
-                                                        {% if item.soir %}<span class="badge bg-light text-dark">S</span>{% endif %}
                                                     {% endif %}
                                                 </td>
-                                                <td>
-                                                    {% if item.est_actif %}
-                                                        {% if fonctionKey == 'infirmier' or fonctionKey == 'admin' %}
-                                                            <form method="POST" action="{% url 'update_kardex' item.id %}" onsubmit="return confirm('Confirmer l\'arrêt de ce traitement ?');">
-                                                                {% csrf_token %}
-                                                                <button type="submit" name="stop_traitement" class="btn btn-xs btn-outline-danger">Stop</button>
-                                                            </form>
-                                                        {% else %}
-                                                            <span class="badge bg-info">Traite</span>
-                                                        {% endif %}
-                                                    {% else %}
-                                                        <span class="badge bg-secondary">Arrêté</span>
-                                                    {% endif %}
+                                                {% for cell in row.cellules %}
+                                                <td class="text-center">
+                                                    <form method="POST" action="{% url 'marquer_administration' row.id %}" class="admin-form">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="date_cible" value="{{ cell.date|date:'Y-m-d' }}">
+                                                        <input type="checkbox" name="matin" {% if cell.admin.matin %}checked{% endif %} {% if not row.est_actif %}disabled{% endif %} onchange="this.form.submit()">
+                                                        <input type="checkbox" name="midi" {% if cell.admin.midi %}checked{% endif %} {% if not row.est_actif %}disabled{% endif %} onchange="this.form.submit()">
+                                                        <input type="checkbox" name="soir" {% if cell.admin.soir %}checked{% endif %} {% if not row.est_actif %}disabled{% endif %} onchange="this.form.submit()">
+                                                    </form>
                                                 </td>
+                                                {% endfor %}
                                             </tr>
-                                            {% empty %}
-                                            <tr><td colspan="3" class="text-center">Aucun traitement.</td></tr>
                                             {% endfor %}
                                         </tbody>
                                     </table>
@@ -140,7 +123,7 @@
                                         {% csrf_token %}
                                         <h6 class="mb-3 text-uppercase text-secondary">Ajouter relevé (Signes Vitaux)</h6>
                                         <div class="row">
-                                            <div class="col-md-4"><input name="ta" class="form-control mb-2" placeholder="TA (ex: 12/8)" required></div>
+                                            <div class="col-md-4"><input name="ta" class="form-control mb-2" placeholder="TA" required></div>
                                             <div class="col-md-4"><input name="pouls" class="form-control mb-2" placeholder="Pouls" required></div>
                                             <div class="col-md-4"><input name="temp" class="form-control mb-2" placeholder="Temp (°C)" required></div>
                                         </div>
@@ -149,13 +132,11 @@
                                         <button type="submit" class="btn btn-primary px-4">Valider le suivi</button>
                                     </form>
                                 {% endif %}
-
+                                
                                 <h5 class="text-uppercase text-secondary mb-3">Historique des Signes Vitaux</h5>
                                 <div class="table-responsive">
                                     <table class="table table-hover align-middle">
-                                        <thead>
-                                            <tr><th>Date</th><th>TA</th><th>Pouls</th><th>Temp</th><th>État</th><th>Soins</th></tr>
-                                        </thead>
+                                        <thead><tr><th>Date</th><th>TA</th><th>Pouls</th><th>Temp</th><th>État</th><th>Soins</th></tr></thead>
                                         <tbody>
                                             {% for s in suivis %}
                                             <tr>
@@ -169,20 +150,16 @@
                                             {% endfor %}
                                         </tbody>
                                     </table>
-                                </div>
-                                <nav class="mt-4">
-                                    <ul class="pagination justify-content-center">
+                                    <div class="pagination">
                                         {% if suivis.has_previous %}
-                                            <li class="page-item"><a class="page-link" href="?page=1">&laquo;&laquo;</a></li>
-                                            <li class="page-item"><a class="page-link" href="?page={{ suivis.previous_page_number }}">Précédent</a></li>
+                                            <a href="?page={{ suivis.previous_page_number }}" class="btn btn-outline-primary btn-sm">Précédent</a>
                                         {% endif %}
-                                        <li class="page-item active"><span class="page-link">{{ suivis.number }} / {{ suivis.paginator.num_pages }}</span></li>
+                                        <span class="mx-3">Page {{ suivis.number }} sur {{ suivis.paginator.num_pages }}</span>
                                         {% if suivis.has_next %}
-                                            <li class="page-item"><a class="page-link" href="?page={{ suivis.next_page_number }}">Suivant</a></li>
-                                            <li class="page-item"><a class="page-link" href="?page={{ suivis.paginator.num_pages }}">&raquo;&raquo;</a></li>
+                                            <a href="?page={{ suivis.next_page_number }}" class="btn btn-outline-primary btn-sm">Suivant</a>
                                         {% endif %}
-                                    </ul>
-                                </nav>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

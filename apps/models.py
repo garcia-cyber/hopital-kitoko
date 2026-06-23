@@ -180,9 +180,10 @@ class Paiement(models.Model):
         ('MATERNITE', 'Maternité'), ('DECES', 'Actes de décès'), ('EXAMENS', 'Examens'),
         ('CHIRURGIE', 'Chirurgie'), ('CARTE_FIDELITE', 'Achat Carte de Fidélité'), 
         ('PHARMACIE', 'Pharmacie'), ('EXAMEN_EXTERNE', 'Examen Externe'),
-        ('ENTREPRISE', 'Paiement Entreprise')
+        ('ENTREPRISE', 'Paiement Entreprise'), ('HOSPITALISATION', 'Hospitalisation')
     ]
     
+    # Relations
     bloc_op = models.ForeignKey('BlocOperatoire', on_delete=models.SET_NULL, null=True, blank=True, related_name='paiements')
     patient = models.ForeignKey('Patient', on_delete=models.CASCADE, null=True, blank=True)
     demande_examen_externe = models.ForeignKey('DemandeExamenExterne', on_delete=models.SET_NULL, null=True, blank=True, related_name='paiements')
@@ -191,26 +192,22 @@ class Paiement(models.Model):
     deces = models.ForeignKey('Deces', on_delete=models.SET_NULL, null=True, blank=True, related_name='paiements')
     session = models.ForeignKey('SessionSoins', on_delete=models.SET_NULL, null=True, blank=True, related_name='paiements')
     entreprise = models.ForeignKey('Entreprise', on_delete=models.CASCADE, null=True, blank=True, related_name='paiements')
+    hospitalisation = models.ForeignKey('Hospitalisation', on_delete=models.SET_NULL, null=True, blank=True, related_name='paiements')
+    compte_rendu = models.OneToOneField('CompteRenduAccouchement', on_delete=models.SET_NULL, null=True, blank=True, related_name='paiement')
 
+    # Champs de paiement
     service = models.CharField(max_length=20, choices=SERVICES)
     montant_verse = models.DecimalField(max_digits=15, decimal_places=2)
     montant_reduction = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     devise = models.CharField(max_length=3, choices=CURRENCY, default='USD')
     date_paiement = models.DateTimeField(default=timezone.now)
     caissier = models.ForeignKey(User, on_delete=models.PROTECT)
-    compte_rendu = models.OneToOneField(
-        'CompteRenduAccouchement', 
-        on_delete=models.SET_NULL, 
-        null=True, 
-        blank=True, 
-        related_name='paiement'
-    )
     reste_a_payer = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0.00'), verbose_name="Dette / Reste à payer")
 
     def save(self, *args, **kwargs):
         is_new = self.pk is None
 
-        # --- LOGIQUE EXISTANTE (Ne rien toucher) ---
+        # --- LOGIQUE SERVICES STANDARDS ---
         if self.service == 'FICHE' and self.patient:
             self.patient.fiche_payee = True
             self.patient.save()
@@ -222,6 +219,18 @@ class Paiement(models.Model):
             self.patient.type_patient = 'FIDELE'
             self.patient.save()
 
+        # --- LOGIQUE HOSPITALISATION ---
+        if self.hospitalisation:
+            total_due = Decimal(str(self.hospitalisation.cout_total))
+            paiements_existants = self.hospitalisation.paiements.exclude(pk=self.pk)
+            total_deja_verse = paiements_existants.aggregate(Sum('montant_verse'))['montant_verse__sum'] or 0
+            total_deja_reduit = paiements_existants.aggregate(Sum('montant_reduction'))['montant_reduction__sum'] or 0
+            
+            self.reste_a_payer = max(0, total_due - (total_deja_reduit + self.montant_reduction) - (total_deja_verse + self.montant_verse))
+            self.hospitalisation.est_payee = (self.reste_a_payer <= 0)
+            self.hospitalisation.save()
+
+        # --- LOGIQUE SESSIONS SOINS ---
         if self.session:
             tous_paiements = self.session.paiements.exclude(pk=self.pk)
             total_deja_verse = tous_paiements.aggregate(Sum('montant_verse'))['montant_verse__sum'] or 0
@@ -230,6 +239,7 @@ class Paiement(models.Model):
             self.session.est_payee = (self.reste_a_payer <= 0)
             self.session.save()
 
+        # --- LOGIQUE EXAMEN EXTERNE ---
         if self.demande_examen_externe:
             total_due = self.demande_examen_externe.total_a_payer
             paiements_existants = self.demande_examen_externe.paiements.exclude(pk=self.pk)
@@ -239,31 +249,25 @@ class Paiement(models.Model):
                 self.demande_examen_externe.statut = 'PAYE'
                 self.demande_examen_externe.save()
 
+        # --- LOGIQUE MATERNITE ---
         if self.service == 'MATERNITE' and self.dossier_maternite:
             if self.reste_a_payer <= 0:
                 self.dossier_maternite.est_paye = True
                 self.dossier_maternite.save()
 
-        # --- ✅ LOGIQUE ENTREPRISE CORRIGÉE ---
+        # --- LOGIQUE ENTREPRISE ---
         if self.service == 'ENTREPRISE' and self.entreprise:
-            # 1. Conversion du montant versé en USD si nécessaire
             montant_usd = self.montant_verse
             if self.devise == 'CDF':
                 from .models import ConfigurationHopital
                 taux = ConfigurationHopital.get_taux()
                 montant_usd = self.montant_verse / taux
-
-            # 2. Le total qui réduit la dette = (Montant payé en USD) + (Réduction en USD)
             total_a_deduire = montant_usd + self.montant_reduction
-            
-            # 3. Mise à jour de la dette
             self.entreprise.dette_mensuelle = max(Decimal('0.00'), self.entreprise.dette_mensuelle - total_a_deduire)
             self.entreprise.save()
 
-        # --- SAUVEGARDE DU PAIEMENT ---
         super().save(*args, **kwargs)
 
-        # --- FACTURE AUTOMATIQUE ---
         if is_new:
             from .models import Facture
             Facture.objects.create(
@@ -554,14 +558,17 @@ class Hospitalisation(models.Model):
         ('ANNULE', 'Annulé'),
     ]
 
-    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='sejours')
-    lit = models.ForeignKey(Lit, on_delete=models.PROTECT, related_name='occupations')
+    patient = models.ForeignKey('Patient', on_delete=models.CASCADE, related_name='sejours')
+    lit = models.ForeignKey('Lit', on_delete=models.PROTECT, related_name='occupations')
     date_entree = models.DateTimeField(default=timezone.now)
     date_sortie = models.DateTimeField(null=True, blank=True)
     motif_admission = models.TextField()
     statut = models.CharField(max_length=20, choices=STATUT_CHOICES, default='EN_COURS')
     observations = models.TextField(blank=True, null=True)
     est_actif = models.BooleanField(default=True)
+    
+    # Champ pour suivre l'état de paiement en base
+    est_payee = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
         """
@@ -580,15 +587,12 @@ class Hospitalisation(models.Model):
 
     @property
     def prix_par_jour(self):
-        # Accède au prix défini dans le TypeChambre en passant par la chambre du lit
+        # Accède au prix défini dans le TypeChambre via la chambre du lit
         return self.lit.chambre.type_chambre.prix_nuitée
 
     @property
     def nombre_jours(self):
-        """
-        Calcule la différence en jours. Utilise .date() pour éviter 
-        les erreurs de comparaison entre datetime et date.
-        """
+        """Calcule la durée de l'hospitalisation."""
         date_fin = self.date_sortie.date() if self.date_sortie else timezone.now().date()
         date_deb = self.date_entree.date()
         delta = date_fin - date_deb
@@ -596,11 +600,21 @@ class Hospitalisation(models.Model):
 
     @property
     def cout_total(self):
+        """Calcule le coût total basé sur le nombre de jours."""
+        return Decimal(str(self.nombre_jours)) * Decimal(str(self.prix_par_jour))
+
+    def get_reste_a_payer(self):
         """
-        Calcule le coût total basé sur le nombre de jours et le prix de la chambre.
+        Calcule le reste à payer en tenant compte des paiements et réductions.
+        L'utilisation de quantize(Decimal('0.01')) garantit une précision monétaire.
         """
-        # Conversion en float pour permettre la multiplication avec le Decimal
-        return float(self.nombre_jours) * float(self.prix_par_jour)
+        total_paye = self.paiements.aggregate(Sum('montant_verse'))['montant_verse__sum'] or 0
+        total_reduit = self.paiements.aggregate(Sum('montant_reduction'))['montant_reduction__sum'] or 0
+        
+        reste = self.cout_total - (Decimal(str(total_paye)) + Decimal(str(total_reduit)))
+        
+        # On retourne max 0.00 et on arrondit à 2 décimales
+        return max(Decimal('0.00'), reste.quantize(Decimal('0.01')))
 
     class Meta:
         verbose_name = "Hospitalisation"
@@ -634,22 +648,30 @@ class SuiviQuotidien(models.Model):
 #
 class Kardex(models.Model):
     hospitalisation = models.ForeignKey('Hospitalisation', on_delete=models.CASCADE, related_name='kardex_items')
-    medicament = models.CharField(max_length=200)
-    posologie = models.CharField(max_length=100)
-    voie_administration = models.CharField(max_length=50)
+    medicament = models.CharField(max_length=200 , null = True)
+    posologie = models.CharField(max_length=100 , null = True)
+    voie_administration = models.CharField(max_length=50 , null = True)
+    date_prescription = models.DateTimeField(auto_now_add=True , null = True)
+    est_actif = models.BooleanField(default=True , null = True)
+
+    def __str__(self):
+        return f"{self.medicament} - {self.hospitalisation.patient.noms}"
+
+    def get_admin_pour_jour(self, date):
+        return self.administrations.filter(date_admin=date).first()
+
+class AdministrationKardex(models.Model):
+    """Ce modèle enregistre si le médicament a été administré pour une date donnée"""
+    kardex = models.ForeignKey(Kardex, on_delete=models.CASCADE, related_name='administrations')
+    date_admin = models.DateField() # Exemple : 23/06/2026
     
-    # Dates essentielles
-    date_debut = models.DateTimeField(auto_now_add=True , null = True , blank = True) # Date et heure d'enregistrement automatique
-    date_fin = models.DateTimeField(null=True, blank=True)
-    
-    # Statut
     matin = models.BooleanField(default=False)
     midi = models.BooleanField(default=False)
     soir = models.BooleanField(default=False)
-    est_actif = models.BooleanField(default=True)
 
-    def __str__(self):
-        return f"{self.medicament} ({self.date_debut.strftime('%d/%m %H:%M')})"
+    class Meta:
+        # Empêche d'avoir deux fois la même date pour le même médicament
+        unique_together = ('kardex', 'date_admin')
 
 # =======================================================================================
 #

@@ -9,7 +9,7 @@ from django.contrib import messages
 from django.db.models import Q , Sum ,Prefetch , Count , ExpressionWrapper , OuterRef, Subquery , F , Value ,DecimalField, FloatField ,IntegerField ,Exists
 from decimal import Decimal , ROUND_HALF_UP , InvalidOperation
 import pytz
-from datetime import timedelta , date
+from datetime import timedelta , date  , datetime
 from django.db import transaction
 from django.conf import settings
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
@@ -2269,20 +2269,112 @@ def admettre_patient(request):
 # ============================================================================================
 @login_required
 def liste_hospitalisations(request):
-    # Correction : Le chemin complet vers le type de chambre est 'lit__chambre__type_chambre'
-    # 'patient' et 'lit' sont déjà inclus dans la chaîne.
+    # 1. Requête optimisée (avec prefetch_related pour charger les paiements en une seule fois)
+    # Cela permet d'accéder à hosp.get_reste_a_payer() sans ralentir la page.
     hospitalisations = Hospitalisation.objects.select_related(
         'patient', 
         'lit__chambre__type_chambre'
-    ).order_by('-date_entree')
+    ).prefetch_related('paiements').order_by('-date_entree')
 
+    # 2. Gestion de vos rôles (votre logique d'origine)
     role = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
 
+    # 3. Rendu avec toutes les informations nécessaires
     return render(request, 'back-end/hospitalisation/liste_hospitalisations.html', {
         'hospitalisations': hospitalisations,
         'fonctionKey': fonctionKey
-    }) 
+    })
+#
+# =====================================================================================================
+# PAIEMENT DE L'HOSPITALISATION
+# =====================================================================================================
+@login_required
+def enregistrer_paiement_hospitalisation(request, hosp_id):
+    hosp = get_object_or_404(Hospitalisation, id=hosp_id)
+    
+    # Vérification : Le patient est-il déjà sorti ?
+    if hosp.statut != 'EN_COURS':
+        messages.warning(request, "Cette hospitalisation est déjà clôturée ou annulée.")
+        return redirect('liste_hospitalisations')
+
+    if request.method == 'POST':
+        try:
+            # 1. Récupération et conversion sécurisée des données
+            try:
+                montant_brut = Decimal(request.POST.get('montant_verse', '0'))
+                reduction = Decimal(request.POST.get('montant_reduction', '0'))
+            except (InvalidOperation, ValueError):
+                messages.error(request, "Veuillez saisir des montants valides.")
+                return redirect('payer_hospitalisation', hosp_id=hosp.id)
+
+            # Vérification : Paiement inutile
+            if montant_brut < 0 or reduction < 0:
+                messages.error(request, "Les montants ne peuvent pas être négatifs.")
+                return redirect('payer_hospitalisation', hosp_id=hosp.id)
+            
+            if montant_brut == 0 and reduction == 0:
+                messages.error(request, "Veuillez saisir un montant ou une réduction.")
+                return redirect('payer_hospitalisation', hosp_id=hosp.id)
+
+            devise = request.POST.get('devise', 'USD')
+            
+            # 2. Conversion en USD
+            montant_verse_usd = montant_brut
+            reduction_usd = reduction
+            if devise == 'CDF':
+                taux = ConfigurationHopital.get_taux() 
+                if not taux or taux <= 0:
+                    raise ValueError("Taux de change non configuré ou invalide.")
+                montant_verse_usd = montant_brut / Decimal(str(taux))
+                reduction_usd = reduction / Decimal(str(taux))
+            
+            # 3. Vérification du solde
+            reste_actuel = hosp.get_reste_a_payer()
+            total_paye_ce_coup_ci = montant_verse_usd + reduction_usd
+            
+            if total_paye_ce_coup_ci > (reste_actuel + Decimal('0.01')):
+                messages.error(request, f"Le montant saisi dépasse le solde restant ({reste_actuel:.2f} USD).")
+                return redirect('payer_hospitalisation', hosp_id=hosp.id)
+            
+            # 4. Enregistrement
+            Paiement.objects.create(
+                hospitalisation=hosp,
+                patient=hosp.patient,
+                service='HOSPITALISATION',
+                montant_verse=montant_verse_usd,
+                montant_reduction=reduction_usd,
+                devise=devise,
+                caissier=request.user
+            )
+            
+            # 5. Logique de libération (Automatisation)
+            nouveau_reste = hosp.get_reste_a_payer()
+            if nouveau_reste <= 0:
+                hosp.statut = 'TERMINE'
+                hosp.date_sortie = timezone.now()
+                hosp.est_payee = True
+                hosp.save() # Le save() déclenche la libération du lit via le modèle
+                messages.success(request, "Paiement complet : Patient libéré, lit disponible.")
+            else:
+                messages.success(request, "Paiement partiel enregistré avec succès.")
+
+            return redirect('liste_hospitalisations')
+            
+        except Exception as e:
+            messages.error(request, f"Erreur critique lors du paiement : {str(e)}")
+            return redirect('payer_hospitalisation', hosp_id=hosp.id)
+
+    # 6. Récupération des informations pour le template (GET)
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+    
+    return render(request, 'back-end/hospitalisation/paiement_hosp.html', {
+        'hosp': hosp, 
+        'reste_a_payer': hosp.get_reste_a_payer(),
+        'fonctionKey': fonctionKey
+    })
+
 
 
 
@@ -2333,38 +2425,78 @@ def dossier_medical_complet(request, patient_id):
 # ============================================================================================
 @login_required
 def detail_hospitalisation(request, pk):
-    # 1. Récupération de l'hospitalisation avec toutes les relations nécessaires
+    # 1. Récupération de l'hospitalisation avec relations optimisées
     hosp = get_object_or_404(
         Hospitalisation.objects.select_related('patient', 'lit__chambre__type_chambre'), 
         pk=pk
     )
+
+    # --- LOGIQUE DE CALENDRIER ---
+    # On commence à la date d'entrée et on va jusqu'à DEMAIN
+    date_debut = hosp.date_entree.date()
+    demain = timezone.now().date() + timedelta(days=1)
     
-    # 2. Récupération des ordonnances (avec médicaments pré-chargés)
+    jours = []
+    curr = date_debut
+    while curr <= demain:
+        jours.append(curr)
+        curr += timedelta(days=1)
+    # -----------------------------
+
+    # 2. Récupération des ordonnances
     ordonnances = Ordonnance.objects.filter(
         consultation__triage__patient=hosp.patient
     ).prefetch_related('medicaments').order_by('-date_prescrite')
     
-    # 3. Récupération du Kardex (Historique complet)
-    kardex_items = Kardex.objects.filter(hospitalisation=hosp).order_by('-id')
+    # 3. Préparation du Kardex
+    kardex_items = Kardex.objects.filter(hospitalisation=hosp).prefetch_related('administrations').order_by('-id')
     
-    # 4. Gestion des suivis avec Pagination
+    kardex_data = []
+    for item in kardex_items:
+        admins = {a.date_admin: a for a in item.administrations.all()}
+        
+        row = {
+            'id': item.id,
+            'medicament': item.medicament,
+            'posologie': item.posologie,
+            'est_actif': item.est_actif,
+            'cellules': [{'date': jour, 'admin': admins.get(jour)} for jour in jours]
+        }
+        kardex_data.append(row)
+    
+    # 4. Gestion des suivis journaliers avec pagination
     suivis_list = hosp.suivis_journaliers.all().order_by('-date_suivi')
     paginator = Paginator(suivis_list, 5) 
     page_number = request.GET.get('page')
     suivis = paginator.get_page(page_number)
     
-    # 5. Gestion des rôles et autorisations
+    # 5. Gestion des rôles
     role = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
 
-    # 6. Rendu final avec toutes les variables conservées
+    # 6. Rendu final
     return render(request, 'back-end/hospitalisation/detail.html', {
         'hosp': hosp,
         'ordonnances': ordonnances,
-        'kardex_items': kardex_items,
+        'kardex_data': kardex_data,
         'suivis': suivis, 
-        'fonctionKey': fonctionKey
+        'fonctionKey': fonctionKey,
+        'jours': jours,
     })
+
+
+# ===========================================================================================
+
+def changer_statut_kardex(request, kardex_id):
+    if request.method == 'POST':
+        item = get_object_or_404(Kardex, id=kardex_id)
+        # Bascule entre True et False
+        item.est_actif = not item.est_actif 
+        item.save()
+        # Redirection vers la même page de détail
+        return redirect('detail_hospitalisation', pk=item.hospitalisation.id)
+    return redirect('liste_hospitalisations')
+
 #
 # ===========================================================================================
 # ADD SUIVI PAR L'INFIRMIER  
@@ -2428,40 +2560,74 @@ def ajouter_suivi(request, pk):
 # ============================================================================================
 @login_required
 def ajouter_kardex(request, hosp_id):
-    # 1. Récupération de l'hospitalisation
     hosp = get_object_or_404(Hospitalisation, id=hosp_id)
     
-    # 2. Sécurité : Vérifier si l'hospitalisation est encore active
     if not hosp.est_actif:
-        messages.error(request, "Attention : Impossible d'ajouter un traitement, cette hospitalisation est terminée.")
+        messages.error(request, "Impossible d'ajouter un traitement : hospitalisation terminée.")
         return redirect('detail_hospitalisation', pk=hosp.id)
     
-    # 3. Traitement de l'ajout
     if request.method == 'POST':
         medicament = request.POST.get('medicament')
         posologie = request.POST.get('posologie')
         voie = request.POST.get('voie')
         
-        # Validation basique
         if medicament and posologie:
-            Kardex.objects.create(
-                hospitalisation=hosp,
-                medicament=medicament,
-                posologie=posologie,
-                voie_administration=voie,
-                matin='matin' in request.POST,
-                midi='midi' in request.POST,
-                soir='soir' in request.POST,
-                est_actif=True  # Le traitement est actif par défaut à la création
-            )
-            messages.success(request, "Traitement ajouté au Kardex avec succès.")
+            with transaction.atomic(): # Assure que tout est créé ou rien
+                nouveau_kardex = Kardex.objects.create(
+                    hospitalisation=hosp,
+                    medicament=medicament,
+                    posologie=posologie,
+                    voie_administration=voie,
+                    est_actif=True
+                )
+                
+                # Création de l'administration initiale
+                AdministrationKardex.objects.create(
+                    kardex=nouveau_kardex,
+                    date_admin=timezone.now().date(),
+                    matin=False, midi=False, soir=False # Initialisé à False
+                )
+            messages.success(request, "Médicament ajouté au Kardex.")
         else:
-            messages.warning(request, "Veuillez remplir tous les champs obligatoires.")
+            messages.warning(request, "Champs manquants.")
             
-        return redirect('detail_hospitalisation', pk=hosp.id)
-    
-    # Si la méthode n'est pas POST, on redirige simplement
     return redirect('detail_hospitalisation', pk=hosp.id)
+
+#
+# ========================================================================================
+# ADMINISTRE LE KARDEX
+# ========================================================================================
+@login_required
+def marquer_administration(request, kardex_id):
+    if request.method == 'POST':
+        # 1. Récupérer le médicament concerné
+        kardex_item = get_object_or_404(Kardex, id=kardex_id)
+        
+        # 2. Récupérer la date envoyée par le formulaire (depuis le champ hidden)
+        date_str = request.POST.get('date_cible')
+        try:
+            date_cible = datetime.strptime(date_str, '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            return redirect('detail_hospitalisation', pk=kardex_item.hospitalisation.id)
+
+        # 3. Créer ou récupérer l'enregistrement pour ce jour précis
+        # get_or_create s'occupe de créer une nouvelle ligne s'il n'en trouve pas
+        admin, created = AdministrationKardex.objects.get_or_create(
+            kardex=kardex_item,
+            date_admin=date_cible
+        )
+        
+        # 4. Mettre à jour les cases (True si coché, False sinon)
+        admin.matin = 'matin' in request.POST
+        admin.midi = 'midi' in request.POST
+        admin.soir = 'soir' in request.POST
+        admin.save()
+        
+        # 5. Rediriger vers la page du patient
+        return redirect('detail_hospitalisation', pk=kardex_item.hospitalisation.id)
+    
+    return redirect('liste_hospitalisations')
+
 
 # 
 # ===========================================================================================
