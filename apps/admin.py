@@ -469,3 +469,43 @@ class OrdonnanceSortieAdmin(admin.ModelAdmin):
 
     # Lecture seule pour les champs créés automatiquement
     readonly_fields = ('date_creation',)
+
+
+
+# ============================================================================================
+#
+@admin.register(CategorieEquipement)
+class CategorieEquipementAdmin(admin.ModelAdmin):
+    list_display = ['nom']
+    search_fields = ['nom']
+
+class InterventionInline(admin.TabularInline):
+    """Permet de voir l'historique des pannes directement dans la fiche équipement"""
+    model = InterventionMaintenance
+    extra = 0
+    readonly_fields = ['date_panne']
+
+@admin.register(Equipement)
+class EquipementAdmin(admin.ModelAdmin):
+    list_display = ['nom', 'numero_serie', 'categorie', 'etat', 'service', 'date_derniere_maintenance']
+    list_filter = ['etat', 'categorie', 'service']  # Filtres latéraux pour trier rapidement
+    search_fields = ['nom', 'numero_serie']
+    list_editable = ['etat']  # Permet de changer l'état directement depuis la liste
+    inlines = [InterventionInline] # Intègre l'historique des pannes dans la page de l'équipement
+    
+    # Remplissage automatique des champs de date ou autre si besoin
+    fieldsets = (
+        ('Informations Générales', {
+            'fields': ('nom', 'numero_serie', 'categorie', 'service', 'date_acquisition')
+        }),
+        ('État opérationnel', {
+            'fields': ('etat', 'date_derniere_maintenance')
+        }),
+    )
+
+@admin.register(InterventionMaintenance)
+class InterventionMaintenanceAdmin(admin.ModelAdmin):
+    list_display = ['equipement', 'date_panne', 'repare', 'technicien']
+    list_filter = ['repare', 'date_panne']
+    search_fields = ['equipement__nom', 'technicien']
+    list_editable = ['repare']

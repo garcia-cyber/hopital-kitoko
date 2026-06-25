@@ -1205,3 +1205,54 @@ class OrdonnanceSortie(models.Model):
     class Meta:
         verbose_name = "Ordonnance de Sortie"
         verbose_name_plural = "Ordonnances de Sortie"
+
+
+
+# ==============================================================================
+#
+#
+class CategorieEquipement(models.Model):
+    """Ex: Lits, Respirateurs, Moniteurs"""
+    nom = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.nom
+
+class Equipement(models.Model):
+    ETAT_CHOICES = [
+        ('bon', 'En bon état'),
+        ('panne', 'En panne'),
+        ('maintenance', 'En maintenance'),
+        ('reforme', 'À réformer'),
+    ]
+
+    nom = models.CharField(max_length=100)
+    numero_serie = models.CharField(max_length=100, unique=True)
+    categorie = models.ForeignKey(CategorieEquipement, on_delete=models.CASCADE)
+    etat = models.CharField(max_length=20, choices=ETAT_CHOICES, default='bon')
+    
+    # Lien vers votre Service existant (en supposant qu'il soit importé)
+    # Remplacez 'votre_app.Service' par le chemin réel de votre modèle
+    service = models.ForeignKey('Service', on_delete=models.SET_NULL, null=True, blank=True)
+    
+    date_acquisition = models.DateField()
+    date_derniere_maintenance = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.nom} - {self.numero_serie}"
+
+    class Meta:
+        verbose_name = "Équipement"
+        verbose_name_plural = "Équipements"
+
+class InterventionMaintenance(models.Model):
+    """Historique des pannes et réparations"""
+    equipement = models.ForeignKey(Equipement, on_delete=models.CASCADE, related_name='maintenances')
+    description_panne = models.TextField()
+    date_panne = models.DateTimeField(auto_now_add=True)
+    date_reparation = models.DateTimeField(null=True, blank=True)
+    repare = models.BooleanField(default=False)
+    technicien = models.CharField(max_length=100, blank=True)
+
+    def __str__(self):
+        return f"Maintenance sur {self.equipement.nom} - {'Réparé' if self.repare else 'En cours'}"

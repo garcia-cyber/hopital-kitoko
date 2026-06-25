@@ -222,7 +222,7 @@ urlpatterns =[
     # SOINS(CONSULTATION)
     path('consultation/details/<int:session_id>/', views.detail_consultation, name='detail_consultation'),
     path('triage/', views.liste_sessions_infirmier, name='liste_sessions_infirmier'),
-     path(
+    path(
         'consultation/<int:pk>/detailView/',
         views.detail_consultation_view,
         name='detail_consultation_view'
@@ -246,5 +246,12 @@ urlpatterns =[
     path('ordonnances/liste-client/', views.liste_ordonnances_externes_client, name='liste_ordonnances_externes_client'),
     path('ordonnance/consulter/<int:ordonnance_id>/', views.consulter_ordonnance_externe, name='consulter_ordonnance_externe'),
 
+    # ========================================
+    # MATERIEL 
+    #
 
+    path('categories/', views.liste_categories, name='liste_categories'),
+    path('categorie/ajouter/', views.ajouter_categorie, name='ajouter_categorie'),
+    path('equipements/', views.liste_equipements, name='liste_equipements'),
+    path('equipement/ajouter/', views.ajouter_equipement, name='ajouter_equipement'),
  ]

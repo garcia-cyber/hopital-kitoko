@@ -5572,3 +5572,80 @@ def modifier_hospitalisation_view(request, hospitalisation_id):
         'lits': lits,
         'fonctionKey': fonction_key
     })
+
+
+# 
+# =========================================================================================
+# ENREGISTRE CATEGORIE
+# =========================================================================================
+@login_required
+def ajouter_categorie(request):
+    if request.method == 'POST':
+        form = CategorieForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('liste_categories') # Remplace par l'URL de ta liste
+    else:
+        form = CategorieForm()
+
+    role_obj = Fonction.objects.filter(userKey=request.user).first()
+    fonction_key = role_obj.fonctionKey.roleName if role_obj and role_obj.fonctionKey else "Utilisateur"
+    
+    return render(request, 'back-end/materiel/ajouter_categorie.html', {'form': form, 'fonctionKey':fonction_key})
+
+# 
+# ==========================================================================================
+# LISTE DE CATEGORIE
+# ==========================================================================================
+@login_required
+def liste_categories(request):
+    # Récupère toutes les catégories enregistrées dans la base de données
+    categories = CategorieEquipement.objects.all()
+
+    role_obj = Fonction.objects.filter(userKey=request.user).first()
+    fonction_key = role_obj.fonctionKey.roleName if role_obj and role_obj.fonctionKey else "Utilisateur"
+    
+    context = {
+        'categories': categories ,
+        'fonctionKey' : fonction_key
+    }
+    return render(request, 'back-end/materiel/liste_categories.html', context)
+
+
+#
+# ==========================================================================================
+# ENREGISTRE EQUIPEMENT
+# ==========================================================================================
+@login_required
+def ajouter_equipement(request):
+    if request.method == 'POST':
+        form = EquipementForm(request.POST)
+        if form.is_valid():
+            form.save() # Enregistre l'équipement avec sa catégorie choisie
+            return redirect('liste_equipements')
+    else:
+        form = EquipementForm()
+    
+    role_obj = Fonction.objects.filter(userKey=request.user).first()
+    fonction_key = role_obj.fonctionKey.roleName if role_obj and role_obj.fonctionKey else "Utilisateur"
+
+    return render(request, 'back-end/materiel/ajouter_equipement.html', {'form': form , 'fonctionKey' : fonction_key})
+
+#
+# ===============================================================================================
+# LISTE DES EQUIPEMENT 
+# ================================================================================================
+@login_required
+def liste_equipements(request):
+    # Récupération des équipements
+    equipements = Equipement.objects.all().order_by('-id')
+    
+    # Gestion de la fonction/rôle utilisateur
+    role_obj = Fonction.objects.filter(userKey=request.user).first()
+    fonction_key = role_obj.fonctionKey.roleName if role_obj and role_obj.fonctionKey else "Utilisateur"
+    
+    context = {
+        'equipements': equipements,
+        'fonctionKey': fonction_key
+    }
+    return render(request, 'back-end/materiel/liste_equipements.html', context)

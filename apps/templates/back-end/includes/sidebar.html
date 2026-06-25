@@ -95,6 +95,21 @@
     </a>
 </li>
 
+<li class="menu-title"> 
+    <span>Gestion Matériel</span> 
+</li>
+
+<li class="submenu">
+    <a href="#"><i class="fa fa-hospital-o"></i> <span> Inventaire</span> <span class="menu-arrow"></span></a>
+    <ul style="display: none;">
+        <li><a href="{% url 'liste_categories' %}">Catégories</a></li>
+        <li class="{% if request.resolver_match.url_name == 'liste_equipements' %}active{% endif %}">
+            <a href="{% url 'liste_equipements' %}">Liste des Équipements</a>
+        </li>
+        <li><a href="#">Interventions / Pannes</a></li>
+    </ul>
+</li>
+
                 {% endif %}
 
                 {% if fonctionKey == 'receptionniste' %}

@@ -575,3 +575,37 @@ class OrdonnanceFormUrgence(forms.ModelForm):
             'diagnostic': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'observation': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
+
+
+# =================================================================
+#
+class CategorieForm(forms.ModelForm):
+    class Meta:
+        model = CategorieEquipement
+        fields = ['nom']
+        widgets = {
+            'nom' : forms.TextInput(attrs={'class': 'form-control'})
+        }
+
+    def clean_nom(self):
+        nom = self.cleaned_data.get('nom')
+        # Vérification insensible à la casse (ex: "Lit" = "lit")
+        if CategorieEquipement.objects.filter(nom__iexact=nom).exists():
+            raise forms.ValidationError(f"La catégorie '{nom}' existe déjà.")
+        return nom 
+
+
+# ====================================================================
+#
+class EquipementForm(forms.ModelForm):
+    class Meta:
+        model = Equipement
+        fields = ['nom', 'numero_serie', 'categorie', 'etat', 'service', 'date_acquisition']
+        widgets = {
+            'nom': forms.TextInput(attrs={'class': 'form-control'}),
+            'numero_serie': forms.TextInput(attrs={'class': 'form-control'}),
+            'categorie': forms.Select(attrs={'class': 'form-control'}), # Menu déroulant auto
+            'etat': forms.Select(attrs={'class': 'form-control'}),
+            'service': forms.Select(attrs={'class': 'form-control'}),
+            'date_acquisition': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+        }
