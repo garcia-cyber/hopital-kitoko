@@ -24,37 +24,10 @@
                     </div>
 
                     <div class="row filter-row">
-                        <div class="col-sm-6 col-md-6">  
+                        <div class="col-sm-12 col-md-12">  
                             <div class="form-group form-focus">
                                 <input type="text" class="form-control floating" id="searchWaitingList" placeholder="Rechercher un patient...">
                                 <label class="focus-label">Recherche rapide</label>
-                            </div>
-                        </div>
-                        <div class="col-sm-6 col-md-6">
-                            <div class="form-group form-focus">
-                                <select id="filterCategory" class="form-control floating">
-                                    <option value="">Toutes les catégories</option>
-                                    <option value="Consultation">Consultation</option>
-                                    <option value="Laboratoire">Laboratoire</option>
-                                    <option value="Soins">Soins</option>
-                                    <option value="Échographie">Échographie</option>
-                                    <option value="Radiologie">Radiologie</option>
-                                    <option value="Scanner">Scanner</option>
-                                    <option value="IRM">IRM</option>
-                                    <option value="Cardiographie">Cardiographie</option>
-                                    <option value="Gynécographie">Gynécographie</option>
-                                    <option value="Oncologie">Oncologie</option>
-                                    <option value="Orthopédie">Orthopédie</option>
-                                    <option value="Dermatologie">Dermatologie</option>
-                                    <option value="Ophtalmologie">Ophtalmologie</option>
-                                    <option value="Psychiatrie">Psychiatrie</option>
-                                    <option value="Rééducation / Kinésithérapie">Kinésithérapie</option>
-                                    <option value="Acte Médical">Acte Médical</option>
-                                    <option value="Acte Chirurgical">Acte Chirurgical</option>
-                                    <option value="Consultation Maternité">Consultation Maternité</option>
-                                    <option value="Forfait Maternité / Accouchement">Maternité</option>
-                                </select>
-                                <label class="focus-label">Filtrer par catégorie</label>
                             </div>
                         </div>
                     </div>
@@ -88,10 +61,9 @@
                                                 {% if signe.session %}
                                                     <ul class="list-unstyled mb-0">
                                                         {% for item in signe.session.items.all %}
-                                                            <li data-category="{{ item.prestation.get_categorie_display }}">
+                                                            <li>
                                                                 <i class="fa fa-caret-right text-primary"></i> 
-                                                                {{ item.prestation.libelle }} 
-                                                                <span class="text-muted">({{ item.prestation.get_categorie_display }})</span>
+                                                                {{ item.prestation.libelle }}
                                                             </li>
                                                         {% endfor %}
                                                     </ul>
@@ -140,17 +112,9 @@
                     "info": false
                 });
 
+                // Recherche simple
                 $('#searchWaitingList').on('keyup', function() {
                     table.search(this.value).draw();
-                });
-
-                $('#filterCategory').on('change', function() {
-                    var category = this.value;
-                    if (category) {
-                        table.column(4).search(category).draw();
-                    } else {
-                        table.column(4).search('').draw();
-                    }
                 });
             });
         </script>
