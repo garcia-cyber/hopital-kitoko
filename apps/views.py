@@ -895,19 +895,44 @@ def historique_signes_vitaux(request, patient_id):
 # ==================================================================================================
 @login_required
 def liste_consultation_medecin(request):
-    # On affiche uniquement les patients dont les signes vitaux 
-    # n'ont pas encore été traités par le médecin
+    """
+    Vue pour la liste de consultation du médecin.
+    Récupère les signes vitaux non consultés,
+    avec possibilité de filtrer selon la présence d'une session.
+    """
+
+    # 1. Récupération du paramètre de filtrage (GET)
+    filtre = request.GET.get('filtre', 'tous')  
+    # valeurs possibles : 'tous', 'avec_session', 'sans_session'
+
+    # 2. Base QuerySet : signes vitaux non consultés
     patients_prets = SigneVital.objects.filter(
         est_consulte=False
-    ).select_related('patient', 'infirmier').order_by('date_prelevement')
+    ).select_related(
+        'patient', 
+        'infirmier', 
+        'session'
+    ).prefetch_related(
+        'session__items__prestation'
+    ).order_by('date_prelevement')
 
+    # 3. Application du filtre
+    if filtre == 'avec_session':
+        patients_prets = patients_prets.filter(session__isnull=False)
+    elif filtre == 'sans_session':
+        patients_prets = patients_prets.filter(session__isnull=True)
+
+    # 4. Gestion du rôle utilisateur
     role = Fonction.objects.filter(userKey=request.user).first()
-    fonctionKey = role.fonctionKey.roleName if role else None
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
 
+    # 5. Contexte pour le template
     context = {
         'fonctionKey': fonctionKey,
         'patients_prets': patients_prets,
+        'filtre': filtre,
     }
+
     return render(request, 'back-end/medecin/liste_consultation.html', context)
 
 # 28
@@ -4630,13 +4655,13 @@ def liste_sessions(request):
         session.total_reductions = total_red
         session.actuel_reste = max(0, session.total_a_payer - total_paye - total_red)
 
-    # 1. Vérification du rôle utilisateur
-    role = Fonction.objects.filter(userKey=request.user).first()
-    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+    # 3. Gestion des droits d'accès (ton système de rôle)
+    role_obj = Fonction.objects.filter(userKey=request.user).first()
+    fonction_key = role_obj.fonctionKey.roleName if role_obj and role_obj.fonctionKey else "Utilisateur"
 
     return render(request, 'back-end/consultation/liste_sessions.html', {
         'sessions': sessions,
-        'fonctionKey': fonctionKey
+        'fonctionKey': fonction_key
     })
 #
 # ====================================================================================================================
@@ -4748,6 +4773,36 @@ def liste_sessions_infirmier(request):
         'sessions': sessions,
         'fonctionKey': fonctionKey    
     })
+
+#
+# ===========================================================================================
+# SIGNE VITAUX RELIE PAR UNE NOUVEL CONSULTATION
+# ===========================================================================================
+@login_required
+def saisir_signes_vitaux(request, session_id):
+    session = get_object_or_404(SessionSoins, id=session_id) 
+    
+    if request.method == 'POST':
+        form = SigneVitalForm(request.POST)
+        if form.is_valid():
+            signes = form.save(commit=False)
+            signes.session = session
+            signes.patient = session.patient
+            signes.infirmier = request.user
+            signes.save()
+            return redirect('liste_sessions_infirmier')
+    else:
+        form = SigneVitalForm()
+    
+    role = Fonction.objects.filter(userKey=request.user).first()
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
+    return render(request, 'back-end/consultation/saisie_signes.html', {
+        'form': form, 'session': session ,
+        'fonctionKey' : fonctionKey
+    })
+
+
 
 #
 # ===============================================================================================

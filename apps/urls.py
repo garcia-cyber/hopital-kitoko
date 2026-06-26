@@ -221,12 +221,13 @@ urlpatterns =[
     # ========================================
     # SOINS(CONSULTATION)
     path('consultation/details/<int:session_id>/', views.detail_consultation, name='detail_consultation'),
-    path('triage/', views.liste_sessions_infirmier, name='liste_sessions_infirmier'),
+    path('triage-soin/', views.liste_sessions_infirmier, name='liste_sessions_infirmier'),
     path(
         'consultation/<int:pk>/detailView/',
         views.detail_consultation_view,
         name='detail_consultation_view'
     ),
+    path('saisir-signes/<int:session_id>/', views.saisir_signes_vitaux, name='saisir_signes_vitaux'),
 
 
     # ======================================

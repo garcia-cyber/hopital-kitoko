@@ -312,6 +312,7 @@ class LigneFacture(models.Model):
         if not self.prix_facture:
             self.prix_facture = self.prestation.prix * self.quantite
         super().save(*args, **kwargs)
+        
 # 9. SIGNES VITAUX ==================================================
 class SigneVital(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)

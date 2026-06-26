@@ -609,3 +609,30 @@ class EquipementForm(forms.ModelForm):
             'service': forms.Select(attrs={'class': 'form-control'}),
             'date_acquisition': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
         }
+
+
+# ========================================================================
+#
+class SigneVitalForm(forms.ModelForm):
+    class Meta:
+        model = SigneVital
+        # On exclut les champs qui sont remplis automatiquement dans la vue
+        exclude = ['patient', 'session', 'infirmier', 'date_prelevement', 'est_consulte']
+        
+        # Ajout de labels et de widgets pour le design
+        widgets = {
+            'temperature': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Ex: 37.5'}),
+            'poids': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Ex: 70.0'}),
+            'tension_arterielle': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: 120/80'}),
+            'frequence_cardiaque': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'BPM'}),
+            'frequence_respiratoire': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'RPM'}),
+            'saturation_oxygene': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '%'}),
+        }
+        labels = {
+            'temperature': 'Température (°C)',
+            'poids': 'Poids (kg)',
+            'tension_arterielle': 'Tension Artérielle (mmHg)',
+            'frequence_cardiaque': 'Fréquence Cardiaque (BPM)',
+            'frequence_respiratoire': 'Fréquence Respiratoire (RPM)',
+            'saturation_oxygene': 'Saturation Oxygène (%)',
+        }
