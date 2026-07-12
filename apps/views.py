@@ -2130,7 +2130,7 @@ def enregistrer_ordonnance_view(request, triage_id):
     consultation = get_object_or_404(Consultation, triage=triage)
     
     # Récupération des examens liés à cette consultation
-    examens_termines = Examen.objects.filter(consultation=consultation, statut='TERMINE')
+    examens_termines = DemandeExamen.objects.filter(consultation=consultation, statut='TERMINE')
 
     if request.method == 'POST':
         form = OrdonnanceForm(request.POST)

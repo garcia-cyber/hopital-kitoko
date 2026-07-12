@@ -373,7 +373,7 @@ class Consultation(models.Model):
         return self.consultation_payee
 
 # 11. DEMANDE EXAMEN ===============================================
-class DemandeExamen(models.Model):
+class DemandeExamen(models.Model): 
     STATUT = [
         ('EN_ATTENTE', 'En attente'),
         ('TERMINE', 'Terminé'),
