@@ -10,7 +10,11 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-dev-key')
 DEBUG = config('DEBUG', default=False, cast=bool)
 
 # Autorise votre domaine Render et localhost
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='127.0.0.1,localhost').split(',')
+ALLOWED_HOSTS = [
+    "127.0.0.1",
+    "localhost",
+    "hopital-kitoko.onrender.com",
+]
 
 # --- APPLICATIONS ---
 INSTALLED_APPS = [
