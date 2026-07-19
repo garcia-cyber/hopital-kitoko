@@ -1,19 +1,16 @@
 import os
 from pathlib import Path
+from decouple import config
+import dj_database_url
 
-# --- CHEMINS ---
-# BASE_DIR pointe vers la racine de ton projet (là où se trouve manage.py)
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # --- SÉCURITÉ ---
-# Sur Render, ajoute une variable d'environnement SECRET_KEY
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-dev-temporary-key')
+SECRET_KEY = config('SECRET_KEY', default='django-insecure-dev-key')
+DEBUG = config('DEBUG', default=False, cast=bool)
 
-# DEBUG est False sur Render pour la sécurité
-DEBUG = os.environ.get('DEBUG', 'True').lower() == 'true'
-
-# Autorise ton site Render et le local
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '.onrender.com']
+# Autorise votre domaine Render et localhost
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='127.0.0.1,localhost').split(',')
 
 # --- APPLICATIONS ---
 INSTALLED_APPS = [
@@ -23,7 +20,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'apps',  
+    'apps',
     'crispy_forms',
     'crispy_bootstrap4',
 ]
@@ -31,10 +28,10 @@ INSTALLED_APPS = [
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap4"
 CRISPY_TEMPLATE_PACK = "bootstrap4"
 
-# --- MIDDLEWARE ---
+# --- MIDDLEWARE (Sécurisé) ---
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # Pour gérer les fichiers statiques sur Render
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -45,7 +42,6 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'conf.urls'
 
-# --- TEMPLATES ---
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -64,59 +60,39 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'conf.wsgi.application'
 
-# --- BASE DE DONNÉES (À LA RACINE) ---
-# Le fichier db.sqlite3 sera créé directement à côté de manage.py
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+# --- BASE DE DONNÉES (AUTO-SWITCH) ---
+if config('DATABASE_URL', default=None):
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=config('DATABASE_URL'),
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
     }
-}
-
-# --- VALIDATION DES MOTS DE PASSE ---
-AUTH_PASSWORD_VALIDATORS = [
-    # {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    # {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
-    # {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
-    # {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
-]
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 # --- INTERNATIONALISATION ---
 LANGUAGE_CODE = 'fr-fr'
-TIME_ZONE = 'Africa/Kinshasa'  # <--- Très important pour avoir l'heure de Kinshasa
+TIME_ZONE = 'Africa/Kinshasa'
 USE_I18N = True
-USE_L10N = True
 USE_TZ = False
 
-# Ajoutez-le juste ici
-DATE_INPUT_FORMATS = [
-    '%d/%m/%Y', # Format jour/mois/année (ex: 15/05/2026)
-    '%Y-%m-%d', # Format standard base de données
-]
-
-# --- FICHIERS STATIQUES (CSS, JS) ---
+# --- FICHIERS ---
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Whitenoise pour la compression en production
-if not DEBUG:
-    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
-# --- FICHIERS MÉDIAS (Photos, Uploads) ---
 MEDIA_ROOT = BASE_DIR / 'media'
 MEDIA_URL = '/media/'
 
-
-# MEDIA_URL = '/media/'
-# MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-
-# --- AUTHENTIFICATION --- 
-LOGIN_REDIRECT_URL = '/dashboard/'
-LOGIN_URL = '/login/'
-LOGOUT_REDIRECT_URL = '/home/'
-
-# --- SÉCURITÉ PROD ---
+# --- SÉCURITÉ RENFORCÉE EN PRODUCTION ---
 if not DEBUG:
     CSRF_COOKIE_SECURE = True
     SESSION_COOKIE_SECURE = True
@@ -124,5 +100,9 @@ if not DEBUG:
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SECURE_SSL_REDIRECT = True
     X_FRAME_OPTIONS = 'DENY'
+    # HSTS pour forcer le HTTPS
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
