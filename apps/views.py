@@ -305,9 +305,14 @@ def gestion_prestations(request):
     else:
         prestations_list = Prestation.objects.all().order_by('libelle')
 
-    # 2. Récupération du taux de change
+    # 2. Récupération du taux de change (en Decimal)
     config = ConfigurationHopital.objects.first()
-    taux = config.taux_usd_en_cdf if config else 2500.00
+    taux_valeur = config.taux_usd_en_cdf if config else 2500.00
+    # On s'assure que taux est un Decimal
+    if not isinstance(taux_valeur, Decimal):
+        taux = Decimal(str(taux_valeur))
+    else:
+        taux = taux_valeur
 
     # 3. Pagination (10 éléments par page)
     paginator = Paginator(prestations_list, 10)
@@ -316,7 +321,11 @@ def gestion_prestations(request):
 
     # 4. Calcul du prix en CDF pour les éléments de la page actuelle
     for item in prestations_obj:
-        item.prix_cdf = item.prix * taux
+        # On s'assure que item.prix est un Decimal
+        prix = item.prix
+        if not isinstance(prix, Decimal):
+            prix = Decimal(str(prix)) if prix is not None else Decimal('0')
+        item.prix_cdf = prix * taux
 
     # 5. Gestion de l'ajout (POST)
     if request.method == 'POST':
@@ -333,15 +342,14 @@ def gestion_prestations(request):
     fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
 
     # 7. Préparation des catégories pour le modal de modification
-    # On récupère les tuples (code, nom) définis dans les CHOICES du modèle
     categories_list = Prestation._meta.get_field('categorie').choices
 
     context = {
-        'prestations': prestations_obj, # On passe l'objet paginé
+        'prestations': prestations_obj,
         'form': form,
         'taux': taux,
         'fonctionKey': fonctionKey,
-        'categories_list': categories_list, # Indispensable pour la boucle dans le modal
+        'categories_list': categories_list,
     }
     return render(request, 'back-end/prestation/list_prestation.html', context)
 
@@ -452,8 +460,6 @@ def modifier_service(request, pk):
 # ==================================================================================================
 @login_required
 def enregistrement_patient(request):
-    # Optimisation : On charge les patients pour le tableau.
-    # Note : Si la liste devient très longue, pense à ajouter un paginator plus tard.
     patients = Patient.objects.select_related('entreprise', 'created_by').all().order_by('-date_creation')
     
     if request.method == 'POST':
@@ -463,24 +469,22 @@ def enregistrement_patient(request):
                 patient = form.save(commit=False)
                 patient.created_by = request.user
                 
-                # Logique métier : Forcer le type si entreprise présente
                 if patient.entreprise:
                     patient.type_patient = 'CONVENTIONNE'
                 
                 patient.save()
                 messages.success(request, f"Patient {patient.noms} enregistré avec succès.")
-                return redirect('enregistrement_patient')
+                return redirect('payer_fiche', patient_id=patient.id) 
+                
             except Exception as e:
                 messages.error(request, f"Erreur lors de l'enregistrement : {str(e)}")
         else:
-            # Affichage des erreurs de validation du formulaire
             for field, errors in form.errors.items():
                 for error in errors:
                     messages.error(request, f"{field.capitalize()}: {error}")
     else:
         form = PatientForm()
 
-    # Gestion du rôle pour le menu et les accès
     role_obj = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role_obj.fonctionKey.roleName if (role_obj and role_obj.fonctionKey) else "Invité"
 
@@ -599,22 +603,12 @@ def payer_fiche(request, patient_id):
                 caissier=request.user
             )
             
-            # --- NOUVELLE LOGIQUE DE VÉRIFICATION ---
-            # On recalcule le total après le nouveau paiement
-            nouveau_total_usd = total_deja_paye_usd + montant_test_usd
-            
-            # Si le total atteint ou dépasse le prix (avec marge d'erreur 0.01)
-            if nouveau_total_usd >= (prix_fiche_usd - Decimal('0.01')):
-                patient.fiche_payee = True  # Assure-toi que ce champ existe dans ton modèle Patient
-                patient.save()
-                messages.success(request, f"Paiement terminé. La fiche de {patient.noms} est maintenant validée.")
-            else:
-                messages.success(request, f"Paiement de {montant_saisi} {devise} enregistré. Reste : {(prix_fiche_usd - nouveau_total_usd):.2f} USD")
-            
-            return redirect('enregistrement_patient')
+            # Dès qu'un paiement est enregistré, on passe à la saisie des signes vitaux
+            messages.success(request, f"Paiement de {montant_saisi} {devise} enregistré. Vous pouvez maintenant saisir les signes vitaux.")
+            return redirect('saisir_signes', patient_id=patient.id)
 
-    # ... reste du contexte ...
-    role = Fonction.objects.filter(userKey = request.user).first()
+    # Gestion des rôles pour l'interface
+    role = Fonction.objects.filter(userKey=request.user).first()
     fonctionKey = role.fonctionKey.roleName if role else None
 
     context = {
@@ -624,8 +618,8 @@ def payer_fiche(request, patient_id):
         'taux': taux,
         'prix_fiche': prix_fiche_usd,
         'libelle_prestation': prestation_fiche.libelle,
-        'fonctionKey' : fonctionKey,
-        'deja_paye': patient.fiche_payee # Pour l'utiliser dans le template si besoin
+        'fonctionKey': fonctionKey,
+        'deja_paye': patient.fiche_payee
     }
     return render(request, 'back-end/finance/payer_fiche.html', context)
 
