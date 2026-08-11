@@ -29,9 +29,37 @@
             /* Boutons et Recherches */
             .add-btn { background-color: #007bff; color: white; border-radius: 50px; padding: 10px 24px; font-weight: 500; transition: all 0.2s; }
             .add-btn:hover { background-color: #0056b3; color: white; transform: translateY(-1px); }
-            .search-box { border-radius: 30px 0 0 30px; border-right: none; padding-left: 20px; height: 46px; }
+
+            .search-box {
+                border-radius: 30px 0 0 30px;
+                border-right: none;
+                padding-left: 20px;
+                height: 46px;
+                width: 100%;
+            }
             .search-btn { border-radius: 0 30px 30px 0; width: 50px; height: 46px; }
             .btn-reset { border-radius: 30px; height: 46px; display: inline-flex; align-items: center; }
+
+            /* Responsive : barre de recherche sur mobile */
+            @media (max-width: 767px) {
+                .search-wrapper {
+                    width: 100%;
+                }
+                .search-wrapper .input-group {
+                    width: 100%;
+                }
+                .search-box {
+                    width: 100%;
+                }
+                .taux-info {
+                    font-size: 0.85rem;
+                    padding: 8px 12px;
+                }
+                .add-btn {
+                    padding: 8px 16px;
+                    font-size: 0.9rem;
+                }
+            }
             
             .text-valeur-normale { font-family: 'Courier New', Courier, monospace; color: #495057; font-weight: 600; background: #f1f3f5; padding: 3px 8px; border-radius: 4px; font-size: 0.9em; }
             .bloc-labo-uniquement { display: none; } 
@@ -49,14 +77,14 @@
                     <!-- Header de la page -->
                     <div class="page-header mb-4">
                         <div class="row align-items-center">
-                            <div class="col">
+                            <div class="col-12 col-md-8 mb-3 mb-md-0">
                                 <h3 class="page-title" style="font-weight: 700; color: #1f2937;">Catalogue des Prestations</h3>
                                 <ul class="breadcrumb" style="background: transparent; padding: 0;">
                                     <li class="breadcrumb-item"><a href="#">Configuration</a></li>
                                     <li class="breadcrumb-item active">Prestations</li>
                                 </ul>
                             </div>
-                            <div class="col-auto float-right ml-auto">
+                            <div class="col-12 col-md-4 text-md-right">
                                 <a href="#" class="btn add-btn" data-toggle="modal" data-target="#add_prestation">
                                     <i class="fa fa-plus-circle"></i> Nouvelle prestation
                                 </a>
@@ -66,7 +94,7 @@
 
                     <!-- Barre de recherche et Taux -->
                     <div class="row mb-4 align-items-center">
-                        <div class="col-md-7">
+                        <div class="col-12 col-md-7 search-wrapper">
                             <form method="GET" action="{% url 'gestion_prestations' %}" class="input-group">
                                 <input type="text" name="q" class="form-control search-box" placeholder="Rechercher une prestation, un code ou une catégorie..." value="{{ request.GET.q|default:'' }}">
                                 <div class="input-group-append">
@@ -81,7 +109,7 @@
                                 {% endif %}
                             </form>
                         </div>
-                        <div class="col-md-5 text-md-right mt-3 mt-md-0">
+                        <div class="col-12 col-md-5 text-md-right mt-3 mt-md-0">
                             <div class="d-inline-block taux-info">
                                 <i class="fa fa-exchange mr-1"></i> 
                                 <strong>Taux du jour : 1 USD = {{ taux|floatformat:0 }} CDF</strong>
@@ -114,8 +142,8 @@
                                                     <th>Désignation</th>
                                                     <th>Catégorie</th>
                                                     <th>Valeur Normale (Labo)</th>
-                                                    <th>Prix (USD)</th>
                                                     <th>Prix (CDF)</th>
+                                                    <th>Prix (USD)</th>
                                                     <th class="text-right" style="width: 100px;">Action</th>
                                                 </tr>
                                             </thead>
@@ -135,7 +163,7 @@
                                                             <span class="cat-badge cat-default">{{ item.get_categorie_display }}</span>
                                                         {% endif %}
                                                     </td>
-                                                    <!-- AJOUT DE LA COLONNE VALEUR NORMALE -->
+                                                    <!-- VALEUR NORMALE -->
                                                     <td>
                                                         {% if item.valeur_normale %}
                                                             <span class="text-valeur-normale">{{ item.valeur_normale }}</span>
@@ -143,9 +171,13 @@
                                                             <span class="text-muted">—</span>
                                                         {% endif %}
                                                     </td>
-                                                    <td><span class="badge-usd">{{ item.prix }} $</span></td>
+                                                    <!-- PRIX EN CDF (principal) -->
                                                     <td>
-                                                        <span class="text-cdf">{{ item.prix_cdf|floatformat:0 }} FC</span>
+                                                        <span class="text-cdf">{{ item.prix|floatformat:0 }} FC</span>
+                                                    </td>
+                                                    <!-- PRIX EN USD (équivalent) -->
+                                                    <td>
+                                                        <span class="badge-usd">{{ item.prix_usd|floatformat:2 }} $</span>
                                                     </td>
                                                     <td class="text-right">
                                                         <div class="dropdown dropdown-action">
@@ -189,7 +221,7 @@
                                                                     </div>
 
                                                                     <div class="form-group">
-                                                                        <label>Prix en USD</label>
+                                                                        <label>Prix en CDF</label>
                                                                         <input type="number" step="0.01" name="prix" class="form-control" value="{{ item.prix|stringformat:'.2f' }}" required>
                                                                     </div>
                                                                     <div class="submit-section text-center mt-4">
@@ -282,7 +314,7 @@
 
                 /* =======================================================
                    LOGIQUE 1 : GESTION DANS LE MODAL D'AJOUT (FORM DJANGO)
-                   ======================================================= */
+                   ======================================================== */
                 const $selectAdd = $('#add_prestation select[name="categorie"]');
                 const $blocAdd = $('.bloc-valeur-normale-add');
 
@@ -300,7 +332,7 @@
 
                 /* =======================================================
                    LOGIQUE 2 : GESTION DANS LES MODALS DE MODIFICATION
-                   ======================================================= */
+                   ======================================================== */
                 $('.edit-prestation-modal').each(function() {
                     const $modal = $(this);
                     const $selectEdit = $modal.find('.select-categorie-edit');

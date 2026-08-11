@@ -15,16 +15,25 @@ from django.core.exceptions import ObjectDoesNotExist
 # 1. CONFIGURATION ET BASE =============================================
 
 class ConfigurationHopital(models.Model):
-    taux_usd_en_cdf = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('2500.00'))
+    # Taux de change : combien de CDF pour 1 USD
+    taux_usd_en_cdf = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('2500.00'),  # prix par défaut en CDF
+        help_text="Nombre de Francs Congolais (CDF) pour 1 USD"
+    )
     derniere_mise_a_jour = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = "Configuration du Taux"
+        verbose_name_plural = "Configuration du Taux"
 
-    # AJOUTEZ CE BLOC ICI
     @classmethod
     def get_taux(cls):
-        """Récupère le taux actuel ou renvoie 2500 par défaut si aucune config n'existe."""
+        """
+        Récupère le taux actuel (en CDF pour 1 USD).
+        Si aucune configuration n'existe, renvoie 2500.00 CDF par défaut.
+        """
         config = cls.objects.first()
         if config:
             return config.taux_usd_en_cdf
@@ -70,7 +79,7 @@ class Prestation(models.Model):
         ('OPHTA', 'Ophtalmologie'),
         ('PSY', 'Psychiatrie'),
         ('KINE', 'Rééducation / Kinésithérapie'),
-        ('MED', 'Acte Médical'),      
+        ('MED', 'Acte Médical'),       
         ('CHIR', 'Acte Chirurgical'),
         ('CONS_MAT', 'Consultation Maternité'), 
         ('MAT', 'Forfait Maternité / Accouchement'), 
@@ -78,9 +87,16 @@ class Prestation(models.Model):
     
     libelle = models.CharField(max_length=200, verbose_name="Libellé")
     categorie = models.CharField(max_length=10, choices=CATEGORIES, verbose_name="Catégorie")
-    prix = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'), verbose_name="Prix (USD)")
+    prix = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name="Prix (CDF)"
+    )
     valeur_normale = models.CharField(
-        max_length=150, blank=True, null=True, 
+        max_length=150,
+        blank=True,
+        null=True, 
         verbose_name="Valeur Normale / Référence (Labo uniquement)",
         help_text="Ex: 70-110 mg/dl, Négatif, etc."
     )
@@ -89,9 +105,9 @@ class Prestation(models.Model):
         # Nettoyage : Si ce n'est pas du Laboratoire, on vide la valeur normale
         if self.categorie != 'LABO':
             self.valeur_normale = None
-            
+
     def __str__(self):
-        return f"{self.libelle} ({self.get_categorie_display()}) - {self.prix} USD"
+        return f"{self.libelle} ({self.get_categorie_display()}) - {self.prix} CDF"
 
     class Meta:
         verbose_name = "Prestation"
@@ -200,13 +216,20 @@ class Paiement(models.Model):
     # Champs de paiement
     service = models.CharField(max_length=20, choices=SERVICES)
     montant_verse = models.DecimalField(max_digits=15, decimal_places=2)
-    montant_reduction = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    devise = models.CharField(max_length=3, choices=CURRENCY, default='USD')
+    montant_reduction = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    devise = models.CharField(max_length=3, choices=CURRENCY, default='CDF')  # CDF par défaut
     date_paiement = models.DateTimeField(default=timezone.now)
     caissier = models.ForeignKey(User, on_delete=models.PROTECT)
-    reste_a_payer = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0.00'), verbose_name="Dette / Reste à payer")
+    reste_a_payer = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name="Dette / Reste à payer"
+    )
 
     def save(self, *args, **kwargs):
+        from .models import ConfigurationHopital
+
         is_new = self.pk is None
 
         # --- LOGIQUE SERVICES STANDARDS ---
@@ -223,30 +246,43 @@ class Paiement(models.Model):
 
         # --- LOGIQUE HOSPITALISATION ---
         if self.hospitalisation:
-            total_due = Decimal(str(self.hospitalisation.cout_total))
+            total_due = Decimal(str(self.hospitalisation.cout_total))  # déjà en CDF
             paiements_existants = self.hospitalisation.paiements.exclude(pk=self.pk)
-            total_deja_verse = paiements_existants.aggregate(Sum('montant_verse'))['montant_verse__sum'] or 0
-            total_deja_reduit = paiements_existants.aggregate(Sum('montant_reduction'))['montant_reduction__sum'] or 0
+            total_deja_verse = paiements_existants.aggregate(Sum('montant_verse'))['montant_verse__sum'] or Decimal('0.00')
+            total_deja_reduit = paiements_existants.aggregate(Sum('montant_reduction'))['montant_reduction__sum'] or Decimal('0.00')
             
-            self.reste_a_payer = max(0, total_due - (total_deja_reduit + self.montant_reduction) - (total_deja_verse + self.montant_verse))
+            self.reste_a_payer = max(
+                Decimal('0.00'),
+                total_due
+                - (total_deja_reduit + self.montant_reduction)
+                - (total_deja_verse + self.montant_verse)
+            )
             self.hospitalisation.est_payee = (self.reste_a_payer <= 0)
             self.hospitalisation.save()
 
         # --- LOGIQUE SESSIONS SOINS ---
         if self.session:
             tous_paiements = self.session.paiements.exclude(pk=self.pk)
-            total_deja_verse = tous_paiements.aggregate(Sum('montant_verse'))['montant_verse__sum'] or 0
-            total_deja_reduit = tous_paiements.aggregate(Sum('montant_reduction'))['montant_reduction__sum'] or 0
-            self.reste_a_payer = max(0, self.session.total_a_payer - (total_deja_reduit + self.montant_reduction) - (total_deja_verse + self.montant_verse))
+            total_deja_verse = tous_paiements.aggregate(Sum('montant_verse'))['montant_verse__sum'] or Decimal('0.00')
+            total_deja_reduit = tous_paiements.aggregate(Sum('montant_reduction'))['montant_reduction__sum'] or Decimal('0.00')
+            self.reste_a_payer = max(
+                Decimal('0.00'),
+                self.session.total_a_payer  # déjà en CDF
+                - (total_deja_reduit + self.montant_reduction)
+                - (total_deja_verse + self.montant_verse)
+            )
             self.session.est_payee = (self.reste_a_payer <= 0)
             self.session.save()
 
         # --- LOGIQUE EXAMEN EXTERNE ---
         if self.demande_examen_externe:
-            total_due = self.demande_examen_externe.total_a_payer
+            total_due = self.demande_examen_externe.total_a_payer  # déjà en CDF
             paiements_existants = self.demande_examen_externe.paiements.exclude(pk=self.pk)
-            total_deja_verse = paiements_existants.aggregate(Sum('montant_verse'))['montant_verse__sum'] or 0
-            self.reste_a_payer = max(0, total_due - (total_deja_verse + self.montant_verse))
+            total_deja_verse = paiements_existants.aggregate(Sum('montant_verse'))['montant_verse__sum'] or Decimal('0.00')
+            self.reste_a_payer = max(
+                Decimal('0.00'),
+                total_due - (total_deja_verse + self.montant_verse)
+            )
             if self.reste_a_payer <= 0:
                 self.demande_examen_externe.statut = 'PAYE'
                 self.demande_examen_externe.save()
@@ -258,14 +294,18 @@ class Paiement(models.Model):
                 self.dossier_maternite.save()
 
         # --- LOGIQUE ENTREPRISE ---
+        # On suppose que la dette de l'entreprise est gérée en USD.
+        # Si le paiement est en CDF, on le convertit en USD avant de déduire.
         if self.service == 'ENTREPRISE' and self.entreprise:
             montant_usd = self.montant_verse
             if self.devise == 'CDF':
-                from .models import ConfigurationHopital
-                taux = ConfigurationHopital.get_taux()
+                taux = ConfigurationHopital.get_taux()  # CDF pour 1 USD
                 montant_usd = self.montant_verse / taux
             total_a_deduire = montant_usd + self.montant_reduction
-            self.entreprise.dette_mensuelle = max(Decimal('0.00'), self.entreprise.dette_mensuelle - total_a_deduire)
+            self.entreprise.dette_mensuelle = max(
+                Decimal('0.00'),
+                self.entreprise.dette_mensuelle - total_a_deduire
+            )
             self.entreprise.save()
 
         super().save(*args, **kwargs)
@@ -276,6 +316,9 @@ class Paiement(models.Model):
                 paiement=self,
                 numero_facture=f"FAC-{timezone.now().strftime('%y%m%d')}-{self.id}"
             )
+
+    def __str__(self):
+        return f"{self.service} - {self.montant_verse} {self.devise} par {self.caissier}"
 
 
 

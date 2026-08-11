@@ -144,7 +144,7 @@
                     <li><a href="#biographie">Le Promoteur</a></li>
                     <li><a href="#contact">PRENDRE RDV</a></li>
                     {% if user.is_authenticated %}
-                        <li><a href="{% url 'panel' %}">DASHBOARD</a></li>
+                        <li><a href="{% url 'dashboard' %}">DASHBOARD</a></li>
                     {% else %}
                         <li><a href="{% url 'login' %}">CONNEXION</a></li>
                     {% endif %}

@@ -103,8 +103,12 @@
                                                     </td>
                                                     <td>
                                                         <strong class="text-danger" style="font-size: 16px;">
-                                                            {{ c.reste_a_payer|floatformat:2 }} USD
+                                                            {{ c.reste_a_payer|floatformat:0 }} FC
                                                         </strong>
+                                                        <br>
+                                                        <small class="text-muted">
+                                                            {{ c.reste_a_payer_usd|floatformat:2 }} USD
+                                                        </small>
                                                     </td>
                                                     <td class="text-right">
                                                         <a href="{% url 'encaisser_examens_prescrits' c.id %}" class="btn btn-sm btn-success px-3 shadow-sm">

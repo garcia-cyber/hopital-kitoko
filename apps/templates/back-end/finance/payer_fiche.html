@@ -47,11 +47,16 @@
                                     <div class="row mb-4">
                                         <div class="col-md-6">
                                             <p><strong>Prestation :</strong> {{ libelle_prestation }}</p>
-                                            <p><strong>Prix Total :</strong> {{ prix_fiche|floatformat:2 }} USD</p>
+                                            <p><strong>Prix Total :</strong> {{ prix_fiche|floatformat:0 }} FC</p>
+                                            <p class="text-muted small">
+                                                (soit {{ prix_fiche|floatformat:2 }} USD, taux : {{ taux|floatformat:0 }} FC/USD)
+                                            </p>
                                         </div>
-                                        <div class="col-md-6 text-right">
-                                            <h3 class="text-danger">Reste : {{ reste_a_payer|floatformat:2 }} USD</h3>
-                                            <p class="text-muted"> soit {{ reste_a_payer_cdf|floatformat:0 }} FC (Taux: {{ taux }})</p>
+                                        <div class="col-md-6 text-md-right">
+                                            <h3 class="text-danger">Reste : {{ reste_a_payer|floatformat:0 }} FC</h3>
+                                            <p class="text-muted">
+                                                soit {{ reste_a_payer_usd|floatformat:2 }} USD
+                                            </p>
                                         </div>
                                     </div>
 
@@ -70,22 +75,28 @@
                                                 <div class="col-md-6">
                                                     <div class="form-group">
                                                         <label>Montant à verser <span class="text-danger">*</span></label>
-                                                        <input class="form-control" type="number" name="montant" step="0.01" max="{{ reste_a_payer|add:'0.01' }}" required>
+                                                        <input class="form-control" type="number" name="montant" step="0.01" required>
+                                                        <small class="form-text text-muted">
+                                                            Montant en <span id="label_devise_montant">CDF</span>
+                                                        </small>
                                                     </div>
                                                 </div>
                                                 <div class="col-md-6">
                                                     <div class="form-group">
                                                         <label>Devise</label>
                                                         <select class="form-control" name="devise" id="devise_select">
-                                                            <option value="USD">USD ($)</option>
                                                             <option value="CDF">CDF (FC)</option>
+                                                            <option value="USD">USD ($)</option>
                                                         </select>
                                                     </div>
                                                 </div>
                                             </div>
 
                                             <div class="alert alert-info">
-                                                <small id="info_paiement">Le montant sera déduit du reste à payer.</small>
+                                                <small id="info_paiement">
+                                                    Le reste à payer est de {{ reste_a_payer|floatformat:0 }} FC
+                                                    ({{ reste_a_payer_usd|floatformat:2 }} USD).
+                                                </small>
                                             </div>
 
                                             <div class="submit-section">
@@ -108,13 +119,19 @@
             // Petite logique pour aider l'utilisateur sur le montant selon la devise
             $('#devise_select').on('change', function() {
                 let dev = $(this).val();
-                let resteUSD = "{{ reste_a_payer|floatformat:2 }}";
-                let resteCDF = "{{ reste_a_payer_cdf|floatformat:0 }}";
+                let resteCDF = "{{ reste_a_payer|floatformat:0 }}";
+                let resteUSD = "{{ reste_a_payer_usd|floatformat:2 }}";
                 
-                if(dev === 'CDF') {
-                    $('#info_paiement').text("Le reste à payer est de " + resteCDF + " FC");
+                if (dev === 'CDF') {
+                    $('#label_devise_montant').text('CDF');
+                    $('#info_paiement').text(
+                        "Le reste à payer est de " + resteCDF + " FC (" + resteUSD + " USD)."
+                    );
                 } else {
-                    $('#info_paiement').text("Le reste à payer est de " + resteUSD + " USD");
+                    $('#label_devise_montant').text('USD');
+                    $('#info_paiement').text(
+                        "Le reste à payer est de " + resteUSD + " USD (" + resteCDF + " FC)."
+                    );
                 }
             });
         </script>

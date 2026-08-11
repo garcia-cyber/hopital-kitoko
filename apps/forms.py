@@ -97,14 +97,28 @@ class ModifierUserForm(forms.ModelForm):
 class PrestationForm(forms.ModelForm):
     class Meta:
         model = Prestation
-        # 1. On ajoute 'valeur_normale' dans la liste des champs
         fields = ['libelle', 'categorie', 'prix', 'valeur_normale']
         
-        # 2. On configure le widget Bootstrap pour le nouveau champ
+        labels = {
+            'prix': 'Prix (CDF)',
+        }
+        help_texts = {
+            'prix': 'Prix de la prestation en Francs Congolais (CDF).',
+        }
+
         widgets = {
-            'libelle': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Goutte Épaisse'}),
-            'categorie': forms.Select(attrs={'class': 'form-control', 'id': 'id_categorie'}),
-            'prix': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'libelle': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Ex: Goutte Épaisse'
+            }),
+            'categorie': forms.Select(attrs={
+                'class': 'form-control',
+                'id': 'id_categorie'
+            }),
+            'prix': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01'
+            }),
             'valeur_normale': forms.TextInput(attrs={
                 'class': 'form-control', 
                 'placeholder': 'Ex: 70-110 mg/dl ou Négatif',
@@ -119,7 +133,6 @@ class PrestationForm(forms.ModelForm):
             raise forms.ValidationError("Cette prestation existe déjà dans votre catalogue.")
         return libelle
 
-    # 3. Optionnel : Sécurité bonus au niveau du formulaire
     def clean(self):
         cleaned_data = super().clean()
         categorie = cleaned_data.get('categorie')

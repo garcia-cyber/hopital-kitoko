@@ -72,14 +72,22 @@
                                     
                                     <div class="rate-display">
                                         <h5 class="text-muted small text-uppercase">Taux actuel</h5>
-                                        <h3 class="mb-0">1 USD = <span class="text-primary">{{ config.taux_usd_en_cdf }}</span> CDF</h3>
+                                        <h3 class="mb-0">
+                                            1 USD = <span class="text-primary">{{ config.taux_usd_en_cdf }}</span> CDF
+                                        </h3>
+                                        <small class="text-muted d-block mt-2">
+                                            Ce taux signifie que 1 dollar américain vaut {{ config.taux_usd_en_cdf }} francs congolais.
+                                            Les prix des prestations sont définis en CDF dans tout le système.
+                                        </small>
                                     </div>
 
                                     <form method="POST">
                                         {% csrf_token %}
                                         
                                         <div class="form-group">
-                                            <label class="font-weight-bold">Nouveau Taux (Valeur en CDF pour 1$)</label>
+                                            <label class="font-weight-bold">
+                                                Nouveau taux (nombre de CDF pour 1 USD)
+                                            </label>
                                             {# Injection du champ Django avec une classe personnalisée #}
                                             <div class="input-group">
                                                 {{ form.taux_usd_en_cdf }}
@@ -93,7 +101,8 @@
                                                 </div>
                                             {% endif %}
                                             <small class="form-text text-muted mt-2">
-                                                Ce taux sera utilisé pour convertir automatiquement les prix des prestations dans tout le système Moyanoli.
+                                                Ce taux sera utilisé pour afficher un équivalent USD des prix et pour certaines conversions internes.
+                                                Les prestations restent libellées et stockées en CDF.
                                             </small>
                                         </div>
 

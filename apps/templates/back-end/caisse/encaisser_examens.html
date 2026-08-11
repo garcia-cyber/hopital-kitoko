@@ -19,7 +19,7 @@
     <div class="main-wrapper">
         {% include 'back-end/includes/header.html' %}
         {% include 'back-end/includes/sidebar.html' %}
-        
+          
         <div class="page-wrapper">
             <div class="content container-fluid">
                 
@@ -49,14 +49,19 @@
                                                 {% for exam in consultation.examens.all %}
                                                 <tr>
                                                     <td>{{ exam.prestation.libelle }}</td>
-                                                    <td class="text-end fw-bold">{{ exam.prestation.prix }} USD</td>
+                                                    <td class="text-end fw-bold">{{ exam.prestation.prix }} FC</td>
                                                 </tr>
                                                 {% endfor %}
                                             </tbody>
                                         </table>
                                     </div>
                                     <div class="summary-box mt-4">
-                                        <h5 class="m-0 text-primary">Total à payer : <span id="total_du">{{ reste_a_payer_usd|floatformat:2 }}</span> USD</h5>
+                                        <h5 class="m-0 text-primary">
+                                            Total prescrit : <span id="total_du">{{ total_prescrit|floatformat:0 }}</span> FC
+                                        </h5>
+                                        <small class="text-muted">
+                                            (soit {{ total_prescrit_usd|floatformat:2 }} USD, taux : {{ taux|floatformat:0 }} FC/USD)
+                                        </small>
                                     </div>
                                 </div>
                             </div>
@@ -65,16 +70,18 @@
                         <div class="col-lg-4">
                             <div class="card h-100">
                                 <div class="card-body p-4">
-                                    <h5 class="mb-4 text-dark"><i class="fa fa-cash-register me-2 text-success"></i> Saisie Caisse</h5>
+                                    <h5 class="mb-4 text-dark">
+                                        <i class="fa fa-cash-register me-2 text-success"></i> Saisie Caisse
+                                    </h5>
                                     
-                                    <input type="hidden" id="dette_globale" value="{{ reste_a_payer_usd }}">
+                                    <input type="hidden" id="dette_globale" value="{{ reste_a_payer|floatformat:2 }}">
                                     <input type="hidden" id="taux_du_jour" value="{{ taux }}">
 
                                     <div class="mb-3">
                                         <label class="form-label fw-bold small text-uppercase">Devise</label>
                                         <select name="devise" id="select_devise" class="form-select form-select-lg" onchange="calculerReste()">
+                                            <option value="CDF">CDF (FC)</option>
                                             <option value="USD">USD ($)</option>
-                                            <option value="CDF">CDF (FC) - Taux: {{ taux }}</option>
                                         </select>
                                     </div>
 
@@ -83,16 +90,27 @@
                                         <div class="input-group input-group-lg">
                                             <input type="number" id="mt_input" name="montant_verse" class="form-control" step="0.01" value="0" required oninput="calculerReste()">
                                         </div>
+                                        <small class="form-text text-muted">
+                                            Montant en <span id="label_devise_montant">CDF</span>
+                                        </small>
                                     </div>
 
                                     <div class="mb-3">
-                                        <label class="form-label fw-bold small text-uppercase">Réduction (USD)</label>
+                                        <label class="form-label fw-bold small text-uppercase">Réduction</label>
                                         <input type="number" name="montant_reduction" id="mt_reduction" class="form-control form-control-lg" step="0.01" value="0" oninput="calculerReste()">
+                                        <small class="form-text text-muted">
+                                            Réduction en <span id="label_devise_reduction">CDF</span>
+                                        </small>
                                     </div>
 
                                     <div class="result-highlight text-center my-4">
                                         <small class="text-muted d-block mb-1">Reste à payer</small>
-                                        <h2 class="m-0 text-primary fw-bold"><span id="nouveau_reste">{{ reste_a_payer_usd|floatformat:2 }}</span> <small>USD</small></h2>
+                                        <h2 class="m-0 text-primary fw-bold">
+                                            <span id="nouveau_reste">{{ reste_a_payer|floatformat:0 }}</span> <small>FC</small>
+                                        </h2>
+                                        <small class="text-muted d-block mt-1">
+                                            (soit <span id="nouveau_reste_usd">{{ reste_a_payer_usd|floatformat:2 }}</span> USD)
+                                        </small>
                                     </div>
 
                                     <button type="submit" id="btn_submit" class="btn btn-success btn-lg w-100 py-3">
@@ -111,28 +129,40 @@
     
     <script>
         function calculerReste() {
-            const detteInitiale = parseFloat(document.getElementById('dette_globale').value) || 0;
+            const detteInitialeCDF = parseFloat(document.getElementById('dette_globale').value) || 0;
             const taux = parseFloat(document.getElementById('taux_du_jour').value) || 1;
             const devise = document.getElementById('select_devise').value;
             const inputVal = parseFloat(document.getElementById('mt_input').value) || 0;
             const reduction = parseFloat(document.getElementById('mt_reduction').value) || 0;
             
-            let montantVerseUsd = (devise === 'CDF') ? (inputVal / taux) : inputVal;
-            const reste = detteInitiale - (montantVerseUsd + reduction);
+            let montantVerseCDF = (devise === 'CDF') ? inputVal : (inputVal * taux);
+            let reductionCDF = reduction; // on suppose que la réduction est saisie en CDF
+
+            const resteCDF = detteInitialeCDF - (montantVerseCDF + reductionCDF);
             
             const affichage = document.getElementById('nouveau_reste');
+            const affichageUSD = document.getElementById('nouveau_reste_usd');
             const btn = document.getElementById('btn_submit');
             
-            affichage.innerText = Math.max(0, reste).toFixed(2);
+            const resteMax = Math.max(0, resteCDF);
+            affichage.innerText = resteMax.toFixed(0);
+            affichageUSD.innerText = (resteMax / taux).toFixed(2);
             
-            if (reste < 0) {
+            if (resteCDF < -0.01) {
                 affichage.style.color = "red";
                 btn.disabled = true;
             } else {
                 affichage.style.color = "inherit";
                 btn.disabled = false;
             }
+
+            // Mise à jour des labels de devise
+            document.getElementById('label_devise_montant').innerText = devise;
+            document.getElementById('label_devise_reduction').innerText = 'CDF';
         }
+
+        // Initialisation au chargement
+        calculerReste();
     </script>
 </body>
 </html>
