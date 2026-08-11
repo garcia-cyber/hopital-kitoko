@@ -1629,86 +1629,121 @@ def uniquement_resultats_examens(request, patient_id):
 # ==================================================================================================
 @login_required
 def dashboard_finance(request):
-    # --- GESTION DES DATES --- 
+    # --- GESTION DES DATES ---
     maintenant = timezone.now()
-    
+
     # Aujourd'hui à minuit (00:00:00)
     debut_aujourdhui = maintenant.replace(hour=0, minute=0, second=0, microsecond=0)
-    
+
     # Début de la semaine (7 jours glissants)
     debut_semaine = debut_aujourdhui - timedelta(days=7)
-    
+
     # Début du mois (Le 1er du mois en cours à 00:00:00)
     debut_mois = debut_aujourdhui.replace(day=1)
 
-    # --- 1. CALCUL DES ENTRÉES GLOBALES (PAIEMENTS - TOUT HISTORIQUE) ---
-    total_usd = Paiement.objects.filter(devise='USD').aggregate(total=Sum('montant_verse'))['total'] or 0.00
-    total_cdf = Paiement.objects.filter(devise='CDF').aggregate(total=Sum('montant_verse'))['total'] or 0.00
+    # Début de l'année (1er janvier de l'année en cours à 00:00:00)
+    debut_annee = debut_aujourdhui.replace(month=1, day=1)
 
-    # --- 2. CALCUL DES SORTIES GLOBALES (DÉPENSES - TOUT HISTORIQUE) ---
-    depense_totale_usd = Depense.objects.filter(devise='USD').aggregate(total=Sum('montant'))['total'] or 0.00
-    depense_totale_cdf = Depense.objects.filter(devise='CDF').aggregate(total=Sum('montant'))['total'] or 0.00
+    # --- TAUX DE CHANGE ---
+    config = ConfigurationHopital.objects.first()
+    taux = config.taux_usd_en_cdf if config and config.taux_usd_en_cdf else Decimal('2500')
 
-    # --- 3. CALCUL DU SOLDE RESTANT REEL EN CAISSE ---
-    restant_usd = float(total_usd) - float(depense_totale_usd)
-    restant_cdf = float(total_cdf) - float(depense_totale_cdf)
+    # --- FONCTION UTILITAIRE POUR SOMMER EN CDF ---
+    def somme_paiements_cdf(filters):
+        """
+        Retourne la somme des paiements (montant_verse) en CDF,
+        en convertissant les USD en CDF via le taux.
+        filters: un dict de filtres Django (ex: {'date_paiement__gte': ...})
+        """
+        total_cdf = Decimal('0.00')
 
-    # --- 4. STATISTIQUES DES ENTRÉES PAR PÉRIODES (USD et CDF) ---
+        # Paiements en CDF
+        agg_cdf = Paiement.objects.filter(**filters, devise='CDF').aggregate(total=Sum('montant_verse'))['total']
+        if agg_cdf:
+            total_cdf += agg_cdf
+
+        # Paiements en USD → conversion en CDF
+        agg_usd = Paiement.objects.filter(**filters, devise='USD').aggregate(total=Sum('montant_verse'))['total']
+        if agg_usd:
+            total_cdf += agg_usd * taux
+
+        return total_cdf
+
+    def somme_depenses_cdf(filters):
+        """
+        Retourne la somme des dépenses (montant) en CDF,
+        en convertissant les USD en CDF via le taux.
+        """
+        total_cdf = Decimal('0.00')
+
+        agg_cdf = Depense.objects.filter(**filters, devise='CDF').aggregate(total=Sum('montant'))['total']
+        if agg_cdf:
+            total_cdf += agg_cdf
+
+        agg_usd = Depense.objects.filter(**filters, devise='USD').aggregate(total=Sum('montant'))['total']
+        if agg_usd:
+            total_cdf += agg_usd * taux
+
+        return total_cdf
+
+    # --- 1. CALCUL DES ENTRÉES GLOBALES (TOUT HISTORIQUE) EN CDF ---
+    total_cdf = somme_paiements_cdf({})
+
+    # --- 2. CALCUL DES SORTIES GLOBALES (TOUT HISTORIQUE) EN CDF ---
+    depense_totale_cdf = somme_depenses_cdf({})
+
+    # --- 3. CALCUL DU SOLDE RESTANT RÉEL EN CAISSE (EN CDF) ---
+    restant_cdf = total_cdf - depense_totale_cdf
+
+    # --- 4. STATISTIQUES DES ENTRÉES PAR PÉRIODES (EN CDF) ---
     # Aujourd'hui
-    recette_aujourdhui_usd = Paiement.objects.filter(date_paiement__gte=debut_aujourdhui, devise='USD').aggregate(total=Sum('montant_verse'))['total'] or 0.00
-    recette_aujourdhui_cdf = Paiement.objects.filter(date_paiement__gte=debut_aujourdhui, devise='CDF').aggregate(total=Sum('montant_verse'))['total'] or 0.00
+    recette_aujourdhui_cdf = somme_paiements_cdf({'date_paiement__gte': debut_aujourdhui})
 
     # Cette Semaine
-    recette_semaine_usd = Paiement.objects.filter(date_paiement__gte=debut_semaine, devise='USD').aggregate(total=Sum('montant_verse'))['total'] or 0.00
-    recette_semaine_cdf = Paiement.objects.filter(date_paiement__gte=debut_semaine, devise='CDF').aggregate(total=Sum('montant_verse'))['total'] or 0.00
+    recette_semaine_cdf = somme_paiements_cdf({'date_paiement__gte': debut_semaine})
 
     # Ce Mois
-    recette_mois_usd = Paiement.objects.filter(date_paiement__gte=debut_mois, devise='USD').aggregate(total=Sum('montant_verse'))['total'] or 0.00
-    recette_mois_cdf = Paiement.objects.filter(date_paiement__gte=debut_mois, devise='CDF').aggregate(total=Sum('montant_verse'))['total'] or 0.00
+    recette_mois_cdf = somme_paiements_cdf({'date_paiement__gte': debut_mois})
 
-    # --- 5. CALCUL DES ENTRÉES PAR SERVICE ET PAR DEVISE (TOUT HISTORIQUE) ---
+    # Cette Année
+    recette_annee_cdf = somme_paiements_cdf({'date_paiement__gte': debut_annee})
+
+    # --- 5. CALCUL DES ENTRÉES PAR SERVICE (TOUT HISTORIQUE) EN CDF ---
     services_stats = []
     for code, nom_service in Paiement.SERVICES:
-        usd_service = Paiement.objects.filter(service=code, devise='USD').aggregate(total=Sum('montant_verse'))['total'] or 0.00
-        cdf_service = Paiement.objects.filter(service=code, devise='CDF').aggregate(total=Sum('montant_verse'))['total'] or 0.00
-        
+        service_cdf = somme_paiements_cdf({'service': code})
         services_stats.append({
             'nom': nom_service,
-            'usd': usd_service,
-            'cdf': cdf_service
+            'cdf': service_cdf
         })
 
-    # --- 6. LISTE DES PAIEMENTS COMPLETS ---
+    # --- 6. LISTE DES PAIEMENTS COMPLETS (pour le journal) ---
     tous_les_paiements = Paiement.objects.select_related('patient', 'caissier').order_by('-date_paiement')
 
     # Extraction du rôle pour la sidebar
     role = Fonction.objects.filter(userKey=request.user).first()
-    fonctionKey = role.fonctionKey.roleName if role else None
+    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
 
     # --- 7. ENVOI AU TEMPLATE ---
     context = {
-        # Entrées globales (Historique total des paiements reçus)
-        'total_usd': total_usd,
+        # Entrées globales (Historique total des paiements reçus) en CDF
         'total_cdf': total_cdf,
-        
-        # Sorties globales (Historique total des dépenses effectuées)
-        'depense_totale_usd': depense_totale_usd,
+
+        # Sorties globales (Historique total des dépenses) en CDF
         'depense_totale_cdf': depense_totale_cdf,
-        
-        # Net physique restant dans le coffre (Entrées - Sorties)
-        'restant_usd': restant_usd,
+
+        # Net physique restant dans le coffre (Entrées - Sorties) en CDF
         'restant_cdf': restant_cdf,
-        
-        # Stats temporelles des entrées : USD
-        'aujourdhui_usd': recette_aujourdhui_usd,
-        'semaine_usd': recette_semaine_usd,
-        'mois_usd': recette_mois_usd,
-        
+
         # Stats temporelles des entrées : CDF
         'aujourdhui_cdf': recette_aujourdhui_cdf,
         'semaine_cdf': recette_semaine_cdf,
         'mois_cdf': recette_mois_cdf,
-        
+        'annee_cdf': recette_annee_cdf,
+
+        # Taux utilisé (pour affichage / conversion si besoin dans le template)
+        'taux': taux,
+
         # Tables et meta
         'services_stats': services_stats,
         'paiements': tous_les_paiements,

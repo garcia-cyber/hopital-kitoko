@@ -32,13 +32,15 @@
                 <div class="row mb-2">
                     
                     <!-- AUJOURD'HUI -->
-                    <div class="col-12 col-sm-6 col-md-4 mb-3">
+                    <div class="col-12 col-sm-6 col-md-3 mb-3">
                         <div class="card dash-widget shadow-sm h-100" style="border-left: 4px solid #28a745; margin-bottom: 0;">
                             <div class="card-body">
                                 <span class="dash-widget-icon bg-success"><i class="fa fa-calendar-day"></i></span>
                                 <div class="dash-widget-info">
-                                    <h4 class="text-success font-weight-bold mb-1">{{ aujourdhui_usd|floatformat:2 }} USD</h4>
-                                    <h4 class="text-info font-weight-bold mb-2">{{ aujourdhui_cdf|floatformat:2 }} CDF</h4>
+                                    <h4 class="text-info font-weight-bold mb-2">{{ aujourdhui_cdf|floatformat:0 }} FC</h4>
+                                    <small class="text-muted d-block">
+                                        {{ aujourdhui_usd|default:0|floatformat:2 }} USD
+                                    </small>
                                     <span class="widget-title text-muted small font-weight-bold">Aujourd'hui</span>
                                 </div>
                             </div>
@@ -46,13 +48,15 @@
                     </div>
 
                     <!-- CETTE SEMAINE -->
-                    <div class="col-12 col-sm-6 col-md-4 mb-3">
+                    <div class="col-12 col-sm-6 col-md-3 mb-3">
                         <div class="card dash-widget shadow-sm" style="border-left: 4px solid #17a2b8; margin-bottom: 0;">
                             <div class="card-body">
                                 <span class="dash-widget-icon bg-info"><i class="fa fa-calendar-week"></i></span>
                                 <div class="dash-widget-info">
-                                    <h4 class="text-success font-weight-bold mb-1">{{ semaine_usd|floatformat:2 }} USD</h4>
-                                    <h4 class="text-info font-weight-bold mb-2">{{ semaine_cdf|floatformat:2 }} CDF</h4>
+                                    <h4 class="text-info font-weight-bold mb-2">{{ semaine_cdf|floatformat:0 }} FC</h4>
+                                    <small class="text-muted d-block">
+                                        {{ semaine_usd|default:0|floatformat:2 }} USD
+                                    </small>
                                     <span class="widget-title text-muted small font-weight-bold">7 derniers jours</span>
                                 </div>
                             </div>
@@ -60,14 +64,32 @@
                     </div>
 
                     <!-- CE MOIS -->
-                    <div class="col-12 col-md-4 mb-3">
+                    <div class="col-12 col-sm-6 col-md-3 mb-3">
                         <div class="card dash-widget shadow-sm" style="border-left: 4px solid #007bff; margin-bottom: 0;">
                             <div class="card-body">
                                 <span class="dash-widget-icon bg-primary"><i class="fa fa-calendar-alt"></i></span>
                                 <div class="dash-widget-info">
-                                    <h4 class="text-success font-weight-bold mb-1">{{ mois_usd|floatformat:2 }} USD</h4>
-                                    <h4 class="text-info font-weight-bold mb-2">{{ mois_cdf|floatformat:2 }} CDF</h4>
+                                    <h4 class="text-info font-weight-bold mb-2">{{ mois_cdf|floatformat:0 }} FC</h4>
+                                    <small class="text-muted d-block">
+                                        {{ mois_usd|default:0|floatformat:2 }} USD
+                                    </small>
                                     <span class="widget-title text-muted small font-weight-bold">Mois en cours</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CETTE ANNÉE -->
+                    <div class="col-12 col-sm-6 col-md-3 mb-3">
+                        <div class="card dash-widget shadow-sm" style="border-left: 4px solid #ffc107; margin-bottom: 0;">
+                            <div class="card-body">
+                                <span class="dash-widget-icon bg-warning"><i class="fa fa-calendar"></i></span>
+                                <div class="dash-widget-info">
+                                    <h4 class="text-info font-weight-bold mb-2">{{ annee_cdf|floatformat:0 }} FC</h4>
+                                    <small class="text-muted d-block">
+                                        {{ annee_usd|default:0|floatformat:2 }} USD
+                                    </small>
+                                    <span class="widget-title text-muted small font-weight-bold">Année en cours</span>
                                 </div>
                             </div>
                         </div>
@@ -92,22 +114,22 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <!-- LIGNE USD -->
-                                    <tr>
-                                        <td class="text-left font-weight-bold text-dark">Dollar Américain (USD)</td>
-                                        <td class="text-success font-weight-bold">{{ total_usd|floatformat:2 }} USD</td>
-                                        <td class="text-danger font-weight-bold">{{ depense_totale_usd|floatformat:2 }} USD</td>
-                                        <td class="bg-light font-weight-bold text-success h5 mb-0">
-                                            {{ restant_usd|floatformat:2 }} USD
-                                        </td>
-                                    </tr>
-                                    <!-- LIGNE CDF -->
+                                    <!-- LIGNE CDF (principale) -->
                                     <tr>
                                         <td class="text-left font-weight-bold text-dark">Franc Congolais (CDF)</td>
-                                        <td class="text-info font-weight-bold">{{ total_cdf|floatformat:2 }} CDF</td>
-                                        <td class="text-danger font-weight-bold">{{ depense_totale_cdf|floatformat:2 }} CDF</td>
+                                        <td class="text-info font-weight-bold">{{ total_cdf|floatformat:0 }} FC</td>
+                                        <td class="text-danger font-weight-bold">{{ depense_totale_cdf|floatformat:0 }} FC</td>
                                         <td class="bg-light font-weight-bold text-info h5 mb-0">
-                                            {{ restant_cdf|floatformat:2 }} CDF
+                                            {{ restant_cdf|floatformat:0 }} FC
+                                        </td>
+                                    </tr>
+                                    <!-- LIGNE USD (information) -->
+                                    <tr>
+                                        <td class="text-left font-weight-bold text-dark">Dollar Américain (USD)</td>
+                                        <td class="text-success font-weight-bold">{{ total_usd|default:0|floatformat:2 }} USD</td>
+                                        <td class="text-danger font-weight-bold">{{ depense_totale_usd|default:0|floatformat:2 }} USD</td>
+                                        <td class="bg-light font-weight-bold text-success h5 mb-0">
+                                            {{ restant_usd|default:0|floatformat:2 }} USD
                                         </td>
                                     </tr>
                                 </tbody>
@@ -129,16 +151,16 @@
                                         <thead class="bg-light">
                                             <tr>
                                                 <th>Service</th>
-                                                <th>Total USD</th>
                                                 <th>Total CDF</th>
+                                                <th>Total USD</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {% for s in services_stats %}
                                             <tr>
                                                 <td class="font-weight-bold text-secondary">{{ s.nom }}</td>
-                                                <td class="text-success font-weight-bold">{{ s.usd|floatformat:2 }} $</td>
-                                                <td class="text-info font-weight-bold">{{ s.cdf|floatformat:2 }} FC</td>
+                                                <td class="text-info font-weight-bold">{{ s.cdf|floatformat:0 }} FC</td>
+                                                <td class="text-success font-weight-bold">{{ s.usd|default:0|floatformat:2 }} USD</td>
                                             </tr>
                                             {% endfor %}
                                         </tbody>
@@ -191,6 +213,8 @@
                                                         <span class="badge badge-pill badge-info">Échographie</span>
                                                     {% elif p.service == 'RADIO' %}
                                                         <span class="badge badge-pill badge-warning">Radio</span>
+                                                    {% else %}
+                                                        <span class="badge badge-pill badge-light">{{ p.service }}</span>
                                                     {% endif %}
                                                 </td>
                                                 

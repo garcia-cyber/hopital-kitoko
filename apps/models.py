@@ -387,10 +387,10 @@ class Consultation(models.Model):
     triage = models.OneToOneField(SigneVital, db_index=True, on_delete=models.CASCADE)
     medecin = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
     motif_consultation = models.TextField(verbose_name="Motif")
-    antecedent = models.CharField(max_length  = 30 , null = True , blank = True)
+    antecedent = models.TextField(verbose_name="antecedent" , null = True , blank=True)
     histoire_maladie = models.TextField(verbose_name="Histoire de la maladie")
     examen_physique = models.TextField(verbose_name="Examen physique")
-    complement_d_anamnese = models.CharField(max_length=200, null=True)
+    complement_d_anamnese = models.TextField(verbose_name="complement" , null = True , blank= True)
     hypothese_diagnostique = models.TextField(verbose_name="Hypothèse diagnostique")
     date_creation = models.DateTimeField(default=timezone.now)
     
