@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+{% load static %}
+
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>
+        Liste des dépôts - KITOKO
+    </title>
+
+    {% include 'back-end/includes/css.html' %}
+
+    <style>
+        .mouvement-page {
+            min-height: 100vh;
+            background: #f4f7fb;
+        }
+
+        .page-header {
+            margin-bottom: 25px;
+        }
+
+        .page-title {
+            color: #1f2937;
+            font-weight: 700;
+        }
+
+        .page-title i {
+            color: #0d6efd;
+        }
+
+        .deposit-card {
+            overflow: hidden;
+            border: 0;
+            border-radius: 16px;
+        }
+
+        .deposit-card-header {
+            padding: 22px 25px;
+            color: #fff;
+            background: linear-gradient(
+                135deg,
+                #0d6efd,
+                #084298
+            );
+        }
+
+        .deposit-card-header h5 {
+            margin: 0;
+            font-weight: 600;
+        }
+
+        .deposit-card-header small {
+            opacity: .85;
+        }
+
+        .stat-card {
+            border: 0;
+            border-radius: 14px;
+            background: #fff;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, .05);
+            transition: transform .2s ease,
+                        box-shadow .2s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 22px rgba(0, 0, 0, .09);
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            font-size: 21px;
+        }
+
+        .icon-blue {
+            color: #0d6efd;
+            background: #e7f0ff;
+        }
+
+        .icon-green {
+            color: #198754;
+            background: #e6f7ef;
+        }
+
+        .icon-orange {
+            color: #fd7e14;
+            background: #fff1e5;
+        }
+
+        .stat-label {
+            margin-bottom: 3px;
+            color: #6b7280;
+            font-size: 13px;
+        }
+
+        .stat-value {
+            color: #1f2937;
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .filter-card {
+            border: 0;
+            border-radius: 14px;
+            background: #fff;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, .05);
+        }
+
+        .filter-title {
+            color: #374151;
+            font-weight: 700;
+        }
+
+        .filter-card .form-control {
+            min-height: 44px;
+            border-radius: 8px;
+        }
+
+        .filter-card .form-control:focus {
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 .2rem rgba(13, 110, 253, .12);
+        }
+
+        .custom-table {
+            margin-bottom: 0;
+        }
+
+        .custom-table thead th {
+            padding: 16px 18px;
+            border: 0;
+            color: #6b7280;
+            background: #f8fafc;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: .03em;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        .custom-table tbody td {
+            padding: 16px 18px;
+            color: #374151;
+            border-color: #edf0f4;
+            vertical-align: middle;
+        }
+
+        .custom-table tbody tr {
+            transition: background-color .2s ease;
+        }
+
+        .custom-table tbody tr:hover {
+            background: #f8fbff;
+        }
+
+        .amount-text {
+            color: #198754;
+            font-size: 15px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .currency-badge {
+            padding: 7px 11px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .motif-cell {
+            max-width: 330px;
+            line-height: 1.5;
+            white-space: normal;
+            word-break: break-word;
+        }
+
+        .user-avatar {
+            width: 34px;
+            height: 34px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 8px;
+            border-radius: 50%;
+            color: #0d6efd;
+            background: #e7f0ff;
+        }
+
+        .empty-state {
+            padding: 70px 20px;
+            text-align: center;
+        }
+
+        .empty-state-icon {
+            width: 78px;
+            height: 78px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            border-radius: 50%;
+            color: #0d6efd;
+            background: #e7f0ff;
+            font-size: 32px;
+        }
+
+        .pagination-wrapper {
+            padding: 22px 18px;
+            border-top: 1px solid #edf0f4;
+            background: #fff;
+        }
+
+        .pagination .page-link {
+            min-width: 40px;
+            color: #0d6efd;
+            border-color: #e3e8ef;
+            text-align: center;
+        }
+
+        .pagination .page-item.active .page-link {
+            color: #fff;
+            background: #0d6efd;
+            border-color: #0d6efd;
+        }
+
+        .pagination .page-item.disabled .page-link {
+            color: #adb5bd;
+            background: #f8f9fa;
+        }
+
+        .btn {
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
+        @media (max-width: 767px) {
+            .deposit-card-header .header-content {
+                display: block !important;
+            }
+
+            .deposit-card-header .header-info {
+                margin-bottom: 15px;
+            }
+
+            .custom-table thead th,
+            .custom-table tbody td {
+                padding: 12px;
+            }
+
+            .motif-cell {
+                min-width: 220px;
+            }
+
+            .pagination {
+                flex-wrap: wrap;
+            }
+
+            .pagination .page-link {
+                margin-bottom: 5px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="main-wrapper">
+
+        {% include 'back-end/includes/header.html' %}
+        {% include 'back-end/includes/sidebar.html' %}
+
+        <div class="page-wrapper mouvement-page">
+            <div class="content container-fluid">
+
+                <!-- En-tête -->
+                <div class="page-header">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h3 class="page-title mb-2">
+                                <i class="fa fa-money-bill-wave mr-2"></i>
+                                Liste des dépôts
+                            </h3>
+
+                            <ul class="breadcrumb mb-0">
+                                <li class="breadcrumb-item">
+                                    <a href="{% url 'dashboard_finance' %}">
+                                        Gestion financière
+                                    </a>
+                                </li>
+
+                                <li class="breadcrumb-item active">
+                                    Mouvements de paiement
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div class="col-md-4 text-md-right mt-3 mt-md-0">
+                            <a href="{% url 'ajouter_mouvement_paiement' %}"
+                               class="btn btn-primary">
+                                <i class="fa fa-plus-circle mr-1"></i>
+                                Ajouter un dépôt
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Messages -->
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags|default:'success' }} alert-dismissible fade show"
+                             role="alert">
+
+                            {% if message.tags == 'success' %}
+                                <i class="fa fa-check-circle mr-1"></i>
+                            {% else %}
+                                <i class="fa fa-info-circle mr-1"></i>
+                            {% endif %}
+
+                            {{ message }}
+
+                            <button type="button"
+                                    class="close"
+                                    data-dismiss="alert"
+                                    aria-label="Fermer">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <!-- Filtres -->
+                <div class="card filter-card mb-4">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="stat-icon icon-blue mr-3">
+                                <i class="fa fa-filter"></i>
+                            </div>
+
+                            <div>
+                                <h6 class="filter-title mb-1">
+                                    Filtrer les dépôts
+                                </h6>
+
+                                <small class="text-muted">
+                                    Recherchez par période, par jour ou par devise.
+                                </small>
+                            </div>
+                        </div>
+
+                        <form method="GET"
+                              action="{% url 'liste_mouvements_paiement' %}">
+
+                            <div class="row align-items-end">
+
+                                <!-- Date début -->
+                                <div class="col-md-3 mb-3">
+                                    <label for="date_debut"
+                                           class="font-weight-bold text-secondary">
+                                        Date de début
+                                    </label>
+
+                                    <input type="date"
+                                           id="date_debut"
+                                           name="date_debut"
+                                           value="{{ date_debut }}"
+                                           class="form-control">
+                                </div>
+
+                                <!-- Date fin -->
+                                <div class="col-md-3 mb-3">
+                                    <label for="date_fin"
+                                           class="font-weight-bold text-secondary">
+                                        Date de fin
+                                    </label>
+
+                                    <input type="date"
+                                           id="date_fin"
+                                           name="date_fin"
+                                           value="{{ date_fin }}"
+                                           class="form-control">
+                                </div>
+
+                                <!-- Jour précis -->
+                                <div class="col-md-3 mb-3">
+                                    <label for="jour"
+                                           class="font-weight-bold text-secondary">
+                                        Jour précis
+                                    </label>
+
+                                    <input type="date"
+                                           id="jour"
+                                           name="jour"
+                                           value="{{ jour }}"
+                                           class="form-control">
+                                </div>
+
+                                <!-- Devise -->
+                                <div class="col-md-3 mb-3">
+                                    <label for="devise"
+                                           class="font-weight-bold text-secondary">
+                                        Devise
+                                    </label>
+
+                                    <select name="devise"
+                                            id="devise"
+                                            class="form-control">
+                                        <option value="">
+                                            Toutes les devises
+                                        </option>
+
+                                        <option value="CDF"
+                                            {% if devise == 'CDF' %}
+                                                selected
+                                            {% endif %}>
+                                            CDF
+                                        </option>
+
+                                        <option value="USD"
+                                            {% if devise == 'USD' %}
+                                                selected
+                                            {% endif %}>
+                                            USD
+                                        </option>
+                                    </select>
+                                </div>
+
+                                <!-- Boutons -->
+                                <div class="col-12">
+                                    <button type="submit"
+                                            class="btn btn-primary">
+                                        <i class="fa fa-search mr-1"></i>
+                                        Filtrer
+                                    </button>
+
+                                    <a href="{% url 'liste_mouvements_paiement' %}"
+                                       class="btn btn-light border ml-2">
+                                        <i class="fa fa-undo mr-1"></i>
+                                        Réinitialiser
+                                    </a>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Statistiques -->
+                <div class="row mb-4">
+
+                    <div class="col-sm-6 col-lg-4 mb-3 mb-lg-0">
+                        <div class="card stat-card h-100">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="stat-icon icon-blue mr-3">
+                                        <i class="fa fa-list"></i>
+                                    </div>
+
+                                    <div>
+                                        <div class="stat-label">
+                                            Nombre de dépôts
+                                        </div>
+
+                                        <div class="stat-value">
+                                            {{ nombre_depots|default:0 }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-sm-6 col-lg-4 mb-3 mb-lg-0">
+                        <div class="card stat-card h-100">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="stat-icon icon-green mr-3">
+                                        <i class="fa fa-wallet"></i>
+                                    </div>
+
+                                    <div>
+                                        <div class="stat-label">
+                                            Fonction de l'utilisateur
+                                        </div>
+
+                                        <div class="stat-value"
+                                             style="font-size: 15px;">
+                                            {{ fonctionKey }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-sm-12 col-lg-4">
+                        <div class="card stat-card h-100">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="stat-icon icon-orange mr-3">
+                                        <i class="fa fa-calendar-alt"></i>
+                                    </div>
+
+                                    <div>
+                                        <div class="stat-label">
+                                            Résultats affichés
+                                        </div>
+
+                                        <div class="stat-value"
+                                             style="font-size: 15px;">
+                                            Page {{ page_obj.number }}
+                                            /
+                                            {{ page_obj.paginator.num_pages|default:1 }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Liste des mouvements -->
+                <div class="card deposit-card shadow-sm">
+
+                    <div class="deposit-card-header">
+                        <div class="header-content d-flex justify-content-between align-items-center">
+
+                            <div class="header-info">
+                                <h5>
+                                    <i class="fa fa-history mr-2"></i>
+                                    Historique des dépôts
+                                </h5>
+
+                                <small>
+                                    Consultez toutes les entrées ajoutées
+                                    dans la caisse.
+                                </small>
+                            </div>
+
+                            <div class="text-md-right">
+                                <span class="badge badge-light px-3 py-2">
+                                    {{ nombre_depots|default:0 }} dépôt(s)
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if mouvements %}
+
+                        <div class="table-responsive">
+                            <table class="table custom-table">
+
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Date du dépôt</th>
+                                        <th>Montant</th>
+                                        <th>Devise</th>
+                                        <th>Motif</th>
+                                        <th>Utilisateur</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+                                    {% for mouvement in mouvements %}
+                                        <tr>
+
+                                            <td class="text-muted">
+                                                {{ page_obj.start_index|add:forloop.counter0 }}
+                                            </td>
+
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="stat-icon icon-blue mr-2"
+                                                         style="width: 34px; height: 34px; font-size: 14px;">
+                                                        <i class="fa fa-calendar"></i>
+                                                    </div>
+
+                                                    <div>
+                                                        <div class="font-weight-bold">
+                                                            {{ mouvement.date_depot|date:"d/m/Y" }}
+                                                        </div>
+
+                                                        <small class="text-muted">
+                                                            {{ mouvement.date_depot|date:"H:i" }}
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            </td>
+
+                                            <td>
+                                                <span class="amount-text">
+                                                    {{ mouvement.montant|floatformat:2 }}
+                                                </span>
+                                            </td>
+
+                                            <td>
+                                                {% if mouvement.devise == 'CDF' %}
+                                                    <span class="badge badge-success currency-badge">
+                                                        {{ mouvement.devise }}
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge badge-primary currency-badge">
+                                                        {{ mouvement.devise }}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+
+                                            <td class="motif-cell">
+                                                {% if mouvement.motif %}
+                                                    {{ mouvement.motif|linebreaksbr }}
+                                                {% else %}
+                                                    <span class="text-muted font-italic">
+                                                        Aucun motif renseigné
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <span class="user-avatar">
+                                                        <i class="fa fa-user"></i>
+                                                    </span>
+
+                                                    <span>
+                                                        {% if mouvement.utilisateur.get_full_name %}
+                                                            {{ mouvement.utilisateur.get_full_name }}
+                                                        {% else %}
+                                                            {{ mouvement.utilisateur.username }}
+                                                        {% endif %}
+                                                    </span>
+                                                </div>
+                                            </td>
+
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Pagination -->
+                        {% if page_obj.paginator.num_pages > 1 %}
+                            <div class="pagination-wrapper">
+                                <nav aria-label="Pagination des dépôts">
+                                    <ul class="pagination justify-content-center mb-0">
+
+                                        {% if page_obj.has_previous %}
+                                            <li class="page-item">
+                                                <a class="page-link"
+                                                   href="?page=1&date_debut={{ date_debut }}&date_fin={{ date_fin }}&jour={{ jour }}&devise={{ devise }}">
+                                                    <i class="fa fa-angle-double-left"></i>
+                                                </a>
+                                            </li>
+
+                                            <li class="page-item">
+                                                <a class="page-link"
+                                                   href="?page={{ page_obj.previous_page_number }}&date_debut={{ date_debut }}&date_fin={{ date_fin }}&jour={{ jour }}&devise={{ devise }}">
+                                                    <i class="fa fa-angle-left"></i>
+                                                    Précédent
+                                                </a>
+                                            </li>
+                                        {% else %}
+                                            <li class="page-item disabled">
+                                                <span class="page-link">
+                                                    <i class="fa fa-angle-double-left"></i>
+                                                </span>
+                                            </li>
+
+                                            <li class="page-item disabled">
+                                                <span class="page-link">
+                                                    <i class="fa fa-angle-left"></i>
+                                                    Précédent
+                                                </span>
+                                            </li>
+                                        {% endif %}
+
+                                        {% for num in page_obj.paginator.page_range %}
+                                            {% if page_obj.number == num %}
+                                                <li class="page-item active">
+                                                    <span class="page-link">
+                                                        {{ num }}
+                                                    </span>
+                                                </li>
+                                            {% else %}
+                                                <li class="page-item">
+                                                    <a class="page-link"
+                                                       href="?page={{ num }}&date_debut={{ date_debut }}&date_fin={{ date_fin }}&jour={{ jour }}&devise={{ devise }}">
+                                                        {{ num }}
+                                                    </a>
+                                                </li>
+                                            {% endif %}
+                                        {% endfor %}
+
+                                        {% if page_obj.has_next %}
+                                            <li class="page-item">
+                                                <a class="page-link"
+                                                   href="?page={{ page_obj.next_page_number }}&date_debut={{ date_debut }}&date_fin={{ date_fin }}&jour={{ jour }}&devise={{ devise }}">
+                                                    Suivant
+                                                    <i class="fa fa-angle-right"></i>
+                                                </a>
+                                            </li>
+
+                                            <li class="page-item">
+                                                <a class="page-link"
+                                                   href="?page={{ page_obj.paginator.num_pages }}&date_debut={{ date_debut }}&date_fin={{ date_fin }}&jour={{ jour }}&devise={{ devise }}">
+                                                    <i class="fa fa-angle-double-right"></i>
+                                                </a>
+                                            </li>
+                                        {% else %}
+                                            <li class="page-item disabled">
+                                                <span class="page-link">
+                                                    Suivant
+                                                    <i class="fa fa-angle-right"></i>
+                                                </span>
+                                            </li>
+
+                                            <li class="page-item disabled">
+                                                <span class="page-link">
+                                                    <i class="fa fa-angle-double-right"></i>
+                                                </span>
+                                            </li>
+                                        {% endif %}
+
+                                    </ul>
+                                </nav>
+
+                                <div class="text-center text-muted small mt-3">
+                                    Page {{ page_obj.number }}
+                                    sur {{ page_obj.paginator.num_pages }}
+                                    —
+                                    {{ page_obj.paginator.count }}
+                                    dépôt(s)
+                                </div>
+                            </div>
+                        {% endif %}
+
+                    {% else %}
+
+                        <div class="empty-state">
+                            <div class="empty-state-icon">
+                                <i class="fa fa-folder-open"></i>
+                            </div>
+
+                            <h5 class="font-weight-bold text-dark">
+                                Aucun dépôt trouvé
+                            </h5>
+
+                            <p class="text-muted mb-4">
+                                Aucun mouvement ne correspond aux filtres
+                                sélectionnés.
+                            </p>
+
+                            <a href="{% url 'ajouter_mouvement_paiement' %}"
+                               class="btn btn-primary">
+                                <i class="fa fa-plus-circle mr-1"></i>
+                                Ajouter un dépôt
+                            </a>
+                        </div>
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    {% include 'back-end/includes/js.html' %}
+</body>
+</html>

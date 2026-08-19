@@ -5817,3 +5817,172 @@ def liste_equipements(request):
         'fonctionKey': fonction_key
     }
     return render(request, 'back-end/materiel/liste_equipements.html', context)
+
+
+
+# ===================================================================================================================
+# 
+# ===================================================================================================================
+@login_required
+@transaction.atomic
+def ajouter_mouvement_paiement(request):
+    if request.method == 'POST':
+        form = MouvementPaiementForm(request.POST)
+
+        if form.is_valid():
+            # 1. Création du mouvement en premier
+            mouvement = form.save(commit=False)
+            mouvement.utilisateur = request.user
+            mouvement.date_depot = timezone.now()
+            mouvement.save()
+
+            # 2. Création du paiement lié au mouvement
+            Paiement.objects.create(
+                mouvement_paiement=mouvement,
+                service='DEPOT',
+                montant_verse=mouvement.montant,
+                montant_reduction=Decimal('0.00'),
+                devise=mouvement.devise,
+                date_paiement=mouvement.date_depot,
+                caissier=request.user,
+                reste_a_payer=Decimal('0.00')
+            )
+
+            messages.success(
+                request,
+                "Le dépôt a été enregistré avec succès."
+            )
+
+            return redirect('liste_mouvements_paiement')
+
+    else:
+        form = MouvementPaiementForm(
+            initial={
+                'devise': 'CDF'
+            }
+        )
+
+    # Gestion de la fonction/rôle utilisateur
+    role_obj = Fonction.objects.filter(
+        userKey=request.user
+    ).first()
+
+    fonction_key = (
+        role_obj.fonctionKey.roleName
+        if role_obj and role_obj.fonctionKey
+        else 'Utilisateur'
+    )
+
+    return render(
+        request,
+        'back-end/MouvementP/ajouter_mouvement_paiement.html',
+        {
+            'form': form,
+            'fonctionKey': fonction_key,
+            'titre_page': 'Ajouter un dépôt',
+        }
+    )
+
+# ================================================================================================================
+# LISTE DE MOUVEMENT
+# ================================================================================================================
+@login_required
+def liste_mouvements_paiement(request):
+    from datetime import datetime, time
+    from django.core.paginator import Paginator
+    mouvements = (
+        MouvementPaiement.objects
+        .select_related('utilisateur')
+        .order_by('-date_depot')
+    )
+
+    date_debut = request.GET.get('date_debut', '').strip()
+    date_fin = request.GET.get('date_fin', '').strip()
+    jour = request.GET.get('jour', '').strip()
+    devise = request.GET.get('devise', '').strip()
+
+    # Filtre par jour précis
+    if jour:
+        try:
+            jour_selectionne = datetime.strptime(
+                jour,
+                '%Y-%m-%d'
+            ).date()
+
+            mouvements = mouvements.filter(
+                date_depot__date=jour_selectionne
+            )
+        except ValueError:
+            jour = ''
+
+    # Filtre à partir d'une date
+    if date_debut:
+        try:
+            debut = datetime.strptime(
+                date_debut,
+                '%Y-%m-%d'
+            ).date()
+
+            mouvements = mouvements.filter(
+                date_depot__gte=timezone.make_aware(
+                    datetime.combine(debut, time.min)
+                )
+            )
+        except ValueError:
+            date_debut = ''
+
+    # Filtre jusqu'à une date
+    if date_fin:
+        try:
+            fin = datetime.strptime(
+                date_fin,
+                '%Y-%m-%d'
+            ).date()
+
+            mouvements = mouvements.filter(
+                date_depot__lte=timezone.make_aware(
+                    datetime.combine(fin, time.max)
+                )
+            )
+        except ValueError:
+            date_fin = ''
+
+    # Filtre par devise
+    if devise in ['CDF', 'USD']:
+        mouvements = mouvements.filter(devise=devise)
+    else:
+        devise = ''
+
+    # Pagination : 10 dépôts par page
+    paginator = Paginator(mouvements, 10)
+
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    # Rôle de l'utilisateur connecté
+    role_obj = Fonction.objects.filter(
+        userKey=request.user
+    ).first()
+
+    fonction_key = (
+        role_obj.fonctionKey.roleName
+        if role_obj and role_obj.fonctionKey
+        else 'Utilisateur'
+    )
+
+    return render(
+        request,
+        'back-end/MouvementP/liste_mouvements_paiement.html',
+        {
+            'mouvements': page_obj,
+            'page_obj': page_obj,
+            'paginator': paginator,
+            'fonctionKey': fonction_key,
+
+            # Valeurs conservées dans le formulaire
+            'date_debut': date_debut,
+            'date_fin': date_fin,
+            'jour': jour,
+            'devise': devise,
+        }
+    )

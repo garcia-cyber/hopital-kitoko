@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+{% load static %}
+
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>
+        {{ titre_page|default:"Ajouter un dépôt" }} - KITOKO
+    </title>
+
+    {% include 'back-end/includes/css.html' %}
+
+    <style>
+        .deposit-page {
+            background: #f5f7fb;
+            min-height: 100vh;
+        }
+
+        .deposit-card {
+            border: 0;
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .deposit-header {
+            background: linear-gradient(
+                135deg,
+                #0d6efd,
+                #084298
+            );
+            padding: 24px 28px;
+        }
+
+        .deposit-header h4 {
+            margin: 0;
+            font-weight: 600;
+        }
+
+        .deposit-header p {
+            margin: 6px 0 0;
+            opacity: .85;
+            font-size: 14px;
+        }
+
+        .deposit-body {
+            padding: 30px;
+        }
+
+        .form-label-custom {
+            color: #495057;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .required {
+            color: #dc3545;
+        }
+
+        .input-group-text {
+            background: #f8f9fa;
+            border-color: #ced4da;
+            color: #6c757d;
+        }
+
+        .form-control,
+        .custom-select {
+            min-height: 46px;
+            border-radius: 8px;
+        }
+
+        textarea.form-control {
+            min-height: 150px;
+            resize: vertical;
+            line-height: 1.6;
+        }
+
+        .form-control:focus,
+        .custom-select:focus {
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 .2rem rgba(13, 110, 253, .15);
+        }
+
+        .amount-box {
+            background: #f8fbff;
+            border: 1px solid #dbeafe;
+            border-radius: 12px;
+            padding: 18px;
+        }
+
+        .user-box {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 14px 16px;
+            color: #495057;
+        }
+
+        .btn {
+            border-radius: 8px;
+            padding: 10px 18px;
+        }
+
+        .page-header {
+            margin-bottom: 25px;
+        }
+
+        .error-message {
+            margin-top: 6px;
+            color: #dc3545;
+            font-size: 13px;
+        }
+
+        @media (max-width: 576px) {
+            .deposit-body {
+                padding: 20px;
+            }
+
+            .deposit-header {
+                padding: 20px;
+            }
+
+            .form-actions {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .form-actions .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="main-wrapper">
+
+        {% include 'back-end/includes/header.html' %}
+        {% include 'back-end/includes/sidebar.html' %}
+
+        <div class="page-wrapper deposit-page">
+            <div class="content container-fluid">
+
+                <!-- En-tête -->
+                <div class="page-header">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h3 class="page-title">
+                                <i class="fa fa-money-bill-wave text-primary"></i>
+                                {{ titre_page|default:"Ajouter un dépôt" }}
+                            </h3>
+
+                            <ul class="breadcrumb">
+                                <li class="breadcrumb-item">
+                                    <a href="{% url 'dashboard_finance' %}">
+                                        Gestion financière
+                                    </a>
+                                </li>
+
+                                <li class="breadcrumb-item active">
+                                    Nouveau dépôt
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contenu -->
+                <div class="row justify-content-center">
+                    <div class="col-xl-8 col-lg-9 col-md-10">
+
+                        <div class="card deposit-card shadow-sm">
+
+                            <!-- En-tête de la carte -->
+                            <div class="deposit-header text-white">
+                                <div class="d-flex align-items-center">
+                                    <div class="mr-3">
+                                        <i class="fa fa-wallet fa-2x"></i>
+                                    </div>
+
+                                    <div>
+                                        <h4>
+                                            Enregistrer un dépôt
+                                        </h4>
+
+                                        <p>
+                                            Ajoutez une nouvelle entrée
+                                            dans la caisse de l’hôpital.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Corps -->
+                            <div class="deposit-body">
+
+                                {% if form.non_field_errors %}
+                                    <div class="alert alert-danger alert-dismissible fade show"
+                                         role="alert">
+
+                                        <i class="fa fa-exclamation-triangle"></i>
+
+                                        {% for error in form.non_field_errors %}
+                                            {{ error }}
+                                        {% endfor %}
+
+                                        <button type="button"
+                                                class="close"
+                                                data-dismiss="alert"
+                                                aria-label="Fermer">
+                                            <span aria-hidden="true">
+                                                &times;
+                                            </span>
+                                        </button>
+                                    </div>
+                                {% endif %}
+
+                                <form method="POST"
+                                      action=""
+                                      autocomplete="off">
+
+                                    {% csrf_token %}
+
+                                    <!-- Montant et devise -->
+                                    <div class="amount-box mb-4">
+                                        <div class="row">
+
+                                            <div class="col-md-8 mb-3 mb-md-0">
+                                                <label for="{{ form.montant.id_for_label }}"
+                                                       class="form-label-custom">
+                                                    Montant du dépôt
+                                                    <span class="required">*</span>
+                                                </label>
+
+                                                <div class="input-group">
+                                                    <div class="input-group-prepend">
+                                                        <span class="input-group-text">
+                                                            <i class="fa fa-coins"></i>
+                                                        </span>
+                                                    </div>
+
+                                                    {{ form.montant }}
+                                                </div>
+
+                                                {% for error in form.montant.errors %}
+                                                    <div class="error-message">
+                                                        <i class="fa fa-exclamation-circle"></i>
+                                                        {{ error }}
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+
+                                            <div class="col-md-4">
+                                                <label for="{{ form.devise.id_for_label }}"
+                                                       class="form-label-custom">
+                                                    Devise
+                                                    <span class="required">*</span>
+                                                </label>
+
+                                                <div class="input-group">
+                                                    <div class="input-group-prepend">
+                                                        <span class="input-group-text">
+                                                            <i class="fa fa-money-bill"></i>
+                                                        </span>
+                                                    </div>
+
+                                                    {{ form.devise }}
+                                                </div>
+
+                                                {% for error in form.devise.errors %}
+                                                    <div class="error-message">
+                                                        <i class="fa fa-exclamation-circle"></i>
+                                                        {{ error }}
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+
+                                        </div>
+                                    </div>
+
+                                    <!-- Motif détaillé -->
+                                    <div class="form-group mb-4">
+                                        <label for="{{ form.motif.id_for_label }}"
+                                               class="form-label-custom">
+                                            Motif et détails du dépôt
+                                        </label>
+
+                                        {{ form.motif }}
+
+                                        <small class="form-text text-muted">
+                                            Décrivez clairement l’origine ou
+                                            la justification de ce dépôt.
+                                        </small>
+
+                                        {% for error in form.motif.errors %}
+                                            <div class="error-message">
+                                                <i class="fa fa-exclamation-circle"></i>
+                                                {{ error }}
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+
+                                    <!-- Utilisateur connecté -->
+                                    <div class="user-box mb-4">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fa fa-user-circle fa-2x text-primary mr-3"></i>
+
+                                            <div>
+                                                <small class="text-muted d-block">
+                                                    Dépôt enregistré par
+                                                </small>
+
+                                                <strong>
+                                                    {% if request.user.get_full_name %}
+                                                        {{ request.user.get_full_name }}
+                                                    {% else %}
+                                                        {{ request.user.username }}
+                                                    {% endif %}
+                                                </strong>
+
+                                                {% if fonctionKey %}
+                                                    <small class="text-muted d-block">
+                                                        {{ fonctionKey }}
+                                                    </small>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <hr>
+
+                                    <!-- Actions -->
+                                    <div class="form-actions d-flex justify-content-between align-items-center">
+
+                                        <a href="{% url 'dashboard_finance' %}"
+                                           class="btn btn-light border">
+                                            <i class="fa fa-arrow-left mr-1"></i>
+                                            Annuler
+                                        </a>
+
+                                        <button type="submit"
+                                                class="btn btn-primary font-weight-bold">
+                                            <i class="fa fa-check-circle mr-1"></i>
+                                            Enregistrer le dépôt
+                                        </button>
+                                    </div>
+
+                                </form>
+
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    {% include 'back-end/includes/js.html' %}
+</body>
+</html>

@@ -10,6 +10,31 @@
                     </ul>
                 </li>
 
+                {% comment %} 
+                 **********************************************************************************
+                 *********************************************************************************
+                {% endcomment %}
+                <li class="nav-item">
+    <a href="{% url 'ajouter_mouvement_paiement' %}"
+       class="nav-link">
+        <i class="fas fa-money-bill-wave"></i>
+        <span>Ajouter un dépôt</span>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a href="{% url 'liste_mouvements_paiement' %}"
+       class="nav-link">
+        <i class="fas fa-list"></i>
+        <span>Liste des dépôts</span>
+    </a>
+</li>
+
+{% comment %} 
+                 **********************************************************************************
+                 *********************************************************************************
+                {% endcomment %}
+
                 {% if fonctionKey == 'admin' %}
                     <li class="menu-title"> <span>ADMINISTRATION</span> </li>
                     <li class="submenu">

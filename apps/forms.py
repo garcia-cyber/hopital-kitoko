@@ -649,3 +649,56 @@ class SigneVitalForm(forms.ModelForm):
             'frequence_respiratoire': 'Fréquence Respiratoire (RPM)',
             'saturation_oxygene': 'Saturation Oxygène (%)',
         }
+
+
+#
+# =====================================================================================
+class MouvementPaiementForm(forms.ModelForm):
+
+    class Meta:
+        model = MouvementPaiement
+
+        fields = [
+            'montant',
+            'devise',
+            'motif',
+        ]
+
+        widgets = {
+            'montant': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Entrez le montant',
+                'step': '0.01',
+                'min': '0.01',
+            }),
+
+            'devise': forms.Select(attrs={
+                'class': 'form-select',
+            }),
+
+            'motif': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Motif du dépôt',
+            }),
+        }
+
+        labels = {
+            'montant': 'Montant du dépôt',
+            'devise': 'Devise',
+            'motif': 'Motif',
+        }
+
+    def clean_montant(self):
+        montant = self.cleaned_data.get('montant')
+
+        if montant is None:
+            raise forms.ValidationError(
+                "Veuillez saisir un montant."
+            )
+
+        if montant <= Decimal('0.00'):
+            raise forms.ValidationError(
+                "Le montant doit être supérieur à zéro."
+            )
+
+        return montant

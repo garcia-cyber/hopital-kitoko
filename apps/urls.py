@@ -255,4 +255,18 @@ urlpatterns =[
     path('categorie/ajouter/', views.ajouter_categorie, name='ajouter_categorie'),
     path('equipements/', views.liste_equipements, name='liste_equipements'),
     path('equipement/ajouter/', views.ajouter_equipement, name='ajouter_equipement'),
+
+    # ===========================================
+    # Mouvement de paiement
+    path(
+        'mouvements-paiement/',
+        views.liste_mouvements_paiement,
+        name='liste_mouvements_paiement'
+    ),
+
+    path(
+        'mouvements-paiement/ajouter/',
+        views.ajouter_mouvement_paiement,
+        name='ajouter_mouvement_paiement'
+    ),
  ]

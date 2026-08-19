@@ -8,7 +8,7 @@ from django.core.exceptions import ValidationError
 from django.conf import settings 
 from django.db import transaction
 from django.core.exceptions import ObjectDoesNotExist
-
+from django.core.validators import MinValueValidator
 
 
 
@@ -127,6 +127,61 @@ class Service(models.Model):
         verbose_name = "Service"
         verbose_name_plural = "Services"
 
+# =================================================================================
+# ********************************************************************************
+class MouvementPaiement(models.Model):
+    CURRENCY = [
+        ('USD', 'USD'),
+        ('CDF', 'CDF'),
+    ]
+
+    montant = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        validators=[
+            MinValueValidator(Decimal('0.01'))
+        ]
+    )
+
+    devise = models.CharField(
+        max_length=3,
+        choices=CURRENCY,
+        default='CDF'
+    )
+
+    motif = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True
+    )
+
+    utilisateur = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='mouvements_paiement'
+    )
+
+    date_depot = models.DateTimeField(
+        default=timezone.now
+    )
+
+    class Meta:
+        ordering = ['-date_depot']
+        verbose_name = 'Mouvement de paiement'
+        verbose_name_plural = 'Mouvements de paiement'
+
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(montant__gt=0),
+                name='mouvement_paiement_montant_positif'
+            )
+        ]
+
+    def __str__(self):
+        return f"Dépôt de {self.montant} {self.devise}"
+
+
+
 # 6. PATIENT =======================================================
 class Patient(models.Model):
     # 1. Choix pour le type de patient
@@ -198,7 +253,8 @@ class Paiement(models.Model):
         ('MATERNITE', 'Maternité'), ('DECES', 'Actes de décès'), ('EXAMENS', 'Examens'),
         ('CHIRURGIE', 'Chirurgie'), ('CARTE_FIDELITE', 'Achat Carte de Fidélité'), 
         ('PHARMACIE', 'Pharmacie'), ('EXAMEN_EXTERNE', 'Examen Externe'),
-        ('ENTREPRISE', 'Paiement Entreprise'), ('HOSPITALISATION', 'Hospitalisation')
+        ('ENTREPRISE', 'Paiement Entreprise'), ('HOSPITALISATION', 'Hospitalisation') ,
+        ('DEPOT', 'Dépôt de caisse'),
     ]
     
     # Relations
@@ -227,6 +283,14 @@ class Paiement(models.Model):
         verbose_name="Dette / Reste à payer"
     )
 
+    # *****************************************************
+    mouvement_paiement = models.OneToOneField(
+    'MouvementPaiement',
+    on_delete=models.PROTECT,
+    related_name='paiement',
+    null=True,
+    blank=True
+)
     def save(self, *args, **kwargs):
         from .models import ConfigurationHopital
 

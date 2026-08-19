@@ -509,3 +509,41 @@ class InterventionMaintenanceAdmin(admin.ModelAdmin):
     list_filter = ['repare', 'date_panne']
     search_fields = ['equipement__nom', 'technicien']
     list_editable = ['repare']
+
+
+@admin.register(MouvementPaiement)
+class MouvementPaiementAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'montant',
+        'devise',
+        'motif',
+        'utilisateur',
+        'date_depot',
+    )
+
+    list_filter = (
+        'devise',
+        'date_depot',
+    )
+
+    search_fields = (
+        'motif',
+        'utilisateur__username',
+        'utilisateur__first_name',
+        'utilisateur__last_name',
+    )
+
+    autocomplete_fields = (
+        'utilisateur',
+    )
+
+    readonly_fields = (
+        'date_depot',
+    )
+
+    ordering = (
+        '-date_depot',
+    )
+
+    list_per_page = 25
