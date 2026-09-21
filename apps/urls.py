@@ -269,4 +269,11 @@ urlpatterns =[
         views.ajouter_mouvement_paiement,
         name='ajouter_mouvement_paiement'
     ),
+
+
+    # ---------------------------------------------------
+    # ---------------------------------------------------
+    # MISE EN JOUR 
+    #   le 21/09/2026
+    path('presence/', pointer_presence, name='pointer_presence'),
  ]

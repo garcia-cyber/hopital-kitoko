@@ -1366,3 +1366,120 @@ class InterventionMaintenance(models.Model):
 
     def __str__(self):
         return f"Maintenance sur {self.equipement.nom} - {'Réparé' if self.repare else 'En cours'}"
+
+
+
+# ----------------------------------------------------------------------------------------------------------
+# MISE EN JOUR 
+#   - le 21/09/2026 
+#   - model pour gere la presence avec geo-localisation
+# 
+# -----------------------------------------------------------------------------------------------------------
+class Presence(models.Model):
+    """Présence journalière d'un personnel avec géolocalisation.
+
+    Le personnel pointe son entrée et sa sortie. La géolocalisation
+    permet d'enregistrer l'endroit exact où il se trouvait au moment du pointage.
+    """
+
+    class Statut(models.TextChoices):
+        PRESENT = "present", "Présent"
+        ABSENT = "absent", "Absent"
+        RETARD = "retard", "Retard"
+        DEPART_ANTICIPE = "depart_anticipe", "Départ anticipé"
+        CONGE = "conge", "Congé / Permission"
+
+    class StatutValidation(models.TextChoices):
+        EN_ATTENTE = "en_attente", "En attente"
+        VALIDE = "valide", "Validé"
+        REJETE = "rejete", "Rejeté"
+
+    personnel = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="presences",
+        verbose_name="Personnel",
+    )
+    date = models.DateField(verbose_name="Date")
+
+    # --- Pointage d'entrée ---
+    heure_entree = models.TimeField(null=True, blank=True, verbose_name="Heure d'entrée")
+    latitude_entree = models.DecimalField(
+        max_digits=9, decimal_places=6, null=True, blank=True,
+        verbose_name="Latitude d'entrée",
+    )
+    longitude_entree = models.DecimalField(
+        max_digits=9, decimal_places=6, null=True, blank=True,
+        verbose_name="Longitude d'entrée",
+    )
+    lieu_entree = models.CharField(
+        max_length=255, blank=True, default="",
+        verbose_name="Lieu d'entrée",
+    )
+
+    # --- Pointage de sortie ---
+    heure_sortie = models.TimeField(null=True, blank=True, verbose_name="Heure de sortie")
+    latitude_sortie = models.DecimalField(
+        max_digits=9, decimal_places=6, null=True, blank=True,
+        verbose_name="Latitude de sortie",
+    )
+    longitude_sortie = models.DecimalField(
+        max_digits=9, decimal_places=6, null=True, blank=True,
+        verbose_name="Longitude de sortie",
+    )
+    lieu_sortie = models.CharField(
+        max_length=255, blank=True, default="",
+        verbose_name="Lieu de sortie",
+    )
+
+    # --- Statut & Justification ---
+    statut = models.CharField(
+        max_length=20, choices=Statut.choices, default=Statut.PRESENT,
+        verbose_name="Statut",
+    )
+    justification = models.TextField(
+        blank=True, default="",
+        verbose_name="Justification (absence, départ anticipé, retard...)",
+    )
+
+    # --- Validation administrateur ---
+    statut_validation = models.CharField(
+        max_length=20, choices=StatutValidation.choices,
+        default=StatutValidation.EN_ATTENTE, verbose_name="Validation",
+    )
+    valide_par = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="presences_validees", verbose_name="Validé par",
+    )
+    date_validation = models.DateTimeField(null=True, blank=True, verbose_name="Date validation")
+
+    # --- Métadonnées ---
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["personnel", "date"],
+                name="unique_presence_par_jour",
+            ),
+        ]
+        ordering = ["-date"]
+        verbose_name = "Présence"
+        verbose_name_plural = "Présences"
+
+    def __str__(self):
+        return f"{self.personnel} — {self.date} — {self.get_statut_display()}"
+
+    @property
+    def a_pointe_entree(self):
+        return self.heure_entree is not None
+
+    @property
+    def a_pointe_sortie(self):
+        return self.heure_sortie is not None
+
+    @property
+    def est_complet(self):
+        return self.a_pointe_entree and self.a_pointe_sortie

@@ -702,3 +702,49 @@ class MouvementPaiementForm(forms.ModelForm):
             )
 
         return montant
+
+
+# -----------------------------------------------------------------------------------
+# MISE EN JOUR 
+#   - 21/09/2026
+#   - formulaire pour la gestion de
+# -----------------------------------------------------------------------------------
+class PresenceForm(forms.ModelForm):
+    """Formulaire de pointage de présence avec géolocalisation."""
+
+    justification = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={
+            "class": "form-control",
+            "rows": 2,
+            "placeholder": "Justification en cas d'absence ou de départ anticipé...",
+        }),
+    )
+
+    class Meta:
+        model = Presence
+        fields = [
+            "heure_entree", "latitude_entree", "longitude_entree", "lieu_entree",
+            "heure_sortie", "latitude_sortie", "longitude_sortie", "lieu_sortie",
+            "statut", "justification",
+        ]
+        widgets = {
+            "heure_entree": forms.TimeInput(attrs={
+                "type": "time", "class": "form-control",
+            }),
+            "heure_sortie": forms.TimeInput(attrs={
+                "type": "time", "class": "form-control",
+            }),
+            "statut": forms.Select(attrs={"class": "form-control"}),
+            "latitude_entree": forms.HiddenInput(),
+            "longitude_entree": forms.HiddenInput(),
+            "lieu_entree": forms.HiddenInput(),
+            "latitude_sortie": forms.HiddenInput(),
+            "longitude_sortie": forms.HiddenInput(),
+            "lieu_sortie": forms.HiddenInput(),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.instance.pk:
+            self.fields["heure_entree"].initial = timezone.now().time()

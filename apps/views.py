@@ -5986,3 +5986,72 @@ def liste_mouvements_paiement(request):
             'devise': devise,
         }
     )
+
+# -----------------------------------------------------------------------------------------------------
+# MISE EN JOUR DU LOGICIEL 
+# - gestion de presence avec geo-localisation
+#
+# -----------------------------------------------------------------------------------------------------
+@login_required
+def pointer_presence(request):
+    """Vue pour le pointage de présence avec géolocalisation.
+
+    Enregistre l'endroit exact où se trouve le personnel au moment du pointage.
+    """
+    today = timezone.now().date()
+    presence, created = Presence.objects.get_or_create(
+        personnel=request.user,
+        date=today,
+        defaults={"statut": Presence.Statut.PRESENT},
+    )
+
+    if request.method == 'POST':
+        form = PresenceForm(request.POST, instance=presence)
+
+        if form.is_valid():
+            action = request.POST.get('action', 'entree')
+
+            presence = form.save(commit=False)
+            presence.personnel = request.user
+            presence.date = today
+
+            if action == 'entree':
+                presence.heure_entree = timezone.now().time()
+
+            if action == 'sortie':
+                presence.heure_sortie = timezone.now().time()
+                # Vérifier le départ anticipé (à adapter selon ton hôpital)
+                HEURE_SORTIE_PREVUE = None
+                if HEURE_SORTIE_PREVUE and presence.heure_sortie < HEURE_SORTIE_PREVUE:
+                    presence.statut = Presence.Statut.DEPART_ANTICIPE
+
+            presence.save()
+
+            messages.success(request, "Pointage enregistré avec succès.")
+            return redirect('pointer_presence')
+
+    else:
+        form = PresenceForm(instance=presence)
+
+    # Gestion de la fonction/rôle utilisateur
+    role_obj = Fonction.objects.filter(userKey=request.user).first()
+
+    fonction_key = (
+        role_obj.fonctionKey.roleName
+        if role_obj and role_obj.fonctionKey
+        else 'Utilisateur'
+    )
+
+    return render(
+        request,
+        'back-end/Presence/pointer_presence.html',
+        {
+            'form': form,
+            'presence': presence,
+            'created': created,
+            'a_pointe_entree': presence.a_pointe_entree,
+            'a_pointe_sortie': presence.a_pointe_sortie,
+            'fonctionKey': fonction_key,
+            'titre_page': 'Pointer ma présence',
+        }
+    )
