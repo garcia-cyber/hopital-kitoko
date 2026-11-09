@@ -16,6 +16,11 @@ ALLOWED_HOSTS = [
     "hopital-kitoko.onrender.com",
 ]
 
+# ---- AJOUT : évite l'erreur CSRF sur Render
+CSRF_TRUSTED_ORIGINS = [
+    "https://hopital-kitoko.onrender.com",
+]
+
 # --- APPLICATIONS ---
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -91,16 +96,26 @@ USE_TZ = False
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage' 
+
+# ---- CORRIGÉ : remplace l'ancien STATICFILES_STORAGE
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 MEDIA_ROOT = BASE_DIR / 'media'
 MEDIA_URL = '/media/'
 
 # --- SÉCURITÉ RENFORCÉE EN PRODUCTION ---
 if not DEBUG:
+    # ---- AJOUT : évite la boucle de redirection sur Render
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     CSRF_COOKIE_SECURE = True
-    SESSION_COOKIE_SECURE = True  
-    SECURE_BROWSER_XSS_FILTER = True
+    SESSION_COOKIE_SECURE = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SECURE_SSL_REDIRECT = True
     X_FRAME_OPTIONS = 'DENY'
