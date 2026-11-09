@@ -4,7 +4,8 @@ channels_redis==4.3.0
 colorama==0.4.6
 crispy-bootstrap4==2026.2
 dj-database-url==3.1.2
-Django==6.0.5
+# Django==6.0.5
+Django==5.2.16
 django-axes==8.3.1
 django-crispy-forms==2.6
 django-csp==3.8
