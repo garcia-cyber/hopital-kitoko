@@ -2,272 +2,577 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Hôpital | KITOKO </title>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700&family=Montserrat:wght@800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-    <link rel="icon" type="image/jpeg" href="{% static 'front-end/assets/images/banner/logo2.jpg' %}">
-    
-    <link rel="stylesheet" href="{% static 'front-end/assets/css/bootstrap.min.css' %}">
-    <link rel="stylesheet" href="{% static 'front-end/assets/css/animate.min.css' %}">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Centre Hospitalier KITOKO | Kinshasa</title>
 
-    <style>
-        :root { 
-            --deep-blue: #0f172a; 
-            --soft-blue: #1e293b; 
-            --accent: #00d2d3;  
-            --text-light: #f1f5f9;
-            --text-muted: #94a3b8;
-            --card-border: rgba(255, 255, 255, 0.08);
-        }
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Source+Sans+3:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/jpeg" href="{% static 'front-end/assets/images/banner/logo2.jpg' %}">
 
-        body { 
-            font-family: 'Plus Jakarta Sans', sans-serif; 
-            color: var(--text-light); 
-            background-color: var(--deep-blue); 
-            line-height: 1.7;
-            overflow-x: hidden;
-        }
+     <meta name="google-site-verification" content="gcV3ZIJr8-zuXttrBbKiDmd-fnJcrpVAdtGNhlxtnlw" />
 
-        h1, h2, h3, .navbar-brand { font-family: 'Montserrat', sans-serif; font-weight: 800; }
+    <link rel="manifest" href="{% static 'manifest.json' %}">
+<meta name="theme-color" content="#0d6efd"> 
 
-        /* --- STYLE DU MENU ALIGNÉ --- */
-        .custom-navbar { 
-            background: #ffffff !important; 
-            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-            padding: 0; /* Réduit pour l'alignement */
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
 
-        .navbar-brand { 
-            display: flex; 
-            align-items: center; 
-            padding: 15px !important; /* Ajusté pour être sur la même ligne que le menu */
-            height: 80px; /* Hauteur fixe pour l'alignement */
-        }
+    {% comment %} 
+       ----------------------------------------------------------------------------------------------------
+       ----------------------------------------------------------------------------------------------------
+    {% endcomment %}
 
-        .brand-container {
-            border-left: 5px solid var(--accent);
-            padding-left: 15px;
-            line-height: 1.2;
-        }
+    <!-- -- adapter la page à la taille de l'écran -- -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-        .brand-main-text {
-            color: var(--deep-blue);
-            font-size: 22px; /* Taille accrue comme demandé */
-            font-weight: 900;
-            display: block;
-            letter-spacing: -0.5px;
-            white-space: nowrap;
-        }
+<!-- -- Bootstrap pour une mise en page mobile -- -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
-        .brand-sub-text {
-            color: var(--accent);
-            font-size: 16px; /* Taille accrue comme demandé */
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            display: block;
-        }
 
-        .nav li a { 
-            color: #1e293b !important; 
-            font-weight: 700; 
-            text-transform: uppercase;
-            font-size: 13px;
-            padding: 30px 12px !important; /* Ajusté pour l'alignement vertical */
-            transition: 0.3s;
-        }
+<!-- -- nom sous l'icône sur iPhone -- -->
+<meta name="apple-mobile-web-app-title" content="centre Kitoko">
 
-        .nav li a:hover { color: var(--accent) !important; }
+<!-- -- logo sur l'écran d'accueil iPhone -- -->
+<link rel="apple-touch-icon" href="{% static 'front-end/assets/images/banner/logo2.jpg' %}">
 
-        /* --- SECTIONS --- */
-        #home { height: 90vh; position: relative; display: flex; align-items: center; background-color: #000; overflow: hidden; }
-        .hero-img-bg { position: absolute; right: 0; top: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.5; }
-        .hero-overlay { position: absolute; width: 100%; height: 100%; background: linear-gradient(to top, #000 0%, #0008 100%); z-index: 1; }
-        .hero-content { position: relative; z-index: 2; }
+<!-- -- ouvrir en plein écran sur iPhone -- -->
+<meta name="apple-mobile-web-app-capable" content="yes">
 
-        section { padding: 100px 0; }
-        .glass-card { background: rgba(255, 255, 255, 0.03); padding: 40px; border-radius: 24px; border: 1px solid var(--card-border); }
-        .accent-bar { width: 60px; height: 4px; background: var(--accent); margin-bottom: 30px; border-radius: 2px; }
+  <style>
+    :root {
+      --navy: #0b2a4a;
+      --navy-2: #123a63;
+      --teal: #0f8b8d;
+      --teal-dark: #0b6f71;
+      --bg: #f4f8fb;
+      --ink: #10233a;
+      --muted: #5a6b7d;
+      --line: #dbe5ee;
+      --red: #d23b45;
+    }
 
-        .bio-img-container { position: relative; padding: 10px; }
-        .bio-img-container::before {
-            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            border: 2px solid var(--accent); border-radius: 20px; transform: translate(-15px, 15px); z-index: 0;
-        }
-        .bio-img { border-radius: 20px; position: relative; z-index: 1; width: 100%; }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 84px; overflow-x: hidden; }
 
-        .form-control { background: rgba(255, 255, 255, 0.05); border: 1px solid var(--card-border); color: white !important; height: 55px; border-radius: 12px; margin-bottom: 20px; }
-        .btn-main { background: var(--accent); color: white; font-weight: 700; padding: 15px 40px; border-radius: 12px; border: none; }
+    body {
+      margin: 0;
+      font-family: 'Source Sans 3', sans-serif;
+      font-size: 17px;
+      color: var(--ink);
+      background: #fff;
+      line-height: 1.65;
+      overflow-x: hidden;
+    }
 
-        footer { padding: 60px 0; border-top: 1px solid var(--card-border); text-align: center; background: #0a0f1d; }
+    h1, h2, h3, h4 {
+      font-family: 'Manrope', sans-serif;
+      color: var(--navy);
+      line-height: 1.2;
+      margin: 0;
+    }
 
-        @media (max-width: 991px) {
-            .brand-main-text { font-size: 18px; }
-            .brand-sub-text { font-size: 14px; }
-            .nav li a { padding: 30px 8px !important; font-size: 11px; }
-        }
+    img { max-width: 100%; display: block; }
+    a { color: inherit; }
+    .wrap { max-width: 1140px; margin: 0 auto; padding: 0 20px; }
+    :focus-visible { outline: 3px solid var(--teal); outline-offset: 3px; }
 
-        @media (max-width: 768px) {
-            .navbar-brand { height: auto; }
-            .nav li a { padding: 15px !important; }
-            #home { text-align: center; padding-top: 100px; }
-        }
-    </style>
+    /* ---------- Barre du haut ---------- */
+    .utility { background: var(--navy); color: #cfe0f0; font-size: 14px; }
+    .utility .wrap {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 16px; min-height: 40px; flex-wrap: wrap;
+    }
+    .utility .urgence { display: flex; align-items: center; gap: 8px; font-weight: 600; color: #fff; }
+    .utility .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 4px rgba(210,59,69,.3); }
+    .utility .infos { display: flex; gap: 24px; }
+    .utility a { text-decoration: none; }
+    .utility a:hover { color: #fff; text-decoration: underline; }
+
+    /* ---------- Menu ---------- */
+    .topbar {
+      position: sticky; top: 0; z-index: 50; background: #fff;
+      border-bottom: 1px solid var(--line);
+    }
+    .topbar .wrap {
+      display: flex; align-items: center; justify-content: space-between;
+      min-height: 76px; gap: 16px;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+    .brand img { width: 46px; height: 46px; border-radius: 10px; object-fit: cover; }
+    .brand div { line-height: 1.15; }
+    .brand strong { display: block; font-family: 'Manrope', sans-serif; font-size: 17px; color: var(--navy); }
+    .brand span { font-size: 13px; color: var(--muted); }
+
+    .menu { display: flex; align-items: center; gap: 30px; list-style: none; margin: 0; padding: 0; }
+    .menu a { text-decoration: none; font-weight: 600; font-size: 15px; color: var(--navy); }
+    .menu a:hover { color: var(--teal); }
+    .menu .cta { background: var(--teal); color: #fff; padding: 11px 22px; border-radius: 8px; }
+    .menu .cta:hover { background: var(--teal-dark); color: #fff; }
+
+    .burger {
+      display: none; width: 46px; height: 46px; flex-shrink: 0;
+      background: var(--navy); border: 0; border-radius: 10px; cursor: pointer;
+      align-items: center; justify-content: center; flex-direction: column; gap: 5px;
+    }
+    .burger span { display: block; width: 22px; height: 2px; background: #fff; border-radius: 2px; transition: transform .2s, opacity .2s; }
+    .burger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .burger.open span:nth-child(2) { opacity: 0; }
+    .burger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+    /* ---------- Accueil ---------- */
+    .hero {
+      position: relative; color: #fff;
+      padding: 110px 0 150px;
+      background-size: cover; background-position: center;
+    }
+    .hero h1 { color: #fff; font-size: clamp(32px, 5vw, 56px); font-weight: 800; max-width: 17ch; letter-spacing: -.5px; }
+    .hero p { font-size: 20px; color: #d6e4f2; max-width: 54ch; margin: 22px 0 34px; }
+
+    .btn {
+      display: inline-block; text-decoration: none; font-family: 'Manrope', sans-serif;
+      font-weight: 700; font-size: 15px; text-align: center;
+      padding: 15px 28px; border-radius: 8px; border: 2px solid transparent;
+      transition: background .2s, color .2s, border-color .2s;
+    }
+    .btn-teal { background: var(--teal); color: #fff; }
+    .btn-teal:hover { background: var(--teal-dark); }
+    .btn-white { color: #fff; border-color: rgba(255,255,255,.6); margin-left: 10px; }
+    .btn-white:hover { background: #fff; color: var(--navy); }
+
+    /* Bande de chiffres qui chevauche l'image */
+    .stats { position: relative; z-index: 2; margin-top: -70px; }
+    .stats ul {
+      list-style: none; margin: 0; padding: 0;
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      background: #fff; border-radius: 14px; border: 1px solid var(--line);
+      box-shadow: 0 20px 40px rgba(11, 42, 74, .12);
+    }
+    .stats li { padding: 30px 32px; border-left: 1px solid var(--line); }
+    .stats li:first-child { border-left: 0; }
+    .stats b { display: block; font-family: 'Manrope', sans-serif; font-size: 26px; color: var(--navy); }
+    .stats span { color: var(--muted); font-size: 15px; }
+
+    /* ---------- Sections ---------- */
+    section { padding: 96px 0; }
+    .kicker { color: var(--teal); font-family: 'Manrope', sans-serif; font-weight: 700; font-size: 14px; margin-bottom: 10px; }
+    .title { font-size: clamp(27px, 3.6vw, 38px); font-weight: 800; margin-bottom: 14px; }
+    .intro { color: var(--muted); max-width: 58ch; margin: 0 0 48px; font-size: 18px; }
+
+    /* Services */
+    .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+    .card {
+      background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 30px;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .card:hover { border-color: var(--teal); box-shadow: 0 12px 28px rgba(11, 42, 74, .08); }
+    .icon {
+      width: 52px; height: 52px; border-radius: 12px; background: #e3f3f3;
+      display: flex; align-items: center; justify-content: center; margin-bottom: 18px;
+    }
+    .icon svg { width: 26px; height: 26px; stroke: var(--teal-dark); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .card h3 { font-size: 19px; margin-bottom: 8px; }
+    .card p { margin: 0; color: var(--muted); font-size: 16px; }
+
+    /* Institution */
+    .institution { background: var(--bg); }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; }
+    .split p { color: var(--muted); margin: 0 0 16px; }
+    .checks { list-style: none; margin: 24px 0 0; padding: 0; }
+    .checks li { position: relative; padding: 12px 0 12px 34px; border-top: 1px solid var(--line); font-weight: 600; color: var(--navy); }
+    .checks li::before {
+      content: ''; position: absolute; left: 4px; top: 17px; width: 15px; height: 8px;
+      border-left: 3px solid var(--teal); border-bottom: 3px solid var(--teal);
+      transform: rotate(-45deg);
+    }
+    .photo { border-radius: 16px; overflow: hidden; aspect-ratio: 4 / 3; background: var(--navy); }
+    .photo img { width: 100%; height: 100%; object-fit: cover; }
+
+    /* Promoteur */
+    .promoter .split { grid-template-columns: 0.8fr 1.2fr; align-items: start; gap: 60px; }
+    .portrait { position: relative; border-radius: 16px; overflow: hidden; }
+    .portrait img { width: 100%; }
+    .portrait figcaption {
+      position: absolute; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(transparent, rgba(11,42,74,.92));
+      color: #fff; padding: 50px 22px 20px; font-family: 'Manrope', sans-serif; font-weight: 700;
+    }
+    .portrait figcaption span { display: block; font-family: 'Source Sans 3', sans-serif; font-weight: 400; font-size: 14px; color: #cfe0f0; }
+    .promoter .lead { font-size: 19px; color: var(--ink); font-weight: 500; }
+
+    /* Contact */
+    .contact { background: var(--bg); }
+    .contact .split { align-items: start; }
+    .info-row { display: flex; gap: 16px; margin-bottom: 24px; }
+    .info-row .icon { margin: 0; flex-shrink: 0; width: 46px; height: 46px; }
+    .info-row h4 { font-size: 16px; margin-bottom: 2px; }
+    .info-row p { margin: 0; color: var(--muted); }
+    .info-row a { text-decoration: none; word-break: break-word; }
+    .info-row a:hover { color: var(--teal); }
+
+    form { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 34px; box-shadow: 0 16px 36px rgba(11,42,74,.07); }
+    form h3 { font-size: 22px; margin-bottom: 22px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 6px; color: var(--navy); }
+    input, textarea {
+      width: 100%; font: inherit; font-size: 16px; padding: 13px 14px; margin-bottom: 18px;
+      border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink);
+    }
+    input:focus, textarea:focus { outline: 2px solid var(--teal); background: #fff; }
+    textarea { resize: vertical; }
+    form button {
+      width: 100%; font-family: 'Manrope', sans-serif; font-weight: 700; font-size: 15px; cursor: pointer;
+      background: var(--teal); color: #fff; border: 0; padding: 16px; border-radius: 8px;
+    }
+    form button:hover { background: var(--teal-dark); }
+
+    /* Pied de page */
+    footer { background: var(--navy); color: #b7c9db; padding: 64px 0 0; font-size: 15px; }
+    .foot { display: grid; grid-template-columns: 1.4fr 1fr 1.2fr; gap: 48px; padding-bottom: 48px; }
+    footer h4 { color: #fff; font-size: 16px; margin-bottom: 16px; }
+    footer p { margin: 0 0 10px; }
+    footer ul { list-style: none; margin: 0; padding: 0; }
+    footer li { margin-bottom: 8px; }
+    footer a { text-decoration: none; }
+    footer a:hover { color: #fff; text-decoration: underline; }
+    .copy { border-top: 1px solid rgba(255,255,255,.14); padding: 20px 0; font-size: 14px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+
+    .sticky-rdv { display: none; }
+
+    /* ---------- Tablette ---------- */
+    @media (max-width: 900px) {
+      .cards { grid-template-columns: 1fr 1fr; }
+      .split, .promoter .split { grid-template-columns: 1fr; gap: 32px; }
+      .foot { grid-template-columns: 1fr 1fr; }
+      .foot > div:first-child { grid-column: 1 / -1; }
+
+      .burger { display: flex; }
+      .menu {
+        display: none; position: absolute; left: 0; right: 0; top: 100%;
+        background: #fff; border-bottom: 1px solid var(--line);
+        box-shadow: 0 14px 24px rgba(11, 42, 74, .12);
+        flex-direction: column; align-items: stretch; padding: 8px 20px 20px; gap: 0;
+      }
+      .menu.open { display: flex; }
+      .menu li { border-bottom: 1px solid var(--line); }
+      .menu li:last-child { border-bottom: 0; padding-top: 16px; }
+      .menu a { display: block; padding: 16px 4px; font-size: 17px; }
+      .menu .cta { text-align: center; padding: 16px; }
+    }
+
+    /* ---------- Téléphone ---------- */
+    @media (max-width: 600px) {
+      body { font-size: 16px; }
+      section { padding: 60px 0; }
+      .wrap { padding: 0 18px; }
+
+      .utility .infos a:first-child { display: none; }
+      .utility .wrap { min-height: 36px; font-size: 13px; }
+
+      .topbar .wrap { min-height: 68px; }
+      .brand img { width: 40px; height: 40px; }
+      .brand strong { font-size: 15px; }
+
+      .hero { padding: 56px 0 110px; }
+      .hero p { font-size: 17px; margin: 16px 0 26px; }
+      .btn { display: block; width: 100%; padding: 16px; }
+      .btn-white { margin: 12px 0 0; }
+
+      .stats { margin-top: -56px; }
+      .stats ul { grid-template-columns: 1fr; }
+      .stats li { border-left: 0; border-top: 1px solid var(--line); padding: 18px 22px; }
+      .stats li:first-child { border-top: 0; }
+      .stats b { font-size: 21px; }
+
+      .intro { font-size: 16px; margin-bottom: 30px; }
+      .cards { grid-template-columns: 1fr; gap: 14px; }
+      .card { padding: 24px; }
+
+      .portrait img { aspect-ratio: 4 / 3.4; object-fit: cover; object-position: center 20%; }
+      .row { grid-template-columns: 1fr; gap: 0; }
+      form { padding: 24px 20px; }
+
+      .foot { grid-template-columns: 1fr; gap: 30px; }
+      .copy { flex-direction: column; padding-bottom: 96px; }
+
+      .sticky-rdv {
+        display: block; position: fixed; left: 14px; right: 14px; bottom: 14px; z-index: 40;
+        background: var(--teal); color: #fff; text-decoration: none;
+        font-family: 'Manrope', sans-serif; font-weight: 700; text-align: center;
+        padding: 15px; border-radius: 10px; box-shadow: 0 8px 22px rgba(0,0,0,.28);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      * { transition: none !important; }
+    }
+  </style>
 </head>
 
-<body data-spy="scroll" data-target=".navbar-collapse">
+<body>
 
-    <nav class="navbar navbar-fixed-top custom-navbar">
-        <div class="container">
-            <div class="navbar-header">
-                <button class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
-                    <span class="icon-bar" style="background-color: var(--deep-blue);"></span>
-                    <span class="icon-bar" style="background-color: var(--deep-blue);"></span>
-                    <span class="icon-bar" style="background-color: var(--deep-blue);"></span>
-                </button>
-                <a href="#" class="navbar-brand">
-                    <div class="brand-container">
-                        <span class="brand-main-text">CENTRE HOSPITALIER</span>
-                        <span class="brand-sub-text">KITOKO.</span>
-                    </div>
-                </a>
-            </div>
-            <div class="collapse navbar-collapse">
-                <ul class="nav navbar-nav navbar-right">
-                    <li><a href="#home">Accueil</a></li>
-                    <li><a href="#presentation">L'Institution</a></li>
-                    <li><a href="#biographie">Le Promoteur</a></li>
-                    <li><a href="#contact">PRENDRE RDV</a></li>
-                    {% if user.is_authenticated %}
-                        <li><a href="{% url 'dashboard' %}">DASHBOARD</a></li>
-                    {% else %}
-                        <li><a href="{% url 'login' %}">CONNEXION</a></li>
-                    {% endif %}
-                </ul>
-            </div>
-        </div>
-    </nav>
+  <!-- Barre du haut -->
+  <div class="utility">
+    <div class="wrap">
+      <div class="urgence"><span class="dot"></span> Urgences ouvertes 24h/24, 7j/7</div>
+      <div class="infos">
+        <a href="mailto:lawrencekitoko@hotmail.com">lawrencekitoko@hotmail.com</a>
+        <a href="tel:+243976159242">+243 976 159 242</a>
+      </div>
+    </div>
+  </div>
 
-    <section id="home">
-        <img src="{% static 'front-end/assets/images/banner/logo2.jpg' %}" class="hero-img-bg" alt="Banner">
-        <div class="hero-overlay"></div>
-        <div class="container">
-            <div class="row">
-                <div class="col-md-8 hero-content">
-                    <h1 class="wow fadeInUp" data-wow-delay="0.4s" style="font-size: clamp(35px, 6vw, 65px); line-height: 1.1;">
-                        La Technologie au<br><span style="color:var(--accent)">Service de la Vie.</span>
-                    </h1>
-                    <p class="wow fadeInUp" data-wow-delay="0.6s" style="font-size: 20px; color: var(--text-muted); margin: 30px 0;">
-                        Le Centre Hospitalier KITOKO : l'excellence médicale internationale au cœur de Kinshasa, alliant innovation et humanité.
-                    </p>
-                    <a href="#presentation" class="btn-main wow fadeInUp" data-wow-delay="0.8s">DÉCOUVRIR NOS SERVICES</a>
-                </div>
-            </div>
+  <!-- Menu -->
+  <header class="topbar">
+    <div class="wrap">
+      <a href="#accueil" class="brand">
+        <img src="{% static 'front-end/assets/images/banner/logo2.jpg' %}" alt="Logo KITOKO">
+        <div>
+          <strong>Centre Hospitalier KITOKO</strong>
+          <span>Kinshasa, RDC</span>
         </div>
+      </a>
+
+      <button class="burger" id="burger" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="menu">
+        <span></span><span></span><span></span>
+      </button>
+
+      <ul class="menu" id="menu">
+        <li><a href="#accueil">Accueil</a></li>
+        <li><a href="#services">Services</a></li>
+        <li><a href="#institution">L’institution</a></li>
+        <li><a href="#promoteur">Le promoteur</a></li>
+        <li><a href="#contact">Contact</a></li>
+        {% if user.is_authenticated %}
+          <li><a href="{% url 'dashboard' %}" class="cta">Tableau de bord</a></li>
+        {% else %}
+          <li><a href="{% url 'login' %}" class="cta">Connexion</a></li>
+        {% endif %}
+      </ul>
+    </div>
+  </header>
+
+  <main>
+    <!-- ACCUEIL -->
+    <section class="hero" id="accueil" style="padding-bottom:150px; background-image: linear-gradient(100deg, rgba(11,42,74,.94) 35%, rgba(11,42,74,.6)), url('{% static 'front-end/assets/images/banner/logo2.jpg' %}');">
+      <div class="wrap">
+        <h1>Des soins de qualité internationale, au cœur de Kinshasa.</h1>
+        <p>
+          Le Centre Hospitalier KITOKO réunit une équipe médicale qualifiée, des équipements modernes et un accueil humain pour accompagner chaque patient.
+        </p>
+        <a href="#contact" class="btn btn-teal">Prendre rendez-vous</a>
+        <a href="#services" class="btn btn-white">Découvrir nos services</a>
+      </div>
     </section>
 
-    <section id="presentation" style="background: #111827;">
-        <div class="container">
-            <div class="row">
-                <div class="col-md-12">
-                    <h2 style="color:white">L'INSTITUTION</h2>
-                    <div class="accent-bar"></div>
-                </div>
-                <div class="col-md-6">
-                    <div class="glass-card wow fadeInLeft">
-                        <h3 style="color: var(--accent); margin-top: 0;">Historique</h3>
-                        <p>Lancé le <strong>11 mars 2024</strong> au sein de la Fondation KITOKO, notre établissement se situe au croisement des avenues Ngungu et du Marché à Kinshasa.</p>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="glass-card wow fadeInRight">
-                        <h3 style="color: var(--accent); margin-top: 0;">Infrastructure</h3>
-                        <ul class="list-unstyled">
-                            <li><i class="fa fa-check" style="color:var(--accent)"></i> 50 Lits d'hospitalisation de haut standing</li>
-                            <li><i class="fa fa-check" style="color:var(--accent)"></i> Bloc opératoire et Urgences 24h/7</li>
-                            <li><i class="fa fa-check" style="color:var(--accent)"></i> Maternité, Pédiatrie et Médecine Interne</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
+    <!-- CHIFFRES -->
+    <div class="stats">
+      <div class="wrap">
+        <ul>
+          <li><b>50 lits</b><span>Hospitalisation de haut standing</span></li>
+          <li><b>24h/24, 7j/7</b><span>Urgences et bloc opératoire</span></li>
+          <li><b>Depuis 2024</b><span>Ouvert le 11 mars 2024</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- SERVICES -->
+    <section id="services">
+      <div class="wrap">
+        <p class="kicker">Nos services</p>
+        <h2 class="title">Une prise en charge complète, au même endroit</h2>
+        <p class="intro">Du premier accueil aux soins spécialisés, nos équipes vous accompagnent à chaque étape.</p>
+
+        <div class="cards">
+          <div class="card">
+            <div class="icon"><svg viewBox="0 0 24 24"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg></div>
+            <h3>Urgences</h3>
+            <p>Une équipe présente jour et nuit, 24h/24 et 7j/7, pour répondre à toute situation urgente.</p>
+          </div>
+          <div class="card">
+            <div class="icon"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>
+            <h3>Bloc opératoire</h3>
+            <p>Un bloc opératoire équipé pour les interventions chirurgicales.</p>
+          </div>
+          <div class="card">
+            <div class="icon"><svg viewBox="0 0 24 24"><path d="M3 18V6M3 14h18v4M21 14v-2a3 3 0 0 0-3-3h-7v5"/><circle cx="7" cy="11" r="2"/></svg></div>
+            <h3>Hospitalisation</h3>
+            <p>50 lits d’hospitalisation de haut standing pour un séjour confortable.</p>
+          </div>
+          <div class="card">
+            <div class="icon"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/></svg></div>
+            <h3>Maternité</h3>
+            <p>Un accompagnement attentif des mamans avant, pendant et après la naissance.</p>
+          </div>
+          <div class="card">
+            <div class="icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9.5h.01M15 9.5h.01"/></svg></div>
+            <h3>Pédiatrie</h3>
+            <p>Des soins adaptés aux nourrissons, aux enfants et aux adolescents.</p>
+          </div>
+          <div class="card">
+            <div class="icon"><svg viewBox="0 0 24 24"><rect x="6" y="4" width="12" height="16" rx="2"/><path d="M9 9h6M9 13h6"/></svg></div>
+            <h3>Médecine interne</h3>
+            <p>Un suivi médical complet pour le diagnostic et le traitement des maladies de l’adulte.</p>
+          </div>
         </div>
+      </div>
     </section>
 
-    <section id="biographie">
-        <div class="container">
-            <div class="row">
-                <div class="col-md-12 text-center">
-                    <h2 style="color:white">LE PROMOTEUR LAWRENCE KITOKO</h2>
-                    <div class="accent-bar" style="margin: 0 auto 50px;"></div>
-                </div>
-            </div>
-            <div class="row" style="display: flex; align-items: center; flex-wrap: wrap;">
-                <div class="col-md-4 wow fadeInLeft">
-                    <div class="bio-img-container">
-                        <img src="{% static 'front-end/hopital/kitoko.jpg' %}" class="bio-img" alt="Lawrence Kitoko">
-                    </div>
-                </div>
-                <div class="col-md-8">
-                    <div class="glass-card wow fadeInUp">
-                        <p style="text-align: justify; font-size: 17px; font-weight: 600;">
-                            Originaire de la Province de Tshopo et né à Kinshasa, Lawrence Kitoko vit entre le Congo et la France. Diplômé en kinésithérapie (Bruxelles), ostéopathie (Louvain) et santé publique (UCL).
-                        </p>
-                        <p style="text-align: justify; color: var(--text-muted); margin-top: 15px;">
-                            Lawrence KITOKO‑LUBULA est un kinésithérapeute internationalement formé, spécialisé en rééducation fonctionnelle, neurologique et sportive, disposant d’une solide expérience clinique acquise en Europe, au Canada et en Afrique. Titulaire d’un Master en Santé Publique et engagé dans un parcours doctoral dans le même domaine, il développe une approche thérapeutique basée sur les standards scientifiques internationaux, l’innovation technologique et l’amélioration continue de la qualité des soins. 
-                            <br><br>
-                            Ancien praticien auprès de l’équipe nationale espoir de la RDC et collaborateur de plusieurs structures sportives professionnelles en Belgique, il possède une expertise reconnue dans la prise en charge des pathologies complexes. Entrepreneur du secteur médical, il est également le propriétaire du centre PHYSIOKIN – PARIS.
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section id="contact" style="background: #0a0f1d;">
-        <div class="container">
-            <div class="row">
-                <div class="col-md-5">
-                    <h2 style="color:white">CONTACTS</h2>
-                    <div class="accent-bar"></div>
-                    <div style="font-size: 16px; margin-top: 30px;">
-                        <p><i class="fa fa-map-marker" style="color:var(--accent); width:25px"></i> 102, Avenue Ngungu, Quartier Pende, Commune de Kinshasa, RDC</p>
-                        <p><i class="fa fa-envelope" style="color:var(--accent); width:25px"></i> lawrencekitoko@hotmail.com</p>
-                        <p><i class="fa fa-phone" style="color:var(--accent); width:25px"></i> +33 6 05 52 19 34 (FR) / +243 976 159 242 (RDC)</p>
-                    </div>
-                </div>
-                <div class="col-md-7">
-                    <form action="#" method="post" class="glass-card">
-                        {% csrf_token %}
-                        <div class="row">
-                            <div class="col-md-6"><input type="text" name="nom" class="form-control" placeholder="Nom complet" required></div>
-                            <div class="col-md-6"><input type="email" name="email" class="form-control" placeholder="Email" required></div>
-                        </div>
-                        <textarea name="message" class="form-control" rows="4" placeholder="Comment pouvons-nous vous aider ?" required></textarea>
-                        <button type="submit" class="btn-main" style="width:100%">ENVOYER LE MESSAGE</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <footer>
-        <div class="container">
-            <p style="font-weight: 700; font-size: 20px; color:white;">CHK<span style="color:var(--accent)">.</span></p>
-            <p style="color: var(--text-muted); font-size: 13px;">
-                102, Avenue Ngungu, Quartier Pende, Commune de Kinshasa, RDC<br>
-                &copy; 2026 Centre Hospitalier KITOKO | Lawrence Kitoko.
+    <!-- INSTITUTION -->
+    <section class="institution" id="institution">
+      <div class="wrap">
+        <div class="split">
+          <div>
+            <p class="kicker">L’institution</p>
+            <h2 class="title">Un établissement né au sein de la Fondation KITOKO</h2>
+            <p>
+              Lancé le <strong>11 mars 2024</strong> au sein de la Fondation KITOKO, notre établissement se situe au croisement des avenues Ngungu et du Marché, à Kinshasa.
             </p>
+            <ul class="checks">
+              <li>50 lits d’hospitalisation de haut standing</li>
+              <li>Bloc opératoire et urgences 24h/24, 7j/7</li>
+              <li>Maternité, pédiatrie et médecine interne</li>
+            </ul>
+          </div>
+          <div class="photo">
+            <img src="{% static 'front-end/assets/images/banner/logo2.jpg' %}" alt="Centre Hospitalier KITOKO">
+          </div>
         </div>
-    </footer>
+      </div>
+    </section>
 
-    <script src="{% static 'front-end/assets/js/jquery.js' %}"></script>
-    <script src="{% static 'front-end/assets/js/bootstrap.min.js' %}"></script>
-    <script src="{% static 'front-end/assets/js/wow.min.js' %}"></script>
-    <script>new WOW().init();</script>
+    <!-- PROMOTEUR -->
+    <section class="promoter" id="promoteur">
+      <div class="wrap">
+        <div class="split">
+          <figure class="portrait" style="margin:0;">
+            <img src="{% static 'front-end/hopital/kitoko.jpg' %}" alt="Lawrence Kitoko">
+            <figcaption>Lawrence Kitoko<span>Promoteur du Centre Hospitalier KITOKO</span></figcaption>
+          </figure>
+
+          <div>
+            <p class="kicker">Le promoteur</p>
+            <h2 class="title">Lawrence Kitoko</h2>
+            <p class="lead">
+              Originaire de la province de Tshopo et né à Kinshasa, Lawrence Kitoko vit entre le Congo et la France. Diplômé en kinésithérapie (Bruxelles), ostéopathie (Louvain) et santé publique (UCL).
+            </p>
+            <p style="color: var(--muted);">
+              Lawrence KITOKO‑LUBULA est un kinésithérapeute internationalement formé, spécialisé en rééducation fonctionnelle, neurologique et sportive, disposant d’une solide expérience clinique acquise en Europe, au Canada et en Afrique. Titulaire d’un Master en Santé Publique et engagé dans un parcours doctoral dans le même domaine, il développe une approche thérapeutique basée sur les standards scientifiques internationaux, l’innovation technologique et l’amélioration continue de la qualité des soins.
+            </p>
+            <p style="color: var(--muted);">
+              Ancien praticien auprès de l’équipe nationale espoir de la RDC et collaborateur de plusieurs structures sportives professionnelles en Belgique, il possède une expertise reconnue dans la prise en charge des pathologies complexes. Entrepreneur du secteur médical, il est également le propriétaire du centre PHYSIOKIN – PARIS.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONTACT -->
+    <section class="contact" id="contact">
+      <div class="wrap">
+        <div class="split">
+          <div>
+            <p class="kicker">Contact</p>
+            <h2 class="title">Prendre rendez-vous</h2>
+            <p class="intro" style="margin-bottom:32px;">Écrivez-nous : nous vous répondrons dans les meilleurs délais.</p>
+
+            <div class="info-row">
+              <div class="icon"><svg viewBox="0 0 24 24"><path d="M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></div>
+              <div><h4>Adresse</h4><p>102, Avenue Ngungu, Quartier Pende, Commune de Kinshasa, RDC</p></div>
+            </div>
+            <div class="info-row">
+              <div class="icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg></div>
+              <div><h4>Email</h4><p><a href="mailto:lawrencekitoko@hotmail.com">lawrencekitoko@hotmail.com</a></p></div>
+            </div>
+            <div class="info-row">
+              <div class="icon"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg></div>
+              <div>
+                <h4>Téléphone</h4>
+                <p>
+                  <a href="tel:+33605521934">+33 6 05 52 19 34</a> (France)<br>
+                  <a href="tel:+243976159242">+243 976 159 242</a> (RDC)
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <form action="#" method="post">
+            {% csrf_token %}
+            <h3>Envoyer un message</h3>
+            <div class="row">
+              <div>
+                <label for="nom">Nom complet</label>
+                <input type="text" id="nom" name="nom" required>
+              </div>
+              <div>
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" required>
+              </div>
+            </div>
+            <label for="message">Comment pouvons-nous vous aider ?</label>
+            <textarea id="message" name="message" rows="5" required></textarea>
+            <button type="submit">Envoyer le message</button>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- PIED DE PAGE -->
+  <footer>
+    <div class="wrap">
+      <div class="foot">
+        <div>
+          <h4>Centre Hospitalier KITOKO</h4>
+          <p>Un hôpital au sein de la Fondation KITOKO, ouvert le 11 mars 2024 à Kinshasa.</p>
+        </div>
+        <div>
+          <h4>Navigation</h4>
+          <ul>
+            <li><a href="#services">Services</a></li>
+            <li><a href="#institution">L’institution</a></li>
+            <li><a href="#promoteur">Le promoteur</a></li>
+            <li><a href="#contact">Contact</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4>Nous joindre</h4>
+          <p>102, Avenue Ngungu, Quartier Pende, Commune de Kinshasa, RDC</p>
+          <p><a href="mailto:lawrencekitoko@hotmail.com">lawrencekitoko@hotmail.com</a></p>
+          <p><a href="tel:+243976159242">+243 976 159 242</a></p>
+        </div>
+      </div>
+      <div class="copy">
+        <span>&copy; 2026 Centre Hospitalier KITOKO</span>
+        <span>Lawrence Kitoko</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Bouton fixe en bas : téléphone seulement -->
+  <a href="#contact" class="sticky-rdv">Prendre rendez-vous</a>
+
+  <script>
+    // Ouvrir / fermer le menu sur téléphone
+    var burger = document.getElementById('burger');
+    var menu = document.getElementById('menu');
+
+    function fermerMenu() {
+      menu.classList.remove('open');
+      burger.classList.remove('open');
+      burger.setAttribute('aria-expanded', 'false');
+    }
+
+    burger.addEventListener('click', function () {
+      var ouvert = menu.classList.toggle('open');
+      burger.classList.toggle('open', ouvert);
+      burger.setAttribute('aria-expanded', ouvert);
+    });
+
+    // Fermer le menu quand on clique sur un lien
+    menu.addEventListener('click', function (e) {
+      if (e.target.tagName === 'A') { fermerMenu(); }
+    });
+  </script>
 </body>
 </html>

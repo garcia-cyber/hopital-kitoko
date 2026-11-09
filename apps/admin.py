@@ -2,6 +2,12 @@ from django.contrib import admin
 from django.utils import timezone
 from .models import *
 
+
+# 0. HOPITAL
+@admin.register(Hopital)
+class HopitalAdmin(admin.ModelAdmin):
+    list_display = ['nomH']
+
 # 1. CONFIGURATION ET ADMINISTRATION ====================================
 @admin.register(ConfigurationHopital)
 class ConfigurationHopitalAdmin(admin.ModelAdmin):
@@ -13,12 +19,12 @@ class RoleAdmin(admin.ModelAdmin):
 
 @admin.register(Fonction)
 class FonctionAdmin(admin.ModelAdmin):
-    list_display = ('userKey', 'fonctionKey', 'autorisation')
+    list_display = ('userKey', 'fonctionKey', 'autorisation','hopital')
 
 # 2. GESTION DES PATIENTS ET SERVICES ==================================
 @admin.register(Patient)
 class PatientAdmin(admin.ModelAdmin):
-    list_display = ('code_patient', 'noms', 'sexe', 'type_patient', 'est_en_regle_display')
+    list_display = ('code_patient', 'noms', 'sexe', 'type_patient', 'hopital','est_en_regle_display')
     list_filter = ('type_patient', 'sexe', 'service')
     search_fields = ('noms', 'code_patient')
 
@@ -39,12 +45,12 @@ class EntrepriseAdmin(admin.ModelAdmin):
 # 3. CONSULTATIONS ET SOINS ============================================
 @admin.register(Consultation)
 class ConsultationAdmin(admin.ModelAdmin):
-    list_display = ('__str__', 'medecin', 'consultation_payee')
+    list_display = ('__str__', 'medecin', 'consultation_payee','hopital')
     list_filter = ('consultation_payee', 'date_creation')
 
 @admin.register(SigneVital)
 class SigneVitalAdmin(admin.ModelAdmin):
-    list_display = ('patient', 'temperature', 'tension_arterielle', 'date_prelevement')
+    list_display = ('patient', 'temperature', 'tension_arterielle', 'date_prelevement','hopital','session')
 
 @admin.register(DemandeExamen)
 class DemandeExamenAdmin(admin.ModelAdmin):
@@ -73,7 +79,7 @@ admin.site.register(LigneMedicament)
 # 4. FINANCES ET FACTURATION ===========================================
 @admin.register(Paiement)
 class PaiementAdmin(admin.ModelAdmin):
-    list_display = ('id', 'patient', 'service', 'montant_verse', 'devise', 'caissier', 'date_paiement')
+    list_display = ('id', 'patient', 'service', 'montant_verse', 'devise', 'caissier', 'date_paiement','hopital')
     list_filter = ('service', 'devise', 'date_paiement')
     search_fields = ('patient__noms',)
 
@@ -113,7 +119,9 @@ class ProduitPharmacieAdmin(admin.ModelAdmin):
         'prix_achat_unitaire',
         'prix_vente_unitaire',
         'devise',
-        'date_enregistrement'
+        'date_enregistrement',
+        'hopital'
+
     )
     list_filter = ('categorie', 'devise')
     search_fields = ('nom', 'forme', 'dosage')
@@ -158,12 +166,24 @@ class SortiePharmacieAdmin(admin.ModelAdmin):
     )
     ordering = ('-date_sortie',)
 
+# @admin.register(LotPharmacie)
+# class LotPharmacieAdmin(admin.ModelAdmin):
+#     # 'quantite_actuelle' est affiché ici pour voir si le stock est bien à 16
+#     list_display = ('produit', 'numero_lot', 'quantite_initiale', 'quantite_actuelle', 'date_peremption','date_entree','hopital')
+#     list_filter = ('produit',)
+#     readonly_fields = ('quantite_actuelle',)
+
+
 @admin.register(LotPharmacie)
 class LotPharmacieAdmin(admin.ModelAdmin):
-    # 'quantite_actuelle' est affiché ici pour voir si le stock est bien à 16
-    list_display = ('produit', 'numero_lot', 'quantite_initiale', 'quantite_actuelle', 'date_peremption')
+    list_display = (
+        'produit', 'numero_lot', 'quantite_initiale',
+        'quantite_actuelle', 'date_peremption', 'date_entree', 'hopital'
+    )
     list_filter = ('produit',)
-    readonly_fields = ('quantite_actuelle',)
+    list_editable = ('quantite_actuelle',)
+
+    # Ne pas mettre quantite_actuelle dans readonly_fields
 
 admin.site.register(Prestation)
 admin.site.register(Deces)
@@ -511,39 +531,299 @@ class InterventionMaintenanceAdmin(admin.ModelAdmin):
     list_editable = ['repare']
 
 
-@admin.register(MouvementPaiement)
-class MouvementPaiementAdmin(admin.ModelAdmin):
+
+@admin.register(RapportJournalierPersonnel)
+class RapportJournalierPersonnelAdmin(admin.ModelAdmin):
+    list_display = (
+        "date_rapport",
+        "titre",
+        "hopital",
+        "service",
+        "auteur",
+        "type_rapport",
+        "nombre_personnel_present",
+        "nombre_personnel_absent",
+        "incidents_signales",
+    )
+    list_filter = (
+        "date_rapport",
+        "type_rapport",
+        "hopital",
+        "service",
+    )
+    search_fields = (
+        "titre",
+        "contenu",
+        "recommandations",
+        "hopital__nomH",
+        "service__nom",
+        "auteur__username",
+    )
+    ordering = ("-date_rapport", "-date_creation")
+    date_hierarchy = "date_rapport"
+
+
+
+
+
+# ==============================================================================
+@admin.register(SuiviMedecin)
+class SuiviMedecinAdmin(admin.ModelAdmin):
+    list_display = (
+        'hospitalisation',
+        'medecin',
+        'date_suivi',
+        'hopital',
+    )
+    list_filter = (
+        'date_suivi',
+        'hopital',
+        'medecin',
+    )
+    search_fields = (
+        'hospitalisation__patient__noms',
+        'medecin__username',
+        'diagnostic_du_jour',
+        'evolution',
+        'consignes',
+    )
+    readonly_fields = ('date_suivi',)
+    date_hierarchy = 'date_suivi'
+    ordering = ('-date_suivi',)
+    fieldsets = (
+        ('Informations générales', {
+            'fields': (
+                'hospitalisation',
+                'medecin',
+                'hopital',
+                'date_suivi',
+            )
+        }),
+        ('Suivi médical', {
+            'fields': (
+                'diagnostic_du_jour',
+                'evolution',
+                'consignes',
+            )
+        }),
+    )
+
+# ==================================================================================================
+@admin.register(AvisMedecin)
+class AvisMedecinAdmin(admin.ModelAdmin):
+    list_display = (
+        'patient',
+        'medecin',
+        'type_avis',
+        'titre',
+        'date_avis',
+        'hopital',
+        'consultation',
+        'hospitalisation',
+    )
+    list_filter = (
+        'type_avis',
+        'hopital',
+        'date_avis',
+        'medecin',
+    )
+    search_fields = (
+        'patient__noms',
+        'medecin__username',
+        'medecin__first_name',
+        'medecin__last_name',
+        'medecin__email',
+        'titre',
+        'contenu',
+    )
+    readonly_fields = ('date_avis',)
+    date_hierarchy = 'date_avis'
+    ordering = ('-date_avis',)
+    fieldsets = (
+        ('Informations générales', {
+            'fields': (
+                'patient',
+                'medecin',
+                'hopital',
+                'type_avis',
+                'date_avis',
+            )
+        }),
+        ('Contenu de l’avis', {
+            'fields': (
+                'titre',
+                'contenu',
+            )
+        }),
+        ('Liens optionnels', {
+            'fields': (
+                'consultation',
+                'hospitalisation',
+            )
+        }),
+    )
+
+# --------------------------------------------------------------------------------------------
+#   -mise en jour 
+# --------------------------------------------------------------------------------------------
+#
+#  -le 29/09/2026
+#
+# 
+
+@admin.register(ActeMedical)
+class ActeMedicalAdmin(admin.ModelAdmin):
+ 
+    # ---- Colonnes affichées dans la liste ----
     list_display = (
         'id',
-        'montant',
-        'devise',
-        'motif',
-        'utilisateur',
-        'date_depot',
+        'nom_personne',
+        'type_patient',
+        'statut',
+        'date_acte',
+        'montant_prevu',
+        'afficher_total_verse',
+        'afficher_reste_a_payer',
+        'afficher_est_paye',
+        'medecin',
+        'hopital',
     )
-
+    list_display_links = ('id', 'nom_personne')
+ 
+    # ---- Filtres à droite ----
     list_filter = (
-        'devise',
-        'date_depot',
+        'statut',
+        'type_patient',
+        'hopital',
+        'date_acte',
     )
-
+ 
+    # ---- Recherche (par nom ou téléphone de la personne) ----
     search_fields = (
-        'motif',
-        'utilisateur__username',
-        'utilisateur__first_name',
-        'utilisateur__last_name',
+        'patient__noms',
+        'patient__telephone',
+        'client_externe__noms',
+        'client_externe__telephone',
     )
-
-    autocomplete_fields = (
-        'utilisateur',
-    )
-
-    readonly_fields = (
-        'date_depot',
-    )
-
-    ordering = (
-        '-date_depot',
-    )
-
+ 
+    date_hierarchy = 'date_acte'
+    ordering = ('-date_acte', '-date_creation')
     list_per_page = 25
+ 
+    # ---- Optimisation : évite trop de requêtes dans la liste ----
+    list_select_related = ('patient', 'client_externe', 'medecin', 'hopital')
+ 
+    # ---- Champs de saisie ----
+    # Sélecteur à deux colonnes pour cocher plusieurs prestations
+    filter_horizontal = ('prestations',)
+    # Champ de recherche par ID au lieu d'une liste déroulante énorme
+    raw_id_fields = ('patient', 'client_externe')
+ 
+    # ---- Champs en lecture seule (calculés automatiquement) ----
+    readonly_fields = (
+        'montant_prevu',
+        'afficher_total_verse',
+        'afficher_total_reduction',
+        'afficher_reste_a_payer',
+        'afficher_est_paye',
+        'date_creation',
+        'date_modification',
+    )
+ 
+    fieldsets = (
+        ('Personne concernée', {
+            'fields': ('type_patient', 'patient', 'client_externe'),
+        }),
+        ('Acte médical', {
+            'fields': (
+                'prestations',
+                'date_acte',
+                'statut',
+                'medecin',
+                'hopital',
+                'observation',
+            ),
+        }),
+        ('Paiement (calculé automatiquement)', {
+            'fields': (
+                'montant_prevu',
+                'afficher_total_verse',
+                'afficher_total_reduction',
+                'afficher_reste_a_payer',
+                'afficher_est_paye',
+            ),
+        }),
+        ('Suivi', {
+            'fields': ('cree_par', 'date_creation', 'date_modification'),
+            'classes': ('collapse',),
+        }),
+    )
+ 
+    # ============================================================
+    # COLONNES CALCULEES
+    # ============================================================
+ 
+    @admin.display(description="Total versé")
+    def afficher_total_verse(self, obj):
+        return obj.total_verse if obj.pk else "-"
+ 
+    @admin.display(description="Total réduction")
+    def afficher_total_reduction(self, obj):
+        return obj.total_reduction if obj.pk else "-"
+ 
+    @admin.display(description="Reste à payer")
+    def afficher_reste_a_payer(self, obj):
+        return obj.reste_a_payer if obj.pk else "-"
+ 
+    @admin.display(boolean=True, description="Payé")
+    def afficher_est_paye(self, obj):
+        return obj.est_paye if obj.pk else False
+ 
+    # ============================================================
+    # LOGIQUE A L'ENREGISTREMENT
+    # ============================================================
+ 
+    def save_model(self, request, obj, form, change):
+        # Enregistre automatiquement qui a créé l'acte
+        if not change and not obj.cree_par:
+            obj.cree_par = request.user
+        super().save_model(request, obj, form, change)
+ 
+    def save_related(self, request, form, formsets, change):
+        # Les prestations (ManyToMany) sont enregistrées après l'acte.
+        # On recalcule donc le montant prévu une fois qu'elles sont en place.
+        super().save_related(request, form, formsets, change)
+        form.instance.recalculer_montant_prevu()
+
+# -----------------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------------------------
+#
+# appel video
+
+
+from .models import VideoRoom
+
+
+@admin.register(VideoRoom)
+class VideoRoomAdmin(admin.ModelAdmin):
+    list_display = ('name', 'created_by', 'nombre_participants', 'is_active', 'created_at')
+    list_filter = ('is_active', 'created_at')
+    search_fields = ('name', 'created_by__username')
+
+    # Sélecteur à deux colonnes pour choisir les utilisateurs autorisés
+    filter_horizontal = ('allowed_users',)
+    readonly_fields = ('room_id', 'created_at')
+
+    @admin.display(description="Participants")
+    def nombre_participants(self, obj):
+        return obj.allowed_users.count()
+
+    def get_changeform_initial_data(self, request):
+        # Le créateur est rempli automatiquement avec l'utilisateur connecté
+        return {'created_by': request.user.pk}
+
+
+
+# -------------- campagne 
+#
+#

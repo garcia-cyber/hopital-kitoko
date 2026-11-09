@@ -4,8 +4,26 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
-        <title>KITOKO - File d'attente Triage</title>
+        <title>JMC - File d'attente Triage</title>
         {% include 'back-end/includes/css.html' %}
+
+        <style>
+            /* -- Badge pour les patients de campagne -- */
+            .badge-campagne {
+                background: linear-gradient(135deg, #11998e, #38ef7d);
+                color: #fff;
+                border-radius: 20px;
+                padding: 4px 10px;
+                font-size: 11px;
+                font-weight: 600;
+                margin-left: 6px;
+            }
+
+            /* -- Ligne légèrement colorée pour les patients de campagne -- */
+            tr.ligne-campagne {
+                background: #f0faf7;
+            }
+        </style>
     </head>
     <body>
         <div class="main-wrapper">
@@ -35,13 +53,20 @@
                             </div>
                         </div>
                         <div class="col-sm-3 col-md-3">  
-                            <button class="btn btn-success btn-block" onclick="window.location.reload();"> <i class="fa fa-sync"></i> Actualiser </button>  
+                            <button class="btn btn-success btn-block" onclick="window.location.reload();"> <i class="fa fa-sync"></i> Actualiser </button>   
                         </div>   
                     </div>
 
                     <div class="card card-table mt-3">
                         <div class="card-header">
-                            <h4 class="card-title mb-0">Patients en attente (Taux : {{ taux }} FC | Prix Fiche : {{ prix_fiche }} USD)</h4>
+                            <h4 class="card-title mb-0">
+                                Patients en attente
+                                <small class="text-muted d-block mt-1" style="font-size: 0.85rem;">
+                                    Taux : 1 USD = {{ taux|floatformat:0 }} FC |
+                                    Fiche : {{ libelle_cible }} ({{ heure_actuelle }}h) |
+                                    Prix : {{ prix_fiche_cdf|floatformat:0 }} FC (~ {{ prix_fiche|floatformat:2 }} USD)
+                                </small>
+                            </h4>
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
@@ -51,45 +76,89 @@
                                             <th>Patient</th>
                                             <th>Type</th>
                                             <th>Heure arrivée</th>
-                                            <th class="text-center">Total Fiche</th>
-                                            <th class="text-center">Statut</th>
+                                            <th class="text-center">Total payé (Fiche)</th>
+                                            <th class="text-center">Statut fiche</th>
                                             <th class="text-right">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {% for patient in patients %}
-                                        <tr>
+                                        <tr {% if patient.est_en_campagne %}class="ligne-campagne"{% endif %}>
+
+                                            {# -- Nom du patient + badge campagne -- #}
                                             <td>
                                                 <h2 class="table-avatar">
                                                     <a href="#" class="avatar avatar-sm mr-2">
                                                         <img class="avatar-img rounded-circle" src="{% static 'back-end/assets/img/user.jpg' %}" alt="User">
                                                     </a>
-                                                    <a href="#">{{ patient.noms }} <span>ID: {{ patient.code_patient }}</span></a>
+                                                    <a href="#">
+                                                        {{ patient.noms }}
+                                                        {% if patient.est_en_campagne %}
+                                                            <span class="badge-campagne">
+                                                                <i class="fa fa-bullhorn"></i> Campagne
+                                                            </span>
+                                                        {% endif %}
+                                                        <span>ID: {{ patient.code_patient }}</span>
+                                                    </a>
                                                 </h2>
                                             </td>
+
+                                            {# -- Type -- #}
                                             <td><span class="badge badge-primary">{{ patient.get_type_patient_display }}</span></td>
+
+                                            {# -- Heure d'arrivée -- #}
                                             <td>{{ patient.date_creation|date:"H:i" }}</td>
+
+                                            {# -- Total payé (fiche) -- #}
                                             <td class="text-center">
-                                                <span class="badge {% if patient.a_solde_fiche %}badge-info{% else %}badge-warning{% endif %}">
-                                                    {{ patient.total_fiche_usd|floatformat:2 }} USD
-                                                </span>
+                                                {% if patient.est_en_campagne %}
+                                                    <span class="badge badge-success">Campagne</span>
+                                                {% elif patient.type_patient != 'SIMPLE' %}
+                                                    <span class="badge badge-secondary">Exonéré</span>
+                                                {% else %}
+                                                    <span class="badge {% if patient.a_solde_fiche %}badge-success{% else %}badge-warning{% endif %}">
+                                                        {{ patient.total_fiche_cdf|floatformat:0 }} FC
+                                                    </span>
+                                                {% endif %}
                                             </td>
+
+                                            {# -- Statut de la fiche -- #}
                                             <td class="text-center">
-                                                {% if patient.a_solde_fiche %}
+                                                {% if patient.est_en_campagne %}
+                                                    <span class="badge badge-success-border"><i class="fa fa-check-circle"></i> Campagne (fiche gratuite)</span>
+                                                {% elif patient.type_patient != 'SIMPLE' %}
+                                                    <span class="badge badge-success-border"><i class="fa fa-check-circle"></i> Exonéré</span>
+                                                {% elif patient.a_solde_fiche %}
                                                     <span class="badge badge-success-border"><i class="fa fa-check-circle"></i> Prêt</span>
                                                 {% else %}
                                                     <span class="badge badge-danger-border"><i class="fa fa-clock"></i> Paiement requis</span>
                                                 {% endif %}
                                             </td>
+
+                                            {# -- Action -- #}
                                             <td class="text-right">
-                                                {% if not patient.a_solde_fiche and patient.doit_payer_fiche %}
-                                                    <button class="btn btn-secondary btn-sm" disabled title="Le patient doit solder {{ prix_fiche }} USD">
+                                                {% if patient.est_en_campagne or patient.type_patient != 'SIMPLE' %}
+                                                    {# Patients de campagne ou exonérés : toujours accessibles #}
+                                                    {% if patient.a_signes_vitaux_deja_pris %}
+                                                        <button class="btn btn-warning btn-sm" disabled>
+                                                            <i class="fa fa-check-square"></i> Déjà prélevé
+                                                        </button>
+                                                    {% else %}
+                                                        <a href="{% url 'saisir_signes' patient.id %}" class="btn btn-primary btn-sm">
+                                                            <i class="fa fa-stethoscope"></i> Signes Vitaux
+                                                        </a>
+                                                    {% endif %}
+
+                                                {% elif not patient.a_solde_fiche and patient.doit_payer_fiche %}
+                                                    <button class="btn btn-secondary btn-sm" disabled title="Le patient doit solder la fiche">
                                                         <i class="fa fa-lock"></i> Bloqué
                                                     </button>
+
                                                 {% elif patient.a_signes_vitaux_deja_pris %}
                                                     <button class="btn btn-warning btn-sm" disabled>
                                                         <i class="fa fa-check-square"></i> Déjà prélevé
                                                     </button>
+
                                                 {% else %}
                                                     <a href="{% url 'saisir_signes' patient.id %}" class="btn btn-primary btn-sm">
                                                         <i class="fa fa-stethoscope"></i> Signes Vitaux

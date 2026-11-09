@@ -4,6 +4,8 @@ from .models import *
 from django.core.exceptions import ValidationError
 from django.forms import inlineformset_factory
 from datetime import date
+from django.utils import timezone
+from decimal import Decimal
 
 # creation du formulaire d'authentification
 # ==========================================
@@ -13,7 +15,7 @@ class LoginForm(forms.Form):
     password = forms.CharField(max_length = 200 , widget = forms.PasswordInput(attrs={'class':'form-control'}))
 
 # creation du formulaire Utilisateurs
-# ===================================
+# =================================== 
 # ===================================
 class EmployeForm(forms.ModelForm):
     password = forms.CharField(
@@ -72,12 +74,13 @@ class EmployeForm(forms.ModelForm):
 class FonctionForm(forms.ModelForm):
     class Meta:
         model = Fonction
-        fields = ['fonctionKey']
+        fields = ['fonctionKey','hopital']
         labels = {
             'fonctionKey': 'Rôle / Poste',
                     }
         widgets = {
             'fonctionKey': forms.Select(attrs={'class': 'form-control'}),
+            'hopital': forms.Select(attrs={'class': 'form-control'}),
             
         }
 
@@ -97,53 +100,28 @@ class ModifierUserForm(forms.ModelForm):
 class PrestationForm(forms.ModelForm):
     class Meta:
         model = Prestation
-        fields = ['libelle', 'categorie', 'prix', 'valeur_normale']
-        
-        labels = {
-            'prix': 'Prix (CDF)',
-        }
-        help_texts = {
-            'prix': 'Prix de la prestation en Francs Congolais (CDF).',
-        }
-
+        fields = ['libelle', 'categorie', 'prix', 'valeur_normale', 'hopital']
         widgets = {
-            'libelle': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Ex: Goutte Épaisse'
-            }),
-            'categorie': forms.Select(attrs={
-                'class': 'form-control',
-                'id': 'id_categorie'
-            }),
-            'prix': forms.NumberInput(attrs={
-                'class': 'form-control',
-                'step': '0.01'
-            }),
+            'libelle': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Goutte Épaisse'}),
+            'categorie': forms.Select(attrs={'class': 'form-control', 'id': 'id_categorie'}),
+            'hopital': forms.Select(attrs={'class': 'form-control'}),
+            'prix': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'valeur_normale': forms.TextInput(attrs={
-                'class': 'form-control', 
+                'class': 'form-control',
                 'placeholder': 'Ex: 70-110 mg/dl ou Négatif',
                 'id': 'id_valeur_normale'
             }),
         }
-
-    def clean_libelle(self):
-        """ Vérifie si une prestation avec ce libellé existe déjà (insensible à la casse) """
-        libelle = self.cleaned_data.get('libelle')
-        if Prestation.objects.filter(libelle__iexact=libelle).exclude(pk=self.instance.pk).exists():
-            raise forms.ValidationError("Cette prestation existe déjà dans votre catalogue.")
-        return libelle
 
     def clean(self):
         cleaned_data = super().clean()
         categorie = cleaned_data.get('categorie')
         valeur_normale = cleaned_data.get('valeur_normale')
 
-        # Si l'utilisateur a écrit quelque chose mais que ce n'est pas du LABO, on nettoie la donnée
         if categorie != 'LABO' and valeur_normale:
             cleaned_data['valeur_normale'] = None
-            
-        return cleaned_data
 
+        return cleaned_data
 
 class ConfigurationHopitalForm(forms.ModelForm):
     class Meta:
@@ -185,54 +163,23 @@ class ServiceForm(forms.ModelForm):
 class PatientForm(forms.ModelForm):
     class Meta:
         model = Patient
-        # On exclut code_patient et created_by car ils sont gérés automatiquement dans le modèle
-        fields = ['noms', 'sexe', 'age', 'adresse', 'telephone', 'service']
-        
+        fields = ['noms', 'sexe', 'age', 'adresse', 'telephone', 'service', 'entreprise','statut_p']
         widgets = {
-            'noms': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Nom, Post-nom et Prénom'
-            }),
-            'sexe': forms.Select(attrs={
-                'class': 'form-control'
-            }),
-            'age': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Ex: 25 ans ou 8 mois'
-            }),
-            'telephone': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Ex: +243...'
-            }),
-            'adresse': forms.Textarea(attrs={
-                'class': 'form-control',
-                'rows': 2,
-                'placeholder': 'Adresse de résidence'
-            }),
-            'service': forms.Select(attrs={
-                'class': 'form-control'
-            }),
+            'noms': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nom, Post-nom et Prénom'}),
+            'sexe': forms.Select(attrs={'class': 'form-select'}),
+            'age': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: 25 ans ou 8 mois'}),
+            'telephone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: +243...'}),
+            'adresse': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Adresse de résidence'}),
+            'service': forms.Select(attrs={'class': 'form-select'}),
+            'entreprise': forms.Select(attrs={'class': 'form-select'}),
+            'statut_p': forms.Select(attrs={'class':'form-select'}) 
         }
-
-    def __init__(self, *args, **kwargs):
-        super(PatientForm, self).__init__(*args, **kwargs)
-        # Label par défaut pour la liste déroulante des services
-        self.fields['service'].empty_label = "Sélectionner le service"
-
-    def clean_telephone(self):
-        telephone = self.cleaned_data.get('telephone')
-        # Vérification si le téléphone existe déjà pour un autre patient
-        # On exclut l'instance actuelle en cas de modification (self.instance.pk)
-        if Patient.objects.filter(telephone=telephone).exclude(pk=self.instance.pk).exists():
-            raise forms.ValidationError("Ce numéro de téléphone est déjà attribué à un autre patient.")
-        return telephone
 
     def clean_noms(self):
         noms = self.cleaned_data.get('noms')
         if len(noms) < 3:
             raise forms.ValidationError("Le nom complet est trop court.")
-        return noms.upper() # On force le nom en majuscule pour l'uniformité
-
+        return noms.upper()
 # 1. Formulaire principal de la Consultation
 class ConsultationForm(forms.ModelForm):
     class Meta:
@@ -287,7 +234,7 @@ class DepenseForm(forms.ModelForm):
         
         # Injection des classes Bootstrap pour le design
         widgets = {
-            'motif': forms.Select(attrs={'class': 'form-control select'}),
+            'motif': forms.TextInput(attrs={'class': 'form-control'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Détails de la dépense...'}),
             'montant': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Ex: 150'}),
             'devise': forms.Select(attrs={'class': 'form-control'}),
@@ -299,11 +246,25 @@ class DepenseForm(forms.ModelForm):
 class TypeChambreForm(forms.ModelForm):
     class Meta:
         model = TypeChambre
-        fields = ['libelle', 'prix_nuitée'] # Vérifiez que le nom correspond exactement au modèle
+        fields = ['libelle', 'prix_nuitée']
         widgets = {
-            'libelle': forms.TextInput(attrs={'class': 'form-control'}),
-            'prix_nuitée': forms.NumberInput(attrs={'class': 'form-control'}),
+            'libelle': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Ex: VIP, Commune, Spéciale, etc.'
+            }),
+            'prix_nuitée': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '100',
+                'min': '0',
+            }),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['libelle'].label = "Libellé du type de chambre"
+        self.fields['prix_nuitée'].label = "Prix de la nuitée (FC)"
+        self.fields['prix_nuitée'].help_text = "Indiquez le prix en Francs Congolais (FC)."
+        self.fields['prix_nuitée'].required = True
 
 class ChambreForm(forms.ModelForm):
     class Meta:
@@ -432,17 +393,33 @@ class HospitalisationForm(forms.ModelForm):
 class EntrepriseForm(forms.ModelForm):
     class Meta:
         model = Entreprise
-        fields = ['nom', 'contact_responsable']
+        fields = ['nom', 'contact_responsable', 'hopital']
         widgets = {
-            'nom': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nom de l\'entreprise'}),
-            'contact_responsable': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Numéro de téléphone'}),
+            'nom': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': "Nom de l'entreprise"
+            }),
+            'contact_responsable': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Numéro de téléphone'
+            }),
+            'hopital': forms.Select(attrs={
+                'class': 'form-control'
+            }),
         }
 
     def clean_nom(self):
         nom = self.cleaned_data.get('nom')
-        # On vérifie si une entreprise avec ce nom existe déjà (insensible à la casse)
-        if Entreprise.objects.filter(nom__iexact=nom).exists():
-            raise ValidationError(f"L'entreprise '{nom}' est déjà enregistrée dans le système.")
+        instance = getattr(self, 'instance', None)
+
+        # En création : on vérifie sur toutes les entreprises
+        # En modification : on exclut l'entreprise en cours d'édition
+        qs = Entreprise.objects.filter(nom__iexact=nom)
+        if instance and instance.pk:
+            qs = qs.exclude(pk=instance.pk)
+
+        if qs.exists():
+            raise forms.ValidationError(f"L'entreprise '{nom}' est déjà enregistrée dans le système.")
         return nom
 
 
@@ -514,17 +491,66 @@ class ProduitPharmacieForm(forms.ModelForm):
             'prix_vente_unitaire': forms.NumberInput(attrs={'class': 'form-control'}),
         }
 
+
+
+
+# ------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------------------------
+
 class LotPharmacieForm(forms.ModelForm):
     class Meta:
         model = LotPharmacie
-        # Remplace 'quantite' par les nouveaux noms de champs
-        fields = ['produit', 'numero_lot', 'quantite_initiale', 'date_peremption']
+        fields = [
+            'produit',
+            'numero_lot',
+            'quantite_initiale',
+            'date_peremption',
+        ]
+
         widgets = {
-            'produit': forms.Select(attrs={'class': 'form-control'}),
-            'numero_lot': forms.TextInput(attrs={'class': 'form-control'}),
-            'quantite_initiale': forms.NumberInput(attrs={'class': 'form-control'}),
-            'date_peremption': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'produit': forms.Select(
+                attrs={'class': 'form-control'}
+            ),
+            'numero_lot': forms.TextInput(
+                attrs={
+                    'class': 'form-control',
+                    'placeholder': 'Exemple : LOT-001'
+                }
+            ),
+            'quantite_initiale': forms.NumberInput(
+                attrs={
+                    'class': 'form-control',
+                    'min': '1'
+                }
+            ),
+            'date_peremption': forms.DateInput(
+                attrs={
+                    'class': 'form-control',
+                    'type': 'date'
+                }
+            ),
         }
+
+    def __init__(self, *args, **kwargs):
+        hopital = kwargs.pop('hopital', None)
+
+        super().__init__(*args, **kwargs)
+
+        if hopital:
+            # Important :
+            # seul ce qui appartient à cet hôpital ET est encore actif
+            # apparaît dans la liste déroulante.
+            self.fields['produit'].queryset = (
+                ProduitPharmacie.objects.filter(
+                    hopital=hopital,
+                    actif=True
+                ).order_by('nom', 'dosage')
+            )
+        else:
+            # Sans hôpital, aucun médicament ne doit être affiché.
+            self.fields['produit'].queryset = (
+                ProduitPharmacie.objects.none()
+            )
 
 
 # ==========================================================================================
@@ -533,7 +559,7 @@ class LotPharmacieForm(forms.ModelForm):
 class PatientForm(forms.ModelForm):
     class Meta:
         model = Patient
-        fields = ['noms', 'sexe', 'age', 'adresse', 'telephone', 'entreprise', 'service']
+        fields = ['noms', 'sexe', 'age', 'adresse', 'telephone', 'entreprise', 'service','statut_p']
         widgets = {
             'noms': forms.TextInput(attrs={'class': 'form-control'}),
             'sexe': forms.Select(attrs={'class': 'form-control'}),
@@ -542,6 +568,7 @@ class PatientForm(forms.ModelForm):
             'telephone': forms.TextInput(attrs={'class': 'form-control'}),
             'entreprise': forms.Select(attrs={'class': 'form-control'}),
             'service': forms.Select(attrs={'class': 'form-control'}), # Liste déroulante des services
+            'statut_p' : forms.Select(attrs={'class': 'form-control'}),
         }
 
 
@@ -552,15 +579,47 @@ class PatientForm(forms.ModelForm):
 class ClientExterneForm(forms.ModelForm):
     class Meta:
         model = ClientExterne
-        fields = ['noms', 'sexe','poids','age','telephone']
+        fields = ['noms', 'sexe', 'poids', 'age', 'telephone']
         widgets = {
             'noms': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nom complet du client'}),
             'telephone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Numéro de téléphone'}),
             'age': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Age du client'}),
-            'sexe' : forms.Select(attrs={'class': 'form-control'}),
-            'poids' : forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'poids'}), 
+            'sexe': forms.Select(attrs={'class': 'form-control'}),
+            'poids': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Poids (kg)'}), 
         }
 
+
+class DemandeExamenExterneForm(forms.ModelForm):
+    class Meta:
+        model = DemandeExamenExterne
+        fields = ['medecin_demandeur', 'clinique', 'but', 'prestations']
+        widgets = {
+            'medecin_demandeur': forms.TextInput(attrs={
+                'class': 'form-control', 
+                'placeholder': 'Nom du médecin demandeur'
+            }),
+            'clinique': forms.Textarea(attrs={
+                'class': 'form-control', 
+                'rows': 3, 
+                'placeholder': 'Informations cliniques...'
+            }),
+            'but': forms.Textarea(attrs={
+                'class': 'form-control', 
+                'rows': 2, 
+                'placeholder': 'But de la demande...'
+            }),
+            'prestations': forms.SelectMultiple(attrs={
+                'class': 'form-control', 
+                'size': '10',
+                'multiple': 'multiple'
+            }),
+        }
+        labels = {
+            'medecin_demandeur': 'Médecin demandeur',
+            'clinique': 'Informations cliniques',
+            'but': 'But de la demande',
+            'prestations': 'Examens à réaliser',
+        }
 
 
 # =================================================================
@@ -650,101 +709,1054 @@ class SigneVitalForm(forms.ModelForm):
             'saturation_oxygene': 'Saturation Oxygène (%)',
         }
 
-
+# ==============================================================================
 #
-# =====================================================================================
-class MouvementPaiementForm(forms.ModelForm):
-
+class HopitalForm(forms.ModelForm) :
     class Meta:
-        model = MouvementPaiement
+        model = Hopital
 
+        fields = ['nomH']
+        widgets = {
+            'nomH' : forms.TextInput(attrs={'class':'form-control'}) 
+        } 
+
+    def clean_nomH(self):
+        nomH = self.cleaned_data.get('nomH')
+
+        if Hopital.objects.filter(nomH__iexact=nomH).exists():
+            raise forms.ValidationError(f" {nomH}' existe déjà.") 
+        return nomH 
+
+
+# ============================================================================================
+#
+from django.contrib.auth.forms import PasswordChangeForm
+
+class CustomPasswordChangeForm(PasswordChangeForm):
+    def __init__(self, user, *args, **kwargs):
+        super().__init__(user, *args, **kwargs)
+        self.fields["old_password"].widget.attrs.update({
+            "class": "form-control",
+            "placeholder": "Mot de passe actuel",
+        })
+        self.fields["new_password1"].widget.attrs.update({
+            "class": "form-control",
+            "placeholder": "Nouveau mot de passe",
+        })
+        self.fields["new_password2"].widget.attrs.update({
+            "class": "form-control",
+            "placeholder": "Confirmer le nouveau mot de passe",
+        })
+
+
+# =================================================================================================
+#
+class RapportJournalierPersonnelForm(forms.ModelForm):
+    class Meta:
+        model = RapportJournalierPersonnel
         fields = [
-            'montant',
-            'devise',
-            'motif',
+            "type_rapport",
+            "titre",
+            "contenu",
+            "service",
+            "nombre_personnel_present",
+            "nombre_personnel_absent",
+            "incidents_signales",
+            "recommandations",
+        ]
+        widgets = {
+            "contenu": forms.Textarea(attrs={"rows": 5, "class": "form-control"}),
+            "recommandations": forms.Textarea(attrs={"rows": 4, "class": "form-control"}),
+            "service": forms.Select(attrs={"class": "form-control"}),
+            "type_rapport": forms.Select(attrs={"class": "form-control"}),
+            "titre": forms.TextInput(attrs={"class": "form-control"}),
+            "nombre_personnel_present": forms.NumberInput(attrs={"class": "form-control"}),
+            "nombre_personnel_absent": forms.NumberInput(attrs={"class": "form-control"}),
+            "incidents_signales": forms.NumberInput(attrs={"class": "form-control"}),
+        }
+
+
+
+
+
+class ChambreForm(forms.ModelForm):
+
+  class Meta:
+    model = Chambre
+    fields = ['nom', 'type_chambre', 'est_active', 'hopital']
+
+
+class LitForm(forms.ModelForm):
+
+  class Meta:
+    model = Lit
+    fields = ['chambre', 'nom_lit', 'est_occupe', 'est_actif', 'hopital']
+
+# -------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------------
+class LigneMedicamentForm(forms.ModelForm):
+    class Meta:
+        model = LigneMedicament
+        fields = [
+            'nom_medicament',
+            'posologie',
+            'duree',
+            'quantite',
         ]
 
         widgets = {
-            'montant': forms.NumberInput(attrs={
+            'nom_medicament': forms.TextInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'Entrez le montant',
-                'step': '0.01',
-                'min': '0.01',
+                'placeholder': 'Ex. Paracétamol 500 mg'
             }),
-
-            'devise': forms.Select(attrs={
-                'class': 'form-select',
-            }),
-
-            'motif': forms.TextInput(attrs={
+            'posologie': forms.TextInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'Motif du dépôt',
+                'placeholder': 'Ex. 1 comprimé, 3 fois par jour'
+            }),
+            'duree': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Ex. 5 jours'
+            }),
+            'quantite': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': 1
             }),
         }
 
-        labels = {
-            'montant': 'Montant du dépôt',
-            'devise': 'Devise',
-            'motif': 'Motif',
-        }
 
-    def clean_montant(self):
-        montant = self.cleaned_data.get('montant')
+# ----------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------
+class DemandeExamenHospitalisationForm(forms.Form):
+    CATEGORIES_EXAMENS = [
+        ('', '--------- Choisir une catégorie ---------'),
+        ('LABO', 'Laboratoire'),
+        ('ECHO', 'Échographie'),
+        ('RADIO', 'Radiologie'),
+    ]
 
-        if montant is None:
-            raise forms.ValidationError(
-                "Veuillez saisir un montant."
-            )
+    categorie = forms.ChoiceField(
+        choices=CATEGORIES_EXAMENS,
+        label="Catégorie d'examen",
+        widget=forms.Select(attrs={
+            'class': 'form-control',
+            'id': 'id_categorie_examen',
+            'required': True,
+        })
+    )
 
-        if montant <= Decimal('0.00'):
-            raise forms.ValidationError(
-                "Le montant doit être supérieur à zéro."
-            )
+    prestation = forms.ModelChoiceField(
+        queryset=Prestation.objects.none(),
+        label="Examen demandé",
+        empty_label="--------- Choisir d'abord une catégorie ---------",
+        widget=forms.Select(attrs={
+            'class': 'form-control',
+            'id': 'id_prestation_examen',
+            'required': True,
+        })
+    )
 
-        return montant
-
-
-# -----------------------------------------------------------------------------------
-# MISE EN JOUR 
-#   - 21/09/2026
-#   - formulaire pour la gestion de
-# -----------------------------------------------------------------------------------
-class PresenceForm(forms.ModelForm):
-    """Formulaire de pointage de présence avec géolocalisation."""
-
-    justification = forms.CharField(
+    indication = forms.CharField(
+        label="Indication clinique",
         required=False,
         widget=forms.Textarea(attrs={
-            "class": "form-control",
-            "rows": 2,
-            "placeholder": "Justification en cas d'absence ou de départ anticipé...",
-        }),
+            'class': 'form-control',
+            'rows': 3,
+            'placeholder': (
+                'Exemple : Douleur abdominale persistante, '
+                'fièvre, suspicion de paludisme...'
+            ),
+        })
+    )
+
+    quantite = forms.IntegerField(
+        label="Quantité",
+        min_value=1,
+        initial=1,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'min': 1,
+        })
+    )
+
+    def __init__(self, *args, **kwargs):
+        hopital = kwargs.pop('hopital', None)
+        super().__init__(*args, **kwargs)
+
+        categorie = None
+
+        if self.is_bound:
+            categorie = self.data.get('categorie')
+
+        if categorie in ('LABO', 'ECHO', 'RADIO'):
+            prestations = Prestation.objects.filter(
+                hopital=hopital,
+                categorie=categorie
+            ).order_by('libelle')
+
+            self.fields['prestation'].queryset = prestations
+
+# ----------------------------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------
+# MISE EN JOUR 
+#   - acte medical le 25/09/2026
+#   - ici formulaire 
+#
+#
+from django.contrib.auth import get_user_model
+User = get_user_model()
+
+
+class ActeMedicalForm(forms.ModelForm):
+    # Ce champ sert uniquement à filtrer visuellement les prestations
+    # dans le template avec JavaScript.
+    # Il ne bloque plus la sélection de plusieurs catégories.
+    categorie = forms.ChoiceField(
+        required=False,
+        label="Filtrer les prestations par catégorie",
+        choices=[],
+        widget=forms.Select(
+            attrs={
+                'class': 'form-select',
+                'id': 'id_categorie',
+            }
+        )
+    )
+
+    prestations = forms.ModelMultipleChoiceField(
+        queryset=Prestation.objects.none(),
+        required=True,
+        label="Prestations à réaliser",
+        widget=forms.CheckboxSelectMultiple(
+            attrs={
+                'class': 'form-check-input prestation-checkbox',
+            }
+        )
     )
 
     class Meta:
-        model = Presence
+        model = ActeMedical
+
         fields = [
-            "heure_entree", "latitude_entree", "longitude_entree", "lieu_entree",
-            "heure_sortie", "latitude_sortie", "longitude_sortie", "lieu_sortie",
-            "statut", "justification",
+            'prestations',
+            'type_patient',
+            'patient',
+            'client_externe',
+            'date_acte',
+            'medecin',
+            'statut',
+            'observation',
         ]
+
         widgets = {
-            "heure_entree": forms.TimeInput(attrs={
-                "type": "time", "class": "form-control",
-            }),
-            "heure_sortie": forms.TimeInput(attrs={
-                "type": "time", "class": "form-control",
-            }),
-            "statut": forms.Select(attrs={"class": "form-control"}),
-            "latitude_entree": forms.HiddenInput(),
-            "longitude_entree": forms.HiddenInput(),
-            "lieu_entree": forms.HiddenInput(),
-            "latitude_sortie": forms.HiddenInput(),
-            "longitude_sortie": forms.HiddenInput(),
-            "lieu_sortie": forms.HiddenInput(),
+            'type_patient': forms.Select(
+                attrs={
+                    'class': 'form-select',
+                    'id': 'id_type_patient',
+                }
+            ),
+
+            'patient': forms.Select(
+                attrs={
+                    'class': 'form-select',
+                    'id': 'id_patient',
+                }
+            ),
+
+            'client_externe': forms.Select(
+                attrs={
+                    'class': 'form-select',
+                    'id': 'id_client_externe',
+                }
+            ),
+
+            'date_acte': forms.DateTimeInput(
+                attrs={
+                    'class': 'form-control',
+                    'type': 'datetime-local',
+                },
+                format='%Y-%m-%dT%H:%M',
+            ),
+
+            'medecin': forms.Select(
+                attrs={
+                    'class': 'form-select',
+                    'id': 'id_medecin',
+                }
+            ),
+
+            'statut': forms.Select(
+                attrs={
+                    'class': 'form-select',
+                }
+            ),
+
+            'observation': forms.Textarea(
+                attrs={
+                    'class': 'form-control',
+                    'rows': 4,
+                }
+            ),
         }
 
     def __init__(self, *args, **kwargs):
+        hopital = kwargs.pop('hopital', None)
+        user = kwargs.pop('user', None)
+        fonction_key = kwargs.pop('fonction_key', None)
+
         super().__init__(*args, **kwargs)
-        if not self.instance.pk:
-            self.fields["heure_entree"].initial = timezone.now().time()
+
+        self.hopital = hopital
+
+        self.fields['patient'].required = False
+        self.fields['client_externe'].required = False
+        self.fields['medecin'].required = False
+        self.fields['observation'].required = False
+
+        # Si aucun hôpital n'est disponible, on ne propose aucune donnée.
+        if not hopital:
+            self.fields['prestations'].queryset = Prestation.objects.none()
+            self.fields['patient'].queryset = Patient.objects.none()
+            self.fields['client_externe'].queryset = ClientExterne.objects.none()
+            self.fields['medecin'].queryset = User.objects.none()
+            return
+
+        # Important :
+        # Toutes les prestations de l'hôpital sont disponibles.
+        # Elles peuvent appartenir à plusieurs catégories différentes.
+        prestations_hopital = Prestation.objects.filter(
+            hopital=hopital
+        ).order_by(
+            'categorie',
+            'libelle'
+        )
+
+        self.fields['prestations'].queryset = prestations_hopital
+
+        # Permet d'afficher les libellés : Consultation, Laboratoire, etc.
+        # au lieu des codes : CONS, LABO, RADIO, etc.
+        categories_dict = dict(Prestation.CATEGORIES)
+
+        categories_existantes = (
+            prestations_hopital
+            .exclude(categorie__isnull=True)
+            .exclude(categorie__exact='')
+            .values_list('categorie', flat=True)
+            .distinct()
+            .order_by('categorie')
+        )
+
+        self.fields['categorie'].choices = [
+            ('', '--------- Toutes les catégories ---------')
+        ] + [
+            (
+                categorie,
+                categories_dict.get(categorie, categorie)
+            )
+            for categorie in categories_existantes
+        ]
+
+        # Seuls les patients de l'hôpital connecté peuvent être choisis.
+        self.fields['patient'].queryset = (
+            Patient.objects
+            .filter(hopital=hopital)
+            .order_by('noms')
+        )
+
+        # Seuls les clients externes de l'hôpital connecté peuvent être choisis.
+        self.fields['client_externe'].queryset = (
+            ClientExterne.objects
+            .filter(hopital=hopital)
+            .order_by('noms')
+        )
+
+        # Recherche des utilisateurs ayant le rôle médecin dans l'hôpital.
+        fonctions_medecins = (
+            Fonction.objects
+            .filter(
+                hopital=hopital,
+                fonctionKey__roleName__icontains='medecin',
+            )
+            .select_related('userKey')
+        )
+
+        medecins_users_ids = [
+            fonction.userKey_id
+            for fonction in fonctions_medecins
+            if fonction.userKey_id
+        ]
+
+        # Si l'utilisateur connecté est médecin, il est automatiquement
+        # sélectionné dans le champ médecin.
+        est_medecin = (
+            fonction_key
+            and 'medecin' in fonction_key.lower()
+            and user
+        )
+
+        if est_medecin:
+            self.fields['medecin'].queryset = User.objects.filter(
+                pk=user.pk
+            )
+
+            self.initial['medecin'] = user
+
+        else:
+            self.fields['medecin'].queryset = (
+                User.objects
+                .filter(pk__in=medecins_users_ids)
+                .order_by('last_name', 'first_name')
+            )
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        prestations = cleaned_data.get('prestations')
+        type_patient = cleaned_data.get('type_patient')
+        patient = cleaned_data.get('patient')
+        client_externe = cleaned_data.get('client_externe')
+
+        # Au moins une prestation est obligatoire.
+        if not prestations:
+            self.add_error(
+                'prestations',
+                "Cochez au moins une prestation."
+            )
+
+        # Sécurité : les prestations envoyées doivent appartenir
+        # à l'hôpital de l'utilisateur connecté.
+        #
+        # Elles peuvent cependant provenir de plusieurs catégories :
+        # consultation + laboratoire + radiologie + soins, etc.
+        if prestations and self.hopital:
+            prestations_autre_hopital = prestations.exclude(
+                hopital=self.hopital
+            )
+
+            if prestations_autre_hopital.exists():
+                self.add_error(
+                    'prestations',
+                    "Une ou plusieurs prestations ne sont pas liées à votre hôpital."
+                )
+
+        # Cas du patient interne.
+        if type_patient == 'INTERNE':
+            if not patient:
+                self.add_error(
+                    'patient',
+                    "Sélectionnez un patient interne."
+                )
+
+            if client_externe:
+                self.add_error(
+                    'client_externe',
+                    "Ne sélectionnez pas de client externe pour un patient interne."
+                )
+
+        # Cas du client externe.
+        elif type_patient == 'EXTERNE':
+            if patient:
+                self.add_error(
+                    'patient',
+                    "Ne sélectionnez pas de patient interne pour un client externe."
+                )
+
+        return cleaned_data
+
+
+# ================================================================
+# IMPORTANT :
+# Cette classe doit être en dehors de ActeMedicalForm.
+# Elle doit commencer totalement à gauche, sans espaces au début.
+# ================================================================
+class ClientExterneFormDeux(forms.ModelForm):
+    class Meta:
+        model = ClientExterne
+
+        fields = [
+            'noms',
+            'sexe',
+            'poids',
+            'age',
+            'telephone',
+        ]
+
+        widgets = {
+            'noms': forms.TextInput(
+                attrs={
+                    'class': 'form-control',
+                    'placeholder': 'Nom complet du client externe',
+                }
+            ),
+
+            'sexe': forms.Select(
+                attrs={
+                    'class': 'form-select',
+                }
+            ),
+
+            'poids': forms.TextInput(
+                attrs={
+                    'class': 'form-control',
+                    'placeholder': 'Ex. 65 kg',
+                }
+            ),
+
+            'age': forms.TextInput(
+                attrs={
+                    'class': 'form-control',
+                    'placeholder': 'Ex. 32 ans',
+                }
+            ),
+
+            'telephone': forms.TextInput(
+                attrs={
+                    'class': 'form-control',
+                    'placeholder': 'Ex. +243...',
+                }
+            ),
+        }
+
+# -----------------------------------------------------------------------------------
+# 
+#   - formulaire pour le paiement des actes medicaux
+#   - le 29/09/2026
+#
+#
+class PaiementActeForm(forms.Form):
+  # ---- Montant que le client donne maintenant ----
+  montant_verse = forms.DecimalField(
+    label="Montant versé",
+    min_value=0,
+    max_digits=15,
+    decimal_places=2,
+    required=False,
+    widget=forms.NumberInput(attrs={"class": "acte-input", "step": "0.01"}),
+  )
+
+  # ---- Réduction accordée (facultatif) ----
+  montant_reduction = forms.DecimalField(
+    label="Réduction",
+    min_value=0,
+    max_digits=10,
+    decimal_places=2,
+    required=False,
+    widget=forms.NumberInput(attrs={"class": "acte-input", "step": "0.01"}),
+  )
+
+  # ---- Devise : CDF ou USD ----
+  devise = forms.ChoiceField(
+    label="Devise",
+    choices=Paiement.CURRENCY,
+    widget=forms.Select(attrs={"class": "acte-input"}),
+  )
+
+# --------------------------------
+# --------------------------------
+# --------------------------------
+#
+# 
+
+
+
+# ============================================================
+# FORMULAIRE CAMPAGNE
+# ============================================================
+
+class CampagneForm(forms.ModelForm):
+
+  # Champ temporaire :
+  # sert uniquement à filtrer les prestations par catégorie.
+  categorie = forms.ChoiceField(
+    choices=[('', '---------')] + list(Prestation.CATEGORIES),
+    required=False,
+    widget=forms.Select(
+      attrs={
+        'class': 'form-control',
+        'id': 'categoriePrestation',
+      }
+    ),
+    label='Catégorie de prestation',
+  )
+
+  # ---- Prestations incluses dans le prix de la campagne
+  prestations = forms.ModelMultipleChoiceField(
+    queryset=Prestation.objects.none(),
+    required=False,
+    widget=forms.CheckboxSelectMultiple,
+    label='Prestations incluses',
+  )
+
+  # ---- NOUVEAU : prestations payantes en supplément
+  prestations_supplement = forms.ModelMultipleChoiceField(
+    queryset=Prestation.objects.none(),
+    required=False,
+    widget=forms.CheckboxSelectMultiple,
+    label='Prestations en supplément (payantes)',
+  )
+
+  class Meta:
+    model = Campagne
+
+    fields = [
+      'nom',
+      'description',
+      'type_campagne',
+      'prix_defaut_cdf',
+      'date_debut',
+      'date_fin',
+      'statut',
+      'active',
+    ]
+
+    widgets = {
+      'nom': forms.TextInput(
+        attrs={
+          'class': 'form-control',
+          'placeholder': 'Nom de la campagne',
+        }
+      ),
+      'description': forms.Textarea(
+        attrs={
+          'class': 'form-control',
+          'rows': 4,
+          'placeholder': 'Description de la campagne',
+        }
+      ),
+      'type_campagne': forms.Select(
+        attrs={
+          'class': 'form-control',
+        }
+      ),
+      'prix_defaut_cdf': forms.NumberInput(
+        attrs={
+          'class': 'form-control',
+          'step': '0.01',
+          'min': '0',
+          'placeholder': 'Exemple : 25000.00',
+        }
+      ),
+      'date_debut': forms.DateInput(
+        format='%Y-%m-%d',
+        attrs={
+          'class': 'form-control',
+          'type': 'date',
+        }
+      ),
+      'date_fin': forms.DateInput(
+        format='%Y-%m-%d',
+        attrs={
+          'class': 'form-control',
+          'type': 'date',
+        }
+      ),
+      'statut': forms.Select(
+        attrs={
+          'class': 'form-control',
+        }
+      ),
+      'active': forms.CheckboxInput(
+        attrs={
+          'class': 'form-check-input',
+        }
+      ),
+    }
+
+    labels = {
+      'nom': 'Nom de la campagne',
+      'description': 'Description',
+      'type_campagne': 'Type de campagne',
+      'prix_defaut_cdf': 'Prix de la campagne en CDF',
+      'date_debut': 'Date de début',
+      'date_fin': 'Date de fin',
+      'statut': 'Statut',
+      'active': 'Campagne active',
+    }
+
+  def __init__(self, *args, **kwargs):
+    self.hopital = kwargs.pop('hopital', None)
+
+    super().__init__(*args, **kwargs)
+
+    # Catégories de prestations
+    self.fields['categorie'].choices = [
+      ('', '---------')
+    ] + list(Prestation.CATEGORIES)
+
+    # Prestations filtrées selon l'hôpital
+    if self.hopital:
+      queryset = Prestation.objects.filter(
+        hopital=self.hopital
+      )
+    else:
+      queryset = Prestation.objects.none()
+
+    self.fields['prestations'].queryset = queryset
+    self.fields['prestations_supplement'].queryset = queryset
+
+    # ---- NOUVEAU : un champ prix pour chaque prestation
+    # (utilisé seulement si la prestation est en supplément)
+    for prestation in queryset:
+      self.fields[f'prix_supplement_{prestation.pk}'] = forms.DecimalField(
+        required=False,
+        min_value=Decimal('0.00'),
+        max_digits=15,
+        decimal_places=2,
+        label=f'Prix supplément : {prestation.libelle}',
+        widget=forms.NumberInput(
+          attrs={
+            'class': 'form-control',
+            'step': '0.01',
+            'min': '0',
+            'placeholder': 'Prix en CDF',
+          }
+        ),
+      )
+
+    # En modification :
+    # pré-cocher les prestations déjà associées à la campagne
+    if self.instance and self.instance.pk:
+
+      # ---- prestations incluses
+      self.fields['prestations'].initial = Prestation.objects.filter(
+        campagnes_associees__campagne=self.instance,
+        campagnes_associees__type_inclusion='INCLUSE'
+      )
+
+      # ---- prestations en supplément
+      self.fields['prestations_supplement'].initial = Prestation.objects.filter(
+        campagnes_associees__campagne=self.instance,
+        campagnes_associees__type_inclusion='SUPPLEMENT'
+      )
+
+      # ---- prix déjà enregistrés des suppléments
+      liens_supplement = CampagnePrestation.objects.filter(
+        campagne=self.instance,
+        type_inclusion='SUPPLEMENT'
+      )
+
+      for lien in liens_supplement:
+        nom_champ = f'prix_supplement_{lien.prestation_id}'
+        if nom_champ in self.fields:
+          self.fields[nom_champ].initial = lien.prix_supplement_cdf
+
+  # ---- NOUVEAU : aide pour le template
+  # donne pour chaque prestation son champ prix
+  @property
+  def lignes_prestations(self):
+    lignes = []
+    for prestation in self.fields['prestations'].queryset:
+      nom_champ = f'prix_supplement_{prestation.pk}'
+      lignes.append({
+        'prestation': prestation,
+        'champ_prix': self[nom_champ],
+      })
+    return lignes
+
+  def clean_prestations(self):
+    prestations = self.cleaned_data.get('prestations')
+
+    if prestations and prestations.count() != len(set(prestations)):
+      raise forms.ValidationError(
+        "Une prestation ne peut pas être sélectionnée deux fois."
+      )
+
+    return prestations
+
+  def clean(self):
+    cleaned_data = super().clean()
+
+    type_campagne = cleaned_data.get('type_campagne')
+    prix = cleaned_data.get('prix_defaut_cdf')
+    date_debut = cleaned_data.get('date_debut')
+    date_fin = cleaned_data.get('date_fin')
+
+    types_gratuits = [
+      Campagne.TYPE_GRATUITE,
+      Campagne.TYPE_COUPLE_GRATUIT,
+    ]
+
+    types_payants = [
+      Campagne.TYPE_PAYANTE,
+      Campagne.TYPE_COUPLE,
+    ]
+
+    if type_campagne in types_gratuits:
+      cleaned_data['prix_defaut_cdf'] = Decimal('0.00')
+
+    elif type_campagne in types_payants:
+      if prix is None:
+        self.add_error(
+          'prix_defaut_cdf',
+          "Veuillez saisir le prix de la campagne."
+        )
+
+      elif prix <= Decimal('0.00'):
+        self.add_error(
+          'prix_defaut_cdf',
+          "Le prix doit être supérieur à zéro."
+        )
+
+    if date_debut and date_fin and date_fin < date_debut:
+      self.add_error(
+        'date_fin',
+        "La date de fin ne peut pas être avant "
+        "la date de début."
+      )
+
+    # ---- NOUVEAU : vérification des suppléments
+    incluses = list(cleaned_data.get('prestations') or [])
+    supplements = list(cleaned_data.get('prestations_supplement') or [])
+
+    for prestation in supplements:
+
+      # une prestation ne peut pas être incluse ET en supplément
+      if prestation in incluses:
+        self.add_error(
+          'prestations_supplement',
+          f"« {prestation.libelle} » ne peut pas être incluse "
+          f"et en supplément en même temps."
+        )
+
+      # un supplément doit avoir un prix supérieur à zéro
+      nom_champ = f'prix_supplement_{prestation.pk}'
+      prix_supp = cleaned_data.get(nom_champ)
+
+      if prix_supp is None or prix_supp <= Decimal('0.00'):
+        self.add_error(
+          nom_champ,
+          "Le prix du supplément doit être supérieur à zéro."
+        )
+
+    return cleaned_data
+
+  # ---- NOUVEAU : enregistre les prestations de la campagne
+  def _enregistrer_prestations(self, campagne):
+
+    # Supprimer les anciennes liaisons
+    CampagnePrestation.objects.filter(
+      campagne=campagne
+    ).delete()
+
+    liaisons = []
+
+    # ---- prestations incluses : prix supplément = 0
+    for prestation in self.cleaned_data.get('prestations') or []:
+      liaisons.append(
+        CampagnePrestation(
+          campagne=campagne,
+          prestation=prestation,
+          type_inclusion='INCLUSE',
+          prix_supplement_cdf=Decimal('0.00'),
+        )
+      )
+
+    # ---- prestations en supplément : avec leur prix
+    for prestation in self.cleaned_data.get('prestations_supplement') or []:
+      prix_supp = self.cleaned_data.get(
+        f'prix_supplement_{prestation.pk}'
+      ) or Decimal('0.00')
+
+      liaisons.append(
+        CampagnePrestation(
+          campagne=campagne,
+          prestation=prestation,
+          type_inclusion='SUPPLEMENT',
+          prix_supplement_cdf=prix_supp,
+        )
+      )
+
+    # Créer les nouvelles liaisons
+    CampagnePrestation.objects.bulk_create(liaisons)
+
+  def save(self, commit=True):
+    campagne = super().save(commit=False)
+
+    if commit:
+      campagne.save()
+      self._enregistrer_prestations(campagne)
+
+    else:
+      # ---- ta vue appelle form.save_m2m() après campagne.save() 
+      # on ajoute l'enregistrement des prestations à ce moment-là
+      ancien_save_m2m = self.save_m2m
+
+      def nouveau_save_m2m():
+        ancien_save_m2m()
+        self._enregistrer_prestations(campagne)
+
+      self.save_m2m = nouveau_save_m2m
+
+    return campagne
+
+
+# ============================================================
+# FORMULAIRE PARTICIPANT À UNE CAMPAGNE
+# ============================================================
+
+class CampagneParticipantForm(forms.ModelForm):
+
+    class Meta:
+        model = CampagneParticipant
+
+        fields = [
+            'patient',
+            'clientEx',
+            'nombre_personnes',
+            'montant_paye_cdf',
+            'statut',
+        ]
+
+        widgets = {
+            'patient': forms.Select(
+                attrs={
+                    'class': 'form-control',
+                }
+            ),
+            'clientEx': forms.Select(
+                attrs={
+                    'class': 'form-control',
+                }
+            ),
+            'nombre_personnes': forms.NumberInput(
+                attrs={
+                    'class': 'form-control',
+                    'min': '1',
+                    'max': '2',
+                }
+            ),
+            'montant_paye_cdf': forms.NumberInput(
+                attrs={
+                    'class': 'form-control',
+                    'step': '0.01',
+                    'min': '0',
+                    'placeholder': 'Montant déjà payé en CDF',
+                }
+            ),
+            'statut': forms.Select(
+                attrs={
+                    'class': 'form-control',
+                }
+            ),
+        }
+
+        labels = {
+            'patient': 'Patient interne',
+            'clientEx': 'Client externe',
+            'nombre_personnes': 'Nombre de personnes',
+            'montant_paye_cdf': 'Montant déjà payé (CDF)',
+            'statut': 'Statut du participant',
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        self.est_admin = kwargs.pop('est_admin', False)
+        self.hopital_user = kwargs.pop('hopital_user', None)
+
+        super().__init__(*args, **kwargs)
+
+        # Filtrer les patients selon l'hôpital de l'utilisateur
+        if not self.est_admin and self.hopital_user:
+            if 'patient' in self.fields:
+                self.fields['patient'].queryset = Patient.objects.filter(
+                    hopital=self.hopital_user
+                )
+
+        # Un participant ne peut pas être à la fois
+        # patient interne et client externe.
+        self.fields['clientEx'].required = False
+        self.fields['patient'].required = False
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        patient = cleaned_data.get('patient')
+        clientEx = cleaned_data.get('clientEx')
+
+        if not patient and not clientEx:
+            raise ValidationError(
+                "Vous devez sélectionner un patient ou un client externe."
+            )
+
+        if patient and clientEx:
+            raise ValidationError(
+                "Vous ne pouvez pas sélectionner à la fois un patient "
+                "et un client externe."
+            )
+
+        return cleaned_data
+
+# ===============
+# ===============
+# 
+class CampagneParticipantForm(forms.ModelForm):
+    class Meta:
+        model = CampagneParticipant
+        fields = [
+            'campagne',
+            'patient',
+            'clientEx',
+            'nombre_personnes',
+            'prix_total_cdf',
+            'montant_paye_cdf',
+            'statut',
+        ]
+
+        widgets = {
+            'campagne': forms.Select(attrs={
+                'class': 'form-control',
+            }),
+            'patient': forms.Select(attrs={
+                'class': 'form-control',
+            }),
+            'clientEx': forms.Select(attrs={
+                'class': 'form-control',
+            }),
+            'nombre_personnes': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '1',
+            }),
+            'prix_total_cdf': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '0',
+                'step': '0.01',
+            }),
+            'montant_paye_cdf': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '0',
+                'step': '0.01',
+            }),
+            'statut': forms.Select(attrs={
+                'class': 'form-control',
+            }),
+        }
+
+    def __init__(self, *args, user=None, est_admin=False, hopital_user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.fields['campagne'].queryset = Campagne.objects.all().order_by('nom')
+        self.fields['patient'].queryset = Patient.objects.all().order_by('noms')
+        self.fields['clientEx'].queryset = ClientExterne.objects.all().order_by('noms')
+
+        # Un utilisateur non administrateur ne choisit que les campagnes
+        # de son propre hôpital.
+        if not est_admin:
+            if hopital_user:
+                self.fields['campagne'].queryset = (
+                    Campagne.objects
+                    .filter(hopital=hopital_user)
+                    .order_by('nom')
+                )
+            else:
+                self.fields['campagne'].queryset = Campagne.objects.none()
+
+        self.fields['campagne'].label = 'Campagne'
+        self.fields['patient'].label = 'Patient interne'
+        self.fields['clientEx'].label = 'Client externe'
+        self.fields['nombre_personnes'].label = 'Nombre de personnes'
+        self.fields['prix_total_cdf'].label = 'Prix total (CDF)'
+        self.fields['montant_paye_cdf'].label = 'Montant payé (CDF)'
+        self.fields['statut'].label = 'Statut'
+
+        self.fields['patient'].required = False
+        self.fields['clientEx'].required = False

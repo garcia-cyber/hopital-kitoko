@@ -1,13 +1,23 @@
 from django.urls import path
 from .views import *
 from . import views 
+from django.views.generic import TemplateView
 # 
 #
 #  
+
+# app_name = 'pharmacie'
+
 urlpatterns =[
+
+    path(
+        'googled1e54ebf53c448fb.html',
+        TemplateView.as_view(template_name='googled1e54ebf53c448fb.html'), 
+    ),
      # ===================================
      # page d'accueil login
 
+     
      path('', home , name = "home") ,
      path('login/', login , name ='login') ,
      path('deco/', deco , name ='deco') ,
@@ -15,16 +25,25 @@ urlpatterns =[
      path('reinitialiser-password/<int:user_id>/', views.force_reinitialiser_pass, name='force_pass'),
      path('modifier-utilisateur/<int:user_id>/', views.modifier_utilisateur, name='modifier_user'),
      path('reinitialiser-password/<int:user_id>/', views.force_reinitialiser_pass, name='force_pass'),
+     path("change-password/", views.change_password, name="change_password"),
 
 
      # ================================
-     # PRESTATION 
+     # PRESTATION ET CONFIGURATION
+     #
      path('prestations/', views.gestion_prestations, name='gestion_prestations'),
+     path('prestations_receptionniste/', views.liste_prestations_receptionniste, name='liste_prestations_receptionniste'),
+     path("prestations/<int:pk>/supprimer/", views.supprimer_prestation, name="supprimer_prestation"),
      path('config/taux/', views.modifier_taux, name='modifier_taux'),
      path('prestations/modifier/<int:pk>/', views.modifier_prestation, name='modifier_prestation'),
+     path('enregistrer_hopital/',views.enregistrer_hopital, name = 'hopitalAdd') ,
+     path('hopitaux/', views.liste_hopitaux, name='hopital_liste'),
+     path('hopitaux/modifier/<int:id>/', views.modifier_hopital, name='modifier_hopital'),
+     path('hopitaux/supprimer/<int:id>/', views.supprimer_hopital, name='supprimer_hopital'),
 
      # =================================
      # SERVICE
+     #
      path('services/', views.gestion_services, name='gestion_services'),
      path('services/modifier/<int:pk>/', views.modifier_service, name='modifier_service'),
 
@@ -52,16 +71,15 @@ urlpatterns =[
      path('sessions/', views.liste_sessions, name='liste_sessions'),
      path('paiement/session/<int:session_id>/', views.payer_session, name='paiement_session'),
      path('patients/fideles/dette', views.liste_patients_fideles, name='liste_patients_fideles'),
-
-      path(
-        'patients/conventionnes/',
-        views.liste_conventionnes_par_entreprise,
-        name='liste_conventionnes'
-    ),
+     path('patients/conventionnes/',views.liste_conventionnes_par_entreprise,name='liste_conventionnes'),
+     path('entreprise/<int:entreprise_id>/payer/',views.payer_dette_entreprise,name='payer_dette_entreprise'),
+     path("patients/orientations/", liste_patients_orientations_view, name="liste_patients_orientations"),
+     path('facture_consultation/session/<int:session_id>/', views.facture_session, name='facture_session'),
+     path('patient/<int:patient_id>/supprimer/',views.supprimer_patient,name='supprimer_patient'),
      path(
-    'entreprise/<int:entreprise_id>/payer/',
-    views.payer_dette_entreprise,
-    name='payer_dette_entreprise'
+    'session/<int:session_id>/apres-paiement/',
+    views.apres_paiement_session,
+    name='apres_paiement_session'
 ),
 
 
@@ -76,6 +94,8 @@ urlpatterns =[
      path('journal-caisse-depense/', views.dashboard_finance_depense, name='dashboard_finance_depense'),
      path('depense/nouvelle/', views.creer_depense, name='creer_depense'),
      path('patients/', views.liste_patients_urgence, name='liste_patients_urgence'),
+     path('patient/<int:patient_id>/imprimer-facture/', views.imprimer_facture, name='imprimer_facture'),
+     path('finance/historique-depenses/', views.historique_depenses, name='historique_depenses'),
 
      # ====================================
      # INFIRMIER
@@ -84,13 +104,15 @@ urlpatterns =[
     path('infirmerie/saisir/<int:patient_id>/', views.saisir_signes, name='saisir_signes'),
     path('infirmerie/registre-global/', views.liste_globale_triage, name='liste_globale_triage'),
     path('infirmerie/historique/<int:patient_id>/', views.historique_signes_vitaux, name='historique_signes_vitaux'),
+    path('modifier-signes-vitaux/<int:signe_id>/', views.modifier_signes_vitaux, name='modifier_signes_vitaux'),
 
     # ==================================
     # MEDECIN
     path('medecin/consultations-en-attente/', views.liste_consultation_medecin, name='liste_consultation_medecin'),
     path('medecin/marquer-consulte/<int:sv_id>/', views.marquer_consulte, name='marquer_consulte'),
-    path('consultation/<int:triage_id>/', views.consultation_medicale, name='consultation_medicale'),
+    path('consultation/<int:triage_id>/', views.consultation_medicale, name='consultation_medicale'), 
     path('medecin/consultations/historique/', views.liste_consultations_terminees, name='liste_consultations'),
+    path("medecin/consultation/<int:consultation_id>/modifier/",views.modifier_consultation,name="modifier_consultation"),
     path('consultation/<int:pk>/', views.detail_consultation, name='detail_consultation'),
     path('consultations/ordonnances-urgence/', views.liste_ordonnances_urgence, name='liste_ordonnances_urgence'),
     path('medecin/salle-d-attente/', views.liste_attente_ordonnance_view, name='liste_attente_medecin'),
@@ -102,8 +124,11 @@ urlpatterns =[
     path('consultations/<int:consultation_id>/prescrire-urgence/', views.prescrire_ordonnance_urgence_rapide, name='prescrire_ordonnance_urgence_rapide'),
     path('medecin/liste-patients/', views.liste_patients_urgence, name='liste_patients_urgence'),
     path('ordonnance/<int:pk>/imprimer/', views.imprimer_ordonnance_urgence, name='imprimer_ordonnance'),
-    path('ordonnance/<int:pk>/modifierUrgence/', views.modifier_ordonnance_urgence, name='modifier_ordonnance'),
-
+    path('ordonnance/<int:pk>/modifierUrgence/', views.modifier_ordonnance_urgence, name='modifier_ordonnance_urgence'),
+    path('consultation/<int:sv_id>/reconsulter/', views.reconsulter, name='reconsulter'),
+    path('medecin/ordonnance/<int:consultation_id>/modifier_med/',views.modifier_ordonnance_view_med,name='modifier_ordonnance_med'),
+    path('reconsulter/<int:sv_id>/',views.reconsulter,name='reconsulter'),
+    
 
     # ================================
     # CAISSE
@@ -116,6 +141,7 @@ urlpatterns =[
     # URL pour l'espace technique (Laboratoire / Radiologie)
     path('technique/examens-a-realiser/', views.liste_examens_techniques, name='liste_examens_techniques'),
     path('technique/saisir-resultats/<int:consultation_id>/', views.saisir_resultats_examens, name='saisir_resultats_examens'),
+    path('technique/examens/<int:consultation_id>/modifier/',views.modifier_resultats_examens,name='modifier_resultats_examens'), 
 
     # ================================
     # EXAMENS
@@ -143,6 +169,17 @@ urlpatterns =[
     path('kardex/changer-statut/<int:kardex_id>/', views.changer_statut_kardex, name='changer_statut_kardex'),
     path('payer-hospitalisation/<int:hosp_id>/', views.enregistrer_paiement_hospitalisation, name='payer_hospitalisation'),
     path('hospitalisation/modifier/<int:hospitalisation_id>/', views.modifier_hospitalisation_view, name='modifier_hospitalisation'),
+     path('hospitalisations/<int:hosp_id>/facture/',views.imprimer_facture_hospitalisation,name='imprimer_facture_hospitalisation'),
+    path('types-chambre/',views.liste_types_chambre,name='type_chambre_list'),
+    path('chambres-liste/', views.liste_chambres, name='chambre_list'),
+    path('lits-liste/', views.liste_lits, name='lit_list'),
+    # Modifications
+    path('types-chambre/<int:pk>/modifier/',views.modifier_type_chambre,name='type_chambre_update'),
+    path('chambres/<int:pk>/modifier/',views.modifier_chambre,name='chambre_update'),
+    path('lits/<int:pk>/modifier/', views.modifier_lit, name='lit_update'),
+    path('types-chambres/<int:pk>/supprimer/', views.supprimer_type_chambre, name='type_chambre_delete'),
+    path('chambres/<int:pk>/supprimer/', views.supprimer_chambre, name='chambre_delete'),
+    path('lits/<int:pk>/supprimer/', views.supprimer_lit, name='lit_delete'),
 
 
     # ====================================
@@ -157,6 +194,16 @@ urlpatterns =[
     # ENTREPRISE
     path('entreprise/enregistrer/', views.enregistrer_entreprise_view, name='enregistrer_entreprise'),
     path('entreprises/', views.liste_entreprises_view, name='liste_entreprises'),
+    path(
+        'entreprises/<int:pk>/modifier/',
+        views.modifier_entreprise_view,
+        name='modifier_entreprise'
+    ),
+    path(
+    'entreprises/<int:pk>/supprimer/',
+    views.supprimer_entreprise_view,
+    name='supprimer_entreprise'
+),
 
     # =====================================
     # MATERNITE
@@ -192,6 +239,13 @@ urlpatterns =[
     path('facture/<int:vente_id>/', views.details_facture, name='details_facture'),
     path('vente/valider/', views.valider_vente, name='valider_vente'),
     path('payer-dette/<int:paiement_id>/', views.ajouter_paiement_dette, name='ajouter_paiement_dette'),
+    path('pharmacie/modifier/<int:produit_id>/', views.modifier_produit_pharmacie, name='modifier_produit'),
+    path('pharmacie/supprimer/<int:produit_id>/', views.supprimer_produit_pharmacie, name='supprimer_produit'),
+    path('pharmacie/', views.admin_pharmacie_dashboard, name='admin_pharmacie_dashboard'),
+    path('pharmacie/historique/', views.admin_historique_stock, name='admin_historique_stock'),
+    path('pharmacie/historique/<int:produit_id>/', views.admin_historique_stock, name='admin_historique_produit'),
+    path('pharmacie/benefices/', views.admin_benefices_pharmacie, name='admin_benefices_pharmacie'),
+    path('pharmacie/alertes/', views.admin_alertes_stock, name='admin_alertes_stock'),
 
 
     # =====================================
@@ -239,13 +293,19 @@ urlpatterns =[
     path('liste-examens/', views.liste_examens_technicien, name='liste_examens_technicien'),
     path('saisir-rapport/<int:demande_id>/<int:prestation_id>/', views.saisir_rapport, name='saisir_rapport'),
     path('historique-technicien/', views.historique_examen_externe_technicien, name='historique_examen_externe_technicien'),
-    path('encaisser-examen-externe/<int:demande_id>/', views.encaisser_examen_externe, name='encaisser_examen'),
+    path(
+    'encaisser-examen-externe/<int:demande_id>/',
+    views.encaisser_examen_externe,
+    name='encaisser_examen_externe'
+),
     path('liste-facturation/', views.liste_facturation, name='liste_facturation'),
     path('imprimer-rapport/<int:demande_id>/', views.imprimer_rapport_complet, name='imprimer_rapport_complet'),
     path('client/detail/<int:client_id>/', views.detail_client_externe, name='detail_client_externe'),
     path('client/<int:client_id>/prescrire/', views.prescrire_ordonnance_client_externe, name='prescrire_ordonnance_client_externe'),
     path('ordonnances/liste-client/', views.liste_ordonnances_externes_client, name='liste_ordonnances_externes_client'),
     path('ordonnance/consulter/<int:ordonnance_id>/', views.consulter_ordonnance_externe, name='consulter_ordonnance_externe'),
+    path('ordonnances/<int:ordonnance_id>/imprimerExterne/', views.imprimer_ordonnance_externe, name='imprimer_ordonnance_externe'),
+     path('demandes/<int:demande_id>/facture/', views.imprimer_facture_examen_externe, name='imprimer_facture_examen_externe'),
 
     # ========================================
     # MATERIEL 
@@ -256,24 +316,111 @@ urlpatterns =[
     path('equipements/', views.liste_equipements, name='liste_equipements'),
     path('equipement/ajouter/', views.ajouter_equipement, name='ajouter_equipement'),
 
-    # ===========================================
-    # Mouvement de paiement
+
+    # =============================================
+    # APPEL VIDEO
+    #
+    path("video/<str:room_name>/", views.video_call_room, name="video_call_room"),
+    path("video/create/", views.create_video_room, name="create_video_room"),
+    path("video-room/<uuid:room_id>/add-colleague/", views.add_colleague_to_room, name="add_colleague_to_room"),
+
+
+    # ================================================
+    # RAPPORT 
+    #
+    path("rapports/creer/", views.creer_rapport_journalier, name="creer_rapport_journalier"),
+    path("rapports/", views.liste_rapports_journaliers, name="liste_rapports_journaliers"),
+
+    # =================================================
+    # PAIEMENT ADMIN
+    #
+    path('global/paiements/list/', views.admin_paiements_list, name='admin_global_paiements_list'),
+    path('global/paiement/<int:paiement_id>/delete/', views.admin_paiement_delete, name='admin_global_paiement_delete'),
+    path('global/paiement/<int:paiement_id>/detail/', views.admin_paiement_detail, name='admin_global_paiement_detail'),
+
+    # =================================================
+    #
+    #
+    path("assistant/questions/", assistant_questions_view, name="assistant_questions_view"),
+
+
+
+    #-------------------------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------------------
+    path('liste_consultations_generalAgent/',liste_consultations_generalAgent , name = "liste_consultations_generalAgent"),
+
+
+
+    # ------------------------------------------------------------------------
+    # ------------------------------------------------------------------------
+    # mise en jour le 17/09/2026
     path(
-        'mouvements-paiement/',
-        views.liste_mouvements_paiement,
-        name='liste_mouvements_paiement'
+        'pharmacie/stocks-hopitaux/',
+        views.liste_stocks_hopitaux,
+        name='liste_stocks_hopitaux',
     ),
 
     path(
-        'mouvements-paiement/ajouter/',
-        views.ajouter_mouvement_paiement,
-        name='ajouter_mouvement_paiement'
+        'stocks-hopitaux/<int:hopital_id>/tout-reinitialiser/',
+        views.tout_reinitialiser_stock_hopital,
+        name='tout_reinitialiser_stock_hopital'
     ),
 
+    path(
+    'stocks-hopitaux/<int:hopital_id>/reinitialiser-medicaments/',
+    views.reinitialiser_medicaments_hopital,
+    name='reinitialiser_medicaments_hopital'
+),
 
-    # ---------------------------------------------------
-    # ---------------------------------------------------
-    # MISE EN JOUR 
-    #   le 21/09/2026
-    path('presence/', pointer_presence, name='pointer_presence'),
+# mise en jour le 25/09/2026
+# Acte Medical
+#
+path('actes/creer/',views.creer_acte_medical,name='creer_acte_medical'),
+path('actes/<int:pk>/',views.detail_acte_medical,name='detail_acte_medical'),
+path("actes/", liste_actes_medicaux, name="liste_actes_medicaux"),
+path("actes/<int:pk>/payer/", payer_acte_medical, name="payer_acte_medical"),
+path("actes/<int:pk>/imprimer/",views.imprimer_paiement_acte_medical,name="imprimer_paiement_acte_medical"),
+# le 30/09/2026
+path('audit/', views.liste_audit, name='liste_audit'),
+
+
+
+# --------------------------
+# --------------------------
+#
+#
+    path("conference/ouvrir/", views.create_video_room, name="create_video_room"),
+    path("video/<str:room_name>/", views.video_call_room, name="video_call_room"),
+    path("video-room/<uuid:room_id>/add-colleague/", views.add_colleague_to_room, name="add_colleague_to_room"),
+
+
+# ----------- le 09/10/2025
+#
+# Campagne gestion
+path("gestion_campagnes/",views.gestion_campagnes , name = "gestion_campagnes"),
+path('campagnes/participants/<int:pk>/modifier/',views.modifier_campagne,name='modifier_campagne'),
+path('campagnes/<int:campagne_id>/participants/',views.participants_campagne,name='participants_campagne'),
+
+    path(
+        'campagnes/<int:campagne_id>/participants/enregistrer/',
+        views.enregistrer_participant_campagne,
+        name='enregistrer_participant_campagne',
+    ),
+
+    path(
+        'campagnes/participants/<int:participant_id>/modifier/',
+        views.modifier_participant_campagne,
+        name='modifier_participant_campagne',
+    ),
+
+     path(
+   'campagne/<int:campagne_id>/nouveau-patient/',
+ views.enregistrer_patient_campagne,
+  name='enregistrer_patient_campagne',
+),
+
+
+    # -- le service worker doit être à la racine du site --
+  path('serviceworker.js', views.service_worker),
+
  ]

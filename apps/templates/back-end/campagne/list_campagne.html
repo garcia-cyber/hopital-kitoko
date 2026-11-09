@@ -1,0 +1,2503 @@
+{% load static %}
+{% load l10n %}
+
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Gestion des campagnes | JMC ERP</title>
+
+    {% include 'back-end/includes/css.html' %}
+
+    <style>
+        :root {
+            --primary: #1f4e79;
+            --primary-dark: #173b5d;
+            --secondary: #2f80b7;
+            --success: #168a55;
+            --warning: #c47b00;
+            --danger: #bd342a;
+            --dark: #263238;
+            --muted: #78858f;
+            --background: #f3f5f8;
+            --white: #ffffff;
+            --border: #e1e7ec;
+        }
+
+        body {
+            background: var(--background);
+            color: var(--dark);
+            font-family: "Roboto", Arial, sans-serif;
+        }
+
+        .page-wrapper {
+            background: var(--background);
+        }
+
+        .content {
+            padding-bottom: 40px;
+        }
+
+        .page-header {
+            margin-bottom: 22px;
+        }
+
+        .page-title {
+            color: var(--primary-dark);
+            font-size: 25px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .page-subtitle {
+            color: var(--muted);
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+
+        .breadcrumb {
+            background: transparent;
+            margin: 0;
+            padding: 0;
+        }
+
+        .breadcrumb-item,
+        .breadcrumb-item a {
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .breadcrumb-item.active {
+            color: var(--primary);
+        }
+
+        .header-actions {
+            align-items: center;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .scope-badge {
+            align-items: center;
+            background: #eaf2f8;
+            border: 1px solid #d5e5f1;
+            border-radius: 5px;
+            color: var(--primary);
+            display: inline-flex;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 10px 12px;
+        }
+
+        .scope-badge i {
+            margin-right: 7px;
+        }
+
+        .btn-erp {
+            background: var(--primary);
+            border: 1px solid var(--primary);
+            border-radius: 5px;
+            color: #fff;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 10px 17px;
+        }
+
+        .btn-erp:hover {
+            background: var(--primary-dark);
+            border-color: var(--primary-dark);
+            color: #fff;
+        }
+
+        .btn-outline-erp {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            color: var(--dark);
+            font-size: 13px;
+            font-weight: 600;
+            padding: 10px 15px;
+        }
+
+        .btn-outline-erp:hover {
+            background: #f1f4f7;
+            color: var(--primary);
+        }
+
+        .btn-action {
+            align-items: center;
+            border-radius: 5px;
+            display: inline-flex;
+            font-size: 12px;
+            font-weight: 600;
+            justify-content: center;
+            padding: 7px 10px;
+        }
+
+        .btn-participants {
+            background: #eaf2f8;
+            border: 1px solid #d5e5f1;
+            color: var(--primary);
+        }
+
+        .btn-participants:hover {
+            background: var(--primary);
+            color: #fff;
+        }
+
+        .btn-modifier {
+            background: #fff;
+            border: 1px solid var(--border);
+            color: var(--dark);
+        }
+
+        .btn-modifier:hover {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: #fff;
+        }
+
+        .summary-card {
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            min-height: 115px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .summary-card::before {
+            background: var(--primary);
+            content: "";
+            height: 100%;
+            left: 0;
+            position: absolute;
+            top: 0;
+            width: 4px;
+        }
+
+        .summary-card.active::before {
+            background: var(--success);
+        }
+
+        .summary-card.future::before {
+            background: var(--warning);
+        }
+
+        .summary-card.finished::before {
+            background: #65727d;
+        }
+
+        .summary-content {
+            align-items: center;
+            display: flex;
+            justify-content: space-between;
+            padding: 21px;
+        }
+
+        .summary-label {
+            color: var(--muted);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .4px;
+            margin-bottom: 7px;
+            text-transform: uppercase;
+        }
+
+        .summary-value {
+            color: var(--primary-dark);
+            font-size: 26px;
+            font-weight: 700;
+            line-height: 1;
+            margin: 0;
+        }
+
+        .summary-note {
+            color: var(--muted);
+            font-size: 11px;
+            margin-top: 7px;
+        }
+
+        .summary-icon {
+            align-items: center;
+            background: #edf4fa;
+            border-radius: 50%;
+            color: var(--primary);
+            display: flex;
+            font-size: 20px;
+            height: 50px;
+            justify-content: center;
+            width: 50px;
+        }
+
+        .summary-card.active .summary-icon {
+            background: #e8f6ef;
+            color: var(--success);
+        }
+
+        .summary-card.future .summary-icon {
+            background: #fff4df;
+            color: var(--warning);
+        }
+
+        .summary-card.finished .summary-icon {
+            background: #edf0f3;
+            color: #65727d;
+        }
+
+        .erp-card {
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            margin-bottom: 20px;
+        }
+
+        .erp-card-header {
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            padding: 17px 20px;
+        }
+
+        .erp-card-title {
+            color: var(--primary-dark);
+            font-size: 16px;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .erp-card-title i {
+            color: var(--primary);
+            margin-right: 8px;
+        }
+
+        .erp-card-subtitle {
+            color: var(--muted);
+            font-size: 12px;
+            margin: 4px 0 0;
+        }
+
+        .erp-card-body {
+            padding: 20px;
+        }
+
+        .filter-box {
+            background: #fbfcfd;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 16px;
+        }
+
+        .filter-label {
+            color: var(--muted);
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+        }
+
+        .form-control,
+        .custom-select {
+            border: 1px solid #d6dfe6;
+            border-radius: 5px;
+            color: var(--dark);
+            font-size: 13px;
+            min-height: 42px;
+        }
+
+        .form-control:focus,
+        .custom-select:focus {
+            border-color: var(--secondary);
+            box-shadow: 0 0 0 2px rgba(47, 128, 183, .12);
+        }
+
+        .search-container {
+            position: relative;
+        }
+
+        .search-container i {
+            color: #9ba8b2;
+            left: 13px;
+            position: absolute;
+            top: 14px;
+            z-index: 2;
+        }
+
+        .search-container input {
+            padding-left: 37px;
+        }
+
+        .table-responsive {
+            min-height: 190px;
+        }
+
+        .campaign-table {
+            margin-bottom: 0;
+            min-width: 1350px;
+        }
+
+        .campaign-table thead th {
+            background: #f8fafc;
+            border-bottom: 1px solid var(--border);
+            border-top: none;
+            color: #697783;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: .45px;
+            padding: 13px 12px;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        .campaign-table tbody td {
+            border-top: 1px solid #edf0f3;
+            color: var(--dark);
+            font-size: 12px;
+            padding: 15px 12px;
+            vertical-align: middle;
+        }
+
+        .campaign-table tbody tr:hover {
+            background: #fbfdff;
+        }
+
+        .campaign-name {
+            color: var(--primary-dark);
+            display: block;
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 5px;
+            max-width: 220px;
+        }
+
+        .campaign-description {
+            color: var(--muted);
+            display: block;
+            font-size: 11px;
+            line-height: 1.45;
+            max-width: 220px;
+        }
+
+        .type-badge {
+            border-radius: 4px;
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 6px 8px;
+            white-space: nowrap;
+        }
+
+        .type-free {
+            background: #e8f6ef;
+            color: #147a4b;
+        }
+
+        .type-paid {
+            background: #eaf2f8;
+            color: #1f4e79;
+        }
+
+        .type-couple {
+            background: #fff4df;
+            color: #a36500;
+        }
+
+        .hospital-name {
+            color: var(--dark);
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            max-width: 150px;
+        }
+
+        .hospital-name i {
+            color: var(--primary);
+            margin-right: 5px;
+        }
+
+        .creator-name {
+            color: var(--dark);
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            max-width: 140px;
+        }
+
+        .creator-date {
+            color: var(--muted);
+            display: block;
+            font-size: 10px;
+            margin-top: 4px;
+        }
+
+        .date-label {
+            color: var(--muted);
+            display: block;
+            font-size: 10px;
+            margin-bottom: 2px;
+        }
+
+        .date-value {
+            color: var(--dark);
+            display: block;
+            font-size: 11px;
+            white-space: nowrap;
+        }
+
+        .price-cdf {
+            color: var(--primary-dark);
+            display: block;
+            font-size: 12px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .price-usd {
+            color: var(--muted);
+            display: block;
+            font-size: 10px;
+            margin-top: 3px;
+            white-space: nowrap;
+        }
+
+        .status-badge {
+            border-radius: 20px;
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 6px 10px;
+            white-space: nowrap;
+        }
+
+        .status-active {
+            background: #e8f6ef;
+            color: #147a4b;
+        }
+
+        .status-future {
+            background: #fff4df;
+            color: #a36500;
+        }
+
+        .status-finished {
+            background: #edf0f3;
+            color: #65727d;
+        }
+
+        .status-cancelled {
+            background: #fcebea;
+            color: #b52b20;
+        }
+
+        .status-draft {
+            background: #edf0f3;
+            color: #65727d;
+        }
+
+        .empty-state {
+            padding: 60px 20px;
+            text-align: center;
+        }
+
+        .empty-icon {
+            align-items: center;
+            background: #f0f4f8;
+            border-radius: 50%;
+            color: #9ba8b2;
+            display: inline-flex;
+            font-size: 31px;
+            height: 75px;
+            justify-content: center;
+            margin-bottom: 16px;
+            width: 75px;
+        }
+
+        .empty-state h5 {
+            color: var(--primary-dark);
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .empty-state p {
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .pagination {
+            margin: 0;
+        }
+
+        .pagination .page-link {
+            border: 1px solid var(--border);
+            color: var(--primary);
+            font-size: 12px;
+            margin: 0 2px;
+        }
+
+        .pagination .page-item.active .page-link {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: #fff;
+        }
+
+        .pagination .page-item.disabled .page-link {
+            color: #adb7c0;
+        }
+
+        .modal-content {
+            border: none;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .modal-header {
+            background: var(--primary);
+            color: #fff;
+            padding: 17px 22px;
+        }
+
+        .modal-title {
+            font-size: 17px;
+            font-weight: 700;
+        }
+
+        .modal-header .close {
+            color: #fff;
+            opacity: .9;
+        }
+
+        .modal-body {
+            padding: 22px;
+        }
+
+        .modal-footer {
+            background: #fafbfc;
+            border-top: 1px solid var(--border);
+            padding: 14px 22px;
+        }
+
+        .modal-body label {
+            color: var(--dark);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .modal-body textarea {
+            min-height: 100px;
+        }
+
+        .required {
+            color: var(--danger);
+        }
+
+        .alert {
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        .alert-info {
+            background: #eaf2f8;
+            color: var(--primary-dark);
+        }
+
+        .errorlist {
+            color: var(--danger);
+            font-size: 11px;
+            list-style: none;
+            margin: 5px 0 0;
+            padding: 0;
+        }
+
+        .form-check {
+            margin-top: 28px;
+        }
+
+        .form-check-label {
+            color: var(--dark);
+            font-size: 13px;
+            font-weight: 500 !important;
+        }
+
+        .price-help {
+            color: var(--muted);
+            display: block;
+            font-size: 11px;
+            margin-top: 5px;
+        }
+
+        /* ---------- Panier des prestations ---------- */
+
+        .panier-box {
+            background: #fbfcfd;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 16px;
+        }
+
+        .panier-title {
+            color: var(--primary-dark);
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 14px;
+        }
+
+        .panier-title i {
+            color: var(--primary);
+            margin-right: 6px;
+        }
+
+        .panier-table {
+            background: #fff;
+            margin-bottom: 0;
+        }
+
+        .panier-table thead th {
+            background: #f8fafc;
+            color: #697783;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 9px 10px;
+        }
+
+        .panier-table td {
+            font-size: 12px;
+            padding: 8px 10px;
+            vertical-align: middle;
+        }
+
+        .panier-resume {
+            color: var(--muted);
+            display: block;
+            font-size: 11px;
+            margin-top: 8px;
+        }
+
+        /* Liste des prestations : toujours visible, jamais flottante */
+        .liste-prestations {
+            height: auto !important;
+            overflow-y: auto;
+        }
+
+        .liste-prestations option {
+            font-size: 13px;
+            padding: 7px 10px;
+        }
+
+        .aucune-prestation {
+            color: var(--muted);
+            display: none;
+            font-size: 12px;
+            margin-top: 6px;
+        }
+
+        @media (max-width: 991px) {
+            .header-actions {
+                justify-content: flex-start;
+                margin-top: 15px;
+            }
+
+            .summary-card {
+                margin-bottom: 15px;
+            }
+        }
+
+        @media (max-width: 575px) {
+            .page-title {
+                font-size: 21px;
+            }
+
+            .erp-card-header {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .header-actions {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .scope-badge,
+            .btn-new-campaign {
+                justify-content: center;
+                width: 100%;
+            }
+        }
+    </style>
+
+</head>
+
+<body>
+
+<div class="main-wrapper">
+
+    {% include 'back-end/includes/header.html' %}
+    {% include 'back-end/includes/sidebar.html' %}
+
+    <div class="page-wrapper">
+
+        <div class="content container-fluid">
+
+            <!-- En-tête -->
+            <div class="page-header">
+
+                <div class="row align-items-center">
+
+                    <div class="col-lg-7">
+
+                        <h3 class="page-title">
+                            Gestion des campagnes
+                        </h3>
+
+                        <p class="page-subtitle">
+                            Administration des campagnes médicales et promotionnelles.
+                        </p>
+
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item">
+                                <a href="{% url 'dashboard' %}">
+                                    Tableau de bord
+                                </a>
+                            </li>
+
+                            <li class="breadcrumb-item active">
+                                Campagnes
+                            </li>
+                        </ol>
+
+                    </div>
+
+                    <div class="col-lg-5">
+
+                        <div class="header-actions">
+
+                            {% if est_admin %}
+
+                                <span class="scope-badge">
+                                    <i class="fa fa-shield-alt"></i>
+                                    Accès administrateur global
+                                </span>
+
+                            {% elif hopital_user %}
+
+                                <span class="scope-badge">
+                                    <i class="fa fa-hospital"></i>
+                                    {{ hopital_user.nomH }}
+                                </span>
+
+                            {% else %}
+
+                                <span class="scope-badge">
+                                    <i class="fa fa-exclamation-triangle"></i>
+                                    Hôpital non associé
+                                </span>
+
+                            {% endif %}
+
+                            <button type="button"
+                                    class="btn btn-erp btn-new-campaign"
+                                    data-toggle="modal"
+                                    data-target="#campaignModal">
+
+                                <i class="fa fa-plus mr-1"></i>
+                                Nouvelle campagne
+
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- Messages -->
+            {% if messages %}
+
+                {% for message in messages %}
+
+                    <div class="alert
+                        {% if message.tags == 'success' %}
+                            alert-success
+                        {% elif message.tags == 'error' %}
+                            alert-danger
+                        {% elif message.tags == 'warning' %}
+                            alert-warning
+                        {% else %}
+                            alert-info
+                        {% endif %}
+                        alert-dismissible fade show"
+                        role="alert">
+
+                        {% if message.tags == 'success' %}
+                            <i class="fa fa-check-circle mr-2"></i>
+                        {% elif message.tags == 'error' %}
+                            <i class="fa fa-times-circle mr-2"></i>
+                        {% elif message.tags == 'warning' %}
+                            <i class="fa fa-exclamation-triangle mr-2"></i>
+                        {% else %}
+                            <i class="fa fa-info-circle mr-2"></i>
+                        {% endif %}
+
+                        {{ message }}
+
+                        <button type="button"
+                                class="close"
+                                data-dismiss="alert"
+                                aria-label="Fermer">
+
+                            <span aria-hidden="true">&times;</span>
+
+                        </button>
+
+                    </div>
+
+                {% endfor %}
+
+            {% endif %}
+
+            <!-- Résumé -->
+            <div class="row mb-3">
+
+                <div class="col-xl-3 col-md-6">
+                    <div class="summary-card">
+
+                        <div class="summary-content">
+
+                            <div>
+                                <div class="summary-label">
+                                    Total campagnes
+                                </div>
+
+                                <p class="summary-value">
+                                    {{ total_campagnes }}
+                                </p>
+
+                                <div class="summary-note">
+                                    Toutes les campagnes visibles
+                                </div>
+                            </div>
+
+                            <div class="summary-icon">
+                                <i class="fa fa-bullhorn"></i>
+                            </div>
+
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="col-xl-3 col-md-6">
+                    <div class="summary-card active">
+
+                        <div class="summary-content">
+
+                            <div>
+                                <div class="summary-label">
+                                    Campagnes en cours
+                                </div>
+
+                                <p class="summary-value">
+                                    {{ campagnes_en_cours }}
+                                </p>
+
+                                <div class="summary-note">
+                                    Actives aujourd'hui
+                                </div>
+                            </div>
+
+                            <div class="summary-icon">
+                                <i class="fa fa-check-circle"></i>
+                            </div>
+
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="col-xl-3 col-md-6">
+                    <div class="summary-card future">
+
+                        <div class="summary-content">
+
+                            <div>
+                                <div class="summary-label">
+                                    Campagnes à venir
+                                </div>
+
+                                <p class="summary-value">
+                                    {{ campagnes_a_venir }}
+                                </p>
+
+                                <div class="summary-note">
+                                    Date de début future
+                                </div>
+                            </div>
+
+                            <div class="summary-icon">
+                                <i class="fa fa-clock"></i>
+                            </div>
+
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="col-xl-3 col-md-6">
+                    <div class="summary-card finished">
+
+                        <div class="summary-content">
+
+                            <div>
+                                <div class="summary-label">
+                                    Campagnes terminées
+                                </div>
+
+                                <p class="summary-value">
+                                    {{ campagnes_terminees }}
+                                </p>
+
+                                <div class="summary-note">
+                                    Date de fin dépassée
+                                </div>
+                            </div>
+
+                            <div class="summary-icon">
+                                <i class="fa fa-calendar-times"></i>
+                            </div>
+
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Filtrage -->
+            <div class="erp-card">
+
+                <div class="erp-card-header">
+
+                    <div>
+                        <h4 class="erp-card-title">
+                            <i class="fa fa-filter"></i>
+                            Recherche et filtrage
+                        </h4>
+
+                        <p class="erp-card-subtitle">
+                            Recherchez et filtrez les campagnes enregistrées.
+                        </p>
+                    </div>
+
+                    <a href="{% url 'gestion_campagnes' %}"
+                       class="btn btn-outline-erp btn-sm">
+
+                        <i class="fa fa-redo mr-1"></i>
+                        Réinitialiser
+
+                    </a>
+
+                </div>
+
+                <div class="erp-card-body">
+
+                    <form method="GET"
+                          action="{% url 'gestion_campagnes' %}">
+
+                        <div class="filter-box">
+
+                            <div class="row">
+
+                                <div class="col-lg-4 col-md-6 mb-3 mb-lg-0">
+
+                                    <label class="filter-label">
+                                        Recherche
+                                    </label>
+
+                                    <div class="search-container">
+
+                                        <i class="fa fa-search"></i>
+
+                                        <input type="text"
+                                               name="q"
+                                               value="{{ query }}"
+                                               class="form-control"
+                                               placeholder="Nom, description, hôpital...">
+
+                                    </div>
+
+                                </div>
+
+                                <div class="col-lg-2 col-md-6 mb-3 mb-lg-0">
+
+                                    <label class="filter-label">
+                                        Période
+                                    </label>
+
+                                    <select name="statut"
+                                            class="custom-select">
+
+                                        <option value="toutes"
+                                            {% if statut == 'toutes' %}selected{% endif %}>
+                                            Toutes
+                                        </option>
+
+                                        <option value="encours"
+                                            {% if statut == 'encours' %}selected{% endif %}>
+                                            En cours
+                                        </option>
+
+                                        <option value="avenir"
+                                            {% if statut == 'avenir' %}selected{% endif %}>
+                                            À venir
+                                        </option>
+
+                                        <option value="terminees"
+                                            {% if statut == 'terminees' %}selected{% endif %}>
+                                            Terminées
+                                        </option>
+
+                                    </select>
+
+                                </div>
+
+                                <div class="col-lg-4 col-md-6 mb-3 mb-lg-0">
+
+                                    <label class="filter-label">
+                                        Taux appliqué
+                                    </label>
+
+                                    <div class="form-control bg-light">
+                                        1 USD =
+                                        <strong>{{ taux|floatformat:2 }}</strong>
+                                        CDF
+                                    </div>
+
+                                </div>
+
+                                <div class="col-lg-2 col-md-6">
+
+                                    <label class="filter-label d-none d-lg-block">
+                                        &nbsp;
+                                    </label>
+
+                                    <button type="submit"
+                                            class="btn btn-erp btn-block">
+
+                                        <i class="fa fa-search mr-1"></i>
+                                        Filtrer
+
+                                    </button>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </form>
+
+                </div>
+
+            </div>
+
+            <!-- Tableau -->
+            <div class="erp-card">
+
+                <div class="erp-card-header">
+
+                    <div>
+                        <h4 class="erp-card-title">
+                            <i class="fa fa-table"></i>
+                            Registre des campagnes
+                        </h4>
+
+                        <p class="erp-card-subtitle">
+                            Les campagnes disponibles selon vos droits d'accès.
+                        </p>
+                    </div>
+
+                    <span class="small text-muted">
+                        {% if campagnes.paginator.count == 0 %}
+                            Aucun résultat
+                        {% elif campagnes.paginator.count == 1 %}
+                            1 campagne
+                        {% else %}
+                            {{ campagnes.paginator.count }} campagnes
+                        {% endif %}
+                    </span>
+
+                </div>
+
+                <div class="erp-card-body p-0">
+
+                    {% if campagnes %}
+
+                        <div class="table-responsive">
+
+                            <table class="table campaign-table">
+
+                                <thead>
+
+                                    <tr>
+                                        <th>Campagne</th>
+                                        <th>Type</th>
+                                        <th>Hôpital</th>
+                                        <th>Créateur</th>
+                                        <th>Période</th>
+                                        <th>Prix campagne</th>
+                                        <th>Prix/personne</th>
+                                        <th>Prestations</th>
+                                        <th>Statut</th>
+                                        <th>Actions</th>
+                                    </tr>
+
+                                </thead>
+
+                                <tbody>
+
+                                    {% for campagne in campagnes %}
+
+                                        <tr>
+
+                                            <!-- Nom et description -->
+                                            <td>
+
+                                                <span class="campaign-name">
+                                                    {{ campagne.nom }}
+                                                </span>
+
+                                                <span class="campaign-description">
+
+                                                    {% if campagne.description %}
+                                                        {{ campagne.description|truncatechars:105 }}
+                                                    {% else %}
+                                                        Aucune description disponible.
+                                                    {% endif %}
+
+                                                </span>
+
+                                            </td>
+
+                                            <!-- Type -->
+                                            <td>
+
+                                                {% if campagne.type_campagne == 'GRATUITE' %}
+
+                                                    <span class="type-badge type-free">
+                                                        Campagne gratuite
+                                                    </span>
+
+                                                {% elif campagne.type_campagne == 'COUPLE_GRATUIT' %}
+
+                                                    <span class="type-badge type-free">
+                                                        Couple gratuite
+                                                    </span>
+
+                                                {% elif campagne.type_campagne == 'COUPLE' %}
+
+                                                    <span class="type-badge type-couple">
+                                                        Couple payante
+                                                    </span>
+
+                                                {% else %}
+
+                                                    <span class="type-badge type-paid">
+                                                        Campagne payante
+                                                    </span>
+
+                                                {% endif %}
+
+                                            </td>
+
+                                            <!-- Hôpital -->
+                                            <td>
+
+                                                {% if campagne.hopital %}
+
+                                                    <span class="hospital-name">
+                                                        <i class="fa fa-hospital"></i>
+                                                        {{ campagne.hopital.nomH }}
+                                                    </span>
+
+                                                {% else %}
+
+                                                    <span class="text-muted">
+                                                        Non défini
+                                                    </span>
+
+                                                {% endif %}
+
+                                            </td>
+
+                                            <!-- Créateur -->
+                                            <td>
+
+                                                {% if campagne.creee_par %}
+
+                                                    <span class="creator-name">
+                                                        <i class="fa fa-user mr-1"></i>
+
+                                                        {% if campagne.creee_par.get_full_name %}
+                                                            {{ campagne.creee_par.get_full_name }}
+                                                        {% else %}
+                                                            {{ campagne.creee_par.username }}
+                                                        {% endif %}
+
+                                                    </span>
+
+                                                    <span class="creator-date">
+                                                        Créée le
+                                                        {{ campagne.date_creation|date:"d/m/Y H:i" }}
+                                                    </span>
+
+                                                {% else %}
+
+                                                    <span class="text-muted">
+                                                        Non défini
+                                                    </span>
+
+                                                {% endif %}
+
+                                            </td>
+
+                                            <!-- Dates -->
+                                            <td>
+
+                                                <span class="date-label">
+                                                    Début
+                                                </span>
+
+                                                <span class="date-value">
+                                                    {{ campagne.date_debut|date:"d/m/Y" }}
+                                                </span>
+
+                                                <span class="date-label mt-2">
+                                                    Fin
+                                                </span>
+
+                                                <span class="date-value">
+
+                                                    {% if campagne.date_fin %}
+                                                        {{ campagne.date_fin|date:"d/m/Y" }}
+                                                    {% else %}
+                                                        Sans limite
+                                                    {% endif %}
+
+                                                </span>
+
+                                            </td>
+
+                                            <!-- Prix campagne -->
+                                            <td>
+
+                                                <span class="price-cdf">
+                                                    {{ campagne.prix_defaut_cdf|floatformat:2 }}
+                                                    CDF
+                                                </span>
+
+                                                <span class="price-usd">
+                                                    {{ campagne.prix_usd|floatformat:2 }}
+                                                    USD
+                                                </span>
+
+                                            </td>
+
+                                            <!-- Prix par personne -->
+                                            <td>
+
+                                                <span class="price-cdf">
+                                                    {{ campagne.prix_par_personne|floatformat:2 }}
+                                                    CDF
+                                                </span>
+
+                                                <span class="price-usd">
+                                                    {{ campagne.prix_par_personne_usd|floatformat:2 }}
+                                                    USD
+                                                </span>
+
+                                            </td>
+
+                                            <!-- Prestations -->
+                                            <td>
+
+                                                {% with total_prestations=campagne.prestations_associees.all.count %}
+
+                                                    {% if total_prestations == 0 %}
+
+                                                        <span class="text-muted">
+                                                            Aucune
+                                                        </span>
+
+                                                    {% else %}
+
+                                                        <button type="button"
+                                                                class="btn btn-sm btn-outline-erp"
+                                                                data-toggle="modal"
+                                                                data-target="#prestationsModal{{ campagne.id }}">
+
+                                                            <i class="fa fa-list mr-1"></i>
+                                                            {{ total_prestations }}
+                                                            prestation{{ total_prestations|pluralize }}
+
+                                                        </button>
+
+                                                    {% endif %}
+
+                                                {% endwith %}
+
+                                            </td>
+
+                                            <!-- Statut -->
+                                            <td>
+
+                                                {% if campagne.statut_campagne == 'encours' %}
+
+                                                    <span class="status-badge status-active">
+                                                        <i class="fa fa-check-circle mr-1"></i>
+                                                        En cours
+                                                    </span>
+
+                                                {% elif campagne.statut_campagne == 'avenir' %}
+
+                                                    <span class="status-badge status-future">
+                                                        <i class="fa fa-clock mr-1"></i>
+                                                        À venir
+                                                    </span>
+
+                                                {% elif campagne.statut_campagne == 'terminee' %}
+
+                                                    <span class="status-badge status-finished">
+                                                        <i class="fa fa-calendar-times mr-1"></i>
+                                                        Terminée
+                                                    </span>
+
+                                                {% elif campagne.statut_campagne == 'annulee' %}
+
+                                                    <span class="status-badge status-cancelled">
+                                                        <i class="fa fa-ban mr-1"></i>
+                                                        Annulée
+                                                    </span>
+
+                                                {% else %}
+
+                                                    <span class="status-badge status-draft">
+                                                        <i class="fa fa-pencil-alt mr-1"></i>
+                                                        Brouillon
+                                                    </span>
+
+                                                {% endif %}
+
+                                            </td>
+
+                                            <!-- Actions -->
+                                            <td>
+
+                                                <div class="d-flex flex-wrap gap-1">
+
+                                                    <a href="{% url 'participants_campagne' campagne.id %}"
+                                                       class="btn btn-action btn-participants"
+                                                       title="Participants">
+
+                                                        <i class="fa fa-users"></i>
+
+                                                    </a>
+
+                                                    <a href="{% url 'modifier_campagne' campagne.id %}"
+                                                       class="btn btn-action btn-modifier"
+                                                       title="Modifier la campagne">
+
+                                                        <i class="fa fa-edit"></i>
+
+                                                    </a>
+
+                                                </div>
+
+                                            </td>
+
+                                        </tr>
+
+                                    {% endfor %}
+
+                                </tbody>
+
+                            </table>
+
+                        </div>
+
+                    {% else %}
+
+                        <div class="empty-state">
+
+                            <div class="empty-icon">
+                                <i class="fa fa-bullhorn"></i>
+                            </div>
+
+                            <h5>Aucune campagne trouvée</h5>
+
+                            {% if query or statut != 'toutes' %}
+
+                                <p>
+                                    Aucun résultat ne correspond à votre recherche.
+                                </p>
+
+                                <a href="{% url 'gestion_campagnes' %}"
+                                   class="btn btn-outline-erp">
+
+                                    <i class="fa fa-redo mr-1"></i>
+                                    Réinitialiser les filtres
+
+                                </a>
+
+                            {% else %}
+
+                                <p>
+                                    Aucune campagne n'a encore été créée.
+                                </p>
+
+                                <button type="button"
+                                        class="btn btn-erp"
+                                        data-toggle="modal"
+                                        data-target="#campaignModal">
+
+                                    <i class="fa fa-plus mr-1"></i>
+                                    Ajouter une campagne
+
+                                </button>
+
+                            {% endif %}
+
+                        </div>
+
+                    {% endif %}
+
+                </div>
+
+                <!-- Pagination -->
+                {% if campagnes.has_other_pages %}
+
+                    <div class="border-top p-3">
+
+                        <div class="row align-items-center">
+
+                            <div class="col-md-6 mb-2 mb-md-0">
+
+                                <small class="text-muted">
+                                    Page {{ campagnes.number }}
+                                    sur {{ campagnes.paginator.num_pages }}
+                                </small>
+
+                            </div>
+
+                            <div class="col-md-6">
+
+                                <nav aria-label="Pagination des campagnes">
+
+                                    <ul class="pagination justify-content-md-end">
+
+                                        {% if campagnes.has_previous %}
+
+                                            <li class="page-item">
+
+                                                <a class="page-link"
+                                                   href="?q={{ query|urlencode }}&statut={{ statut }}&page={{ campagnes.previous_page_number }}">
+
+                                                    <i class="fa fa-chevron-left"></i>
+
+                                                </a>
+
+                                            </li>
+
+                                        {% else %}
+
+                                            <li class="page-item disabled">
+
+                                                <span class="page-link">
+                                                    <i class="fa fa-chevron-left"></i>
+                                                </span>
+
+                                            </li>
+
+                                        {% endif %}
+
+                                        {% for page_num in campagnes.paginator.page_range %}
+
+                                            {% if campagnes.number == page_num %}
+
+                                                <li class="page-item active">
+
+                                                    <span class="page-link">
+                                                        {{ page_num }}
+                                                    </span>
+
+                                                </li>
+
+                                            {% else %}
+
+                                                <li class="page-item">
+
+                                                    <a class="page-link"
+                                                       href="?q={{ query|urlencode }}&statut={{ statut }}&page={{ page_num }}">
+
+                                                        {{ page_num }}
+
+                                                    </a>
+
+                                                </li>
+
+                                            {% endif %}
+
+                                        {% endfor %}
+
+                                        {% if campagnes.has_next %}
+
+                                            <li class="page-item">
+
+                                                <a class="page-link"
+                                                   href="?q={{ query|urlencode }}&statut={{ statut }}&page={{ campagnes.next_page_number }}">
+
+                                                    <i class="fa fa-chevron-right"></i>
+
+                                                </a>
+
+                                            </li>
+
+                                        {% else %}
+
+                                            <li class="page-item disabled">
+
+                                                <span class="page-link">
+                                                    <i class="fa fa-chevron-right"></i>
+                                                </span>
+
+                                            </li>
+
+                                        {% endif %}
+
+                                    </ul>
+
+                                </nav>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                {% endif %}
+
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Modales des prestations (incluses et suppléments) -->
+{% for campagne in campagnes %}
+
+    <div class="modal fade"
+         id="prestationsModal{{ campagne.id }}"
+         tabindex="-1"
+         role="dialog"
+         aria-hidden="true">
+
+        <div class="modal-dialog modal-lg modal-dialog-centered"
+             role="document">
+
+            <div class="modal-content">
+
+                <div class="modal-header">
+
+                    <h5 class="modal-title">
+                        <i class="fa fa-list mr-2"></i>
+                        Prestations : {{ campagne.nom }}
+                    </h5>
+
+                    <button type="button"
+                            class="close"
+                            data-dismiss="modal"
+                            aria-label="Fermer">
+
+                        <span aria-hidden="true">&times;</span>
+
+                    </button>
+
+                </div>
+
+                <div class="modal-body">
+
+                    {% if campagne.prestations_associees.all %}
+
+                        <div class="table-responsive"
+                             style="max-height: 450px; overflow-y: auto;">
+
+                            <table class="table table-sm table-striped">
+
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Prestation</th>
+                                        <th>Type</th>
+                                        <th>Prix supplément</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+
+                                    {% for item in campagne.prestations_associees.all %}
+
+                                        <tr>
+                                            <td>
+                                                {{ forloop.counter }}
+                                            </td>
+
+                                            <td>
+                                                {{ item.prestation.libelle }}
+
+                                                {% if not item.actif %}
+                                                    <span class="badge badge-secondary ml-1">
+                                                        Inactive
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+
+                                            <td>
+                                                {% if item.type_inclusion == 'SUPPLEMENT' %}
+                                                    <span class="badge badge-warning">
+                                                        Supplément
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge badge-success">
+                                                        Incluse
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+
+                                            <td>
+                                                {% if item.type_inclusion == 'SUPPLEMENT' %}
+                                                    {{ item.prix_supplement_cdf|floatformat:2 }} CDF
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+
+                                    {% endfor %}
+
+                                </tbody>
+
+                            </table>
+
+                        </div>
+
+                    {% else %}
+
+                        <div class="text-center text-muted py-4">
+                            <i class="fa fa-inbox fa-2x mb-2"></i>
+
+                            <p class="mb-0">
+                                Aucune prestation associée à cette campagne.
+                            </p>
+                        </div>
+
+                    {% endif %}
+
+                </div>
+
+                <div class="modal-footer">
+
+                    <button type="button"
+                            class="btn btn-outline-erp"
+                            data-dismiss="modal">
+                        Fermer
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+{% endfor %}
+
+<!-- Modal de création -->
+<div class="modal fade"
+     id="campaignModal"
+     tabindex="-1"
+     role="dialog"
+     aria-labelledby="campaignModalLabel"
+     aria-hidden="true">
+
+    <div class="modal-dialog modal-lg modal-dialog-centered"
+         role="document">
+
+        <div class="modal-content">
+
+            <div class="modal-header">
+
+                <h5 class="modal-title"
+                    id="campaignModalLabel">
+
+                    <i class="fa fa-plus-circle mr-2"></i>
+                    Nouvelle campagne
+
+                </h5>
+
+                <button type="button"
+                        class="close"
+                        data-dismiss="modal"
+                        aria-label="Fermer">
+
+                    <span aria-hidden="true">&times;</span>
+
+                </button>
+
+            </div>
+
+            <form method="POST"
+                  id="campagneForm"
+                  action="{% url 'gestion_campagnes' %}"
+                  novalidate>
+
+                {% csrf_token %}
+
+                <div class="modal-body">
+
+                    <!-- Toutes les erreurs du formulaire au même endroit -->
+                    {% if form.errors %}
+
+                        <div class="alert alert-danger">
+
+                            <strong>Veuillez corriger les points suivants :</strong>
+
+                            <ul class="mb-0 pl-3 mt-2">
+
+                                {% for error in form.non_field_errors %}
+                                    <li>{{ error }}</li>
+                                {% endfor %}
+
+                                {% for field in form %}
+                                    {% for error in field.errors %}
+                                        <li>{{ field.label }} : {{ error }}</li>
+                                    {% endfor %}
+                                {% endfor %}
+
+                            </ul>
+
+                        </div>
+
+                    {% endif %}
+
+                    {% if not est_admin and hopital_user %}
+
+                        <div class="alert alert-info">
+
+                            <i class="fa fa-lock mr-1"></i>
+
+                            Cette campagne sera automatiquement enregistrée
+                            pour l'hôpital :
+
+                            <strong>{{ hopital_user.nomH }}</strong>
+
+                        </div>
+
+                    {% elif not est_admin and not hopital_user %}
+
+                        <div class="alert alert-warning">
+
+                            <i class="fa fa-exclamation-triangle mr-1"></i>
+
+                            Votre compte n'est associé à aucun hôpital.
+
+                        </div>
+
+                    {% endif %}
+
+                    <div class="row">
+
+                        <!-- Nom -->
+                        <div class="col-md-6 mb-3">
+
+                            <label for="{{ form.nom.id_for_label }}">
+                                {{ form.nom.label }}
+                                {% if form.nom.field.required %}
+                                    <span class="required">*</span>
+                                {% endif %}
+                            </label>
+
+                            {{ form.nom }}
+
+                        </div>
+
+                        <!-- Type de campagne -->
+                        <div class="col-md-6 mb-3">
+
+                            <label for="{{ form.type_campagne.id_for_label }}">
+                                {{ form.type_campagne.label }}
+                                {% if form.type_campagne.field.required %}
+                                    <span class="required">*</span>
+                                {% endif %}
+                            </label>
+
+                            {{ form.type_campagne }}
+
+                        </div>
+
+                        <!-- Description -->
+                        <div class="col-md-12 mb-3">
+
+                            <label for="{{ form.description.id_for_label }}">
+                                {{ form.description.label }}
+                            </label>
+
+                            {{ form.description }}
+
+                        </div>
+
+                        <!-- Prix de la campagne -->
+                        <div class="col-md-6 mb-3">
+
+                            <label for="{{ form.prix_defaut_cdf.id_for_label }}">
+                                {{ form.prix_defaut_cdf.label }}
+                                {% if form.prix_defaut_cdf.field.required %}
+                                    <span class="required">*</span>
+                                {% endif %}
+                            </label>
+
+                            {{ form.prix_defaut_cdf }}
+
+                            <small class="price-help">
+                                Pour une campagne gratuite,
+                                le prix est automatiquement fixé à 0 CDF.
+                                Pour une campagne payante,
+                                saisissez le prix officiel en CDF.
+                            </small>
+
+                        </div>
+
+                        <!-- Statut -->
+                        <div class="col-md-6 mb-3">
+
+                            <label for="{{ form.statut.id_for_label }}">
+                                {{ form.statut.label }}
+                                {% if form.statut.field.required %}
+                                    <span class="required">*</span>
+                                {% endif %}
+                            </label>
+
+                            {{ form.statut }}
+
+                            <small class="price-help">
+                                Choisissez « Active » pour lancer la campagne.
+                                « Brouillon » la laisse en préparation.
+                            </small>
+
+                        </div>
+
+                        <!-- Dates -->
+                        <div class="col-md-6 mb-3">
+
+                            <label for="{{ form.date_debut.id_for_label }}">
+                                {{ form.date_debut.label }}
+                                {% if form.date_debut.field.required %}
+                                    <span class="required">*</span>
+                                {% endif %}
+                            </label>
+
+                            {{ form.date_debut }}
+
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+
+                            <label for="{{ form.date_fin.id_for_label }}">
+                                {{ form.date_fin.label }}
+                            </label>
+
+                            {{ form.date_fin }}
+
+                        </div>
+
+                        <!-- Campagne active -->
+                        <div class="col-md-12 mb-3">
+
+                            <div class="form-check">
+
+                                {{ form.active }}
+
+                                <label class="form-check-label"
+                                       for="{{ form.active.id_for_label }}">
+
+                                    {{ form.active.label }}
+
+                                </label>
+
+                            </div>
+
+                        </div>
+
+                        <!-- ====================================================
+                             PANIER DES PRESTATIONS
+                             1. filtrer par catégorie
+                             2. rechercher et choisir la prestation (liste visible)
+                             3. choisir le type (incluse / supplément)
+                             4. ajouter au panier
+                             ==================================================== -->
+                        <div class="col-md-12 mb-3">
+
+                            <div class="panier-box">
+
+                                <h6 class="panier-title">
+                                    <i class="fa fa-shopping-basket"></i>
+                                    Prestations de la campagne
+                                </h6>
+
+                                {% with lignes=form.lignes_prestations %}
+
+                                    {% if not lignes %}
+
+                                        <div class="alert alert-warning mb-0">
+                                            Aucune prestation n'est enregistrée
+                                            pour votre hôpital.
+                                        </div>
+
+                                    {% else %}
+
+                                        <div class="row">
+
+                                            <!-- ÉTAPE 1 : catégorie -->
+                                            <div class="col-md-6 mb-2">
+
+                                                <label for="filter_categorie_campagne">
+                                                    1. Filtrer par catégorie
+                                                </label>
+
+                                                <select id="filter_categorie_campagne"
+                                                        class="form-control">
+
+                                                    <option value="all">
+                                                        -- Toutes les catégories --
+                                                    </option>
+
+                                                    {% for value, label in form.fields.categorie.choices %}
+                                                        {% if value %}
+                                                            <option value="{{ value }}">
+                                                                {{ label }}
+                                                            </option>
+                                                        {% endif %}
+                                                    {% endfor %}
+
+                                                </select>
+
+                                            </div>
+
+                                            <!-- ÉTAPE 2 : recherche + liste des prestations -->
+                                            <div class="col-md-6 mb-2">
+
+                                                <label for="recherche_prestation">
+                                                    2. Rechercher et choisir la prestation
+                                                </label>
+
+                                                <input type="text"
+                                                       id="recherche_prestation"
+                                                       class="form-control mb-2"
+                                                       autocomplete="off"
+                                                       placeholder="Tapez le nom de la prestation...">
+
+                                                <select id="select_prestation"
+                                                        class="form-control liste-prestations"
+                                                        size="6">
+
+                                                    {% for ligne in lignes %}
+                                                        <option value="{{ ligne.prestation.pk }}"
+                                                                data-cat="{{ ligne.prestation.categorie }}"
+                                                                data-libelle="{{ ligne.prestation.libelle }}"
+                                                                data-init-type="{% if ligne.prestation.pk|stringformat:'s' in form.prestations.value %}INCLUSE{% elif ligne.prestation.pk|stringformat:'s' in form.prestations_supplement.value %}SUPPLEMENT{% endif %}"
+                                                                data-init-prix="{{ ligne.champ_prix.value|default_if_none:''|unlocalize }}">
+
+                                                            [{{ ligne.prestation.categorie }}]
+                                                            {{ ligne.prestation.libelle }}
+
+                                                        </option>
+                                                    {% endfor %}
+
+                                                </select>
+
+                                                <small class="aucune-prestation"
+                                                       id="aucune_prestation">
+                                                    Aucune prestation ne correspond.
+                                                </small>
+
+                                            </div>
+
+                                            <!-- ÉTAPE 3 : type -->
+                                            <div class="col-md-4 mb-2">
+
+                                                <label for="type_inclusion_ajout">
+                                                    3. Type
+                                                </label>
+
+                                                <select id="type_inclusion_ajout"
+                                                        class="form-control">
+
+                                                    <option value="INCLUSE">
+                                                        Incluse dans la campagne
+                                                    </option>
+
+                                                    <option value="SUPPLEMENT">
+                                                        Supplément payant
+                                                    </option>
+
+                                                </select>
+
+                                            </div>
+
+                                            <!-- Prix du supplément (visible seulement pour un supplément) -->
+                                            <div class="col-md-4 mb-2"
+                                                 id="bloc_prix_ajout"
+                                                 style="display: none;">
+
+                                                <label for="prix_supplement_ajout">
+                                                    Prix du supplément (CDF)
+                                                </label>
+
+                                                <input type="number"
+                                                       id="prix_supplement_ajout"
+                                                       class="form-control"
+                                                       step="0.01"
+                                                       min="0"
+                                                       placeholder="Prix en CDF">
+
+                                            </div>
+
+                                            <!-- ÉTAPE 4 : ajouter -->
+                                            <div class="col-md-4 mb-2 d-flex align-items-end">
+
+                                                <button type="button"
+                                                        id="btn_add_prestation"
+                                                        class="btn btn-erp btn-block">
+
+                                                    <i class="fa fa-plus mr-1"></i>
+                                                    Ajouter
+
+                                                </button>
+
+                                            </div>
+
+                                        </div>
+
+                                        <!-- Le panier -->
+                                        <div class="table-responsive mt-2"
+                                             style="min-height: 0;">
+
+                                            <table class="table table-sm table-bordered panier-table">
+
+                                                <thead>
+                                                    <tr>
+                                                        <th>Prestation</th>
+                                                        <th style="width: 130px;">Type</th>
+                                                        <th style="width: 190px;">Prix supplément (CDF)</th>
+                                                        <th style="width: 45px;"></th>
+                                                    </tr>
+                                                </thead>
+
+                                                <tbody id="wrapper_prestations">
+
+                                                    <tr id="ligne_panier_vide">
+                                                        <td colspan="4"
+                                                            class="text-center text-muted">
+                                                            Aucune prestation ajoutée.
+                                                        </td>
+                                                    </tr>
+
+                                                </tbody>
+
+                                            </table>
+
+                                        </div>
+
+                                        <small class="panier-resume"
+                                               id="resume_panier"></small>
+
+                                    {% endif %}
+
+                                {% endwith %}
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <div class="small text-muted">
+                        <span class="required">*</span>
+                        Champs obligatoires
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+
+                    <button type="button"
+                            class="btn btn-outline-erp"
+                            data-dismiss="modal">
+
+                        Annuler
+
+                    </button>
+
+                    <button type="submit"
+                            class="btn btn-erp">
+
+                        <i class="fa fa-save mr-1"></i>
+                        Enregistrer la campagne
+
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% include 'back-end/includes/js.html' %}
+
+<script>
+    $(document).ready(function () {
+
+        // Les messages disparaissent après 7 secondes
+        // (sauf les alertes du formulaire, qui doivent rester visibles)
+        $('.alert').not('#campaignModal .alert').delay(7000).fadeOut(500);
+
+        {% if form.errors %}
+            $('#campaignModal').modal('show');
+        {% endif %}
+
+        // ======================================================
+        // PRIX DE LA CAMPAGNE (gratuite = 0 CDF)
+        // ======================================================
+
+        const typeField = $('#id_type_campagne');
+        const priceField = $('#id_prix_defaut_cdf');
+
+        function updatePriceField() {
+
+            const typeCampagne = typeField.val();
+
+            if (
+                typeCampagne === 'GRATUITE' ||
+                typeCampagne === 'COUPLE_GRATUIT'
+            ) {
+                priceField.val('0.00');
+                priceField.prop('readonly', true);
+
+                priceField
+                    .closest('.col-md-6')
+                    .find('.price-help')
+                    .text(
+                        'Cette campagne est gratuite. ' +
+                        'Le prix est fixé automatiquement à 0 CDF.'
+                    );
+
+            } else {
+
+                priceField.prop('readonly', false);
+
+                priceField
+                    .closest('.col-md-6')
+                    .find('.price-help')
+                    .text(
+                        'Saisissez le prix officiel de la campagne en CDF.'
+                    );
+            }
+        }
+
+        typeField.on('change', updatePriceField);
+
+        updatePriceField();
+
+        // ======================================================
+        // PANIER DES PRESTATIONS
+        // ======================================================
+
+        var $selectPrestation = $('#select_prestation');
+
+        // S'il n'y a aucune prestation, il n'y a rien à initialiser
+        if ($selectPrestation.length === 0) {
+            return;
+        }
+
+        // On garde une copie de toutes les prestations pour pouvoir filtrer
+        var toutesOptions = $selectPrestation.find('option').clone();
+
+        // ---- Remplit la liste selon la catégorie et le texte tapé.
+        // Les prestations déjà dans le panier n'apparaissent plus.
+        function filtrerPrestations() {
+
+            var categorieChoisie = $('#filter_categorie_campagne').val();
+            var texte = $.trim($('#recherche_prestation').val()).toLowerCase();
+            var nombre = 0;
+
+            $selectPrestation.empty();
+
+            toutesOptions.each(function () {
+
+                var id = $(this).val();
+                var categorieOption = $(this).attr('data-cat');
+                var libelle = ($(this).attr('data-libelle') || '').toLowerCase();
+
+                // déjà dans le panier : on ne la propose plus
+                if ($('#presta_row_' + id).length > 0) {
+                    return;
+                }
+
+                // mauvaise catégorie
+                if (
+                    categorieChoisie !== 'all' &&
+                    categorieOption !== categorieChoisie
+                ) {
+                    return;
+                }
+
+                // le nom ne contient pas le texte tapé
+                if (texte !== '' && libelle.indexOf(texte) === -1) {
+                    return;
+                }
+
+                $selectPrestation.append($(this).clone());
+                nombre++;
+            });
+
+            if (nombre === 0) {
+                $('#aucune_prestation').show();
+            } else {
+                $('#aucune_prestation').hide();
+            }
+        }
+
+        // ---- Étape 1 : filtre par catégorie
+        $('#filter_categorie_campagne').on('change', filtrerPrestations);
+
+        // ---- Étape 2 : recherche par nom
+        $('#recherche_prestation').on('input', filtrerPrestations);
+
+        // La touche Entrée ne doit pas envoyer le formulaire
+        $('#recherche_prestation').on('keydown', function (event) {
+            if (event.which === 13) {
+                event.preventDefault();
+            }
+        });
+
+        // ---- Étape 3 : le prix n'apparaît que pour un supplément
+        $('#type_inclusion_ajout').on('change', function () {
+
+            if ($(this).val() === 'SUPPLEMENT') {
+                $('#bloc_prix_ajout').show();
+            } else {
+                $('#bloc_prix_ajout').hide();
+                $('#prix_supplement_ajout').val('');
+            }
+        });
+
+        // ---- Met à jour le message vide, le résumé et la liste
+        function majPanier() {
+
+            var nbIncluses = $('#wrapper_prestations tr[data-type="INCLUSE"]').length;
+            var nbSupplements = $('#wrapper_prestations tr[data-type="SUPPLEMENT"]').length;
+
+            if (nbIncluses + nbSupplements === 0) {
+                $('#ligne_panier_vide').show();
+                $('#resume_panier').text('');
+            } else {
+                $('#ligne_panier_vide').hide();
+                $('#resume_panier').text(
+                    nbIncluses + ' incluse(s), ' +
+                    nbSupplements + ' en supplément'
+                );
+            }
+
+            filtrerPrestations();
+        }
+
+        // ---- Ajoute une ligne dans le panier
+        function ajouterLigne(id, libelle, categorie, type, prix) {
+
+            var estSupplement = (type === 'SUPPLEMENT');
+
+            var ligne = $('<tr>')
+                .attr('id', 'presta_row_' + id)
+                .attr('data-type', type);
+
+            // Colonne 1 : nom de la prestation + champ caché envoyé au serveur
+            var colNom = $('<td>');
+
+            colNom.append(
+                $('<input>').attr({
+                    type: 'hidden',
+                    name: estSupplement ? 'prestations_supplement' : 'prestations',
+                    value: id
+                })
+            );
+
+            colNom.append(
+                $('<small>')
+                    .addClass('badge badge-secondary mr-1')
+                    .text(categorie)
+            );
+
+            colNom.append(document.createTextNode(' ' + libelle));
+
+            // Colonne 2 : type
+            var colType = $('<td>');
+
+            if (estSupplement) {
+                colType.append(
+                    $('<span>').addClass('badge badge-warning').text('Supplément')
+                );
+            } else {
+                colType.append(
+                    $('<span>').addClass('badge badge-success').text('Incluse')
+                );
+            }
+
+            // Colonne 3 : prix du supplément (seulement pour un supplément)
+            var colPrix = $('<td>');
+
+            if (estSupplement) {
+                colPrix.append(
+                    $('<input>')
+                        .attr({
+                            type: 'number',
+                            name: 'prix_supplement_' + id,
+                            value: prix,
+                            step: '0.01',
+                            min: '0'
+                        })
+                        .addClass('form-control form-control-sm input-prix-supplement')
+                );
+            } else {
+                colPrix.append($('<span>').addClass('text-muted').text('-'));
+            }
+
+            // Colonne 4 : retirer
+            var colRetirer = $('<td>').addClass('text-center');
+
+            colRetirer.append(
+                $('<button>')
+                    .attr('type', 'button')
+                    .addClass('btn btn-sm btn-outline-danger btn-retirer-prestation')
+                    .attr('data-id', id)
+                    .html('<i class="fa fa-times"></i>')
+            );
+
+            ligne.append(colNom, colType, colPrix, colRetirer);
+
+            $('#wrapper_prestations').append(ligne);
+
+            majPanier();
+        }
+
+        // ---- Étape 4 : bouton Ajouter
+        $('#btn_add_prestation').on('click', function () {
+
+            var option = $selectPrestation.find('option:selected');
+            var id = $selectPrestation.val();
+
+            if (!id) {
+                alert('Veuillez cliquer sur une prestation dans la liste.');
+                return;
+            }
+
+            if ($('#presta_row_' + id).length > 0) {
+                alert('Cette prestation a déjà été ajoutée.');
+                return;
+            }
+
+            var type = $('#type_inclusion_ajout').val();
+            var prix = $('#prix_supplement_ajout').val();
+
+            if (type === 'SUPPLEMENT') {
+                if (!prix || parseFloat(prix) <= 0) {
+                    alert('Saisissez le prix du supplément (supérieur à zéro).');
+                    return;
+                }
+            } else {
+                prix = '';
+            }
+
+            ajouterLigne(
+                id,
+                option.attr('data-libelle'),
+                option.attr('data-cat'),
+                type,
+                prix
+            );
+
+            $('#prix_supplement_ajout').val('');
+        });
+
+        // ---- Retirer une ligne du panier
+        $(document).on('click', '.btn-retirer-prestation', function () {
+            $('#presta_row_' + $(this).attr('data-id')).remove();
+            majPanier();
+        });
+
+        // ---- Vérification avant l'envoi : chaque supplément doit avoir un prix
+        $('#campagneForm').on('submit', function (event) {
+
+            var prixManquant = false;
+
+            $('.input-prix-supplement').each(function () {
+                var valeur = parseFloat($(this).val());
+                if (isNaN(valeur) || valeur <= 0) {
+                    prixManquant = true;
+                    $(this).addClass('is-invalid');
+                } else {
+                    $(this).removeClass('is-invalid');
+                }
+            });
+
+            if (prixManquant) {
+                event.preventDefault();
+                alert('Chaque prestation en supplément doit avoir un prix supérieur à zéro.');
+            }
+        });
+
+        // ---- Si le formulaire revient avec des erreurs,
+        // on remet dans le panier ce que l'utilisateur avait choisi
+        toutesOptions.each(function () {
+
+            var typeInitial = $(this).attr('data-init-type');
+
+            if (typeInitial) {
+                ajouterLigne(
+                    $(this).val(),
+                    $(this).attr('data-libelle'),
+                    $(this).attr('data-cat'),
+                    typeInitial,
+                    $(this).attr('data-init-prix') || ''
+                );
+            }
+        });
+
+        majPanier();
+
+    });
+</script>
+
+</body>
+
+</html>
