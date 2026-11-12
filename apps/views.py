@@ -109,8 +109,18 @@ def dashboard(request):
     if not request.user.is_authenticated:
         return redirect('login')
 
-    role = Fonction.objects.filter(userKey=request.user).select_related('fonctionKey', 'hopital').first()
-    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else 'visiteur'
+    role = Fonction.objects.filter(
+        userKey=request.user
+    ).select_related(
+        'fonctionKey',
+        'hopital'
+    ).first()
+
+    fonctionKey = (
+        role.fonctionKey.roleName
+        if role and role.fonctionKey
+        else 'visiteur'
+    )
 
     user_hopital = role.hopital if role else None
     aujourdhui = timezone.now().date()
@@ -125,6 +135,11 @@ def dashboard(request):
     entreprises_qs = Entreprise.objects.all()
     patients_qs = Patient.objects.all()
 
+    # ------------------------------------------------------------
+    # DEMANDES D'EXAMENS EXTERNES
+    # ------------------------------------------------------------
+    examens_qs = DemandeExamenExterne.objects.all()
+
     if fonctionKey != 'admin' and user_hopital:
         paiements_qs = paiements_qs.filter(hopital=user_hopital)
         depenses_qs = depenses_qs.filter(hopital=user_hopital)
@@ -135,36 +150,184 @@ def dashboard(request):
         produits_qs = produits_qs.filter(hopital=user_hopital)
         entreprises_qs = entreprises_qs.filter(hopital=user_hopital)
         patients_qs = patients_qs.filter(hopital=user_hopital)
-        total_utilisateurs = User.objects.filter(user_fonction__hopital=user_hopital).distinct().count()
+
+        examens_qs = examens_qs.filter(hopital=user_hopital)
+
+        total_utilisateurs = User.objects.filter(
+            user_fonction__hopital=user_hopital
+        ).distinct().count()
+
     else:
         total_utilisateurs = User.objects.count()
 
-    recettes_jour = paiements_qs.filter(date_paiement__date=aujourdhui).aggregate(
-        usd=Sum('montant_verse', filter=Q(devise='USD')),
-        cdf=Sum('montant_verse', filter=Q(devise='CDF'))
+    # ------------------------------------------------------------
+    # RECETTES ET DEPENSES DU JOUR
+    # ------------------------------------------------------------
+    recettes_jour = paiements_qs.filter(
+        date_paiement__date=aujourdhui
+    ).aggregate(
+        usd=Sum(
+            'montant_verse',
+            filter=Q(devise='USD'),
+            default=Decimal('0.00')
+        ),
+        cdf=Sum(
+            'montant_verse',
+            filter=Q(devise='CDF'),
+            default=Decimal('0.00')
+        )
     )
 
-    depenses_jour = depenses_qs.filter(date_depense__date=aujourdhui).aggregate(
-        usd=Sum('montant', filter=Q(devise='USD')),
-        cdf=Sum('montant', filter=Q(devise='CDF'))
+    depenses_jour = depenses_qs.filter(
+        date_depense__date=aujourdhui
+    ).aggregate(
+        usd=Sum(
+            'montant',
+            filter=Q(devise='USD'),
+            default=Decimal('0.00')
+        ),
+        cdf=Sum(
+            'montant',
+            filter=Q(devise='CDF'),
+            default=Decimal('0.00')
+        )
     )
 
+    # ------------------------------------------------------------
+    # MONTANT ACTUEL DES EXAMENS EXTERNES
+    # ------------------------------------------------------------
+
+    # Total demandé, avant réduction
+    examens_total_cdf = examens_qs.aggregate(
+        total=Sum('total_cdf', default=Decimal('0.00'))
+    )['total']
+
+    # Réductions accordées sur les demandes
+    examens_reduction_cdf = examens_qs.aggregate(
+        total=Sum(
+            'montant_reduction_cdf',
+            default=Decimal('0.00')
+        )
+    )['total']
+
+    # Total réellement dû après réduction
+    examens_total_a_payer_cdf = (
+        examens_total_cdf - examens_reduction_cdf
+    )
+
+    if examens_total_a_payer_cdf < 0:
+        examens_total_a_payer_cdf = Decimal('0.00')
+
+    # Paiements liés aux demandes d'examens externes
+    paiements_examens = Paiement.objects.filter(
+        demande_examen_externe__in=examens_qs
+    )
+
+    # Montant déjà payé, en CDF
+    examens_montant_paye_cdf = paiements_examens.aggregate(
+        total=Sum(
+            'montant_verse_cdf',
+            default=Decimal('0.00')
+        )
+    )['total']
+
+    # Réductions éventuellement enregistrées dans les paiements
+    examens_reduction_paiements_cdf = paiements_examens.aggregate(
+        total=Sum(
+            'montant_reduction',
+            default=Decimal('0.00')
+        )
+    )['total']
+
+    # Total déjà couvert
+    examens_total_couvert_cdf = (
+        examens_montant_paye_cdf
+        + examens_reduction_paiements_cdf
+    )
+
+    # Reste à payer
+    examens_reste_a_payer_cdf = (
+        examens_total_a_payer_cdf
+        - examens_total_couvert_cdf
+    )
+
+    if examens_reste_a_payer_cdf < 0:
+        examens_reste_a_payer_cdf = Decimal('0.00')
+
+    # ------------------------------------------------------------
+    # SOMME DES MONTANTS PAR STATUT D'EXAMEN (EN CDF)
+    # ------------------------------------------------------------
+    somme_examens_stats = examens_qs.aggregate(
+        en_attente=Sum(
+            'total_cdf',
+            filter=Q(statut='EN_ATTENTE'),
+            default=Decimal('0.00')
+        ),
+        payes=Sum(
+            'total_cdf',
+            filter=Q(statut='PAYE'),
+            default=Decimal('0.00')
+        ),
+        termines=Sum(
+            'total_cdf',
+            filter=Q(statut='TERMINE'),
+            default=Decimal('0.00')
+        )
+    )
+
+    # Nombre de demandes (si vous en avez encore besoin)
+    total_examens = examens_qs.count()
+
+    # ------------------------------------------------------------
+    # CONTEXT
+    # ------------------------------------------------------------
     context = {
         'fonctionKey': fonctionKey,
         'hopital_user': user_hopital,
         'total_utilisateurs': total_utilisateurs,
         'total_entreprises': entreprises_qs.count(),
         'total_patients': patients_qs.count(),
+
         'recettes_jour': recettes_jour,
         'depenses_jour': depenses_jour,
-        'consultations_jour': consultations_qs.filter(date_creation__date=aujourdhui).count(),
-        'hospitalisations_en_cours': hospitalisations_qs.filter(statut='EN_COURS').count(),
-        'bloc_en_cours': blocs_qs.filter(statut='EN_COURS').count(),
-        'accouchements_jour': accouchements_qs.filter(date_creation__date=aujourdhui).count(),
-        'alerte_rupture_stock': produits_qs.filter(stock_initial__lt=5).count(),
+
+        'consultations_jour': consultations_qs.filter(
+            date_creation__date=aujourdhui
+        ).count(),
+
+        'hospitalisations_en_cours': hospitalisations_qs.filter(
+            statut='EN_COURS'
+        ).count(),
+
+        'bloc_en_cours': blocs_qs.filter(
+            statut='EN_COURS'
+        ).count(),
+
+        'accouchements_jour': accouchements_qs.filter(
+            date_creation__date=aujourdhui
+        ).count(),
+
+        'alerte_rupture_stock': produits_qs.filter(
+            stock_initial__lt=5
+        ).count(),
+
+        # Examens externes (Sommes et Totaux)
+        'total_examens_externes': total_examens,
+        'somme_examens_en_attente': somme_examens_stats['en_attente'],
+        'somme_examens_payes': somme_examens_stats['payes'],
+        'somme_examens_termines': somme_examens_stats['termines'],
+
+        'examens_total_cdf': examens_total_cdf,
+        'examens_reduction_cdf': examens_reduction_cdf,
+        'examens_total_a_payer_cdf': examens_total_a_payer_cdf,
+
+        'examens_montant_paye_cdf': examens_montant_paye_cdf,
+        'examens_reste_a_payer_cdf': examens_reste_a_payer_cdf,
     }
 
-    return render(request, 'back-end/index.html', context)# 5
+    return render(request, 'back-end/index.html', context)
+    
+# 5
 # ===========================================================================
 # AJOUTER UTILISATEURS
 # ===========================================================================
@@ -9751,81 +9914,200 @@ def enregistrer_client_externe(request):
 
 @login_required
 def creer_demande_examen(request, client_id):
+    # ------------------------------------------------------------
     # 1. Rôle et hôpital de l'utilisateur
-    role = (
-        Fonction.objects
-        .filter(userKey=request.user)
-        .select_related('fonctionKey', 'hopital')
-        .first()
+    # ------------------------------------------------------------
+    role = Fonction.objects.filter(
+        userKey=request.user
+    ).select_related(
+        'fonctionKey',
+        'hopital'
+    ).first()
+
+    fonctionKey = (
+        role.fonctionKey.roleName
+        if role and role.fonctionKey
+        else None
     )
-    fonctionKey = role.fonctionKey.roleName if role and role.fonctionKey else None
+
     user_hopital = role.hopital if role else None
 
-    # 2. Taux de change depuis la configuration de l'hôpital
+    # ------------------------------------------------------------
+    # 2. Taux de change
+    # ------------------------------------------------------------
     config = ConfigurationHopital.objects.first()
-    taux = config.taux_usd_en_cdf if config else Decimal('2300.00')
-    if not taux or taux == 0:
+
+    taux = (
+        config.taux_usd_en_cdf
+        if config
+        else Decimal('2300.00')
+    )
+
+    if not taux or taux <= 0:
         taux = Decimal('2300.00')
 
-    # 3. Récupération du client et des prestations
+    # ------------------------------------------------------------
+    # 3. Client et prestations
+    # ------------------------------------------------------------
     if fonctionKey != 'admin' and user_hopital:
-        client = get_object_or_404(ClientExterne, id=client_id, hopital=user_hopital)
-        prestations_labo = Prestation.objects.filter(categorie='LABO', hopital=user_hopital)
-        prestations_radio = Prestation.objects.filter(categorie='RADIO', hopital=user_hopital)
-        prestations_echo = Prestation.objects.filter(categorie='ECHO', hopital=user_hopital)
-    else:
-        client = get_object_or_404(ClientExterne, id=client_id)
-        prestations_labo = Prestation.objects.filter(categorie='LABO')
-        prestations_radio = Prestation.objects.filter(categorie='RADIO')
-        prestations_echo = Prestation.objects.filter(categorie='ECHO')
+        client = get_object_or_404(
+            ClientExterne,
+            id=client_id,
+            hopital=user_hopital
+        )
 
-    # 4. Traitement du formulaire POST
+        prestations_labo = Prestation.objects.filter(
+            categorie='LABO',
+            hopital=user_hopital
+        )
+
+        prestations_radio = Prestation.objects.filter(
+            categorie='RADIO',
+            hopital=user_hopital
+        )
+
+        prestations_echo = Prestation.objects.filter(
+            categorie='ECHO',
+            hopital=user_hopital
+        )
+
+    else:
+        client = get_object_or_404(
+            ClientExterne,
+            id=client_id
+        )
+
+        prestations_labo = Prestation.objects.filter(
+            categorie='LABO'
+        )
+
+        prestations_radio = Prestation.objects.filter(
+            categorie='RADIO'
+        )
+
+        prestations_echo = Prestation.objects.filter(
+            categorie='ECHO'
+        )
+
+    # ------------------------------------------------------------
+    # 4. Traitement du formulaire
+    # ------------------------------------------------------------
     if request.method == 'POST':
         form = DemandeExamenExterneForm(request.POST)
-        
+
         if form.is_valid():
-            # Étape 1 : Sauvegarder la demande SANS les prestations
-            demande = form.save(commit=False)
-            demande.client = client
-            demande.hopital = user_hopital if fonctionKey != 'admin' else client.hopital
-            demande.save()  # ← IMPORTANT : Sauvegarde d'abord pour avoir un ID
-            
-            # Étape 2 : Récupérer les IDs des prestations sélectionnées
-            ids_prestations = request.POST.getlist('prestations')
-            
-            if fonctionKey != 'admin' and user_hopital:
-                prestations_selectionnees = Prestation.objects.filter(
-                    id__in=ids_prestations,
-                    hopital=user_hopital
+
+            # Réduction saisie en CDF
+            montant_reduction_cdf = (
+                form.cleaned_data.get('montant_reduction_cdf')
+                or Decimal('0.00')
+            )
+
+            if montant_reduction_cdf < 0:
+                form.add_error(
+                    'montant_reduction_cdf',
+                    'La réduction ne peut pas être négative.'
                 )
+
             else:
-                prestations_selectionnees = Prestation.objects.filter(id__in=ids_prestations)
-            
-            # Étape 3 : Ajouter les prestations à la demande
-            demande.prestations.set(prestations_selectionnees)
-            
-            # Étape 4 : Calculer et sauvegarder les totaux
-            total_cdf = prestations_selectionnees.aggregate(total=Sum('prix'))['total'] or Decimal('0')
-            demande.total_cdf = total_cdf
-            demande.total_a_payer = (total_cdf / taux).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-            demande.save()
-            
-            messages.success(request, f"Demande créée avec succès ! Total : {demande.total_a_payer} USD")
-            return redirect('liste_demandes_externes')
+                # Étape 1 : création de la demande
+                demande = form.save(commit=False)
+                demande.client = client
+
+                demande.hopital = (
+                    user_hopital
+                    if fonctionKey != 'admin'
+                    else client.hopital
+                )
+
+                demande.montant_reduction_cdf = montant_reduction_cdf
+                demande.total_cdf = Decimal('0.00')
+                demande.total_a_payer = Decimal('0.00')
+
+                demande.save()
+
+                # Étape 2 : prestations sélectionnées
+                ids_prestations = request.POST.getlist('prestations')
+
+                if fonctionKey != 'admin' and user_hopital:
+                    prestations_selectionnees = Prestation.objects.filter(
+                        id__in=ids_prestations,
+                        hopital=user_hopital
+                    )
+                else:
+                    prestations_selectionnees = Prestation.objects.filter(
+                        id__in=ids_prestations
+                    )
+
+                demande.prestations.set(prestations_selectionnees)
+
+                # Étape 3 : total des examens, en CDF
+                total_cdf = prestations_selectionnees.aggregate(
+                    total=Sum('prix')
+                )['total'] or Decimal('0.00')
+
+                # Étape 4 : réduction
+                if montant_reduction_cdf > total_cdf:
+                    form.add_error(
+                        'montant_reduction_cdf',
+                        (
+                            'La réduction ne peut pas dépasser le total '
+                            f'des examens ({total_cdf} CDF).'
+                        )
+                    )
+
+                    demande.delete()
+
+                else:
+                    total_apres_reduction_cdf = (
+                        total_cdf - montant_reduction_cdf
+                    )
+
+                    demande.total_cdf = total_cdf
+                    demande.montant_reduction_cdf = montant_reduction_cdf
+
+                    demande.total_a_payer = (
+                        total_apres_reduction_cdf / taux
+                    ).quantize(
+                        Decimal('0.01'),
+                        rounding=ROUND_HALF_UP
+                    )
+
+                    demande.save()
+
+                    messages.success(
+                        request,
+                        (
+                            f"Demande créée avec succès ! "
+                            f"Total : {demande.total_a_payer} USD "
+                            f"(Réduction : {montant_reduction_cdf} CDF)"
+                        )
+                    )
+
+                    return redirect('liste_demandes_externes')
+
     else:
         form = DemandeExamenExterneForm()
 
-    # 5. Contexte pour l'affichage (GET)
-    return render(request, 'back-end/client/creer_demande.html', {
-        'client': client,
-        'form': form,
-        'fonctionKey': fonctionKey,
-        'prestations_labo': prestations_labo,
-        'prestations_radio': prestations_radio,
-        'prestations_echo': prestations_echo,
-        'taux': taux,
-        'user_hopital': user_hopital,
-    })
+    # ------------------------------------------------------------
+    # 5. Contexte
+    # ------------------------------------------------------------
+    return render(
+        request,
+        'back-end/client/creer_demande.html',
+        {
+            'client': client,
+            'form': form,
+            'fonctionKey': fonctionKey,
+            'prestations_labo': prestations_labo,
+            'prestations_radio': prestations_radio,
+            'prestations_echo': prestations_echo,
+            'taux': taux,
+            'user_hopital': user_hopital,
+        }
+    )
+
+
 
 
 # 

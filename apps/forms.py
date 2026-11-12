@@ -587,38 +587,63 @@ class ClientExterneForm(forms.ModelForm):
             'sexe': forms.Select(attrs={'class': 'form-control'}),
             'poids': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Poids (kg)'}), 
         }
-
+#
+# ==================================================================================
+# ==================================================================================
+# demande examen externe mise en jour 
 
 class DemandeExamenExterneForm(forms.ModelForm):
+    montant_reduction_cdf = forms.DecimalField(
+        required=False,
+        min_value=0,
+        initial=0,
+        label='Réduction accordée (CDF)',
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'step': '0.01',
+            'min': '0',
+            'placeholder': 'Exemple : 5000'
+        })
+    )
+
     class Meta:
         model = DemandeExamenExterne
-        fields = ['medecin_demandeur', 'clinique', 'but', 'prestations']
+        fields = [
+            'medecin_demandeur',
+            'clinique',
+            'but',
+            'prestations',
+            'montant_reduction_cdf',
+        ]
+
         widgets = {
             'medecin_demandeur': forms.TextInput(attrs={
-                'class': 'form-control', 
+                'class': 'form-control',
                 'placeholder': 'Nom du médecin demandeur'
             }),
             'clinique': forms.Textarea(attrs={
-                'class': 'form-control', 
-                'rows': 3, 
+                'class': 'form-control',
+                'rows': 3,
                 'placeholder': 'Informations cliniques...'
             }),
             'but': forms.Textarea(attrs={
-                'class': 'form-control', 
-                'rows': 2, 
+                'class': 'form-control',
+                'rows': 2,
                 'placeholder': 'But de la demande...'
             }),
             'prestations': forms.SelectMultiple(attrs={
-                'class': 'form-control', 
+                'class': 'form-control',
                 'size': '10',
                 'multiple': 'multiple'
             }),
         }
+
         labels = {
             'medecin_demandeur': 'Médecin demandeur',
             'clinique': 'Informations cliniques',
             'but': 'But de la demande',
             'prestations': 'Examens à réaliser',
+            'montant_reduction_cdf': 'Réduction accordée (CDF)',
         }
 
 

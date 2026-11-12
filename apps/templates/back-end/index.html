@@ -218,7 +218,6 @@
       word-break: break-word;
     }
 
-    /* ---- Montant en 2 lignes (USD puis FC) ---- */
     .dash-widget-info .amount-sub {
       display: block;
       font-size: 0.85rem;
@@ -279,8 +278,6 @@
     ========================= */
 
     @media (max-width: 992px) {
-
-      /* La sidebar est un menu qui se superpose : pas de décalage */
       .page-wrapper {
         margin-left: 0 !important;
         padding-left: 0 !important;
@@ -293,12 +290,7 @@
       }
     }
 
-    /* =========================
-       TÉLÉPHONE
-    ========================= */
-
     @media (max-width: 576px) {
-
       .page-wrapper {
         padding-top: 66px;
       }
@@ -308,7 +300,6 @@
         padding-bottom: 20px;
       }
 
-      /* ---- Bannière compacte ---- */
       .medical-welcome {
         padding: 18px;
         border-radius: 18px;
@@ -344,13 +335,11 @@
         margin-top: 10px;
       }
 
-      /* ---- Titres de section ---- */
       .section-title {
         font-size: 0.74rem;
         margin-bottom: 12px;
       }
 
-      /* ---- Grille 2 colonnes serrée ---- */
       .stats-row {
         margin-left: -6px;
         margin-right: -6px;
@@ -362,7 +351,6 @@
         margin-bottom: 12px !important;
       }
 
-      /* ---- Carte verticale : icône en haut, texte en dessous ---- */
       .dash-widget {
         border-radius: 16px;
       }
@@ -403,7 +391,6 @@
         letter-spacing: 0.2px;
       }
 
-      /* ---- Graphique ---- */
       .panel-card {
         border-radius: 18px;
       }
@@ -529,7 +516,7 @@
                   <i class="fa fa-stethoscope"></i>
                 </span>
                 <div class="dash-widget-info">
-                  <h3>{{ signes_vitaux_jour }}</h3>
+                  <h3>{{ signes_vitaux_jour|default:"0" }}</h3>
                   <span class="label-card">Signes vitaux (Jour)</span>
                 </div>
               </div>
@@ -613,6 +600,66 @@
         </div>
         {% endif %}
 
+        <!-- Section Examens Externes (Montants en CDF par statut) -->
+        <div class="section-title mt-4">Examens Externes (Montants)</div>
+        <div class="row stats-row">
+          <div class="col-6 col-md-3 mb-4">
+            <div class="card dash-widget">
+              <div class="card-body">
+                <span class="dash-widget-icon" style="background:#e1f5fe; color:#0288d1;">
+                  <i class="fa fa-flask"></i>
+                </span>
+                <div class="dash-widget-info">
+                  <h3>{{ total_examens_externes }}</h3>
+                  <span class="label-card">Total Demandes (Nombre)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-6 col-md-3 mb-4">
+            <div class="card dash-widget">
+              <div class="card-body">
+                <span class="dash-widget-icon" style="background:#fffde7; color:#fbc02d;">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                <div class="dash-widget-info">
+                  <h3>{{ somme_examens_en_attente|default:"0" }} <small style="font-size: 0.8rem;">FC</small></h3>
+                  <span class="label-card">En attente (Montant)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-6 col-md-3 mb-4">
+            <div class="card dash-widget">
+              <div class="card-body">
+                <span class="dash-widget-icon" style="background:#e8f5e9; color:#388e3c;">
+                  <i class="fa fa-check-circle"></i>
+                </span>
+                <div class="dash-widget-info">
+                  <h3>{{ somme_examens_payes|default:"0" }} <small style="font-size: 0.8rem;">FC</small></h3>
+                  <span class="label-card">Payés (Montant)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-6 col-md-3 mb-4">
+            <div class="card dash-widget">
+              <div class="card-body">
+                <span class="dash-widget-icon" style="background:#ede7f6; color:#512da8;">
+                  <i class="fa fa-flag-checkered"></i>
+                </span>
+                <div class="dash-widget-info">
+                  <h3>{{ somme_examens_termines|default:"0" }} <small style="font-size: 0.8rem;">FC</small></h3>
+                  <span class="label-card">Terminés (Montant)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="row mt-4 stats-row">
           <div class="col-12">
             <div class="card panel-card">
@@ -639,10 +686,10 @@
     new Chart(ctx, {
       type: 'line',
       data: {
-        labels: {{ dates_graphe|safe }},
+        labels: {{ dates_graphe|default:"[]"|safe }},
         datasets: [{
           label: 'Consultations',
-          data: {{ valeurs_graphe|safe }},
+          data: {{ valeurs_graphe|default:"[]"|safe }},
           backgroundColor: 'rgba(37, 99, 235, 0.10)',
           borderColor: '#2563eb',
           borderWidth: 3,
@@ -689,6 +736,5 @@
   </script>
 
   {% include 'back-end/includes/js.html' %}
-  
 </body>
 </html>

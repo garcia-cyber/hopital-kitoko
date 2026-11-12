@@ -10,6 +10,7 @@ from django.conf import settings
 from django.db import transaction 
 from django.core.exceptions import ObjectDoesNotExist
 import uuid
+from django.db.models import Sum
 
 # 0 Plusieurs Hopitaux
 class Hopital(models.Model):
@@ -775,829 +776,820 @@ class CampagneParticipant(models.Model):
 # AUCUN champ n'est modifié : pas de migration à faire.
 
 class Paiement(models.Model):
-  CURRENCY = [
-    ('CDF', 'CDF'),
-    ('USD', 'USD'),
-  ]
+    CURRENCY = [
+        ('CDF', 'CDF'),
+        ('USD', 'USD'),
+    ]
 
-  SERVICES = [
-    ('FICHE', 'Fiche'),
-    ('CONSULTATION', 'Consultation'),
-    ('LABO', 'Labo'),
-    ('ECHOGRAPHIE', 'Échographie'),
-    ('RADIO', 'Radiographie'),
-    ('SOIN', 'Soins'),
-    ('MATERNITE', 'Maternité'),
-    ('DECES', 'Actes de décès'),
-    ('EXAMENS', 'Examens'),
-    ('CHIRURGIE', 'Chirurgie'),
-    ('CARTE_FIDELITE', 'Achat Carte de Fidélité'),
-    ('PHARMACIE', 'Pharmacie'),
-    ('EXAMEN_EXTERNE', 'Examen Externe'),
-    ('ENTREPRISE', 'Paiement Entreprise'),
-    ('HOSPITALISATION', 'Hospitalisation'),
-    ('ACTE_MEDICAL', 'Acte médical'),
+    SERVICES = [
+        ('FICHE', 'Fiche'),
+        ('CONSULTATION', 'Consultation'),
+        ('LABO', 'Labo'),
+        ('ECHOGRAPHIE', 'Échographie'),
+        ('RADIO', 'Radiographie'),
+        ('SOIN', 'Soins'),
+        ('MATERNITE', 'Maternité'),
+        ('DECES', 'Actes de décès'),
+        ('EXAMENS', 'Examens'),
+        ('CHIRURGIE', 'Chirurgie'),
+        ('CARTE_FIDELITE', 'Achat Carte de Fidélité'),
+        ('PHARMACIE', 'Pharmacie'),
+        ('EXAMEN_EXTERNE', 'Examen Externe'),
+        ('ENTREPRISE', 'Paiement Entreprise'),
+        ('HOSPITALISATION', 'Hospitalisation'),
+        ('ACTE_MEDICAL', 'Acte médical'),
 
-    # Nouveau service ajouté
-    ('CAMPAGNE', 'Campagne médicale'),
-    ('SUPPLEMENT_CAMPAGNE', 'Supplément campagne médicale'),
+        ('CAMPAGNE', 'Campagne médicale'),
+        ('SUPPLEMENT_CAMPAGNE', 'Supplément campagne médicale'),
 
-    # --- NOUVEAU : patient de passage ---
-    ('PASSAGE', 'Patient de passage'),
-  ]
+        ('PASSAGE', 'Patient de passage'),
+    ]
 
-  # ============================================================
-  # RELATIONS
-  # ============================================================
+    # ============================================================
+    # RELATIONS
+    # ============================================================
 
-  bloc_op = models.ForeignKey(
-    'BlocOperatoire',
-    on_delete=models.SET_NULL,
-    null=True,
-    blank=True,
-    related_name='paiements'
-  )
+    bloc_op = models.ForeignKey(
+        'BlocOperatoire',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='paiements'
+    )
 
-  acte_medical = models.ForeignKey(
-    'ActeMedical',
-    on_delete=models.SET_NULL,
-    null=True,
-    blank=True,
-    related_name='paiements',
-    verbose_name='Acte médical'
-  )
+    acte_medical = models.ForeignKey(
+        'ActeMedical',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='paiements',
+        verbose_name='Acte médical'
+    )
 
-  patient = models.ForeignKey(
-    'Patient',
-    on_delete=models.CASCADE,
-    null=True,
-    blank=True
-  )
+    patient = models.ForeignKey(
+        'Patient',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True
+    )
 
-  demande_examen_externe = models.ForeignKey(
-    'DemandeExamenExterne',
-    on_delete=models.SET_NULL,
-    null=True,
-    blank=True,
-    related_name='paiements'
-  )
+    demande_examen_externe = models.ForeignKey(
+        'DemandeExamenExterne',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='paiements',
+        verbose_name='Demande d’examen externe'
+    )
 
-  consultation = models.ForeignKey(
-    'Consultation',
-    on_delete=models.SET_NULL,
-    null=True,
-    blank=True,
-    related_name='paiements'
-  )
+    consultation = models.ForeignKey(
+        'Consultation',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='paiements'
+    )
 
-  dossier_maternite = models.ForeignKey(
-    'Maternite',
-    on_delete=models.SET_NULL,
-    null=True,
-    blank=True,
-    related_name='paiements'
-  )
+    dossier_maternite = models.ForeignKey(
+        'Maternite',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='paiements'
+    )
 
-  deces = models.ForeignKey(
-    'Deces',
-    on_delete=models.SET_NULL,
-    null=True,
-    blank=True,
-    related_name='paiements'
-  )
+    deces = models.ForeignKey(
+        'Deces',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='paiements'
+    )
 
-  session = models.ForeignKey(
-    'SessionSoins',
-    on_delete=models.SET_NULL,
-    null=True,
-    blank=True,
-    related_name='paiements'
-  )
+    session = models.ForeignKey(
+        'SessionSoins',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='paiements'
+    )
 
-  entreprise = models.ForeignKey(
-    'Entreprise',
-    on_delete=models.CASCADE,
-    null=True,
-    blank=True,
-    related_name='paiements'
-  )
+    entreprise = models.ForeignKey(
+        'Entreprise',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='paiements'
+    )
 
-  hospitalisation = models.ForeignKey(
-    'Hospitalisation',
-    on_delete=models.SET_NULL,
-    null=True,
-    blank=True,
-    related_name='paiements'
-  )
+    hospitalisation = models.ForeignKey(
+        'Hospitalisation',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='paiements'
+    )
 
-  compte_rendu = models.OneToOneField(
-    'CompteRenduAccouchement',
-    on_delete=models.SET_NULL,
-    null=True,
-    blank=True,
-    related_name='paiement'
-  )
+    compte_rendu = models.OneToOneField(
+        'CompteRenduAccouchement',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='paiement'
+    )
 
-  clientEx = models.ForeignKey(
-    'ClientExterne',
-    on_delete=models.SET_NULL,
-    null=True,
-    blank=True,
-    related_name='paiements'
-  )
+    clientEx = models.ForeignKey(
+        'ClientExterne',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='paiements'
+    )
 
-  # --- NOUVEAU : lien vers le patient de passage ---
-  passage = models.ForeignKey(
-    'PatientPassage',
-    on_delete=models.SET_NULL,
-    null=True,
-    blank=True,
-    related_name='paiements'
-  )
+    passage = models.ForeignKey(
+        'PatientPassage',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='paiements'
+    )
 
-  # ============================================================
-  # RELATION CAMPAGNE
-  # ============================================================
+    campagne = models.ForeignKey(
+        'Campagne',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='paiements',
+        verbose_name='Campagne'
+    )
 
-  campagne = models.ForeignKey(
-    'Campagne',
-    on_delete=models.SET_NULL,
-    null=True,
-    blank=True,
-    related_name='paiements',
-    verbose_name="Campagne"
-  )
+    campagne_prestation = models.ForeignKey(
+        'CampagnePrestation',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='paiements',
+        verbose_name='Prestation supplémentaire de campagne'
+    )
 
-  campagne_prestation = models.ForeignKey(
-    'CampagnePrestation',
-    on_delete=models.SET_NULL,
-    null=True,
-    blank=True,
-    related_name='paiements',
-    verbose_name='Prestation supplémentaire de campagne'
-  )
+    # ============================================================
+    # MONTANTS CAMPAGNE
+    # ============================================================
 
-  # Prix officiel de la campagne au moment du paiement, en CDF
-  prix_campagne_cdf = models.DecimalField(
-    max_digits=15,
-    decimal_places=2,
-    default=Decimal('0.00'),
-    verbose_name="Prix de la campagne (CDF)"
-  )
+    prix_campagne_cdf = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name='Prix de la campagne (CDF)'
+    )
 
-  # Montant versé converti automatiquement en CDF
-  montant_verse_cdf = models.DecimalField(
-    max_digits=15,
-    decimal_places=2,
-    default=Decimal('0.00'),
-    verbose_name="Montant versé converti (CDF)"
-  )
-
-  # ============================================================
-  # CHAMPS DE PAIEMENT
-  # ============================================================
-
-  service = models.CharField(
-    max_length=20,
-    choices=SERVICES
-  )
-
-  montant_verse = models.DecimalField(
-    max_digits=15,
-    decimal_places=2
-  )
-
-  montant_reduction = models.DecimalField(
-    max_digits=10,
-    decimal_places=2,
-    default=0
-  )
-
-  devise = models.CharField(
-    max_length=3,
-    choices=CURRENCY,
-    default='CDF'
-  )
-
-  date_paiement = models.DateTimeField(
-    default=timezone.now
-  )
-
-  caissier = models.ForeignKey(
-    User,
-    on_delete=models.PROTECT
-  )
-
-  reste_a_payer = models.DecimalField(
-    max_digits=15,
-    decimal_places=2,
-    default=Decimal('0.00'),
-    verbose_name="Dette / Reste à payer"
-  )
-
-  hopital = models.ForeignKey(
-    'Hopital',
-    on_delete=models.SET_NULL,
-    null=True,
-    related_name="paiement_hopital"
-  )
-
-  # ============================================================
-  # POURCENTAGE ET REPARTITION
-  # ============================================================
-
-  pourcentage_medecin = models.DecimalField(
-    max_digits=5,
-    decimal_places=2,
-    default=0,
-    help_text=(
-      "Pourcentage pour le médecin référent "
-      "(ex: 10.00 pour 10%)"
-    ),
-    null=True,
-    blank=True
-  )
-
-  montant_medecin = models.DecimalField(
-    max_digits=12,
-    decimal_places=2,
-    default=0,
-    help_text="Montant pour le médecin (calculé automatiquement)",
-    null=True,
-    blank=True
-  )
-
-  montant_hopital = models.DecimalField(
-    max_digits=12,
-    decimal_places=2,
-    default=0,
-    help_text="Montant pour l'hôpital (calculé automatiquement)",
-    null=True,
-    blank=True
-  )
-
-  # ============================================================
-  # SAUVEGARDE ET LOGIQUES METIER
-  # ============================================================
-
-  def save(self, *args, **kwargs):
-    # CHANGEMENT 1 : un seul import ici, au début.
-    # (Avant, "from .models import ConfigurationHopital" était
-    # dans le bloc examen externe et cassait les autres blocs.)
-    from .models import ConfigurationHopital, Facture
-
-    is_new = self.pk is None
-
-    # --------------------------------------------------------
-    # LOGIQUE SERVICES STANDARDS
-    # --------------------------------------------------------
-    if self.service == 'FICHE' and self.patient:
-      self.patient.fiche_payee = True
-      self.patient.save()
-
-    elif self.service == 'CONSULTATION' and self.consultation:
-      self.consultation.consultation_payee = True
-      self.consultation.save()
-
-    elif self.service == 'CARTE_FIDELITE' and self.patient:
-      self.patient.a_carte_fidelite = True
-      self.patient.type_patient = 'FIDELE'
-      self.patient.save()
-
-    # --------------------------------------------------------
-    # LOGIQUE HOSPITALISATION
-    # --------------------------------------------------------
-    if self.hospitalisation:
-      total_due = Decimal(
-        str(self.hospitalisation.cout_total)
-      )
-
-      paiements_existants = self.hospitalisation.paiements.exclude(
-        pk=self.pk
-      )
-
-      total_deja_verse = paiements_existants.aggregate(
-        Sum('montant_verse')
-      )['montant_verse__sum'] or 0
-
-      total_deja_reduit = paiements_existants.aggregate(
-        Sum('montant_reduction')
-      )['montant_reduction__sum'] or 0
-
-      self.reste_a_payer = max(
-        0,
-        total_due
-        - (total_deja_reduit + self.montant_reduction)
-        - (total_deja_verse + self.montant_verse)
-      )
-
-      self.hospitalisation.est_payee = (
-        self.reste_a_payer <= 0
-      )
-
-      self.hospitalisation.save()
-
-    # --------------------------------------------------------
-    # LOGIQUE SESSIONS SOINS
-    # --------------------------------------------------------
-    if self.session:
-      tous_paiements = self.session.paiements.exclude(
-        pk=self.pk
-      )
-
-      total_deja_verse = tous_paiements.aggregate(
-        Sum('montant_verse')
-      )['montant_verse__sum'] or 0
-
-      total_deja_reduit = tous_paiements.aggregate(
-        Sum('montant_reduction')
-      )['montant_reduction__sum'] or 0
-
-      self.reste_a_payer = max(
-        0,
-        self.session.total_a_payer
-        - (
-          total_deja_reduit
-          + self.montant_reduction
-          + total_deja_verse
-          + self.montant_verse
+    montant_verse_cdf = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name='Montant versé converti (CDF)',
+        help_text=(
+            'Montant réellement versé, converti en CDF '
+            'au moment du paiement.'
         )
-      )
+    )
 
-      self.session.est_payee = (
-        self.reste_a_payer <= 0
-      )
+    # ============================================================
+    # CHAMPS DE PAIEMENT
+    # ============================================================
 
-      self.session.save()
+    service = models.CharField(
+        max_length=20,
+        choices=SERVICES
+    )
 
-    # --------------------------------------------------------
-    # LOGIQUE ACTE MEDICAL
-    # --------------------------------------------------------
-    if self.acte_medical:
-      paiements_existants = self.acte_medical.paiements.exclude(
-        pk=self.pk
-      )
+    montant_verse = models.DecimalField(
+        max_digits=15,
+        decimal_places=2
+    )
 
-      total_deja_verse = paiements_existants.aggregate(
-        total=Sum('montant_verse')
-      )['total'] or Decimal('0.00')
+    montant_reduction = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('0.00')
+    )
 
-      total_deja_reduit = paiements_existants.aggregate(
-        total=Sum('montant_reduction')
-      )['total'] or Decimal('0.00')
+    devise = models.CharField(
+        max_length=3,
+        choices=CURRENCY,
+        default='CDF'
+    )
 
-      montant_actuel = self.montant_verse or Decimal('0.00')
-      reduction_actuelle = (
-        self.montant_reduction or Decimal('0.00')
-      )
+    date_paiement = models.DateTimeField(
+        default=timezone.now
+    )
 
-      total_acte = (
-        self.acte_medical.montant_prevu
-        or Decimal('0.00')
-      )
+    caissier = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT
+    )
 
-      self.reste_a_payer = max(
-        Decimal('0.00'),
-        total_acte - (
-          total_deja_verse
-          + total_deja_reduit
-          + montant_actuel
-          + reduction_actuelle
-        )
-      )
+    reste_a_payer = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name='Dette / Reste à payer'
+    )
 
-    # --------------------------------------------------------
-    # LOGIQUE EXAMEN EXTERNE
-    # --------------------------------------------------------
-    if self.demande_examen_externe:
-      config = ConfigurationHopital.objects.first()
+    hopital = models.ForeignKey(
+        'Hopital',
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='paiement_hopital'
+    )
 
-      taux = (
-        config.taux_usd_en_cdf
-        if config
-        else Decimal('2300.00')
-      )
+    # ============================================================
+    # POURCENTAGE ET REPARTITION
+    # ============================================================
 
-      if not taux or taux == 0:
-        taux = Decimal('2300.00')
+    pourcentage_medecin = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text='Pourcentage pour le médecin référent (ex: 10.00 pour 10%)',
+        null=True,
+        blank=True
+    )
 
-      # total_a_payer est en USD : conversion en CDF
-      total_due_cdf = (
-        self.demande_examen_externe.total_a_payer * taux
-      )
+    montant_medecin = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text='Montant pour le médecin (calculé automatiquement)',
+        null=True,
+        blank=True
+    )
 
-      paiements_existants = (
-        self.demande_examen_externe.paiements.exclude(
-          pk=self.pk
-        )
-      )
+    montant_hopital = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text='Montant pour l’hôpital (calculé automatiquement)',
+        null=True,
+        blank=True
+    )
 
-      total_deja_verse_cdf = Decimal('0.00')
+    class Meta:
+        verbose_name = 'Paiement'
+        verbose_name_plural = 'Paiements'
+        ordering = ['-date_paiement']
 
-      for paiement in paiements_existants:
-        if paiement.devise == 'CDF':
-          total_deja_verse_cdf += (
-            paiement.montant_verse
-            or Decimal('0.00')
-          )
-        else:
-          total_deja_verse_cdf += (
-            paiement.montant_verse
-            or Decimal('0.00')
-          ) * taux
-
-      if self.devise == 'CDF':
-        montant_verse_cdf = (
-          self.montant_verse
-          or Decimal('0.00')
-        )
-      else:
-        montant_verse_cdf = (
-          self.montant_verse
-          or Decimal('0.00')
-        ) * taux
-
-      self.reste_a_payer = max(
-        Decimal('0.00'),
-        total_due_cdf - (
-          total_deja_verse_cdf
-          + montant_verse_cdf
-        )
-      )
-
-      if self.reste_a_payer <= Decimal('1'):
-        self.demande_examen_externe.statut = 'PAYE'
-        self.demande_examen_externe.save()
-
-    # --------------------------------------------------------
-    # LOGIQUE CAMPAGNE
-    # --------------------------------------------------------
-    if self.service == 'CAMPAGNE':
-
-      if not self.campagne:
-        raise ValidationError(
-          "Vous devez sélectionner une campagne."
+    def __str__(self):
+        return (
+            f"{self.get_service_display()} - "
+            f"{self.montant_verse} {self.devise}"
         )
 
-      if not self.patient and not self.clientEx:
-        raise ValidationError(
-          "Vous devez sélectionner un patient ou un client externe."
+    # ============================================================
+    # SAUVEGARDE ET LOGIQUES METIER
+    # ============================================================
+
+    def save(self, *args, **kwargs):
+        from .models import (
+            ConfigurationHopital,
+            Facture,
+            Campagne,
+            CampagneParticipant,
         )
 
-      # Vérifier que la campagne appartient au même hôpital
-      if self.hopital_id and self.campagne.hopital_id != self.hopital_id:
-        raise ValidationError(
-          "Cette campagne n'appartient pas à l'hôpital sélectionné."
-        )
+        is_new = self.pk is None
 
-      # Récupération du taux USD -> CDF
-      taux = ConfigurationHopital.get_taux()
+        # --------------------------------------------------------
+        # LOGIQUE SERVICES STANDARDS
+        # --------------------------------------------------------
+        if self.service == 'FICHE' and self.patient:
+            self.patient.fiche_payee = True
+            self.patient.save()
 
-      if not taux or taux <= 0:
-        raise ValidationError(
-          "Le taux USD/CDF n'est pas configuré correctement."
-        )
+        elif self.service == 'CONSULTATION' and self.consultation:
+            self.consultation.consultation_payee = True
+            self.consultation.save()
 
-      # Prix officiel de la campagne, toujours en CDF
-      prix_campagne_cdf = self.campagne.get_prix()
+        elif self.service == 'CARTE_FIDELITE' and self.patient:
+            self.patient.a_carte_fidelite = True
+            self.patient.type_patient = 'FIDELE'
+            self.patient.save()
 
-      # ----------------------------------------------------
-      # CAMPAGNE GRATUITE
-      # ----------------------------------------------------
-      if self.campagne.type_campagne == Campagne.TYPE_GRATUITE:
+        # --------------------------------------------------------
+        # LOGIQUE HOSPITALISATION
+        # --------------------------------------------------------
+        if self.hospitalisation:
+            total_due = Decimal(
+                str(self.hospitalisation.cout_total)
+            )
 
-        self.prix_campagne_cdf = Decimal('0.00')
-        self.montant_verse_cdf = Decimal('0.00')
-        self.montant_verse = Decimal('0.00')
-        self.montant_reduction = Decimal('0.00')
-        self.reste_a_payer = Decimal('0.00')
+            paiements_existants = self.hospitalisation.paiements.exclude(
+                pk=self.pk
+            )
 
-      # ----------------------------------------------------
-      # CAMPAGNE PAYANTE
-      # ----------------------------------------------------
-      elif self.campagne.type_campagne == Campagne.TYPE_PAYANTE:
+            total_deja_verse = paiements_existants.aggregate(
+                total=Sum('montant_verse')
+            )['total'] or Decimal('0.00')
 
-        if prix_campagne_cdf <= Decimal('0.00'):
-          raise ValidationError(
-            "Le prix de cette campagne payante est invalide."
-          )
+            total_deja_reduit = paiements_existants.aggregate(
+                total=Sum('montant_reduction')
+            )['total'] or Decimal('0.00')
 
-        # CHANGEMENT 2 : prix selon l'inscription
-        # (1 ou 2 personnes pour une campagne couple).
-        participant = CampagneParticipant.objects.filter(
-          campagne=self.campagne,
-          patient=self.patient,
-          clientEx=self.clientEx,
-        ).first()
+            self.reste_a_payer = max(
+                Decimal('0.00'),
+                total_due - (
+                    total_deja_reduit
+                    + self.montant_reduction
+                    + total_deja_verse
+                    + self.montant_verse
+                )
+            )
 
-        if participant and participant.prix_total_cdf > 0:
-          prix_a_payer_cdf = participant.prix_total_cdf
-        else:
-          prix_a_payer_cdf = prix_campagne_cdf
+            self.hospitalisation.est_payee = (
+                self.reste_a_payer <= Decimal('0.00')
+            )
 
-        self.prix_campagne_cdf = prix_a_payer_cdf
+            self.hospitalisation.save()
 
-        # Conversion du montant réellement versé en CDF
-        if self.devise == 'CDF':
-          montant_verse_cdf = (
-            self.montant_verse or Decimal('0.00')
-          )
-        else:
-          montant_verse_cdf = (
-            (self.montant_verse or Decimal('0.00'))
-            * taux
-          )
+        # --------------------------------------------------------
+        # LOGIQUE SESSIONS SOINS
+        # --------------------------------------------------------
+        if self.session:
+            tous_paiements = self.session.paiements.exclude(
+                pk=self.pk
+            )
 
-        self.montant_verse_cdf = montant_verse_cdf
+            total_deja_verse = tous_paiements.aggregate(
+                total=Sum('montant_verse')
+            )['total'] or Decimal('0.00')
 
-        # Paiements précédents pour cette même campagne
-        paiements_precedents = Paiement.objects.filter(
-          campagne=self.campagne,
-          patient=self.patient,
-          clientEx=self.clientEx,
-          service='CAMPAGNE'
-        ).exclude(pk=self.pk)
+            total_deja_reduit = tous_paiements.aggregate(
+                total=Sum('montant_reduction')
+            )['total'] or Decimal('0.00')
 
-        total_deja_verse_cdf = (
-          paiements_precedents.aggregate(
-            total=Sum('montant_verse_cdf')
-          )['total']
-          or Decimal('0.00')
-        )
+            self.reste_a_payer = max(
+                Decimal('0.00'),
+                self.session.total_a_payer - (
+                    total_deja_reduit
+                    + self.montant_reduction
+                    + total_deja_verse
+                    + self.montant_verse
+                )
+            )
 
-        total_reduction_cdf = (
-          paiements_precedents.aggregate(
-            total=Sum('montant_reduction')
-          )['total']
-          or Decimal('0.00')
-        )
+            self.session.est_payee = (
+                self.reste_a_payer <= Decimal('0.00')
+            )
 
-        total_paye_cdf = (
-          total_deja_verse_cdf
-          + total_reduction_cdf
-          + montant_verse_cdf
-          + (self.montant_reduction or Decimal('0.00'))
-        )
+            self.session.save()
 
-        # CHANGEMENT 3 : refuser un paiement trop grand
-        if total_paye_cdf > prix_a_payer_cdf + Decimal('1'):
-          raise ValidationError(
-            "Le montant dépasse le prix de la campagne "
-            f"({prix_a_payer_cdf} CDF)."
-          )
+        # --------------------------------------------------------
+        # LOGIQUE ACTE MEDICAL
+        # --------------------------------------------------------
+        if self.acte_medical:
+            paiements_existants = self.acte_medical.paiements.exclude(
+                pk=self.pk
+            )
 
-        # Le reste à payer est toujours calculé en CDF
-        self.reste_a_payer = max(
-          Decimal('0.00'),
-          prix_a_payer_cdf - total_paye_cdf
-        )
+            total_deja_verse = paiements_existants.aggregate(
+                total=Sum('montant_verse')
+            )['total'] or Decimal('0.00')
 
-    # --------------------------------------------------------
-    # CHANGEMENT 4 : LOGIQUE SUPPLEMENT CAMPAGNE
-    # (examens supplémentaires, même dans une campagne gratuite)
-    # --------------------------------------------------------
-    if self.service == 'SUPPLEMENT_CAMPAGNE':
+            total_deja_reduit = paiements_existants.aggregate(
+                total=Sum('montant_reduction')
+            )['total'] or Decimal('0.00')
 
-      # On doit savoir quel examen supplémentaire est payé
-      if not self.campagne_prestation:
-        raise ValidationError(
-          "Vous devez choisir l'examen supplémentaire."
-        )
+            montant_actuel = (
+                self.montant_verse or Decimal('0.00')
+            )
 
-      if not self.patient and not self.clientEx:
-        raise ValidationError(
-          "Vous devez sélectionner un patient ou un client externe."
-        )
+            reduction_actuelle = (
+                self.montant_reduction or Decimal('0.00')
+            )
 
-      taux = ConfigurationHopital.get_taux()
+            total_acte = (
+                self.acte_medical.montant_prevu
+                or Decimal('0.00')
+            )
 
-      if not taux or taux <= 0:
-        raise ValidationError(
-          "Le taux USD/CDF n'est pas configuré correctement."
-        )
+            self.reste_a_payer = max(
+                Decimal('0.00'),
+                total_acte - (
+                    total_deja_verse
+                    + total_deja_reduit
+                    + montant_actuel
+                    + reduction_actuelle
+                )
+            )
 
-      # Prix de cet examen, en CDF
-      prix_examen_cdf = (
-        self.campagne_prestation.prix_reference
-        or Decimal('0.00')
-      )
+        # --------------------------------------------------------
+        # LOGIQUE EXAMEN EXTERNE
+        # --------------------------------------------------------
+        if self.demande_examen_externe:
+            demande = self.demande_examen_externe
 
-      # Montant versé, converti en CDF
-      if self.devise == 'CDF':
-        montant_verse_cdf = (
-          self.montant_verse or Decimal('0.00')
-        )
-      else:
-        montant_verse_cdf = (
-          (self.montant_verse or Decimal('0.00'))
-          * taux
-        )
+            taux = ConfigurationHopital.get_taux()
 
-      self.prix_campagne_cdf = prix_examen_cdf
-      self.montant_verse_cdf = montant_verse_cdf
+            if not taux or taux <= 0:
+                taux = Decimal('2300.00')
 
-      # Paiements déjà faits pour CET examen et CETTE personne
-      precedents = Paiement.objects.filter(
-        service='SUPPLEMENT_CAMPAGNE',
-        campagne_prestation=self.campagne_prestation,
-        patient=self.patient,
-        clientEx=self.clientEx,
-      ).exclude(pk=self.pk)
+            # Total de la demande, converti en CDF
+            total_due_cdf = (
+                demande.total_a_payer or Decimal('0.00')
+            ) * taux
 
-      deja_verse_cdf = precedents.aggregate(
-        total=Sum('montant_verse_cdf')
-      )['total'] or Decimal('0.00')
+            # Montant versé maintenant, converti en CDF
+            if self.devise == 'CDF':
+                montant_verse_cdf = (
+                    self.montant_verse or Decimal('0.00')
+                )
+            else:
+                montant_verse_cdf = (
+                    self.montant_verse or Decimal('0.00')
+                ) * taux
 
-      deja_reduit = precedents.aggregate(
-        total=Sum('montant_reduction')
-      )['total'] or Decimal('0.00')
+            # On enregistre le montant converti une seule fois
+            self.montant_verse_cdf = montant_verse_cdf
 
-      total_paye_cdf = (
-        deja_verse_cdf
-        + deja_reduit
-        + montant_verse_cdf
-        + (self.montant_reduction or Decimal('0.00'))
-      )
+            # Paiements précédents pour cette même demande
+            paiements_precedents = demande.paiements.exclude(
+                pk=self.pk
+            )
 
-      # Si le total dépasse le prix de l'examen, on refuse
-      if total_paye_cdf > prix_examen_cdf + Decimal('1'):
-        raise ValidationError(
-          "Le montant dépasse le prix de cet examen "
-          f"({prix_examen_cdf} CDF)."
-        )
+            total_deja_verse_cdf = paiements_precedents.aggregate(
+                total=Sum('montant_verse_cdf')
+            )['total'] or Decimal('0.00')
 
-      # Reste à payer pour cet examen
-      self.reste_a_payer = max(
-        Decimal('0.00'),
-        prix_examen_cdf - total_paye_cdf
-      )
+            total_deja_reduit = paiements_precedents.aggregate(
+                total=Sum('montant_reduction')
+            )['total'] or Decimal('0.00')
 
-    # --------------------------------------------------------
-    # NOUVEAU : LOGIQUE PATIENT DE PASSAGE
-    # --------------------------------------------------------
-    if self.service == 'PASSAGE':
+            total_paye_cdf = (
+                total_deja_verse_cdf
+                + total_deja_reduit
+                + montant_verse_cdf
+                + (self.montant_reduction or Decimal('0.00'))
+            )
 
-      # --- Il faut choisir le patient de passage ---
-      if not self.passage:
-        raise ValidationError(
-          "Vous devez sélectionner un patient de passage."
-        )
+            # Refuser un paiement supérieur au total
+            if total_paye_cdf > total_due_cdf + Decimal('1'):
+                raise ValidationError(
+                    "Le montant dépasse le total à payer "
+                    f"({total_due_cdf} CDF)."
+                )
 
-      # --- Taux USD -> CDF ---
-      taux = ConfigurationHopital.get_taux()
+            # Reste à payer, en CDF
+            self.reste_a_payer = max(
+                Decimal('0.00'),
+                total_due_cdf - total_paye_cdf
+            )
 
-      if not taux or taux <= 0:
-        raise ValidationError(
-          "Le taux USD/CDF n'est pas configuré correctement."
-        )
+            # Mise à jour du statut de la demande
+            if self.reste_a_payer <= Decimal('1'):
+                demande.statut = 'PAYE'
+            else:
+                demande.statut = 'EN_ATTENTE'
 
-      # --- Total à payer (en CDF) ---
-      total_du_cdf = self.passage.total_a_payer()
+            demande.save()
 
-      # --- Montant versé maintenant, converti en CDF ---
-      if self.devise == 'CDF':
-        montant_verse_cdf = (
-          self.montant_verse or Decimal('0.00')
-        )
-      else:
-        montant_verse_cdf = (
-          (self.montant_verse or Decimal('0.00'))
-          * taux
-        )
+        # --------------------------------------------------------
+        # LOGIQUE CAMPAGNE
+        # --------------------------------------------------------
+        if self.service == 'CAMPAGNE':
 
-      self.montant_verse_cdf = montant_verse_cdf
+            if not self.campagne:
+                raise ValidationError(
+                    "Vous devez sélectionner une campagne."
+                )
 
-      # --- Paiements déjà faits pour ce patient de passage ---
-      precedents = self.passage.paiements.exclude(pk=self.pk)
+            if not self.patient and not self.clientEx:
+                raise ValidationError(
+                    "Vous devez sélectionner un patient ou un client externe."
+                )
 
-      deja_verse_cdf = precedents.aggregate(
-        total=Sum('montant_verse_cdf')
-      )['total'] or Decimal('0.00')
+            if self.hopital_id and self.campagne.hopital_id != self.hopital_id:
+                raise ValidationError(
+                    "Cette campagne n'appartient pas à l'hôpital sélectionné."
+                )
 
-      deja_reduit = precedents.aggregate(
-        total=Sum('montant_reduction')
-      )['total'] or Decimal('0.00')
+            taux = ConfigurationHopital.get_taux()
 
-      total_paye_cdf = (
-        deja_verse_cdf
-        + deja_reduit
-        + montant_verse_cdf
-        + (self.montant_reduction or Decimal('0.00'))
-      )
+            if not taux or taux <= 0:
+                raise ValidationError(
+                    "Le taux USD/CDF n'est pas configuré correctement."
+                )
 
-      # --- Refuser si on paie plus que le total ---
-      if total_paye_cdf > total_du_cdf + Decimal('1'):
-        raise ValidationError(
-          "Le montant dépasse le total à payer "
-          f"({total_du_cdf} CDF)."
-        )
+            prix_campagne_cdf = self.campagne.get_prix()
 
-      # --- Reste à payer ---
-      self.reste_a_payer = max(
-        Decimal('0.00'),
-        total_du_cdf - total_paye_cdf
-      )
+            # ----------------------------------------------------
+            # CAMPAGNE GRATUITE
+            # ----------------------------------------------------
+            if self.campagne.type_campagne == Campagne.TYPE_GRATUITE:
+                self.prix_campagne_cdf = Decimal('0.00')
+                self.montant_verse_cdf = Decimal('0.00')
+                self.montant_verse = Decimal('0.00')
+                self.montant_reduction = Decimal('0.00')
+                self.reste_a_payer = Decimal('0.00')
 
-      # --- Si tout est payé, le passage est marqué payé ---
-      self.passage.est_paye = (
-        self.reste_a_payer <= Decimal('1')
-      )
-      self.passage.save()
+            # ----------------------------------------------------
+            # CAMPAGNE PAYANTE
+            # ----------------------------------------------------
+            elif self.campagne.type_campagne == Campagne.TYPE_PAYANTE:
 
-    # --------------------------------------------------------
-    # LOGIQUE MATERNITE
-    # --------------------------------------------------------
-    if self.service == 'MATERNITE' and self.dossier_maternite:
-      if self.reste_a_payer <= 0:
-        self.dossier_maternite.est_paye = True
-        self.dossier_maternite.save()
+                if prix_campagne_cdf <= Decimal('0.00'):
+                    raise ValidationError(
+                        "Le prix de cette campagne payante est invalide."
+                    )
 
-    # --------------------------------------------------------
-    # LOGIQUE ENTREPRISE
-    # --------------------------------------------------------
-    if self.service == 'ENTREPRISE' and self.entreprise:
-      montant_cdf = self.montant_verse or Decimal('0.00')
+                participant = CampagneParticipant.objects.filter(
+                    campagne=self.campagne,
+                    patient=self.patient,
+                    clientEx=self.clientEx,
+                ).first()
 
-      reduction_cdf = (
-        self.montant_reduction
-        or Decimal('0.00')
-      )
+                if participant and participant.prix_total_cdf > 0:
+                    prix_a_payer_cdf = participant.prix_total_cdf
+                else:
+                    prix_a_payer_cdf = prix_campagne_cdf
 
-      total_a_deduire_cdf = (
-        montant_cdf + reduction_cdf
-      )
+                self.prix_campagne_cdf = prix_a_payer_cdf
 
-      self.entreprise.dette_mensuelle = max(
-        Decimal('0.00'),
-        (
-          self.entreprise.dette_mensuelle
-          or Decimal('0.00')
-        ) - total_a_deduire_cdf
-      )
+                if self.devise == 'CDF':
+                    montant_verse_cdf = (
+                        self.montant_verse or Decimal('0.00')
+                    )
+                else:
+                    montant_verse_cdf = (
+                        self.montant_verse or Decimal('0.00')
+                    ) * taux
 
-      self.entreprise.save()
+                self.montant_verse_cdf = montant_verse_cdf
 
-    # --------------------------------------------------------
-    # SAUVEGARDE DU PAIEMENT
-    # --------------------------------------------------------
-    super().save(*args, **kwargs)
+                paiements_precedents = Paiement.objects.filter(
+                    campagne=self.campagne,
+                    patient=self.patient,
+                    clientEx=self.clientEx,
+                    service='CAMPAGNE'
+                ).exclude(pk=self.pk)
 
-    # --------------------------------------------------------
-    # CHANGEMENT 5 : mettre à jour l'inscription (campagne payante)
-    # --------------------------------------------------------
-    if (
-      self.service == 'CAMPAGNE'
-      and self.campagne
-      and self.campagne.type_campagne == Campagne.TYPE_PAYANTE
-    ):
-      participant = CampagneParticipant.objects.filter(
-        campagne=self.campagne,
-        patient=self.patient,
-        clientEx=self.clientEx,
-      ).first()
+                total_deja_verse_cdf = paiements_precedents.aggregate(
+                    total=Sum('montant_verse_cdf')
+                )['total'] or Decimal('0.00')
 
-      if participant:
-        tous = Paiement.objects.filter(
-          campagne=self.campagne,
-          patient=self.patient,
-          clientEx=self.clientEx,
-          service='CAMPAGNE'
-        )
+                total_reduction_cdf = paiements_precedents.aggregate(
+                    total=Sum('montant_reduction')
+                )['total'] or Decimal('0.00')
 
-        total_verse = tous.aggregate(
-          total=Sum('montant_verse_cdf')
-        )['total'] or Decimal('0.00')
+                total_paye_cdf = (
+                    total_deja_verse_cdf
+                    + total_reduction_cdf
+                    + montant_verse_cdf
+                    + (self.montant_reduction or Decimal('0.00'))
+                )
 
-        total_reduit = tous.aggregate(
-          total=Sum('montant_reduction')
-        )['total'] or Decimal('0.00')
+                if total_paye_cdf > prix_a_payer_cdf + Decimal('1'):
+                    raise ValidationError(
+                        "Le montant dépasse le prix de la campagne "
+                        f"({prix_a_payer_cdf} CDF)."
+                    )
 
-        montant_paye = total_verse + total_reduit
+                self.reste_a_payer = max(
+                    Decimal('0.00'),
+                    prix_a_payer_cdf - total_paye_cdf
+                )
 
-        reste = max(
-          Decimal('0.00'),
-          participant.prix_total_cdf - montant_paye
-        )
+        # --------------------------------------------------------
+        # LOGIQUE SUPPLEMENT CAMPAGNE
+        # --------------------------------------------------------
+        if self.service == 'SUPPLEMENT_CAMPAGNE':
 
-        # update() ne relance pas save() du participant
-        CampagneParticipant.objects.filter(
-          pk=participant.pk
-        ).update(
-          montant_paye_cdf=montant_paye,
-          reste_a_payer_cdf=reste,
-        )
+            if not self.campagne_prestation:
+                raise ValidationError(
+                    "Vous devez choisir l'examen supplémentaire."
+                )
 
-    # --------------------------------------------------------
-    # CREATION AUTOMATIQUE DE FACTURE
-    # --------------------------------------------------------
-    if is_new:
-      Facture.objects.create(
-        paiement=self,
-        numero_facture=(
-          f"FAC-{timezone.now().strftime('%y%m%d')}-"
-          f"{self.id}"
-        )
-      )
+            if not self.patient and not self.clientEx:
+                raise ValidationError(
+                    "Vous devez sélectionner un patient ou un client externe."
+                )
+
+            taux = ConfigurationHopital.get_taux()
+
+            if not taux or taux <= 0:
+                raise ValidationError(
+                    "Le taux USD/CDF n'est pas configuré correctement."
+                )
+
+            prix_examen_cdf = (
+                self.campagne_prestation.prix_reference
+                or Decimal('0.00')
+            )
+
+            if self.devise == 'CDF':
+                montant_verse_cdf = (
+                    self.montant_verse or Decimal('0.00')
+                )
+            else:
+                montant_verse_cdf = (
+                    self.montant_verse or Decimal('0.00')
+                ) * taux
+
+            self.prix_campagne_cdf = prix_examen_cdf
+            self.montant_verse_cdf = montant_verse_cdf
+
+            precedents = Paiement.objects.filter(
+                service='SUPPLEMENT_CAMPAGNE',
+                campagne_prestation=self.campagne_prestation,
+                patient=self.patient,
+                clientEx=self.clientEx,
+            ).exclude(pk=self.pk)
+
+            deja_verse_cdf = precedents.aggregate(
+                total=Sum('montant_verse_cdf')
+            )['total'] or Decimal('0.00')
+
+            deja_reduit = precedents.aggregate(
+                total=Sum('montant_reduction')
+            )['total'] or Decimal('0.00')
+
+            total_paye_cdf = (
+                deja_verse_cdf
+                + deja_reduit
+                + montant_verse_cdf
+                + (self.montant_reduction or Decimal('0.00'))
+            )
+
+            if total_paye_cdf > prix_examen_cdf + Decimal('1'):
+                raise ValidationError(
+                    "Le montant dépasse le prix de cet examen "
+                    f"({prix_examen_cdf} CDF)."
+                )
+
+            self.reste_a_payer = max(
+                Decimal('0.00'),
+                prix_examen_cdf - total_paye_cdf
+            )
+
+        # --------------------------------------------------------
+        # LOGIQUE PATIENT DE PASSAGE
+        # --------------------------------------------------------
+        if self.service == 'PASSAGE':
+
+            if not self.passage:
+                raise ValidationError(
+                    "Vous devez sélectionner un patient de passage."
+                )
+
+            taux = ConfigurationHopital.get_taux()
+
+            if not taux or taux <= 0:
+                raise ValidationError(
+                    "Le taux USD/CDF n'est pas configuré correctement."
+                )
+
+            total_du_cdf = self.passage.total_a_payer()
+
+            if self.devise == 'CDF':
+                montant_verse_cdf = (
+                    self.montant_verse or Decimal('0.00')
+                )
+            else:
+                montant_verse_cdf = (
+                    self.montant_verse or Decimal('0.00')
+                ) * taux
+
+            self.montant_verse_cdf = montant_verse_cdf
+
+            precedents = self.passage.paiements.exclude(
+                pk=self.pk
+            )
+
+            deja_verse_cdf = precedents.aggregate(
+                total=Sum('montant_verse_cdf')
+            )['total'] or Decimal('0.00')
+
+            deja_reduit = precedents.aggregate(
+                total=Sum('montant_reduction')
+            )['total'] or Decimal('0.00')
+
+            total_paye_cdf = (
+                deja_verse_cdf
+                + deja_reduit
+                + montant_verse_cdf
+                + (self.montant_reduction or Decimal('0.00'))
+            )
+
+            if total_paye_cdf > total_du_cdf + Decimal('1'):
+                raise ValidationError(
+                    "Le montant dépasse le total à payer "
+                    f"({total_du_cdf} CDF)."
+                )
+
+            self.reste_a_payer = max(
+                Decimal('0.00'),
+                total_du_cdf - total_paye_cdf
+            )
+
+            self.passage.est_paye = (
+                self.reste_a_payer <= Decimal('1')
+            )
+
+            self.passage.save()
+
+        # --------------------------------------------------------
+        # LOGIQUE MATERNITE
+        # --------------------------------------------------------
+        if self.service == 'MATERNITE' and self.dossier_maternite:
+            if self.reste_a_payer <= Decimal('0.00'):
+                self.dossier_maternite.est_paye = True
+                self.dossier_maternite.save()
+
+        # --------------------------------------------------------
+        # LOGIQUE ENTREPRISE
+        # --------------------------------------------------------
+        if self.service == 'ENTREPRISE' and self.entreprise:
+            montant_cdf = (
+                self.montant_verse or Decimal('0.00')
+            )
+
+            reduction_cdf = (
+                self.montant_reduction or Decimal('0.00')
+            )
+
+            total_a_deduire_cdf = (
+                montant_cdf + reduction_cdf
+            )
+
+            self.entreprise.dette_mensuelle = max(
+                Decimal('0.00'),
+                (
+                    self.entreprise.dette_mensuelle
+                    or Decimal('0.00')
+                ) - total_a_deduire_cdf
+            )
+
+            self.entreprise.save()
+
+        # --------------------------------------------------------
+        # SAUVEGARDE DU PAIEMENT
+        # --------------------------------------------------------
+        super().save(*args, **kwargs)
+
+        # --------------------------------------------------------
+        # MISE A JOUR DE L'INSCRIPTION CAMPAGNE PAYANTE
+        # --------------------------------------------------------
+        if (
+            self.service == 'CAMPAGNE'
+            and self.campagne
+            and self.campagne.type_campagne == Campagne.TYPE_PAYANTE
+        ):
+            participant = CampagneParticipant.objects.filter(
+                campagne=self.campagne,
+                patient=self.patient,
+                clientEx=self.clientEx,
+            ).first()
+
+            if participant:
+                tous = Paiement.objects.filter(
+                    campagne=self.campagne,
+                    patient=self.patient,
+                    clientEx=self.clientEx,
+                    service='CAMPAGNE'
+                )
+
+                total_verse = tous.aggregate(
+                    total=Sum('montant_verse_cdf')
+                )['total'] or Decimal('0.00')
+
+                total_reduit = tous.aggregate(
+                    total=Sum('montant_reduction')
+                )['total'] or Decimal('0.00')
+
+                montant_paye = total_verse + total_reduit
+
+                reste = max(
+                    Decimal('0.00'),
+                    participant.prix_total_cdf - montant_paye
+                )
+
+                CampagneParticipant.objects.filter(
+                    pk=participant.pk
+                ).update(
+                    montant_paye_cdf=montant_paye,
+                    reste_a_payer_cdf=reste,
+                )
+
+        # --------------------------------------------------------
+        # CREATION AUTOMATIQUE DE FACTURE
+        # --------------------------------------------------------
+        if is_new:
+            Facture.objects.create(
+                paiement=self,
+                numero_facture=(
+                    f"FAC-{timezone.now().strftime('%y%m%d')}-"
+                    f"{self.id}"
+                )
+            )
     # ----------------------------------------------------------------------------------
     # ----------------------------------------------------------------------------------
     #
@@ -2838,26 +2830,180 @@ class FicheAccouchement(models.Model):
 
 
 class DemandeExamenExterne(models.Model):
-    STATUT_CHOICES = [('EN_ATTENTE', 'En attente'), ('PAYE', 'Payé'), ('TERMINE', 'Terminé')]
-    hopital = models.ForeignKey(Hopital, on_delete=models.SET_NULL, null=True)
+    STATUT_CHOICES = [
+        ('EN_ATTENTE', 'En attente'),
+        ('PAYE', 'Payé'),
+        ('TERMINE', 'Terminé'),
+    ]
+
+    hopital = models.ForeignKey(
+        'Hopital',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='demandes_examen_externe',
+        verbose_name='Hôpital'
+    )
 
     client = models.ForeignKey(
-        ClientExterne,
+        'ClientExterne',
         on_delete=models.CASCADE,
-        related_name='demandes'
+        related_name='demandes',
+        verbose_name='Client externe'
     )
-    prestations = models.ManyToManyField('Prestation', verbose_name="Examens choisis")
-    medecin_demandeur = models.CharField(max_length = 70,  null = True , blank = True)
-    clinique = models.TextField(null = True , blank = True) 
-    but = models.TextField(null = True , blank = True)
-    total_cdf = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    total_a_payer = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
-    statut = models.CharField(max_length=15, choices=STATUT_CHOICES, default='EN_ATTENTE')
-    date_demande = models.DateTimeField(auto_now_add=True)
+    prestations = models.ManyToManyField(
+        'Prestation',
+        verbose_name='Examens choisis',
+        blank=True
+    )
+
+    medecin_demandeur = models.CharField(
+        max_length=70,
+        null=True,
+        blank=True,
+        verbose_name='Médecin demandeur'
+    )
+
+    clinique = models.TextField(
+        null=True,
+        blank=True,
+        verbose_name='Informations cliniques'
+    )
+
+    but = models.TextField(
+        null=True,
+        blank=True,
+        verbose_name='But de la demande'
+    )
+
+    # ------------------------------------------------------------
+    # MONTANTS
+    # ------------------------------------------------------------
+
+    total_cdf = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name='Total des examens (CDF)'
+    )
+
+    montant_reduction_cdf = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name='Réduction accordée (CDF)'
+    )
+
+    total_a_payer = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name='Total à payer (USD)'
+    )
+
+    # ------------------------------------------------------------
+    # STATUT
+    # ------------------------------------------------------------
+
+    statut = models.CharField(
+        max_length=15,
+        choices=STATUT_CHOICES,
+        default='EN_ATTENTE',
+        verbose_name='Statut'
+    )
+
+    date_demande = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Date de la demande'
+    )
+
+    class Meta:
+        verbose_name = 'Demande d’examen externe'
+        verbose_name_plural = 'Demandes d’examen externe'
+        ordering = ['-date_demande']
 
     def __str__(self):
         return f"Demande pour {self.client.noms} - {self.statut}"
+
+    # ------------------------------------------------------------
+    # TAUX USD -> CDF
+    # ------------------------------------------------------------
+    def _taux(self):
+        from .models import ConfigurationHopital
+
+        taux = ConfigurationHopital.get_taux()
+
+        if not taux or taux <= 0:
+            taux = Decimal('2300.00')
+
+        return taux
+
+    # ------------------------------------------------------------
+    # TOTAL DES EXAMENS AVANT REDUCTION
+    # ------------------------------------------------------------
+    @property
+    def total_avant_reduction_cdf(self):
+        return self.total_cdf or Decimal('0.00')
+
+    # ------------------------------------------------------------
+    # TOTAL APRES REDUCTION, EN CDF
+    # ------------------------------------------------------------
+    @property
+    def total_apres_reduction_cdf(self):
+        total = self.total_cdf or Decimal('0.00')
+        reduction = self.montant_reduction_cdf or Decimal('0.00')
+
+        return max(
+            Decimal('0.00'),
+            total - reduction
+        )
+
+    # ------------------------------------------------------------
+    # TOTAL PAYE, EN CDF
+    # ------------------------------------------------------------
+    @property
+    def montant_paye_cdf(self):
+        total = self.paiements.aggregate(
+            total=Sum('montant_verse_cdf')
+        )['total'] or Decimal('0.00')
+
+        return total
+
+    # ------------------------------------------------------------
+    # REDUCTION DEJA APPLIQUEE DANS LES PAIEMENTS
+    # ------------------------------------------------------------
+    @property
+    def montant_reduction_paiements_cdf(self):
+        total = self.paiements.aggregate(
+            total=Sum('montant_reduction')
+        )['total'] or Decimal('0.00')
+
+        return total
+
+    # ------------------------------------------------------------
+    # RESTE A PAYER, EN CDF
+    # ------------------------------------------------------------
+    @property
+    def reste_a_payer_cdf(self):
+        total_du = self.total_apres_reduction_cdf
+
+        total_paye = (
+            self.montant_paye_cdf
+            + self.montant_reduction_paiements_cdf
+        )
+
+        return max(
+            Decimal('0.00'),
+            total_du - total_paye
+        )
+
+    # ------------------------------------------------------------
+    # DEMANDE PAYEE ?
+    # ------------------------------------------------------------
+    @property
+    def est_payee(self):
+        return self.reste_a_payer_cdf <= Decimal('1.00')
 
 
 # =====================================================================================================
