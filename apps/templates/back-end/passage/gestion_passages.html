@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+  <title>Patients de passage - CHK</title>
+
+  {% include 'back-end/includes/css.html' %}
+
+  <style>
+    :root {
+      --bleu: #2563eb;
+      --vert: #10b981;
+      --rouge: #ef4444;
+      --cyan: #06b6d4;
+    }
+
+    body {
+      background: #f1f5f9;
+      overflow-x: hidden;
+    }
+
+    .page-wrapper {
+      background-color: transparent;
+      padding-top: 68px;
+    }
+
+    .content {
+      padding-top: 24px;
+      padding-bottom: 28px;
+    }
+
+    /* --- Titre de section --- */
+    .section-title {
+      display: flex;
+      align-items: center;
+      font-size: 0.82rem;
+      font-weight: 800;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: #475569;
+      margin-bottom: 18px;
+    }
+
+    .section-title::before {
+      content: "";
+      width: 4px;
+      height: 18px;
+      margin-right: 10px;
+      border-radius: 4px;
+      background: linear-gradient(180deg, #2563eb, #06b6d4);
+    }
+
+    /* --- Carte --- */
+    .panel-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 22px;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+      background: #fff;
+    }
+
+    .panel-card .card-body {
+      padding: 24px;
+    }
+
+    /* --- Barre de recherche --- */
+    .recherche-box {
+      position: relative;
+      margin-bottom: 14px;
+    }
+
+    .recherche-box i {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #94a3b8;
+    }
+
+    .recherche-box input {
+      padding-left: 38px;
+      border-radius: 12px;
+      height: 44px;
+    }
+
+    /* --- Filtres par catégorie --- */
+    .filtres {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      margin-bottom: 14px;
+    }
+
+    .filtre-btn {
+      flex: 0 0 auto;
+      border: 1px solid #e2e8f0;
+      background: #fff;
+      color: #475569;
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 6px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .filtre-btn:hover {
+      border-color: #bfdbfe;
+      color: var(--bleu);
+    }
+
+    .filtre-btn.actif {
+      background: var(--bleu);
+      border-color: var(--bleu);
+      color: #fff;
+    }
+
+    /* --- Catalogue des prestations --- */
+    .catalogue {
+      max-height: 480px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .groupe-titre {
+      font-size: 0.75rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #64748b;
+      margin: 14px 0 8px;
+    }
+
+    .prest-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      margin-bottom: 8px;
+      background: #fff;
+      transition: all 0.2s ease;
+    }
+
+    .prest-item:hover {
+      border-color: #bfdbfe;
+      box-shadow: 0 6px 16px rgba(37, 99, 235, 0.08);
+    }
+
+    .prest-item.dans-panier {
+      background: rgba(16, 185, 129, 0.07);
+      border-color: #a7f3d0;
+    }
+
+    .prest-nom {
+      font-weight: 700;
+      color: #0f172a;
+      font-size: 0.92rem;
+      line-height: 1.3;
+    }
+
+    .prest-prix {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--bleu);
+    }
+
+    .btn-ajouter {
+      flex: 0 0 auto;
+      border: none;
+      border-radius: 10px;
+      padding: 8px 14px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      background: rgba(37, 99, 235, 0.10);
+      color: var(--bleu);
+      transition: all 0.2s ease;
+    }
+
+    .btn-ajouter:hover {
+      background: var(--bleu);
+      color: #fff;
+    }
+
+    .prest-item.dans-panier .btn-ajouter {
+      background: rgba(16, 185, 129, 0.15);
+      color: #047857;
+    }
+
+    /* --- Panier --- */
+    .panier-col {
+      position: sticky;
+      top: 84px;
+    }
+
+    .panier-entete {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .panier-entete h5 {
+      margin: 0;
+      font-weight: 800;
+      font-size: 1rem;
+      color: #0f172a;
+    }
+
+    .panier-compteur {
+      background: var(--bleu);
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 800;
+      min-width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 8px;
+    }
+
+    .panier-liste {
+      max-height: 280px;
+      overflow-y: auto;
+      margin-bottom: 14px;
+    }
+
+    .panier-vide {
+      text-align: center;
+      color: #94a3b8;
+      padding: 28px 10px;
+      font-size: 0.88rem;
+    }
+
+    .panier-vide i {
+      display: block;
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
+
+    .panier-ligne {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px dashed #e2e8f0;
+    }
+
+    .panier-ligne .nom {
+      font-size: 0.86rem;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    .panier-ligne .prix {
+      font-size: 0.78rem;
+      color: #64748b;
+      font-weight: 700;
+    }
+
+    .btn-retirer {
+      border: none;
+      background: rgba(239, 68, 68, 0.10);
+      color: var(--rouge);
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      cursor: pointer;
+      flex: 0 0 auto;
+    }
+
+    .btn-retirer:hover {
+      background: var(--rouge);
+      color: #fff;
+    }
+
+    /* --- Total --- */
+    .total-box {
+      border-radius: 16px;
+      padding: 16px;
+      text-align: center;
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 55%, #2563eb 100%);
+      color: #fff;
+      margin-bottom: 14px;
+    }
+
+    .total-box small {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      color: #bfdbfe;
+    }
+
+    .total-box .montant {
+      font-size: 1.6rem;
+      font-weight: 800;
+      line-height: 1.2;
+    }
+
+    .btn-vider {
+      border: none;
+      background: transparent;
+      color: var(--rouge);
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* --- Barre fixe en bas (téléphone) --- */
+    .barre-mobile {
+      display: none;
+    }
+
+    @media (max-width: 992px) {
+      .page-wrapper {
+        margin-left: 0 !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+      }
+
+      .content.container-fluid {
+        padding-left: 14px;
+        padding-right: 14px;
+      }
+
+      .panier-col {
+        position: static;
+      }
+
+      .catalogue {
+        max-height: 380px;
+      }
+
+      .barre-mobile {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 999;
+        padding: 10px 16px;
+        background: #0f172a;
+        color: #fff;
+        box-shadow: 0 -6px 18px rgba(15, 23, 42, 0.25);
+      }
+
+      .barre-mobile .info {
+        font-size: 0.8rem;
+        line-height: 1.2;
+      }
+
+      .barre-mobile .info strong {
+        display: block;
+        font-size: 1.05rem;
+      }
+
+      .barre-mobile button {
+        border: none;
+        border-radius: 10px;
+        background: var(--bleu);
+        color: #fff;
+        font-weight: 700;
+        font-size: 0.82rem;
+        padding: 9px 14px;
+      }
+
+      .content {
+        padding-bottom: 90px;
+      }
+    }
+
+    @media (max-width: 576px) {
+      .page-wrapper {
+        padding-top: 66px;
+      }
+
+      .content {
+        padding-top: 14px;
+      }
+
+      .section-title {
+        font-size: 0.74rem;
+        margin-bottom: 12px;
+      }
+
+      .panel-card {
+        border-radius: 18px;
+      }
+
+      .panel-card .card-body {
+        padding: 16px 12px;
+      }
+
+      .prest-item {
+        padding: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="main-wrapper">
+    {% include 'back-end/includes/header.html' %}
+    {% include 'back-end/includes/sidebar.html' %}
+
+    <div class="page-wrapper">
+      <div class="content container-fluid">
+
+        <!-- ---------- Messages ---------- -->
+        {% for message in messages %}
+          <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %}">
+            {{ message }}
+          </div>
+        {% endfor %}
+
+        <!-- ---------- Formulaire d'enregistrement ---------- -->
+        {% if fonctionKey == 'admin' or fonctionKey == 'receptionniste' or fonctionKey == 'caissier' %}
+
+        <div class="section-title">Nouveau patient de passage</div>
+
+        <form method="post" id="formPassage">
+          {% csrf_token %}
+
+          <div class="row mb-4">
+
+            <!-- ===== COLONNE GAUCHE : nom + catalogue ===== -->
+            <div class="col-lg-7 mb-3">
+              <div class="card panel-card">
+                <div class="card-body">
+
+                  <!-- Nom complet -->
+                  <div class="form-group mb-3">
+                    <label><strong>Nom complet</strong></label>
+                    {{ form.nom_complet }}
+                    {{ form.nom_complet.errors }}
+                  </div>
+
+                  <label><strong>Choisir les prestations</strong></label>
+
+                  <!-- Recherche -->
+                  <div class="recherche-box">
+                    <i class="fa fa-search"></i>
+                    <input type="text" id="recherche" class="form-control" placeholder="Rechercher une prestation...">
+                  </div>
+
+                  <!-- Filtres par catégorie -->
+                  {% regroup prestations by get_categorie_display as groupes %}
+                  <div class="filtres">
+                    <button type="button" class="filtre-btn actif" data-cat="">Toutes</button>
+                    {% for groupe in groupes %}
+                      <button type="button" class="filtre-btn" data-cat="{{ groupe.grouper }}">{{ groupe.grouper }}</button>
+                    {% endfor %}
+                  </div>
+
+                  <!-- Catalogue -->
+                  <div class="catalogue">
+                    {% for groupe in groupes %}
+                      <div class="groupe" data-cat="{{ groupe.grouper }}">
+                        <div class="groupe-titre">{{ groupe.grouper }}</div>
+                        {% for p in groupe.list %}
+                          <div
+                            class="prest-item"
+                            data-id="{{ p.id }}"
+                            data-nom="{{ p.libelle }}"
+                            data-prix="{{ p.prix|stringformat:'f' }}"
+                            {% if p.id|stringformat:"s" in selection %}data-selected="1"{% endif %}
+                          >
+                            <div>
+                              <div class="prest-nom">{{ p.libelle }}</div>
+                              <div class="prest-prix">{{ p.prix }} CDF</div>
+                            </div>
+                            <button type="button" class="btn-ajouter">
+                              <i class="fa fa-plus"></i> Ajouter
+                            </button>
+                          </div>
+                        {% endfor %}
+                      </div>
+                    {% empty %}
+                      <p class="text-center mt-3">Aucune prestation n'est configurée pour cet hôpital.</p>
+                    {% endfor %}
+                  </div>
+
+                  {{ form.prestations.errors }}
+
+                </div>
+              </div>
+            </div>
+
+            <!-- ===== COLONNE DROITE : panier ===== -->
+            <div class="col-lg-5 mb-3" id="zonePanier">
+              <div class="panier-col">
+                <div class="card panel-card">
+                  <div class="card-body">
+
+                    <div class="panier-entete">
+                      <h5><i class="fa fa-shopping-cart"></i> Panier</h5>
+                      <span class="panier-compteur" id="compteur">0</span>
+                    </div>
+
+                    <div class="panier-liste" id="panierListe"></div>
+
+                    <!-- Les prestations du panier sont envoyées ici -->
+                    <div id="champsCaches"></div>
+
+                    <div class="total-box">
+                      <small>Total à payer</small>
+                      <div class="montant" id="totalMontant">0 CDF</div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100" id="btnEnregistrer" disabled>
+                      <i class="fa fa-save"></i> Enregistrer et payer
+                    </button>
+
+                    <div class="text-center mt-2">
+                      <button type="button" class="btn-vider" id="btnVider">
+                        <i class="fa fa-trash"></i> Vider le panier
+                      </button>
+                    </div>
+
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </form>
+
+        <!-- Barre fixe pour téléphone -->
+        <div class="barre-mobile" id="barreMobile">
+          <div class="info">
+            <span id="barreCompteur">0 prestation</span>
+            <strong id="barreTotal">0 CDF</strong>
+          </div>
+          <button type="button" id="btnVoirPanier">Voir le panier</button>
+        </div>
+
+        {% endif %}
+
+        <!-- ---------- Liste des patients de passage ---------- -->
+        <div class="section-title">Liste des patients de passage</div>
+        <div class="card panel-card">
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th>Nom complet</th>
+                    <th>Date</th>
+                    <th>Prestations</th>
+                    <th>Total</th>
+                    <th>Statut</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for p in passages %}
+                  <tr>
+                    <td>{{ p.nom_complet }}</td>
+                    <td>{{ p.date_passage|date:"d/m/Y H:i" }}</td>
+                    <td>
+                      {% for pr in p.prestations.all %}
+                        {{ pr.libelle }}{% if not forloop.last %}, {% endif %}
+                      {% endfor %}
+                    </td>
+                    <td>{{ p.total_a_payer }} CDF</td>
+                    <td>
+                      {% if p.est_paye %}
+                        <span class="badge bg-success">Payé</span>
+                      {% else %}
+                        <span class="badge bg-danger">Non payé</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      <a href="{% url 'payer_passage' p.id %}" class="btn btn-sm btn-outline-primary">
+                        <i class="fa fa-money"></i> Payer
+                      </a>
+                    </td>
+                  </tr>
+                  {% empty %}
+                  <tr>
+                    <td colspan="6" class="text-center">Aucun patient de passage.</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  {% include 'back-end/includes/js.html' %}
+
+  <script>
+    // ============================================================
+    // PANIER DES PRESTATIONS
+    // ============================================================
+    (function () {
+      var formulaire = document.getElementById('formPassage');
+      if (!formulaire) return;
+
+      var items = document.querySelectorAll('.prest-item');
+      var groupes = document.querySelectorAll('.groupe');
+      var filtres = document.querySelectorAll('.filtre-btn');
+      var recherche = document.getElementById('recherche');
+
+      var panierListe = document.getElementById('panierListe');
+      var champsCaches = document.getElementById('champsCaches');
+      var compteur = document.getElementById('compteur');
+      var totalMontant = document.getElementById('totalMontant');
+      var btnEnregistrer = document.getElementById('btnEnregistrer');
+      var btnVider = document.getElementById('btnVider');
+
+      var barreCompteur = document.getElementById('barreCompteur');
+      var barreTotal = document.getElementById('barreTotal');
+      var btnVoirPanier = document.getElementById('btnVoirPanier');
+
+      // --- Le panier : id -> {id, nom, prix} ---
+      var panier = {};
+      var categorieActive = '';
+
+      // --- Afficher un montant : 12 500 CDF ---
+      function formater(nombre) {
+        return Number(nombre).toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' CDF';
+      }
+
+      // --- Ajouter ou retirer une prestation ---
+      function basculer(id, nom, prix) {
+        if (panier[id]) {
+          delete panier[id];
+        } else {
+          panier[id] = { id: id, nom: nom, prix: prix };
+        }
+        afficher();
+      }
+
+      // --- Redessiner le panier + calculer le total ---
+      function afficher() {
+        panierListe.innerHTML = '';
+        champsCaches.innerHTML = '';
+
+        var total = 0;
+        var nombre = 0;
+
+        Object.keys(panier).forEach(function (id) {
+          var ligne = panier[id];
+          total += ligne.prix;
+          nombre += 1;
+
+          // --- Une ligne visible dans le panier ---
+          var div = document.createElement('div');
+          div.className = 'panier-ligne';
+
+          var texte = document.createElement('div');
+          var nom = document.createElement('div');
+          nom.className = 'nom';
+          nom.textContent = ligne.nom;
+          var prix = document.createElement('div');
+          prix.className = 'prix';
+          prix.textContent = formater(ligne.prix);
+          texte.appendChild(nom);
+          texte.appendChild(prix);
+
+          var bouton = document.createElement('button');
+          bouton.type = 'button';
+          bouton.className = 'btn-retirer';
+          bouton.innerHTML = '<i class="fa fa-times"></i>';
+          bouton.addEventListener('click', function () {
+            basculer(ligne.id, ligne.nom, ligne.prix);
+          });
+
+          div.appendChild(texte);
+          div.appendChild(bouton);
+          panierListe.appendChild(div);
+
+          // --- Un champ caché envoyé à la vue ---
+          var champ = document.createElement('input');
+          champ.type = 'hidden';
+          champ.name = 'prestations';
+          champ.value = ligne.id;
+          champsCaches.appendChild(champ);
+        });
+
+        // --- Panier vide ---
+        if (nombre === 0) {
+          panierListe.innerHTML =
+            '<div class="panier-vide"><i class="fa fa-shopping-cart"></i>Le panier est vide</div>';
+        }
+
+        // --- Total et compteurs ---
+        totalMontant.textContent = formater(total);
+        compteur.textContent = nombre;
+        barreTotal.textContent = formater(total);
+        barreCompteur.textContent = nombre + (nombre > 1 ? ' prestations' : ' prestation');
+
+        // --- Pas d'enregistrement avec un panier vide ---
+        btnEnregistrer.disabled = (nombre === 0);
+
+        // --- Colorer les prestations déjà dans le panier ---
+        items.forEach(function (item) {
+          var dedans = !!panier[item.dataset.id];
+          item.classList.toggle('dans-panier', dedans);
+          item.querySelector('.btn-ajouter').innerHTML = dedans
+            ? '<i class="fa fa-check"></i> Ajouté'
+            : '<i class="fa fa-plus"></i> Ajouter';
+        });
+      }
+
+      // --- Filtrer par recherche + catégorie ---
+      function filtrer() {
+        var mot = recherche.value.trim().toLowerCase();
+
+        items.forEach(function (item) {
+          var nomOk = item.dataset.nom.toLowerCase().indexOf(mot) !== -1;
+          var catOk = (categorieActive === '') ||
+                      (item.closest('.groupe').dataset.cat === categorieActive);
+          item.style.display = (nomOk && catOk) ? '' : 'none';
+        });
+
+        // --- Cacher les titres de catégories vides ---
+        groupes.forEach(function (groupe) {
+          var visibles = groupe.querySelectorAll('.prest-item:not([style*="display: none"])');
+          groupe.style.display = visibles.length ? '' : 'none';
+        });
+      }
+
+      // --- Clic sur "Ajouter" ---
+      items.forEach(function (item) {
+        item.querySelector('.btn-ajouter').addEventListener('click', function () {
+          basculer(item.dataset.id, item.dataset.nom, parseFloat(item.dataset.prix) || 0);
+        });
+
+        // --- Garder les prestations cochées après une erreur ---
+        if (item.dataset.selected === '1') {
+          panier[item.dataset.id] = {
+            id: item.dataset.id,
+            nom: item.dataset.nom,
+            prix: parseFloat(item.dataset.prix) || 0
+          };
+        }
+      });
+
+      // --- Clic sur un filtre de catégorie ---
+      filtres.forEach(function (bouton) {
+        bouton.addEventListener('click', function () {
+          filtres.forEach(function (b) { b.classList.remove('actif'); });
+          bouton.classList.add('actif');
+          categorieActive = bouton.dataset.cat;
+          filtrer();
+        });
+      });
+
+      recherche.addEventListener('input', filtrer);
+
+      // --- Vider le panier ---
+      btnVider.addEventListener('click', function () {
+        panier = {};
+        afficher();
+      });
+
+      // --- Téléphone : aller voir le panier ---
+      btnVoirPanier.addEventListener('click', function () {
+        document.getElementById('zonePanier').scrollIntoView({ behavior: 'smooth' });
+      });
+
+      // --- Départ ---
+      afficher();
+    })();
+  </script>
+
+</body>
+</html>

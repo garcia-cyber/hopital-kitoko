@@ -423,4 +423,9 @@ path('campagnes/<int:campagne_id>/participants/',views.participants_campagne,nam
     # -- le service worker doit être à la racine du site --
   path('serviceworker.js', views.service_worker),
 
+# 
+# le 12/11/2026
+path('passages/', views.gestion_passages, name='gestion_passages'),
+path('passages/<int:passage_id>/payer/', views.payer_passage, name='payer_passage'),
+
  ]

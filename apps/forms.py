@@ -1760,3 +1760,66 @@ class CampagneParticipantForm(forms.ModelForm):
 
         self.fields['patient'].required = False
         self.fields['clientEx'].required = False
+
+
+
+
+# ============================================================================================
+# ============================================================================================
+# 
+class PatientPassageForm(forms.ModelForm):
+  # --- Choix de plusieurs prestations (cases à cocher) ---
+  prestations = forms.ModelMultipleChoiceField(
+    queryset=Prestation.objects.none(),
+    widget=forms.CheckboxSelectMultiple,
+    label="Prestations"
+  )
+
+  class Meta:
+    model = PatientPassage
+    # --- L'hôpital n'est PAS dans le formulaire : la vue le met toute seule ---
+    fields = ['nom_complet', 'prestations']
+
+  def __init__(self, *args, **kwargs):
+    # --- On reçoit l'hôpital du user depuis la vue ---
+    hopital = kwargs.pop('hopital', None)
+    super().__init__(*args, **kwargs)
+
+    # --- Seulement les prestations de CET hôpital ---
+    self.fields['prestations'].queryset = Prestation.objects.filter(
+      hopital=hopital
+    ).order_by('categorie', 'libelle')
+
+    self.fields['nom_complet'].widget.attrs.update({
+      'class': 'form-control',
+      'placeholder': 'Nom complet du patient'
+    })
+
+
+class PaiementPassageForm(forms.Form):
+  DEVISES = [
+    ('CDF', 'CDF'),
+    ('USD', 'USD'),
+  ]
+
+  montant_verse = forms.DecimalField(
+    max_digits=15,
+    decimal_places=2,
+    min_value=Decimal('0.01'),
+    label="Montant versé"
+  )
+
+  montant_reduction = forms.DecimalField(
+    max_digits=10,
+    decimal_places=2,
+    min_value=Decimal('0.00'),
+    initial=Decimal('0.00'),
+    required=False,
+    label="Réduction (CDF)"
+  )
+
+  devise = forms.ChoiceField(
+    choices=DEVISES,
+    initial='CDF',
+    label="Devise"
+  )

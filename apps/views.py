@@ -15718,14 +15718,128 @@ def participants_campagne(request, campagne_id):
 
 
 
-# ----------------------------------------------------------------
+# ---------------------------------------------------------------
 # ---------------------------------------------------------------
 #
 # MOBILE
 def service_worker(request):
   # -- envoyer le fichier js avec le bon type --
-  return render(request, 'serviceworker.js', content_type='application/javascript')   
+  return render(request, 'serviceworker.js', content_type='application/javascript')  
 
+
+
+# ==================================================================================================
+# ============================
+# ============================ 
+# le 12/11/2026
+@login_required
+def gestion_passages(request):
+  """Liste des patients de passage + enregistrement d'un nouveau"""
+
+  # --- Vérification de la fonction et récupération de l'hôpital ---
+  role = Fonction.objects.filter(userKey=request.user).first()
+  fonctionKey = role.fonctionKey.roleName if role else None
+  hopital = role.hopital if role else None  # A ADAPTER
+
+  # --- Sans hôpital, on ne peut rien enregistrer ---
+  if not hopital:
+    messages.error(request, "Aucun hôpital n'est lié à votre compte.")
+    return redirect('gestion_services')
+
+  # --- Seulement les passages de CET hôpital ---
+  passages = PatientPassage.objects.filter(
+    hopital=hopital
+  ).order_by('-date_passage')
+
+  # --- Les prestations de CET hôpital (triées par catégorie) ---
+  prestations = Prestation.objects.filter(
+    hopital=hopital
+  ).order_by('categorie', 'libelle')
+
+  # --- Prestations cochées (pour les garder cochées en cas d'erreur) ---
+  selection = []
+
+  if request.method == 'POST':
+    selection = request.POST.getlist('prestations')
+    form = PatientPassageForm(request.POST, hopital=hopital)
+    if form.is_valid():
+      # --- Tout ou rien : si erreur, rien n'est enregistré ---
+      with transaction.atomic():
+        passage = form.save(commit=False)
+        passage.hopital = hopital  # l'hôpital du user
+        passage.save()
+        form.save_m2m()  # enregistre les prestations choisies
+
+      messages.success(
+        request,
+        f"Patient '{passage.nom_complet}' enregistré avec succès."
+      )
+      return redirect('payer_passage', passage_id=passage.id)
+  else:
+    form = PatientPassageForm(hopital=hopital)
+
+  return render(request, 'back-end/passage/gestion_passages.html', {
+    'passages': passages,
+    'prestations': prestations,
+    'selection': selection,
+    'form': form,
+    'fonctionKey': fonctionKey
+  })
+
+# ===========================================================================================================
+# payer argent 
+# ===========================================================================================================
+@login_required
+def payer_passage(request, passage_id):
+  """Paiement d'un patient de passage (avec le modèle Paiement)"""
+
+  # --- Vérification de la fonction et récupération de l'hôpital ---
+  role = Fonction.objects.filter(userKey=request.user).first()
+  fonctionKey = role.fonctionKey.roleName if role else None
+  hopital = role.hopital if role else None  # A ADAPTER
+
+  # --- Le passage doit appartenir à l'hôpital du user ---
+  passage = get_object_or_404(
+    PatientPassage,
+    id=passage_id,
+    hopital=hopital
+  )
+
+  if request.method == 'POST':
+    form = PaiementPassageForm(request.POST)
+    if form.is_valid():
+      try:
+        # --- save() de Paiement fait tous les calculs ---
+        Paiement.objects.create(
+          service='PASSAGE',
+          passage=passage,
+          montant_verse=form.cleaned_data['montant_verse'],
+          montant_reduction=form.cleaned_data['montant_reduction'] or 0,
+          devise=form.cleaned_data['devise'],
+          caissier=request.user,
+          hopital=hopital
+        )
+        messages.success(request, "Paiement enregistré avec succès.")
+        return redirect('payer_passage', passage_id=passage.id)
+
+      except ValidationError as e:
+        # --- Ex : le montant dépasse le total ---
+        messages.error(request, e.messages[0])
+  else:
+    form = PaiementPassageForm()
+
+  # --- Reste à payer à afficher ---
+  dernier = passage.paiements.order_by('-id').first()
+  reste = dernier.reste_a_payer if dernier else passage.total_a_payer()
+
+  return render(request, 'back-end/passage/payer_passage.html', {
+    'passage': passage,
+    'paiements': passage.paiements.order_by('-id'),
+    'total': passage.total_a_payer(),
+    'reste': reste,
+    'form': form,
+    'fonctionKey': fonctionKey
+  })
 
 
 

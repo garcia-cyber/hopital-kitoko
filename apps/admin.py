@@ -826,4 +826,28 @@ class VideoRoomAdmin(admin.ModelAdmin):
 
 # -------------- campagne 
 #
-#
+# =====================================================================================
+
+
+
+# ====
+# le 12/11/2026
+@admin.register(PatientPassage)
+class PatientPassageAdmin(admin.ModelAdmin):
+  # --- Colonnes affichées dans la liste ---
+  list_display = ('nom_complet', 'hopital', 'date_passage', 'total', 'est_paye')
+
+  # --- Filtres à droite ---
+  list_filter = ('est_paye', 'hopital', 'date_passage')
+
+  # --- Barre de recherche par nom ---
+  search_fields = ('nom_complet',)
+
+  # --- Bon affichage pour choisir plusieurs prestations ---
+  filter_horizontal = ('prestations',)
+
+  # --- Afficher le total dans la liste ---
+  def total(self, obj):
+    return f"{obj.total_a_payer()} CDF"
+
+  total.short_description = "Total à payer"

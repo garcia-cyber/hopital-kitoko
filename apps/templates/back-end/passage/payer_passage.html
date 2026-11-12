@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+  <title>Paiement patient de passage - CHK</title>
+
+  {% include 'back-end/includes/css.html' %}
+
+  <style>
+    body {
+      background: #f1f5f9;
+      overflow-x: hidden;
+    }
+
+    .page-wrapper {
+      background-color: transparent;
+      padding-top: 68px;
+    }
+
+    .content {
+      padding-top: 24px;
+      padding-bottom: 28px;
+    }
+
+    /* --- Titre de section (comme ton tableau de bord) --- */
+    .section-title {
+      display: flex;
+      align-items: center;
+      font-size: 0.82rem;
+      font-weight: 800;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: #475569;
+      margin-bottom: 18px;
+    }
+
+    .section-title::before {
+      content: "";
+      width: 4px;
+      height: 18px;
+      margin-right: 10px;
+      border-radius: 4px;
+      background: linear-gradient(180deg, #2563eb, #06b6d4);
+    }
+
+    /* --- Carte (comme ton tableau de bord) --- */
+    .panel-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 22px;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+      background: #fff;
+    }
+
+    .panel-card .card-body {
+      padding: 26px;
+    }
+
+    /* --- Total et reste à payer --- */
+    .montant-box {
+      border-radius: 14px;
+      padding: 16px;
+      text-align: center;
+      font-weight: 800;
+      font-size: 1.3rem;
+    }
+
+    .montant-box small {
+      display: block;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      color: #64748b;
+    }
+
+    @media (max-width: 992px) {
+      .page-wrapper {
+        margin-left: 0 !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+      }
+
+      .content.container-fluid {
+        padding-left: 14px;
+        padding-right: 14px;
+      }
+    }
+
+    @media (max-width: 576px) {
+      .page-wrapper {
+        padding-top: 66px;
+      }
+
+      .content {
+        padding-top: 14px;
+        padding-bottom: 20px;
+      }
+
+      .section-title {
+        font-size: 0.74rem;
+        margin-bottom: 12px;
+      }
+
+      .panel-card {
+        border-radius: 18px;
+      }
+
+      .panel-card .card-body {
+        padding: 16px 12px;
+      }
+
+      .montant-box {
+        font-size: 1.05rem;
+        padding: 12px 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="main-wrapper">
+    {% include 'back-end/includes/header.html' %}
+    {% include 'back-end/includes/sidebar.html' %}
+
+    <div class="page-wrapper">
+      <div class="content container-fluid">
+
+        <!-- ---------- Messages ---------- -->
+        {% for message in messages %}
+          <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %}">
+            {{ message }}
+          </div>
+        {% endfor %}
+
+        <!-- ---------- Le patient et ses prestations ---------- -->
+        <div class="section-title">Patient : {{ passage.nom_complet }}</div>
+        <div class="card panel-card mb-4">
+          <div class="card-body">
+
+            <ul>
+              {% for pr in passage.prestations.all %}
+                <li>{{ pr.libelle }} ({{ pr.get_categorie_display }}) : {{ pr.prix }} CDF</li>
+              {% endfor %}
+            </ul>
+
+            <div class="row mt-3">
+              <div class="col-6">
+                <div class="montant-box" style="background: rgba(37,99,235,0.10); color: #2563eb;">
+                  <small>Total</small>
+                  {{ total }} CDF
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="montant-box" style="background: rgba(239,68,68,0.10); color: #ef4444;">
+                  <small>Reste à payer</small>
+                  {{ reste }} CDF
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ---------- Formulaire de paiement ---------- -->
+        {% if reste > 0 %}
+
+        {% if fonctionKey == 'admin' or fonctionKey == 'receptionniste' or fonctionKey == 'caissier' %}
+        <div class="section-title">Nouveau paiement</div>
+        <div class="card panel-card mb-4">
+          <div class="card-body">
+
+            {{ form.non_field_errors }}
+
+            <form method="post">
+              {% csrf_token %}
+
+              <div class="row">
+                <div class="col-md-4 mb-3">
+                  <label><strong>Montant versé</strong></label>
+                  <input type="number" step="0.01" min="0.01" name="montant_verse" class="form-control" required>
+                  {{ form.montant_verse.errors }}
+                </div>
+
+                <div class="col-md-4 mb-3">
+                  <label><strong>Réduction (CDF)</strong></label>
+                  <input type="number" step="0.01" min="0" name="montant_reduction" class="form-control" value="0">
+                  {{ form.montant_reduction.errors }}
+                </div>
+
+                <div class="col-md-4 mb-3">
+                  <label><strong>Devise</strong></label>
+                  <select name="devise" class="form-control">
+                    <option value="CDF">CDF</option>
+                    <option value="USD">USD</option>
+                  </select>
+                  {{ form.devise.errors }}
+                </div>
+              </div>
+
+              <button type="submit" class="btn btn-success">
+                <i class="fa fa-money"></i> Payer
+              </button>
+              <a href="{% url 'gestion_passages' %}" class="btn btn-secondary">Retour</a>
+            </form>
+
+          </div>
+        </div>
+        {% endif %}
+
+        {% else %}
+        <div class="alert alert-success">
+          Tout est payé.
+          <a href="{% url 'gestion_passages' %}" class="btn btn-sm btn-secondary ms-2">Retour</a>
+        </div>
+        {% endif %}
+
+        <!-- ---------- Paiements déjà faits ---------- -->
+        <div class="section-title">Paiements déjà faits</div>
+        <div class="card panel-card">
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Montant versé</th>
+                    <th>Réduction</th>
+                    <th>Reste</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for pay in paiements %}
+                  <tr>
+                    <td>{{ pay.date_paiement|date:"d/m/Y H:i" }}</td>
+                    <td>{{ pay.montant_verse }} {{ pay.devise }}</td>
+                    <td>{{ pay.montant_reduction }} CDF</td>
+                    <td>{{ pay.reste_a_payer }} CDF</td>
+                  </tr>
+                  {% empty %}
+                  <tr>
+                    <td colspan="4" class="text-center">Aucun paiement pour le moment.</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  {% include 'back-end/includes/js.html' %}
+
+</body>
+</html>
