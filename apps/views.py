@@ -123,6 +123,9 @@ def dashboard(request):
     )
 
     user_hopital = role.hopital if role else None
+
+    # CORRIGÉ : ligne d'origine (USE_TZ est à False dans ton projet)
+    # La bonne date dépend de TIME_ZONE = 'Africa/Kinshasa' dans settings.py
     aujourdhui = timezone.now().date()
 
     paiements_qs = Paiement.objects.all()
@@ -194,6 +197,63 @@ def dashboard(request):
     )
 
     # ------------------------------------------------------------
+    # RECETTES DU JOUR PAR SOURCE ET TOTAL
+    # (même logique que recettes_jour : montant_verse par devise)
+    # ------------------------------------------------------------
+    paiements_jour = paiements_qs.filter(
+        date_paiement__date=aujourdhui
+    )
+
+    # --- Argent reçu aujourd'hui pour les examens externes ---
+    recettes_examens_jour = paiements_jour.filter(
+        demande_examen_externe__isnull=False
+    ).aggregate(
+        usd=Sum(
+            'montant_verse',
+            filter=Q(devise='USD'),
+            default=Decimal('0.00')
+        ),
+        cdf=Sum(
+            'montant_verse',
+            filter=Q(devise='CDF'),
+            default=Decimal('0.00')
+        )
+    )
+
+    # --- Argent reçu aujourd'hui pour tout le reste ---
+    recettes_autres_jour = paiements_jour.filter(
+        demande_examen_externe__isnull=True
+    ).aggregate(
+        usd=Sum(
+            'montant_verse',
+            filter=Q(devise='USD'),
+            default=Decimal('0.00')
+        ),
+        cdf=Sum(
+            'montant_verse',
+            filter=Q(devise='CDF'),
+            default=Decimal('0.00')
+        )
+    )
+
+    # --- Total du jour = examens externes + autres paiements ---
+    recettes_total_jour = {
+        'usd': recettes_examens_jour['usd'] + recettes_autres_jour['usd'],
+        'cdf': recettes_examens_jour['cdf'] + recettes_autres_jour['cdf'],
+    }
+
+    # --- Demandes d'examens créées aujourd'hui (montant demandé) ---
+    demandes_jour = examens_qs.filter(
+        date_demande__date=aujourdhui
+    )
+
+    demandes_jour_nombre = demandes_jour.count()
+
+    demandes_jour_total_cdf = demandes_jour.aggregate(
+        total=Sum('total_cdf', default=Decimal('0.00'))
+    )['total']
+
+    # ------------------------------------------------------------
     # MONTANT ACTUEL DES EXAMENS EXTERNES
     # ------------------------------------------------------------
 
@@ -256,8 +316,10 @@ def dashboard(request):
 
     # ------------------------------------------------------------
     # SOMME DES MONTANTS PAR STATUT D'EXAMEN (EN CDF)
+    # CORRIGÉ : seulement les demandes créées aujourd'hui
+    # (avant : examens_qs, c'est-à-dire toutes les dates)
     # ------------------------------------------------------------
-    somme_examens_stats = examens_qs.aggregate(
+    somme_examens_stats = demandes_jour.aggregate(
         en_attente=Sum(
             'total_cdf',
             filter=Q(statut='EN_ATTENTE'),
@@ -275,8 +337,8 @@ def dashboard(request):
         )
     )
 
-    # Nombre de demandes (si vous en avez encore besoin)
-    total_examens = examens_qs.count()
+    # CORRIGÉ : nombre de demandes d'aujourd'hui
+    total_examens = demandes_jour_nombre
 
     # ------------------------------------------------------------
     # CONTEXT
@@ -290,6 +352,13 @@ def dashboard(request):
 
         'recettes_jour': recettes_jour,
         'depenses_jour': depenses_jour,
+
+        # Recettes du jour par source et total
+        'recettes_examens_jour': recettes_examens_jour,
+        'recettes_autres_jour': recettes_autres_jour,
+        'recettes_total_jour': recettes_total_jour,
+        'demandes_jour_nombre': demandes_jour_nombre,
+        'demandes_jour_total_cdf': demandes_jour_total_cdf,
 
         'consultations_jour': consultations_qs.filter(
             date_creation__date=aujourdhui

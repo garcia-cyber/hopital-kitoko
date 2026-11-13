@@ -3003,7 +3003,7 @@ class DemandeExamenExterne(models.Model):
     # ------------------------------------------------------------
     @property
     def est_payee(self):
-        return self.reste_a_payer_cdf <= Decimal('1.00')
+        return self.reste_a_payer_cdf <= Decimal('1.00') 
 
 
 # =====================================================================================================

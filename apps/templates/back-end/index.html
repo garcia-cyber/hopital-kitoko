@@ -490,6 +490,70 @@
             </div>
           </div>
         </div>
+
+        <!-- Recettes du jour par source (examens externes / autres) et total -->
+        <div class="section-title mt-2">Recettes du jour par source</div>
+        <div class="row stats-row">
+          <div class="col-6 col-md-3 mb-4">
+            <div class="card dash-widget">
+              <div class="card-body">
+                <span class="dash-widget-icon" style="background: rgba(139,92,246,0.10); color: var(--hospital-purple);">
+                  <i class="fa fa-flask"></i>
+                </span>
+                <div class="dash-widget-info">
+                  <h3>{{ recettes_examens_jour.usd|default:"0" }} $</h3>
+                  <small class="amount-sub">{{ recettes_examens_jour.cdf|default:"0" }} FC</small>
+                  <span class="label-card">Examens externes (Jour)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-6 col-md-3 mb-4">
+            <div class="card dash-widget">
+              <div class="card-body">
+                <span class="dash-widget-icon" style="background: rgba(16,185,129,0.10); color: var(--hospital-green);">
+                  <i class="fa fa-hospital-o"></i>
+                </span>
+                <div class="dash-widget-info">
+                  <h3>{{ recettes_autres_jour.usd|default:"0" }} $</h3>
+                  <small class="amount-sub">{{ recettes_autres_jour.cdf|default:"0" }} FC</small>
+                  <span class="label-card">Autres paiements (Jour)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-6 col-md-3 mb-4">
+            <div class="card dash-widget">
+              <div class="card-body">
+                <span class="dash-widget-icon" style="background: rgba(6,182,212,0.10); color: var(--hospital-cyan);">
+                  <i class="fa fa-calculator"></i>
+                </span>
+                <div class="dash-widget-info">
+                  <h3>{{ recettes_total_jour.usd|default:"0" }} $</h3>
+                  <small class="amount-sub">{{ recettes_total_jour.cdf|default:"0" }} FC</small>
+                  <span class="label-card">Total (Jour)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-6 col-md-3 mb-4">
+            <div class="card dash-widget">
+              <div class="card-body">
+                <span class="dash-widget-icon" style="background: rgba(245,158,11,0.10); color: var(--hospital-orange);">
+                  <i class="fa fa-file-text-o"></i>
+                </span>
+                <div class="dash-widget-info">
+                  <h3>{{ demandes_jour_nombre|default:"0" }}</h3>
+                  <small class="amount-sub">{{ demandes_jour_total_cdf|default:"0" }} FC demandés</small>
+                  <span class="label-card">Demandes d'examens (Jour)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
         {% endif %}
 
         {% if fonctionKey == 'infirmier' %}
@@ -600,8 +664,8 @@
         </div>
         {% endif %}
 
-        <!-- Section Examens Externes (Montants en CDF par statut) -->
-        <div class="section-title mt-4">Examens Externes (Montants)</div>
+        <!-- Section Examens Externes : CUMUL de toutes les dates (pas seulement aujourd'hui) -->
+        <div class="section-title mt-4">Examens Externes - Cumul de toutes les dates</div>
         <div class="row stats-row">
           <div class="col-6 col-md-3 mb-4">
             <div class="card dash-widget">
@@ -611,7 +675,7 @@
                 </span>
                 <div class="dash-widget-info">
                   <h3>{{ total_examens_externes }}</h3>
-                  <span class="label-card">Total Demandes (Nombre)</span>
+                  <span class="label-card">Total Demandes (Cumul)</span>
                 </div>
               </div>
             </div>
@@ -625,7 +689,7 @@
                 </span>
                 <div class="dash-widget-info">
                   <h3>{{ somme_examens_en_attente|default:"0" }} <small style="font-size: 0.8rem;">FC</small></h3>
-                  <span class="label-card">En attente (Montant)</span>
+                  <span class="label-card">En attente (Cumul)</span>
                 </div>
               </div>
             </div>
@@ -639,7 +703,7 @@
                 </span>
                 <div class="dash-widget-info">
                   <h3>{{ somme_examens_payes|default:"0" }} <small style="font-size: 0.8rem;">FC</small></h3>
-                  <span class="label-card">Payés (Montant)</span>
+                  <span class="label-card">Payés (Cumul)</span>
                 </div>
               </div>
             </div>
@@ -653,7 +717,7 @@
                 </span>
                 <div class="dash-widget-info">
                   <h3>{{ somme_examens_termines|default:"0" }} <small style="font-size: 0.8rem;">FC</small></h3>
-                  <span class="label-card">Terminés (Montant)</span>
+                  <span class="label-card">Terminés (Cumul)</span>
                 </div>
               </div>
             </div>
