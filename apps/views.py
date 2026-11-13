@@ -10672,31 +10672,34 @@ def encaisser_examen_externe(request, demande_id):
 
     client = demande.client
 
-    # 3. Taux de change depuis la configuration de l'hôpital
-    config = ConfigurationHopital.objects.first()
-    taux = config.taux_usd_en_cdf if config else Decimal('2300.00')
-    if not taux or taux == 0:
-        taux = Decimal('2300.00')
+    # 3. Taux toujours lu dans ConfigurationHopital (1 USD = X CDF)
+    taux = ConfigurationHopital.get_taux()
+    if not taux or taux <= 0:
+        taux = Decimal('2500.00')
 
     # 4. Calcul du reste à payer (en CDF)
     total_due_cdf = (demande.total_a_payer * taux).quantize(Decimal('1'), rounding=ROUND_HALF_UP)
 
     # Paiements existants
     paiements = demande.paiements.all()
-    total_deja_verse_cdf = Decimal('0')
-    total_deja_reduit_cdf = Decimal('0')
+    total_deja_couvert_cdf = Decimal('0')
 
     for p in paiements:
+        # Part caisse + part médecin + réduction
+        # = ce que le patient a réellement réglé
+        couvert = (
+            (p.montant_verse or Decimal('0'))
+            + (p.montant_medecin or Decimal('0'))
+            + (p.montant_reduction or Decimal('0'))
+        )
         if p.devise == 'CDF':
-            total_deja_verse_cdf += p.montant_verse or Decimal('0')
-            total_deja_reduit_cdf += p.montant_reduction or Decimal('0')
+            total_deja_couvert_cdf += couvert
         else:  # USD
-            total_deja_verse_cdf += (p.montant_verse or Decimal('0')) * taux
-            total_deja_reduit_cdf += (p.montant_reduction or Decimal('0')) * taux
+            total_deja_couvert_cdf += couvert * taux
 
     reste_a_payer_cdf = max(
         Decimal('0'),
-        total_due_cdf - (total_deja_verse_cdf + total_deja_reduit_cdf)
+        total_due_cdf - total_deja_couvert_cdf
     )
     reste_a_payer_usd = (reste_a_payer_cdf / taux).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
@@ -10705,8 +10708,8 @@ def encaisser_examen_externe(request, demande_id):
         devise = request.POST.get('devise', 'CDF')
         montant_total_patient = Decimal(request.POST.get('montant_verse', '0') or '0')  # Montant TOTAL payé par le patient
         reduction = Decimal(request.POST.get('montant_reduction', '0') or '0')
-        
-        # NOUVEAU : Récupérer le pourcentage du médecin
+
+        # Pourcentage du médecin
         pourcentage_medecin = Decimal(request.POST.get('pourcentage_medecin', '0') or '0')
 
         # Validation du pourcentage (0-100%)
@@ -10717,6 +10720,11 @@ def encaisser_examen_externe(request, demande_id):
         # Vérification : montant > 0
         if montant_total_patient <= 0:
             messages.error(request, "Le montant à payer doit être supérieur à 0.")
+            return redirect('encaisser_examen_externe', demande_id=demande.id)
+
+        # Vérification : la réduction ne peut pas dépasser le montant payé
+        if reduction < 0 or reduction > montant_total_patient:
+            messages.error(request, "La réduction ne peut pas dépasser le montant payé.")
             return redirect('encaisser_examen_externe', demande_id=demande.id)
 
         # Conversion du montant saisi en CDF
@@ -10735,38 +10743,43 @@ def encaisser_examen_externe(request, demande_id):
             )
             return redirect('encaisser_examen_externe', demande_id=demande.id)
 
-        # NOUVEAU : Calcul des montants médecin et hôpital
+        # Calcul des montants médecin et hôpital
         montant_net = montant_total_patient - reduction  # Montant net après réduction
-        
+
         # Calcul du pourcentage pour le médecin
         montant_pour_medecin = (montant_net * pourcentage_medecin / 100).quantize(
-            Decimal('0.01'), 
+            Decimal('0.01'),
             rounding=ROUND_HALF_UP
         )
-        
+
         # Montant pour l'hôpital (CAISSE) = montant net - part médecin
         montant_pour_hopital = (montant_net - montant_pour_medecin).quantize(
-            Decimal('0.01'), 
+            Decimal('0.01'),
             rounding=ROUND_HALF_UP
         )
 
-        # IMPORTANT : montant_verse = montant pour la CAISSE (90 USD), pas le total (100 USD)
-        Paiement.objects.create(
-            demande_examen_externe=demande,
-            clientEx=client,
-            service='EXAMEN_EXTERNE',
-            montant_verse=montant_pour_hopital,  # ← SEULEMENT ce qui va à la caisse (90 USD)
-            montant_reduction=reduction,
-            pourcentage_medecin=pourcentage_medecin,
-            montant_medecin=montant_pour_medecin,  # ← Part du médecin (10 USD)
-            montant_hopital=montant_pour_hopital,  # ← Part de la caisse (90 USD)
-            caissier=request.user,
-            devise=devise,
-            hopital=user_hopital if fonctionKey != 'admin' else demande.hopital
-        )
+        # Si save() refuse le paiement, on affiche le message
+        # au lieu d'une erreur 500
+        try:
+            # montant_verse = montant pour la CAISSE, pas le total payé
+            Paiement.objects.create(
+                demande_examen_externe=demande,
+                clientEx=client,
+                service='EXAMEN_EXTERNE',
+                montant_verse=montant_pour_hopital,
+                montant_reduction=reduction,
+                pourcentage_medecin=pourcentage_medecin,
+                montant_medecin=montant_pour_medecin,
+                montant_hopital=montant_pour_hopital,
+                caissier=request.user,
+                devise=devise,
+                hopital=user_hopital if fonctionKey != 'admin' else demande.hopital
+            )
+        except ValidationError as e:
+            messages.error(request, e.messages[0])
+            return redirect('encaisser_examen_externe', demande_id=demande.id)
 
-        # Nouveau reste à payer (pour message)
-        # On soustrait le montant TOTAL (médecin + caisse) du reste à payer
+        # Nouveau reste à payer (pour le message)
         nouveau_reste_cdf = reste_a_payer_cdf - montant_total_patient_cdf
         if nouveau_reste_cdf <= Decimal('1'):
             messages.success(
@@ -10794,6 +10807,12 @@ def encaisser_examen_externe(request, demande_id):
         'taux': taux,
         'fonctionKey': fonctionKey,
         'prestations': demande.prestations.all(),
+
+        # NOUVEAU : total avant et après réduction, pour l'affichage
+        'total_avant_reduction_cdf': demande.total_cdf,
+        'reduction_demande_cdf': demande.montant_reduction_cdf,
+        'total_du_cdf': total_due_cdf,
+        'total_du_usd': demande.total_a_payer,
     })
 
 # ==========================================================================================

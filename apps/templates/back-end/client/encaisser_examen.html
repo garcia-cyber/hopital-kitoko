@@ -1,312 +1,812 @@
 <!DOCTYPE html>
 {% load static %}
+{% load l10n %}
 <html lang="fr">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Encaissement - {{ demande.client.noms }}</title>
-    {% include 'back-end/includes/css.html' %}
-    <style>
-        .payment-card {
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-            border: none;
-        }
-        .info-box {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            border-left: 4px solid #007bff;
-        }
-        .badge-info {
-            background-color: #17a2b8;
-            color: #fff;
-            margin-right: 5px;
-        }
-        .live-preview {
-            font-weight: bold;
-            color: #28a745;
-        }
-        .reste-box {
-            background: #fff3cd;
-            border-left: 5px solid #ffc107;
-            border-radius: 8px;
-            padding: 14px;
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .reste-label {
-            font-size: 0.85rem;
-            color: #6c757d;
-            text-transform: uppercase;
-        }
-        .reste-value {
-            font-size: 1.3rem;
-            font-weight: 700;
-            color: #b82c39;
-        }
-        .reste-secondaire {
-            font-size: 0.85rem;
-            color: #6c757d;
-        }
-        .equivalent-text {
-            font-size: 0.85rem;
-            color: #6c757d;
-        }
-        .repartition-box {
-            background: #d4edda;
-            border-left: 4px solid #28a745;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 15px;
-        }
-        .repartition-title {
-            font-weight: 600;
-            color: #155724;
-            margin-bottom: 10px;
-        }
-        .repartition-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px dashed #c3e6cb;
-        }
-        .repartition-row:last-child {
-            border-bottom: none;
-        }
-        .repartition-label {
-            color: #155724;
-        }
-        .repartition-value {
-            font-weight: 700;
-            color: #28a745;
-        }
-        .medecin-info {
-            background: #e3f2fd;
-            border-left: 4px solid #0d6efd;
-            padding: 12px;
-            border-radius: 6px;
-            margin-bottom: 20px;
-        }
-    </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+  <title>Encaissement - {{ demande.client.noms }} - CHK</title>
+
+  {% include 'back-end/includes/css.html' %}
+
+  <style>
+    :root {
+      --hospital-blue: #2563eb;
+      --hospital-green: #10b981;
+      --hospital-red: #ef4444;
+      --hospital-orange: #f59e0b;
+      --hospital-purple: #8b5cf6;
+      --hospital-cyan: #06b6d4;
+      --bg-soft: #f1f5f9;
+      --muted: #6b7280;
+    }
+
+    body {
+      background: var(--bg-soft);
+      overflow-x: hidden;
+    }
+
+    .main-wrapper {
+      min-height: 100vh;
+      background: var(--bg-soft);
+    }
+
+    .page-wrapper {
+      background-color: transparent;
+      padding-top: 68px;
+    }
+
+    .content {
+      padding-top: 24px;
+      padding-bottom: 28px;
+    }
+
+    /* =========================
+       BANNIÈRE
+    ========================= */
+
+    .medical-welcome {
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 55%, #2563eb 100%);
+      color: #fff;
+      padding: 30px 32px;
+      border-radius: 22px;
+      margin-bottom: 30px;
+      box-shadow: 0 14px 34px rgba(15, 23, 42, 0.25);
+    }
+
+    .medical-welcome::before,
+    .medical-welcome::after {
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.07);
+      pointer-events: none;
+    }
+
+    .medical-welcome::before {
+      width: 220px;
+      height: 220px;
+      right: -50px;
+      top: -80px;
+    }
+
+    .medical-welcome::after {
+      width: 140px;
+      height: 140px;
+      right: 120px;
+      bottom: -70px;
+    }
+
+    .medical-welcome > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .medical-welcome h3 {
+      margin-bottom: 6px;
+      font-weight: 800;
+      font-size: 1.6rem;
+      letter-spacing: -0.3px;
+    }
+
+    .medical-welcome p {
+      opacity: 0.9;
+      font-size: 0.98rem;
+    }
+
+    .welcome-date {
+      display: inline-block;
+      margin-top: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      color: #bfdbfe;
+    }
+
+    .badge-role {
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 16px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      backdrop-filter: blur(4px);
+      font-size: 0.88rem;
+      font-weight: 700;
+      margin-top: 14px;
+    }
+
+    .badge-role::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      margin-right: 8px;
+      border-radius: 50%;
+      background: #4ade80;
+      box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.25);
+    }
+
+    /* =========================
+       TITRES ET PANNEAUX
+    ========================= */
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      font-size: 0.82rem;
+      font-weight: 800;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: #475569;
+      margin-bottom: 18px;
+    }
+
+    .section-title::before {
+      content: "";
+      width: 4px;
+      height: 18px;
+      margin-right: 10px;
+      border-radius: 4px;
+      background: linear-gradient(180deg, #2563eb, #06b6d4);
+    }
+
+    .panel-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 22px;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+      background: #fff;
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 18px 22px;
+      border-bottom: 1px solid #e2e8f0;
+      background: #f8fafc;
+    }
+
+    .panel-head h5 {
+      display: flex;
+      align-items: center;
+      margin: 0;
+      font-weight: 800;
+      font-size: 1rem;
+      color: #0f172a;
+    }
+
+    .panel-head h5::before {
+      content: "";
+      flex: 0 0 4px;
+      height: 20px;
+      margin-right: 10px;
+      border-radius: 4px;
+      background: linear-gradient(180deg, #2563eb, #06b6d4);
+    }
+
+    .panel-body {
+      padding: 22px;
+    }
+
+    /* =========================
+       DÉTAILS DE LA DEMANDE
+    ========================= */
+
+    .medecin-box {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: rgba(37, 99, 235, 0.07);
+      border: 1px solid #bfdbfe;
+      margin-bottom: 18px;
+    }
+
+    .medecin-icon {
+      width: 44px;
+      height: 44px;
+      min-width: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(37, 99, 235, 0.12);
+      color: var(--hospital-blue);
+      font-size: 18px;
+    }
+
+    .medecin-box .label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .medecin-box .nom {
+      font-weight: 800;
+      color: #0f172a;
+    }
+
+    .ligne-info {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px dashed #e2e8f0;
+      font-size: 0.92rem;
+    }
+
+    .ligne-info:last-of-type {
+      border-bottom: none;
+    }
+
+    .ligne-info .label {
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .ligne-info .valeur {
+      font-weight: 800;
+      color: #0f172a;
+      text-align: right;
+    }
+
+    .ligne-info .valeur.reduction {
+      color: var(--hospital-orange);
+    }
+
+    .tags-examens {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 14px 0 6px;
+    }
+
+    .tag-examen {
+      display: inline-block;
+      padding: 5px 11px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      background: rgba(6, 182, 212, 0.12);
+      color: #0e7490;
+    }
+
+    .montant-box {
+      border-radius: 16px;
+      padding: 16px;
+      text-align: center;
+      height: 100%;
+    }
+
+    .montant-box small {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .montant-box .principal {
+      display: block;
+      font-size: 1.35rem;
+      font-weight: 800;
+      line-height: 1.2;
+    }
+
+    .montant-box .secondaire {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #475569;
+    }
+
+    .box-total {
+      background: rgba(37, 99, 235, 0.08);
+      color: var(--hospital-blue);
+    }
+
+    .box-reste {
+      background: rgba(239, 68, 68, 0.08);
+      color: var(--hospital-red);
+    }
+
+    /* =========================
+       FORMULAIRE
+    ========================= */
+
+    .champ {
+      margin-bottom: 18px;
+    }
+
+    .champ-label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 800;
+      font-size: 0.85rem;
+      color: #334155;
+    }
+
+    .champ .form-control {
+      border-radius: 12px;
+      height: 46px;
+    }
+
+    .champ-aide {
+      display: block;
+      margin-top: 6px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    #equivalent {
+      font-weight: 700;
+    }
+
+    /* Répartition en direct */
+    .repartition-box {
+      display: none;
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 18px;
+      background: rgba(16, 185, 129, 0.08);
+      border: 1px solid #a7f3d0;
+    }
+
+    .repartition-title {
+      font-weight: 800;
+      font-size: 0.85rem;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      color: #047857;
+      margin-bottom: 8px;
+    }
+
+    .repartition-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 7px 0;
+      border-bottom: 1px dashed #a7f3d0;
+      font-size: 0.9rem;
+    }
+
+    .repartition-row:last-child {
+      border-bottom: none;
+    }
+
+    .repartition-row .label {
+      color: #065f46;
+      font-weight: 600;
+    }
+
+    .repartition-row .valeur {
+      font-weight: 800;
+      color: #047857;
+      text-align: right;
+    }
+
+    .repartition-row.alerte .valeur {
+      color: var(--hospital-red);
+    }
+
+    .actions-form {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .actions-form .btn {
+      border-radius: 12px;
+      font-weight: 800;
+      padding: 10px 22px;
+    }
+
+    /* =========================
+       TABLETTE ET MOBILE
+    ========================= */
+
+    @media (max-width: 992px) {
+      .page-wrapper {
+        margin-left: 0 !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+      }
+
+      .content.container-fluid {
+        padding-left: 14px;
+        padding-right: 14px;
+      }
+    }
+
+    @media (max-width: 576px) {
+      .page-wrapper {
+        padding-top: 66px;
+      }
+
+      .content {
+        padding-top: 14px;
+        padding-bottom: 20px;
+      }
+
+      .medical-welcome {
+        padding: 18px;
+        border-radius: 18px;
+        margin-bottom: 20px;
+      }
+
+      .medical-welcome::before {
+        width: 150px;
+        height: 150px;
+        right: -50px;
+        top: -60px;
+      }
+
+      .medical-welcome::after {
+        display: none;
+      }
+
+      .medical-welcome h3 {
+        font-size: 1.15rem;
+      }
+
+      .medical-welcome p {
+        font-size: 0.85rem;
+      }
+
+      .welcome-date {
+        font-size: 0.7rem;
+      }
+
+      .badge-role {
+        font-size: 0.78rem;
+        padding: 6px 12px;
+        margin-top: 10px;
+      }
+
+      .section-title {
+        font-size: 0.74rem;
+        margin-bottom: 12px;
+      }
+
+      .panel-card {
+        border-radius: 18px;
+      }
+
+      .panel-head {
+        padding: 14px;
+      }
+
+      .panel-body {
+        padding: 16px 14px;
+      }
+
+      .montant-box .principal {
+        font-size: 1.05rem;
+      }
+
+      .actions-form .btn {
+        width: 100%;
+      }
+    }
+  </style>
 </head>
 <body>
-    <div class="main-wrapper">
-        {% include 'back-end/includes/header.html' %}
-        {% include 'back-end/includes/sidebar.html' %}
+  <div class="main-wrapper">
+    {% include 'back-end/includes/header.html' %}
+    {% include 'back-end/includes/sidebar.html' %}
 
-        <div class="page-wrapper">
-            <div class="content container-fluid">
-                <div class="page-header">
-                    <h3 class="page-title">Encaissement Examen Externe</h3>
-                </div>
+    <div class="page-wrapper">
+      <div class="content container-fluid">
 
-                <div class="row">
-                    <div class="col-md-8 offset-md-2">
-                        <div class="card payment-card">
-                            <div class="card-body">
-                                <!-- Info: Médecin demandeur -->
-                                {% if demande.medecin_demandeur %}
-                                <div class="medecin-info mb-4">
-                                    <h6 class="text-primary mb-2">
-                                        <i class="fa fa-user-md"></i> Médecin demandeur
-                                    </h6>
-                                    <p class="mb-0">
-                                        <strong>{{ demande.medecin_demandeur }}</strong>
-                                    </p>
-                                </div>
-                                {% endif %}
-
-                                <div class="info-box mb-4">
-                                    <h5 class="text-primary">Détails de la demande</h5>
-                                    <p class="mb-1"><strong>Patient :</strong> {{ demande.client.noms }}</p>
-                                    <p class="mb-1">
-                                        <strong>Examens :</strong>
-                                        {% for p in prestations %}
-                                            <span class="badge badge-info">{{ p.libelle }}</span>
-                                        {% endfor %}
-                                    </p>
-                                    <p class="mb-1">
-                                        <strong>Total à payer :</strong>
-                                        {{ demande.total_a_payer }} USD
-                                        ({{ demande.total_cdf|floatformat:0 }} CDF)
-                                    </p>
-                                    <p class="mb-0">
-                                        <strong>Reste à payer :</strong><br>
-                                        <span class="reste-value">{{ reste_a_payer_usd|floatformat:2 }} USD</span><br>
-                                        <small class="reste-secondaire">{{ reste_a_payer_cdf|floatformat:0 }} CDF</small>
-                                    </p>
-                                </div>
-
-                                {% if messages %}
-                                    {% for message in messages %}
-                                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                                            {{ message }}
-                                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                                                <span aria-hidden="true">&times;</span>
-                                            </button>
-                                        </div>
-                                    {% endfor %}
-                                {% endif %}
-
-                                <form method="POST" id="paymentForm">
-                                    {% csrf_token %}
-
-                                    <div class="form-group">
-                                        <label>Taux du jour</label>
-                                        <input type="text" class="form-control" value="1 USD = {{ taux }} CDF" disabled>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label>Devise de paiement</label>
-                                        <select name="devise" id="devise" class="form-control" onchange="updatePreview()">
-                                            <option value="CDF">CDF</option>
-                                            <option value="USD">USD</option>
-                                        </select>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label>Montant versé</label>
-                                        <input type="number" step="0.01" name="montant_verse" id="montant_verse" class="form-control" required placeholder="Ex: 50.00">
-                                        <small id="equivalent" class="equivalent-text"></small>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label>Réduction (en USD)</label>
-                                        <input type="number" step="0.01" name="montant_reduction" id="montant_reduction" class="form-control" value="0.00">
-                                    </div>
-
-                                    <!-- NOUVEAU : Pourcentage médecin -->
-                                    <div class="form-group">
-                                        <label>
-                                            Pourcentage médecin référent (%)
-                                            <i class="fa fa-info-circle text-primary" 
-                                               data-bs-toggle="tooltip" 
-                                               title="Ex: 10% sur 100 USD = 10 USD pour le médecin, 90 USD pour l'hôpital">
-                                            </i>
-                                        </label>
-                                        <input type="number" step="0.01" name="pourcentage_medecin" id="pourcentage_medecin" 
-                                               class="form-control" min="0" max="100" value="0" 
-                                               placeholder="Ex: 10 pour 10%">
-                                        <small class="text-muted">
-                                            <i class="fa fa-calculator"></i> 
-                                            Le montant sera réparti : X% pour {{ demande.medecin_demandeur|default:"le médecin" }}, 
-                                            le reste pour l'hôpital
-                                        </small>
-                                    </div>
-
-                                    <!-- NOUVEAU : Affichage dynamique de la répartition -->
-                                    <div class="repartition-box" id="repartition-preview" style="display: none;">
-                                        <div class="repartition-title">
-                                            <i class="fa fa-pie-chart"></i> Répartition du paiement
-                                        </div>
-                                        <div class="repartition-row">
-                                            <span class="repartition-label">Médecin ({{ demande.medecin_demandeur|default:"Référent" }}) :</span>
-                                            <span class="repartition-value" id="montant-medecin">0.00 USD</span>
-                                        </div>
-                                        <div class="repartition-row">
-                                            <span class="repartition-label">Hôpital :</span>
-                                            <span class="repartition-value" id="montant-hopital">0.00 USD</span>
-                                        </div>
-                                    </div>
-
-                                    <div class="text-right mt-4">
-                                        <a href="{% url 'liste_demandes_externes' %}" class="btn btn-secondary">Annuler</a>
-                                        <button type="submit" class="btn btn-success px-4">
-                                            <i class="fa fa-money-bill-wave"></i> Encaisser
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <!-- ================= BANNIÈRE ================= -->
+        <div class="medical-welcome">
+          <h3><i class="fa fa-money"></i> Encaissement examen externe</h3>
+          <p class="mb-0">Patient : {{ demande.client.noms }}</p>
+          <span class="welcome-date">{% now "l d F Y" %}</span>
+          <div>
+            <div class="badge-role">Taux du jour : 1 USD = {{ taux }} CDF</div>
+          </div>
         </div>
+
+        <!-- ================= MESSAGES ================= -->
+        {% if messages %}
+          {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} shadow-sm" role="alert">
+              {{ message }}
+            </div>
+          {% endfor %}
+        {% endif %}
+
+        <div class="row">
+
+          <!-- ================= COLONNE GAUCHE : DÉTAILS ================= -->
+          <div class="col-12 col-lg-5">
+            <div class="section-title">Détails de la demande</div>
+            <div class="card panel-card">
+              <div class="panel-head">
+                <h5>Demande #{{ demande.id }}</h5>
+                <small class="text-muted">{{ demande.get_statut_display }}</small>
+              </div>
+              <div class="panel-body">
+
+                {% if demande.medecin_demandeur %}
+                <div class="medecin-box">
+                  <span class="medecin-icon"><i class="fa fa-user-md"></i></span>
+                  <div>
+                    <span class="label">Médecin demandeur</span>
+                    <span class="nom">{{ demande.medecin_demandeur }}</span>
+                  </div>
+                </div>
+                {% endif %}
+
+                <div class="ligne-info">
+                  <span class="label">Patient</span>
+                  <span class="valeur">{{ demande.client.noms }}</span>
+                </div>
+
+                <div class="tags-examens">
+                  {% for p in prestations %}
+                    <span class="tag-examen">{{ p.libelle }}</span>
+                  {% empty %}
+                    <span class="text-muted">Aucun examen choisi.</span>
+                  {% endfor %}
+                </div>
+
+                <!-- NOUVEAU : total avant réduction et réduction accordée -->
+                {% if demande.montant_reduction_cdf > 0 %}
+                <div class="ligne-info">
+                  <span class="label">Total des examens</span>
+                  <span class="valeur">{{ total_avant_reduction_cdf|floatformat:0 }} FC</span>
+                </div>
+                <div class="ligne-info">
+                  <span class="label">Réduction accordée</span>
+                  <span class="valeur reduction">- {{ reduction_demande_cdf|floatformat:0 }} FC</span>
+                </div>
+                {% endif %}
+
+                <div class="row g-2 mt-3">
+                  <div class="col-6">
+                    <div class="montant-box box-total">
+                      <small>Total à payer</small>
+                      <span class="principal">{{ total_du_usd|floatformat:2 }} $</span>
+                      <span class="secondaire">{{ total_du_cdf|floatformat:0 }} FC</span>
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <div class="montant-box box-reste">
+                      <small>Reste à payer</small>
+                      <span class="principal">{{ reste_a_payer_usd|floatformat:2 }} $</span>
+                      <span class="secondaire">{{ reste_a_payer_cdf|floatformat:0 }} FC</span>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+          <!-- ================= COLONNE DROITE : FORMULAIRE ================= -->
+          <div class="col-12 col-lg-7">
+            <div class="section-title">Nouveau paiement</div>
+            <div class="card panel-card">
+              <div class="panel-head">
+                <h5>Encaisser</h5>
+              </div>
+              <div class="panel-body">
+
+                <form method="POST" id="paymentForm">
+                  {% csrf_token %}
+
+                  <div class="champ">
+                    <label class="champ-label" for="devise">Devise de paiement</label>
+                    <select name="devise" id="devise" class="form-control">
+                      <option value="CDF">CDF</option>
+                      <option value="USD">USD</option>
+                    </select>
+                  </div>
+
+                  <div class="champ">
+                    <label class="champ-label" for="montant_verse">Montant total payé par le patient</label>
+                    <input type="number" step="0.01" min="0" name="montant_verse" id="montant_verse"
+                           class="form-control" required placeholder="Ex: 50.00">
+                    <small id="equivalent" class="champ-aide"></small>
+                  </div>
+
+                  <div class="champ">
+                    <label class="champ-label" for="montant_reduction">
+                      Réduction (dans la devise choisie)
+                    </label>
+                    <input type="number" step="0.01" min="0" name="montant_reduction" id="montant_reduction"
+                           class="form-control" value="0.00">
+                  </div>
+
+                  <div class="champ">
+                    <label class="champ-label" for="pourcentage_medecin">
+                      Pourcentage médecin référent (%)
+                    </label>
+                    <input type="number" step="0.01" min="0" max="100" name="pourcentage_medecin" id="pourcentage_medecin"
+                           class="form-control" value="0" placeholder="Ex: 10 pour 10%">
+                    <small class="champ-aide">
+                      <i class="fa fa-calculator"></i>
+                      X% pour {{ demande.medecin_demandeur|default:"le médecin" }}, le reste pour l'hôpital.
+                      Le pourcentage s'applique au montant après réduction.
+                    </small>
+                  </div>
+
+                  <!-- Répartition en direct -->
+                  <div class="repartition-box" id="repartition-preview">
+                    <div class="repartition-title"><i class="fa fa-pie-chart"></i> Répartition du paiement</div>
+                    <div class="repartition-row">
+                      <span class="label">Montant payé</span>
+                      <span class="valeur" id="r-montant">0</span>
+                    </div>
+                    <div class="repartition-row">
+                      <span class="label">Réduction</span>
+                      <span class="valeur" id="r-reduction">0</span>
+                    </div>
+                    <div class="repartition-row">
+                      <span class="label">Montant net</span>
+                      <span class="valeur" id="r-net">0</span>
+                    </div>
+                    <div class="repartition-row">
+                      <span class="label">Médecin ({{ demande.medecin_demandeur|default:"Référent" }})</span>
+                      <span class="valeur" id="r-medecin">0</span>
+                    </div>
+                    <div class="repartition-row">
+                      <span class="label">Caisse (hôpital)</span>
+                      <span class="valeur" id="r-hopital">0</span>
+                    </div>
+                    <div class="repartition-row" id="ligne-reste">
+                      <span class="label">Reste à payer après ce paiement</span>
+                      <span class="valeur" id="r-reste">0</span>
+                    </div>
+                  </div>
+
+                  <div class="actions-form">
+                    <a href="{% url 'liste_demandes_externes' %}" class="btn btn-secondary">Annuler</a>
+                    <button type="submit" class="btn btn-success">
+                      <i class="fa fa-money"></i> Encaisser
+                    </button>
+                  </div>
+                </form>
+
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
     </div>
+  </div>
 
-    {% include 'back-end/includes/js.html' %}
+  {% include 'back-end/includes/js.html' %}
 
-    <script>
-        const TAUX = parseFloat('{{ taux|stringformat:"f" }}'.replace(',', '.'));
-        const RESTE_CDF = parseFloat('{{ reste_a_payer_cdf|floatformat:"0" }}'.replace(',', '.'));
-        const RESTE_USD = parseFloat('{{ reste_a_payer_usd|floatformat:"2" }}'.replace(',', '.'));
+  <script>
+    // ---- Valeurs envoyées par la vue
+    const TAUX = parseFloat('{{ taux|unlocalize }}') || 2500;
+    const RESTE_CDF = parseFloat('{{ reste_a_payer_cdf|unlocalize }}') || 0;
+    const RESTE_USD = parseFloat('{{ reste_a_payer_usd|unlocalize }}') || 0;
 
-        function updatePreview() {
-            const montantSaisi = parseFloat(document.getElementById('montant_verse').value) || 0;
-            const devise = document.getElementById('devise').value;
-            const reduction = parseFloat(document.getElementById('montant_reduction').value) || 0;
-            const pourcentage = parseFloat(document.getElementById('pourcentage_medecin').value) || 0;
-            const equivalentEl = document.getElementById('equivalent');
-            const repartitionBox = document.getElementById('repartition-preview');
-            const montantMedecinEl = document.getElementById('montant-medecin');
-            const montantHopitalEl = document.getElementById('montant-hopital');
+    const elDevise = document.getElementById('devise');
+    const elMontant = document.getElementById('montant_verse');
+    const elReduction = document.getElementById('montant_reduction');
+    const elPourcentage = document.getElementById('pourcentage_medecin');
+    const elEquivalent = document.getElementById('equivalent');
+    const elBox = document.getElementById('repartition-preview');
+    const elLigneReste = document.getElementById('ligne-reste');
 
-            if (!montantSaisi) {
-                equivalentEl.textContent = '';
-                repartitionBox.style.display = 'none';
-                return;
-            }
+    // ---- Arrondi à 2 décimales
+    function arrondi(n) {
+      return Math.round(n * 100) / 100;
+    }
 
-            let montantEnCDF, montantEnUSD;
+    // ---- Affichage d'un montant avec sa devise
+    function afficher(n, devise) {
+      if (devise === 'CDF') {
+        return Math.round(n).toLocaleString('fr-FR') + ' CDF';
+      }
+      return arrondi(n).toFixed(2) + ' USD';
+    }
 
-            if (devise === 'CDF') {
-                montantEnCDF = montantSaisi;
-                montantEnUSD = montantSaisi / TAUX;
-                equivalentEl.textContent = `Équivalent : ${montantEnUSD.toFixed(2)} USD`;
-            } else {
-                montantEnUSD = montantSaisi;
-                montantEnCDF = montantSaisi * TAUX;
-                equivalentEl.textContent = `Équivalent : ${Math.round(montantEnCDF)} CDF`;
-            }
+    function updatePreview() {
+      const devise = elDevise.value;
+      const montant = parseFloat(elMontant.value) || 0;
+      const reduction = parseFloat(elReduction.value) || 0;
+      const pourcentage = parseFloat(elPourcentage.value) || 0;
 
-            // Calcul de la répartition
-            if (pourcentage > 0 && montantEnUSD > 0) {
-                const montantNet = montantEnUSD - reduction;
-                const medecin = (montantNet * pourcentage / 100).toFixed(2);
-                const hopital = (montantNet - medecin).toFixed(2);
+      if (!montant) {
+        elEquivalent.textContent = '';
+        elBox.style.display = 'none';
+        return;
+      }
 
-                montantMedecinEl.textContent = `${medecin} USD`;
-                montantHopitalEl.textContent = `${hopital} USD`;
-                repartitionBox.style.display = 'block';
-            } else {
-                repartitionBox.style.display = 'none';
-            }
+      // ---- Montant converti dans l'autre devise
+      const montantCDF = (devise === 'CDF') ? montant : montant * TAUX;
+      const montantUSD = (devise === 'USD') ? montant : montant / TAUX;
 
-            // Vérification visuelle (en CDF)
-            if (montantEnCDF > (RESTE_CDF + 1)) {
-                equivalentEl.style.color = 'red';
-            } else {
-                equivalentEl.style.color = '#6c757d';
-            }
-        }
+      if (devise === 'CDF') {
+        elEquivalent.textContent = 'Équivalent : ' + arrondi(montantUSD).toFixed(2) + ' USD';
+      } else {
+        elEquivalent.textContent = 'Équivalent : ' + Math.round(montantCDF).toLocaleString('fr-FR') + ' CDF';
+      }
 
-        document.getElementById('paymentForm').addEventListener('submit', function(e) {
-            const montantSaisi = parseFloat(document.getElementById('montant_verse').value) || 0;
-            const devise = document.getElementById('devise').value;
-            const reduction = parseFloat(document.getElementById('montant_reduction').value) || 0;
+      // ---- Répartition, dans la devise choisie (comme la vue)
+      const net = Math.max(0, montant - reduction);
+      const medecin = arrondi(net * pourcentage / 100);
+      const hopital = arrondi(net - medecin);
 
-            let montantEnCDF, montantEnUSD;
+      document.getElementById('r-montant').textContent = afficher(montant, devise);
+      document.getElementById('r-reduction').textContent = afficher(reduction, devise);
+      document.getElementById('r-net').textContent = afficher(net, devise);
+      document.getElementById('r-medecin').textContent = afficher(medecin, devise);
+      document.getElementById('r-hopital').textContent = afficher(hopital, devise);
 
-            if (devise === 'CDF') {
-                montantEnCDF = montantSaisi;
-                montantEnUSD = montantSaisi / TAUX;
-            } else {
-                montantEnUSD = montantSaisi;
-                montantEnCDF = montantSaisi * TAUX;
-            }
+      // ---- Reste après ce paiement (en CDF et USD)
+      const resteApresCDF = RESTE_CDF - montantCDF;
 
-            // Tolérance 1 CDF
-            if (montantEnCDF > (RESTE_CDF + 1)) {
-                alert(`Erreur : Le montant total dépasse le reste à payer (${RESTE_CDF.toFixed(0)} CDF / ${RESTE_USD.toFixed(2)} USD).`);
-                e.preventDefault();
-            }
-        });
+      if (resteApresCDF < -1) {
+        document.getElementById('r-reste').textContent = 'Le montant dépasse le reste à payer';
+        elLigneReste.classList.add('alerte');
+        elEquivalent.style.color = '#ef4444';
+      } else {
+        const reste = Math.max(0, resteApresCDF);
+        document.getElementById('r-reste').textContent =
+          Math.round(reste).toLocaleString('fr-FR') + ' CDF (~ ' + arrondi(reste / TAUX).toFixed(2) + ' USD)';
+        elLigneReste.classList.remove('alerte');
+        elEquivalent.style.color = '#6b7280';
+      }
 
-        // Mettre à jour l'équivalence et la répartition quand on tape le montant ou le pourcentage
-        document.getElementById('montant_verse').addEventListener('input', updatePreview);
-        document.getElementById('montant_reduction').addEventListener('input', updatePreview);
-        document.getElementById('pourcentage_medecin').addEventListener('input', updatePreview);
-    </script>
+      elBox.style.display = 'block';
+    }
+
+    // ---- Vérifications avant l'envoi
+    document.getElementById('paymentForm').addEventListener('submit', function (e) {
+      const devise = elDevise.value;
+      const montant = parseFloat(elMontant.value) || 0;
+      const reduction = parseFloat(elReduction.value) || 0;
+      const pourcentage = parseFloat(elPourcentage.value) || 0;
+      const montantCDF = (devise === 'CDF') ? montant : montant * TAUX;
+
+      if (reduction > montant) {
+        alert('Erreur : la réduction ne peut pas dépasser le montant payé.');
+        e.preventDefault();
+        return;
+      }
+
+      if (pourcentage < 0 || pourcentage > 100) {
+        alert('Erreur : le pourcentage doit être entre 0 et 100.');
+        e.preventDefault();
+        return;
+      }
+
+      // ---- Tolérance de 1 CDF
+      if (montantCDF > (RESTE_CDF + 1)) {
+        alert('Erreur : le montant dépasse le reste à payer (' +
+          Math.round(RESTE_CDF).toLocaleString('fr-FR') + ' CDF / ' +
+          RESTE_USD.toFixed(2) + ' USD).');
+        e.preventDefault();
+      }
+    });
+
+    // ---- Mise à jour en direct
+    elDevise.addEventListener('change', updatePreview);
+    elMontant.addEventListener('input', updatePreview);
+    elReduction.addEventListener('input', updatePreview);
+    elPourcentage.addEventListener('input', updatePreview);
+  </script>
 </body>
 </html>

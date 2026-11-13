@@ -612,7 +612,7 @@
                 <div class="dash-widget-info">
                   <h3>{{ semaine_usd|floatformat:2 }} USD</h3>
                   <small class="amount-sub">{{ semaine_cdf|floatformat:2 }} CDF</small>
-                  <span class="label-card">7 derniers jours</span>
+                  <span class="label-card">Cette semaine</span>
                 </div>
               </div>
             </div>
@@ -649,7 +649,74 @@
           </div>
         </div>
 
-        <!-- ================= NOUVEAU : RECETTES PAR SOURCE ================= -->
+        <!-- ================= NOUVEAU : TOTAL GÉNÉRAL (Paiement + Demandes) ================= -->
+        <div class="section-title mt-2">Total général : Paiements + Demandes d'examens externes</div>
+        <div class="card panel-card mb-4">
+          <div class="panel-head">
+            <h5>Jour, semaine, mois, année</h5>
+            <small>Les demandes sont en CDF : elles s'ajoutent au CDF</small>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-wrap">
+              <table class="table table-hover mb-0 text-center align-middle">
+                <thead>
+                  <tr>
+                    <th class="text-start">Période</th>
+                    <th class="text-success">Paiements USD</th>
+                    <th class="text-info">Paiements CDF</th>
+                    <th style="color:#7c3aed;">Demandes CDF</th>
+                    <th class="text-primary">Total USD</th>
+                    <th class="text-primary">Total CDF</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="text-start fw-bold">Aujourd'hui</td>
+                    <td>{{ totaux_generaux.auj.paiements_usd|floatformat:2 }} $</td>
+                    <td>{{ totaux_generaux.auj.paiements_cdf|floatformat:2 }} FC</td>
+                    <td>{{ totaux_generaux.auj.demandes_cdf|floatformat:2 }} FC</td>
+                    <td class="fw-bold">{{ totaux_generaux.auj.total_usd|floatformat:2 }} $</td>
+                    <td class="fw-bold">{{ totaux_generaux.auj.total_cdf|floatformat:2 }} FC</td>
+                  </tr>
+                  <tr>
+                    <td class="text-start fw-bold">Cette semaine</td>
+                    <td>{{ totaux_generaux.sem.paiements_usd|floatformat:2 }} $</td>
+                    <td>{{ totaux_generaux.sem.paiements_cdf|floatformat:2 }} FC</td>
+                    <td>{{ totaux_generaux.sem.demandes_cdf|floatformat:2 }} FC</td>
+                    <td class="fw-bold">{{ totaux_generaux.sem.total_usd|floatformat:2 }} $</td>
+                    <td class="fw-bold">{{ totaux_generaux.sem.total_cdf|floatformat:2 }} FC</td>
+                  </tr>
+                  <tr>
+                    <td class="text-start fw-bold">Mois en cours</td>
+                    <td>{{ totaux_generaux.mois.paiements_usd|floatformat:2 }} $</td>
+                    <td>{{ totaux_generaux.mois.paiements_cdf|floatformat:2 }} FC</td>
+                    <td>{{ totaux_generaux.mois.demandes_cdf|floatformat:2 }} FC</td>
+                    <td class="fw-bold">{{ totaux_generaux.mois.total_usd|floatformat:2 }} $</td>
+                    <td class="fw-bold">{{ totaux_generaux.mois.total_cdf|floatformat:2 }} FC</td>
+                  </tr>
+                  <tr>
+                    <td class="text-start fw-bold">Année en cours</td>
+                    <td>{{ totaux_generaux.annee.paiements_usd|floatformat:2 }} $</td>
+                    <td>{{ totaux_generaux.annee.paiements_cdf|floatformat:2 }} FC</td>
+                    <td>{{ totaux_generaux.annee.demandes_cdf|floatformat:2 }} FC</td>
+                    <td class="fw-bold">{{ totaux_generaux.annee.total_usd|floatformat:2 }} $</td>
+                    <td class="fw-bold">{{ totaux_generaux.annee.total_cdf|floatformat:2 }} FC</td>
+                  </tr>
+                  <tr class="ligne-total">
+                    <td class="text-start">Cumul global</td>
+                    <td>{{ totaux_generaux.global.paiements_usd|floatformat:2 }} $</td>
+                    <td>{{ totaux_generaux.global.paiements_cdf|floatformat:2 }} FC</td>
+                    <td>{{ totaux_generaux.global.demandes_cdf|floatformat:2 }} FC</td>
+                    <td>{{ totaux_generaux.global.total_usd|floatformat:2 }} $</td>
+                    <td>{{ totaux_generaux.global.total_cdf|floatformat:2 }} FC</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= RECETTES PAR SOURCE ================= -->
         <div class="section-title mt-2">Recettes par source (examens externes + autres)</div>
         <div class="card panel-card mb-4">
           <div class="panel-head">
@@ -681,7 +748,7 @@
                     <td class="fw-bold">{{ recettes_par_source.auj.total_cdf|floatformat:2 }} FC</td>
                   </tr>
                   <tr>
-                    <td class="text-start fw-bold">7 derniers jours</td>
+                    <td class="text-start fw-bold">Cette semaine</td>
                     <td>{{ recettes_par_source.sem.examens_usd|floatformat:2 }} $</td>
                     <td>{{ recettes_par_source.sem.examens_cdf|floatformat:2 }} FC</td>
                     <td>{{ recettes_par_source.sem.autres_usd|floatformat:2 }} $</td>
@@ -722,7 +789,7 @@
           </div>
         </div>
 
-        <!-- ================= NOUVEAU : DEMANDES D'EXAMENS EXTERNES ================= -->
+        <!-- ================= DEMANDES D'EXAMENS EXTERNES ================= -->
         <div class="section-title mt-2">Demandes d'examens externes (montants demandés)</div>
         <div class="row stats-row mb-2">
           <div class="col-6 col-lg-3 mb-4">
@@ -805,7 +872,7 @@
                     <td class="text-end">{{ demandes_stats.auj_montant|floatformat:2 }} FC</td>
                   </tr>
                   <tr>
-                    <td class="fw-bold">7 derniers jours</td>
+                    <td class="fw-bold">Cette semaine</td>
                     <td class="text-end">{{ demandes_stats.sem_nombre }}</td>
                     <td class="text-end">{{ demandes_stats.sem_montant|floatformat:2 }} FC</td>
                   </tr>
