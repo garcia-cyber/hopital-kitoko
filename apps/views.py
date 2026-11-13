@@ -4154,6 +4154,9 @@ def dashboard_finance_depense(request):
     paiements_tous = Paiement.objects.all().order_by('-date_paiement')
     depenses_toutes = Depense.objects.all().order_by('-date_depense')
 
+    # Demandes d'examens externes
+    examens_qs = DemandeExamenExterne.objects.all()
+
     # QuerySets pour stats (avant filtrage)
     paiements_stats = paiements_tous
     depenses_stats = depenses_toutes
@@ -4165,11 +4168,13 @@ def dashboard_finance_depense(request):
             depenses_toutes = depenses_toutes.filter(hopital=hopital_user)
             paiements_stats = paiements_stats.filter(hopital=hopital_user)
             depenses_stats = depenses_stats.filter(hopital=hopital_user)
+            examens_qs = examens_qs.filter(hopital=hopital_user)
         else:
             paiements_tous = paiements_tous.none()
             depenses_toutes = depenses_toutes.none()
             paiements_stats = paiements_stats.none()
             depenses_stats = depenses_stats.none()
+            examens_qs = examens_qs.none()
 
     # --- Statistiques temporelles (recettes) ---
     recettes_stats = paiements_stats.aggregate(
@@ -4196,6 +4201,140 @@ def dashboard_finance_depense(request):
 
     restant_usd = total_entrees['usd'] - total_depenses['usd']
     restant_cdf = total_entrees['cdf'] - total_depenses['cdf']
+
+    # ------------------------------------------------------------
+    # EXAMENS EXTERNES
+    # ------------------------------------------------------------
+
+    # --- Argent reçu pour les examens externes, par période ---
+    paiements_examens = paiements_stats.filter(
+        demande_examen_externe__isnull=False
+    )
+
+    examens_recettes = paiements_examens.aggregate(
+        auj_usd=Coalesce(Sum('montant_verse', filter=Q(date_paiement__gte=debut_aujourdhui, devise='USD')), zero_decimal, output_field=DecimalField()),
+        auj_cdf=Coalesce(Sum('montant_verse', filter=Q(date_paiement__gte=debut_aujourdhui, devise='CDF')), zero_decimal, output_field=DecimalField()),
+        sem_usd=Coalesce(Sum('montant_verse', filter=Q(date_paiement__gte=debut_semaine, devise='USD')), zero_decimal, output_field=DecimalField()),
+        sem_cdf=Coalesce(Sum('montant_verse', filter=Q(date_paiement__gte=debut_semaine, devise='CDF')), zero_decimal, output_field=DecimalField()),
+        mois_usd=Coalesce(Sum('montant_verse', filter=Q(date_paiement__gte=debut_mois, devise='USD')), zero_decimal, output_field=DecimalField()),
+        mois_cdf=Coalesce(Sum('montant_verse', filter=Q(date_paiement__gte=debut_mois, devise='CDF')), zero_decimal, output_field=DecimalField()),
+        annee_usd=Coalesce(Sum('montant_verse', filter=Q(date_paiement__gte=debut_annee, devise='USD')), zero_decimal, output_field=DecimalField()),
+        annee_cdf=Coalesce(Sum('montant_verse', filter=Q(date_paiement__gte=debut_annee, devise='CDF')), zero_decimal, output_field=DecimalField()),
+        total_usd=Coalesce(Sum('montant_verse', filter=Q(devise='USD')), zero_decimal, output_field=DecimalField()),
+        total_cdf=Coalesce(Sum('montant_verse', filter=Q(devise='CDF')), zero_decimal, output_field=DecimalField()),
+    )
+
+    # --- Autres paiements d'aujourd'hui = total - examens externes ---
+    autres_auj_usd = recettes_stats['auj_usd'] - examens_recettes['auj_usd']
+    autres_auj_cdf = recettes_stats['auj_cdf'] - examens_recettes['auj_cdf']
+
+    # --- Examens externes + autres paiements = total, par période ---
+    recettes_par_source = {}
+
+    for p in ['auj', 'sem', 'mois', 'annee']:
+        ex_usd = examens_recettes[p + '_usd']
+        ex_cdf = examens_recettes[p + '_cdf']
+
+        # Autres paiements = total de la période - examens externes
+        autres_usd = recettes_stats[p + '_usd'] - ex_usd
+        autres_cdf = recettes_stats[p + '_cdf'] - ex_cdf
+
+        recettes_par_source[p] = {
+            'examens_usd': ex_usd,
+            'examens_cdf': ex_cdf,
+            'autres_usd': autres_usd,
+            'autres_cdf': autres_cdf,
+            'total_usd': ex_usd + autres_usd,
+            'total_cdf': ex_cdf + autres_cdf,
+        }
+
+    # --- Même calcul pour le cumul global ---
+    glob_autres_usd = total_entrees['usd'] - examens_recettes['total_usd']
+    glob_autres_cdf = total_entrees['cdf'] - examens_recettes['total_cdf']
+
+    recettes_par_source['global'] = {
+        'examens_usd': examens_recettes['total_usd'],
+        'examens_cdf': examens_recettes['total_cdf'],
+        'autres_usd': glob_autres_usd,
+        'autres_cdf': glob_autres_cdf,
+        'total_usd': examens_recettes['total_usd'] + glob_autres_usd,
+        'total_cdf': examens_recettes['total_cdf'] + glob_autres_cdf,
+    }
+
+    # --- Demandes créées, par période (nombre + montant demandé en CDF) ---
+    demandes_stats = examens_qs.aggregate(
+        auj_nombre=Count('id', filter=Q(date_demande__gte=debut_aujourdhui)),
+        auj_montant=Coalesce(Sum('total_cdf', filter=Q(date_demande__gte=debut_aujourdhui)), zero_decimal, output_field=DecimalField()),
+        sem_nombre=Count('id', filter=Q(date_demande__gte=debut_semaine)),
+        sem_montant=Coalesce(Sum('total_cdf', filter=Q(date_demande__gte=debut_semaine)), zero_decimal, output_field=DecimalField()),
+        mois_nombre=Count('id', filter=Q(date_demande__gte=debut_mois)),
+        mois_montant=Coalesce(Sum('total_cdf', filter=Q(date_demande__gte=debut_mois)), zero_decimal, output_field=DecimalField()),
+        annee_nombre=Count('id', filter=Q(date_demande__gte=debut_annee)),
+        annee_montant=Coalesce(Sum('total_cdf', filter=Q(date_demande__gte=debut_annee)), zero_decimal, output_field=DecimalField()),
+        total_nombre=Count('id'),
+        total_montant=Coalesce(Sum('total_cdf'), zero_decimal, output_field=DecimalField()),
+    )
+
+    # ------------------------------------------------------------
+    # NOUVEAU : TOTAL GÉNÉRAL = Paiement + DemandeExamenExterne
+    # Exemple : Paiement 1000 CDF + 20 USD, demandes 3000 CDF
+    #           => total 4000 CDF et 20 USD
+    # Les demandes sont seulement en CDF : elles s'ajoutent au CDF.
+    # ------------------------------------------------------------
+    totaux_generaux = {}
+
+    for p in ['auj', 'sem', 'mois', 'annee']:
+        pay_usd = recettes_stats[p + '_usd']
+        pay_cdf = recettes_stats[p + '_cdf']
+        dem_cdf = demandes_stats[p + '_montant']
+
+        totaux_generaux[p] = {
+            'paiements_usd': pay_usd,
+            'paiements_cdf': pay_cdf,
+            'demandes_cdf': dem_cdf,
+            'total_usd': pay_usd,
+            'total_cdf': pay_cdf + dem_cdf,
+        }
+
+    # --- Même calcul pour le cumul global ---
+    totaux_generaux['global'] = {
+        'paiements_usd': total_entrees['usd'],
+        'paiements_cdf': total_entrees['cdf'],
+        'demandes_cdf': demandes_stats['total_montant'],
+        'total_usd': total_entrees['usd'],
+        'total_cdf': total_entrees['cdf'] + demandes_stats['total_montant'],
+    }
+
+    # --- Montants demandés par statut (cumul, en CDF) ---
+    examens_par_statut = examens_qs.aggregate(
+        en_attente=Coalesce(Sum('total_cdf', filter=Q(statut='EN_ATTENTE')), zero_decimal, output_field=DecimalField()),
+        payes=Coalesce(Sum('total_cdf', filter=Q(statut='PAYE')), zero_decimal, output_field=DecimalField()),
+        termines=Coalesce(Sum('total_cdf', filter=Q(statut='TERMINE')), zero_decimal, output_field=DecimalField()),
+    )
+
+    # --- Reste à payer sur les examens externes (cumul, en CDF) ---
+    examens_total_demande = demandes_stats['total_montant']
+
+    examens_reduction_demandes = examens_qs.aggregate(
+        t=Coalesce(Sum('montant_reduction_cdf'), zero_decimal, output_field=DecimalField())
+    )['t']
+
+    examens_total_du = max(zero_decimal, examens_total_demande - examens_reduction_demandes)
+
+    paiements_des_demandes = Paiement.objects.filter(demande_examen_externe__in=examens_qs)
+
+    examens_deja_paye = paiements_des_demandes.aggregate(
+        t=Coalesce(Sum('montant_verse_cdf'), zero_decimal, output_field=DecimalField())
+    )['t']
+
+    examens_deja_reduit = paiements_des_demandes.aggregate(
+        t=Coalesce(Sum('montant_reduction'), zero_decimal, output_field=DecimalField())
+    )['t']
+
+    examens_reste_a_payer = max(
+        zero_decimal,
+        examens_total_du - (examens_deja_paye + examens_deja_reduit)
+    )
 
     # --- Stats par service (TOP 5) ---
     services_liste = ['FICHE', 'LABO', 'ECHOGRAPHIE', 'RADIO']
@@ -4309,6 +4448,23 @@ def dashboard_finance_depense(request):
         # Stats par mois
         'mois_stats': mois_stats,
         'depenses_mois_stats': depenses_mois_stats,
+
+        # Examens externes (argent reçu, par période)
+        'examens_recettes': examens_recettes,
+        'autres_auj_usd': autres_auj_usd,
+        'autres_auj_cdf': autres_auj_cdf,
+        'recettes_par_source': recettes_par_source,
+
+        # Examens externes (demandes, par période)
+        'demandes_stats': demandes_stats,
+
+        # NOUVEAU : total général = Paiement + DemandeExamenExterne
+        'totaux_generaux': totaux_generaux,
+
+        # Examens externes (par statut et reste à payer)
+        'examens_par_statut': examens_par_statut,
+        'examens_total_du': examens_total_du,
+        'examens_reste_a_payer': examens_reste_a_payer,
     }
 
     return render(request, 'back-end/finance/journal_caisse.html', context)

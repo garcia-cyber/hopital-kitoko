@@ -2,656 +2,1110 @@
 {% load static %}
 <html lang="fr">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ titre_page }} - CHK</title>
-    {% include 'back-end/includes/css.html' %}
-    <style>
-        :root{
-            --primary:#2563eb;
-            --primary-dark:#0f172a;
-            --success:#16a34a;
-            --info:#0891b2;
-            --warning:#f59e0b;
-            --danger:#dc2626;
-            --bg:#f4f7fb;
-            --card:#ffffff;
-            --text:#1f2937;
-            --muted:#6b7280;
-            --line:#e5e7eb;
-        }
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+  <title>{{ titre_page }} - CHK</title>
 
+  {% include 'back-end/includes/css.html' %}
 
-        body{
-            background:
-                radial-gradient(circle at top left, rgba(37,99,235,.08), transparent 25%),
-                radial-gradient(circle at top right, rgba(8,145,178,.08), transparent 22%),
-                linear-gradient(180deg, #ffffff 0%, #f7f9fc 40%, var(--bg) 100%);
-            color:var(--text);
-            overflow-x: hidden;
-        }
+  <style>
+    :root {
+      --hospital-blue: #2563eb;
+      --hospital-green: #10b981;
+      --hospital-red: #ef4444;
+      --hospital-orange: #f59e0b;
+      --hospital-purple: #8b5cf6;
+      --hospital-cyan: #06b6d4;
+      --bg-soft: #f1f5f9;
+      --card-radius: 18px;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+    }
 
+    body {
+      background: var(--bg-soft);
+      overflow-x: hidden;
+    }
 
-        .page-header{
-            margin-bottom: 1.25rem;
-        }
+    .main-wrapper {
+      min-height: 100vh;
+      background: var(--bg-soft);
+    }
 
+    .page-wrapper {
+      background-color: transparent;
+      padding-top: 68px;
+    }
 
-        .page-title{
-            font-weight: 800;
-            color: var(--primary-dark);
-            font-size: clamp(1.35rem, 2.5vw, 1.8rem);
-            word-break: break-word;
-        }
+    .content {
+      padding-top: 24px;
+      padding-bottom: 28px;
+    }
 
+    /* =========================
+       BANNIÈRE
+    ========================= */
 
-        .card{
-            border: 1px solid var(--line);
-            border-radius: 16px;
-            box-shadow: 0 8px 24px rgba(15,23,42,.04);
-            overflow: hidden;
-            margin-bottom: 1.5rem;
-        }
+    .medical-welcome {
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 55%, #2563eb 100%);
+      color: #fff;
+      padding: 30px 32px;
+      border-radius: 22px;
+      margin-bottom: 30px;
+      box-shadow: 0 14px 34px rgba(15, 23, 42, 0.25);
+    }
 
+    .medical-welcome::before,
+    .medical-welcome::after {
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.07);
+      pointer-events: none;
+    }
 
-        .card-header{
-            border-bottom: 1px solid var(--line);
-            font-weight: 800;
-            padding: 1rem 1.25rem;
-        }
+    .medical-welcome::before {
+      width: 220px;
+      height: 220px;
+      right: -50px;
+      top: -80px;
+    }
 
+    .medical-welcome::after {
+      width: 140px;
+      height: 140px;
+      right: 120px;
+      bottom: -70px;
+    }
 
-        .dash-widget{
-            position: relative;
-            overflow: hidden;
-            border-radius: 16px;
-            background: linear-gradient(135deg, #fff, #f8fbff);
-        }
+    .medical-welcome > * {
+      position: relative;
+      z-index: 1;
+    }
 
+    .medical-welcome h3 {
+      margin-bottom: 6px;
+      font-weight: 800;
+      font-size: 1.6rem;
+      letter-spacing: -0.3px;
+    }
 
-        .dash-widget::after{
-            content:"";
-            position:absolute;
-            right:-30px;
-            top:-30px;
-            width:100px;
-            height:100px;
-            border-radius:50%;
-            background: rgba(37,99,235,.06);
-        }
+    .medical-welcome p {
+      opacity: 0.9;
+      font-size: 0.98rem;
+    }
 
+    .welcome-date {
+      display: inline-block;
+      margin-top: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      color: #bfdbfe;
+    }
 
-        .dash-widget-icon{
-            width: 48px;
-            height: 48px;
-            border-radius: 14px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            color: #fff;
-            font-size: 1rem;
-            flex: 0 0 auto;
-        }
+    .badge-role {
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 16px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      backdrop-filter: blur(4px);
+      font-size: 0.88rem;
+      font-weight: 700;
+      margin-top: 14px;
+    }
 
+    .badge-role::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      margin-right: 8px;
+      border-radius: 50%;
+      background: #4ade80;
+      box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.25);
+    }
 
-        .dash-widget-info h4{
-            line-height: 1.2;
-            margin-bottom: 0.15rem;
-            font-weight: 800;
-            font-size: 1.1rem;
-        }
+    /* =========================
+       TITRES DE SECTION
+    ========================= */
 
+    .section-title {
+      display: flex;
+      align-items: center;
+      font-size: 0.82rem;
+      font-weight: 800;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: #475569;
+      margin-bottom: 18px;
+    }
 
-        .stat-label{
-            color: var(--muted);
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: .04em;
-            font-weight: 700;
-        }
+    .section-title::before {
+      content: "";
+      width: 4px;
+      height: 18px;
+      margin-right: 10px;
+      border-radius: 4px;
+      background: linear-gradient(180deg, #2563eb, #06b6d4);
+    }
 
+    /* =========================
+       CARTES DE STATISTIQUES
+    ========================= */
 
-        .table-wrap{
-            width: 100%;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-        }
+    .dash-widget {
+      position: relative;
+      border: 1px solid #e2e8f0;
+      border-radius: var(--card-radius);
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+      transition: all 0.25s ease;
+      overflow: hidden;
+      background: #fff;
+      height: 100%;
+      margin-bottom: 0;
+    }
 
+    .dash-widget::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(90deg, #2563eb, #06b6d4);
+      opacity: 0.85;
+    }
 
-        .table thead{
-            background: #f1f5f9;
-        }
+    .dash-widget:hover {
+      transform: translateY(-5px);
+      border-color: #bfdbfe;
+      box-shadow: 0 16px 34px rgba(37, 99, 235, 0.14);
+    }
 
+    .dash-widget .card-body {
+      padding: 22px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
 
-        .table th{
-            white-space: nowrap;
-            font-weight: 800;
-            color: #334155;
-            font-size: 0.875rem;
-            padding: 0.75rem 1rem;
-        }
+    .dash-widget-icon {
+      width: 60px;
+      height: 60px;
+      min-width: 60px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    }
 
+    .dash-widget-info {
+      min-width: 0;
+      flex: 1 1 auto;
+    }
 
-        .table td{
-            vertical-align: middle;
-            white-space: nowrap;
-            font-size: 0.9rem;
-            padding: 0.75rem 1rem;
-        }
+    .dash-widget-info h3 {
+      font-size: 1.2rem;
+      line-height: 1.2;
+      margin-bottom: 2px;
+      font-weight: 800;
+      color: #0f172a;
+      word-break: break-word;
+    }
 
+    .dash-widget-info .amount-sub {
+      display: block;
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: #0891b2;
+      margin-bottom: 4px;
+      word-break: break-word;
+    }
 
-        .badge-soft{
-            display: inline-block;
-            padding: 0.35rem 0.65rem;
-            border-radius: 999px;
-            font-size: 0.75rem;
-            font-weight: 700;
-        }
+    .dash-widget-info span.label-card {
+      display: block;
+      color: #64748b;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
 
+    /* =========================
+       PANNEAUX ET TABLEAUX
+    ========================= */
 
-        .badge-fiche{ background:#e2e8f0; color:#334155; }
-        .badge-labo{ background:#dcfce7; color:#166534; }
-        .badge-echo{ background:#e0f2fe; color:#075985; }
-        .badge-radio{ background:#fef3c7; color:#92400e; }
+    .panel-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 22px;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+      background: #fff;
+      overflow: hidden;
+      margin-bottom: 0;
+    }
 
+    .panel-card .card-body {
+      padding: 26px;
+    }
 
-        .alert{
-            border-radius: 12px;
-        }
+    .panel-card .card-body.p-0 {
+      padding: 0;
+    }
 
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 18px 22px;
+      border-bottom: 1px solid #e2e8f0;
+      background: #f8fafc;
+    }
 
-        .quick-actions{
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-            justify-content: flex-end;
-        }
+    .panel-head h5 {
+      display: flex;
+      align-items: center;
+      margin: 0;
+      font-weight: 800;
+      font-size: 1rem;
+      color: #0f172a;
+    }
 
+    .panel-head h5::before {
+      content: "";
+      flex: 0 0 4px;
+      height: 20px;
+      margin-right: 10px;
+      border-radius: 4px;
+      background: linear-gradient(180deg, #2563eb, #06b6d4);
+    }
 
-        /* Pagination */
-        .pagination-container {
-            padding: 1rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 1rem;
-            background: #f8fafc;
-            border-top: 1px solid var(--line);
-        }
+    .panel-head small {
+      color: var(--muted);
+      font-weight: 600;
+    }
 
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
 
-        .pagination-info {
-            color: var(--muted);
-            font-size: 0.875rem;
-        }
+    .table thead {
+      background: #f1f5f9;
+    }
 
+    .table th {
+      white-space: nowrap;
+      font-weight: 800;
+      color: #334155;
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      padding: 0.75rem 1rem;
+    }
 
-        .pagination .page-item .page-link {
-            color: var(--primary);
-            border: 1px solid var(--line);
-            border-radius: 8px;
-            margin: 0 2px;
-            padding: 0.5rem 0.75rem;
-            font-weight: 600;
-        }
+    .table td {
+      vertical-align: middle;
+      white-space: nowrap;
+      font-size: 0.9rem;
+      padding: 0.75rem 1rem;
+    }
 
+    .badge-soft {
+      display: inline-block;
+      padding: 0.35rem 0.65rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
 
-        .pagination .page-item.active .page-link {
-            background: var(--primary);
-            color: #fff;
-            border-color: var(--primary);
-        }
+    .badge-fiche { background: #e2e8f0; color: #334155; }
+    .badge-labo { background: #dcfce7; color: #166534; }
+    .badge-echo { background: #e0f2fe; color: #075985; }
+    .badge-radio { background: #fef3c7; color: #92400e; }
 
+    .btn-depense {
+      border: none;
+      border-radius: 12px;
+      padding: 10px 18px;
+      font-weight: 800;
+      font-size: 0.88rem;
+      background: #fff;
+      color: #b91c1c;
+      box-shadow: 0 6px 16px rgba(15, 23, 42, 0.2);
+    }
 
-        .pagination .page-item.disabled .page-link {
-            color: var(--muted);
-            background: #f1f5f9;
-            border-color: var(--line);
-        }
+    .btn-depense:hover {
+      background: #fee2e2;
+      color: #991b1b;
+    }
 
+    .banner-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
 
-        /* Responsive Breakpoints */
-        @media (max-width: 991.98px) {
-            .quick-actions {
-                justify-content: flex-start;
-            }
-        }
+    /* Ligne de total dans les tableaux */
+    .ligne-total td {
+      background: #eff6ff;
+      font-weight: 800;
+    }
 
+    /* Pagination */
+    .pagination-container {
+      padding: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      background: #f8fafc;
+      border-top: 1px solid var(--line);
+    }
 
-        @media (max-width: 767.98px) {
-            .content.container-fluid {
-                padding-left: 0.75rem;
-                padding-right: 0.75rem;
-            }
+    .pagination-info {
+      color: var(--muted);
+      font-size: 0.875rem;
+    }
 
+    .pagination .page-item .page-link {
+      color: var(--hospital-blue);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      margin: 0 2px;
+      padding: 0.5rem 0.75rem;
+      font-weight: 600;
+    }
 
-            .card-body {
-                padding: 1rem;
-            }
+    .pagination .page-item.active .page-link {
+      background: var(--hospital-blue);
+      color: #fff;
+      border-color: var(--hospital-blue);
+    }
 
+    .pagination .page-item.disabled .page-link {
+      color: var(--muted);
+      background: #f1f5f9;
+      border-color: var(--line);
+    }
 
-            .dash-widget-info h4 {
-                font-size: 1rem;
-            }
+    /* =========================
+       TABLETTE ET MOBILE
+    ========================= */
 
+    @media (max-width: 992px) {
+      .page-wrapper {
+        margin-left: 0 !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+      }
 
-            .page-title {
-                font-size: 1.25rem;
-            }
+      .content.container-fluid {
+        padding-left: 14px;
+        padding-right: 14px;
+      }
+    }
 
+    /* =========================
+       TÉLÉPHONE
+    ========================= */
 
-            .pagination-container {
-                flex-direction: column;
-                align-items: center;
-                text-align: center;
-            }
-        }
+    @media (max-width: 576px) {
+      .page-wrapper {
+        padding-top: 66px;
+      }
 
+      .content {
+        padding-top: 14px;
+        padding-bottom: 20px;
+      }
 
-        @media (max-width: 575.98px) {
-            .quick-actions .btn {
-                width: 100%;
-                text-align: center;
-            }
-            
-            .dash-widget .card-body {
-                padding: 0.85rem;
-            }
+      .medical-welcome {
+        padding: 18px;
+        border-radius: 18px;
+        margin-bottom: 20px;
+      }
 
+      .medical-welcome::before {
+        width: 150px;
+        height: 150px;
+        right: -50px;
+        top: -60px;
+      }
 
-            .pagination .page-item .page-link {
-                padding: 0.4rem 0.6rem;
-                font-size: 0.85rem;
-            }
-        }
-    </style>
+      .medical-welcome::after {
+        display: none;
+      }
+
+      .medical-welcome h3 {
+        font-size: 1.15rem;
+      }
+
+      .medical-welcome p {
+        font-size: 0.85rem;
+      }
+
+      .welcome-date {
+        font-size: 0.7rem;
+      }
+
+      .badge-role {
+        font-size: 0.78rem;
+        padding: 6px 12px;
+        margin-top: 10px;
+      }
+
+      .btn-depense {
+        width: 100%;
+      }
+
+      .section-title {
+        font-size: 0.74rem;
+        margin-bottom: 12px;
+      }
+
+      .stats-row {
+        margin-left: -6px;
+        margin-right: -6px;
+      }
+
+      .stats-row > [class*="col-"] {
+        padding-left: 6px;
+        padding-right: 6px;
+        margin-bottom: 12px !important;
+      }
+
+      .dash-widget {
+        border-radius: 16px;
+      }
+
+      .dash-widget:hover {
+        transform: none;
+      }
+
+      .dash-widget .card-body {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 16px 14px 14px;
+      }
+
+      .dash-widget-icon {
+        width: 42px;
+        height: 42px;
+        min-width: 42px;
+        border-radius: 12px;
+        font-size: 18px;
+      }
+
+      .dash-widget-info {
+        width: 100%;
+      }
+
+      .dash-widget-info h3 {
+        font-size: 1.05rem;
+      }
+
+      .dash-widget-info .amount-sub {
+        font-size: 0.85rem;
+      }
+
+      .dash-widget-info span.label-card {
+        font-size: 0.68rem;
+        letter-spacing: 0.2px;
+      }
+
+      .panel-card {
+        border-radius: 18px;
+      }
+
+      .panel-head {
+        padding: 14px 14px;
+      }
+
+      .panel-head h5 {
+        font-size: 0.92rem;
+      }
+
+      .pagination-container {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+      }
+
+      .pagination .page-item .page-link {
+        padding: 0.4rem 0.6rem;
+        font-size: 0.85rem;
+      }
+    }
+  </style>
 </head>
 <body>
-<div class="main-wrapper">
+  <div class="main-wrapper">
     {% include 'back-end/includes/header.html' %}
     {% include 'back-end/includes/sidebar.html' %}
 
-
     <div class="page-wrapper">
-        <div class="content container-fluid">
+      <div class="content container-fluid">
 
-
-            <!-- En-tête de page -->
-            <div class="page-header">
-                <div class="row align-items-center g-3">
-                    <div class="col-12 col-lg-8">
-                        <h3 class="page-title mb-1"><i class="fa fa-wallet"></i> {{ titre_page }}</h3>
-                        <ul class="breadcrumb mb-0 small">
-                            <li class="breadcrumb-item"><a href="#">Gestion Financière</a></li>
-                            <li class="breadcrumb-item active">Journal général</li>
-                        </ul>
-                    </div>
-                    <div class="col-12 col-lg-4 text-lg-end">
-                        <div class="quick-actions">
-                            <a href="{% url 'creer_depense' %}" class="btn btn-danger btn-rounded font-weight-bold shadow-sm">
-                                <i class="fa fa-minus-circle"></i> Saisir une Dépense
-                            </a>
-                        </div>
-                    </div>
-                </div>
+        <!-- ================= BANNIÈRE ================= -->
+        <div class="medical-welcome">
+          <div class="banner-top">
+            <div>
+              <h3><i class="fa fa-wallet"></i> {{ titre_page }}</h3>
+              <p class="mb-0">Gestion financière - Vue d'ensemble {{ fonctionKey|title }} - CHK</p>
+              <span class="welcome-date">{% now "l d F Y" %}</span>
             </div>
-
-
-            <!-- Messages d'alerte -->
-            {% if messages %}
-                {% for message in messages %}
-                    <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show shadow-sm" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                {% endfor %}
-            {% endif %}
-
-
-            <h4 class="mb-3 text-secondary fs-6 fw-bold"><i class="fa fa-chart-line"></i> Statistiques des Recettes</h4>
-            
-            <!-- Widgets de statistiques -->
-            <div class="row g-3 mb-4">
-                <div class="col-12 col-md-6 col-lg-3">
-                    <div class="card dash-widget shadow-sm h-100 mb-0">
-                        <div class="card-body d-flex align-items-center gap-3">
-                            <span class="dash-widget-icon bg-success"><i class="fa fa-calendar-day"></i></span>
-                            <div class="dash-widget-info">
-                                <div class="stat-label">Aujourd'hui</div>
-                                <h4 class="text-success">{{ aujourdhui_usd|floatformat:2 }} USD</h4>
-                                <h4 class="text-info mb-0">{{ aujourdhui_cdf|floatformat:2 }} CDF</h4>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-12 col-md-6 col-lg-3">
-                    <div class="card dash-widget shadow-sm h-100 mb-0">
-                        <div class="card-body d-flex align-items-center gap-3">
-                            <span class="dash-widget-icon bg-info"><i class="fa fa-calendar-week"></i></span>
-                            <div class="dash-widget-info">
-                                <div class="stat-label">7 derniers jours</div>
-                                <h4 class="text-success">{{ semaine_usd|floatformat:2 }} USD</h4>
-                                <h4 class="text-info mb-0">{{ semaine_cdf|floatformat:2 }} CDF</h4>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-12 col-md-6 col-lg-3">
-                    <div class="card dash-widget shadow-sm h-100 mb-0">
-                        <div class="card-body d-flex align-items-center gap-3">
-                            <span class="dash-widget-icon bg-primary"><i class="fa fa-calendar-alt"></i></span>
-                            <div class="dash-widget-info">
-                                <div class="stat-label">Mois en cours</div>
-                                <h4 class="text-success">{{ mois_usd|floatformat:2 }} USD</h4>
-                                <h4 class="text-info mb-0">{{ mois_cdf|floatformat:2 }} CDF</h4>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-12 col-md-6 col-lg-3">
-                    <div class="card dash-widget shadow-sm h-100 mb-0">
-                        <div class="card-body d-flex align-items-center gap-3">
-                            <span class="dash-widget-icon bg-warning"><i class="fa fa-calendar"></i></span>
-                            <div class="dash-widget-info">
-                                <div class="stat-label">Année en cours</div>
-                                <h4 class="text-success">{{ annee_usd|floatformat:2 }} USD</h4>
-                                <h4 class="text-info mb-0">{{ annee_cdf|floatformat:2 }} CDF</h4>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <div>
+              <a href="{% url 'creer_depense' %}" class="btn btn-depense">
+                <i class="fa fa-minus-circle"></i> Saisir une Dépense
+              </a>
             </div>
-
-
-            <!-- Coffre-fort : Bilan global -->
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-dark text-white">
-                    <h5 class="card-title mb-0 fs-6"><i class="fa fa-vault text-warning"></i> Coffre-fort : Bilan global de la caisse</h5>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-wrap">
-                        <table class="table table-bordered table-striped mb-0 text-center align-middle">
-                            <thead>
-                                <tr>
-                                    <th class="text-start">Devise</th>
-                                    <th class="text-success">Total des Entrées (+)</th>
-                                    <th class="text-danger">Total des Dépenses (-)</th>
-                                    <th class="bg-secondary text-white">Net physique restant (=)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td class="text-start fw-bold text-dark">Dollar Américain (USD)</td>
-                                    <td class="text-success fw-bold">{{ total_usd|floatformat:2 }} USD</td>
-                                    <td class="text-danger fw-bold">{{ depense_totale_usd|floatformat:2 }} USD</td>
-                                    <td class="bg-light fw-bold text-success h6 mb-0">{{ restant_usd|floatformat:2 }} USD</td>
-                                </tr>
-                                <tr>
-                                    <td class="text-start fw-bold text-dark">Franc Congolais (CDF)</td>
-                                    <td class="text-info fw-bold">{{ total_cdf|floatformat:2 }} CDF</td>
-                                    <td class="text-danger fw-bold">{{ depense_totale_cdf|floatformat:2 }} CDF</td>
-                                    <td class="bg-light fw-bold text-info h6 mb-0">{{ restant_cdf|floatformat:2 }} CDF</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-
-            <!-- Tableaux détaillés (Services & Historique & Mois) -->
-            <div class="row g-4">
-                <div class="col-12 col-lg-4">
-                    <div class="card shadow-sm h-100 mb-0">
-                        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-                            <h5 class="card-title mb-0 fs-6"><i class="fa fa-chart-pie"></i> Recettes par Service</h5>
-                            <small class="text-muted">Top 5</small>
-                        </div>
-                        <div class="card-body p-0">
-                            <div class="table-wrap">
-                                <table class="table table-striped table-hover mb-0 text-nowrap">
-                                    <thead>
-                                        <tr>
-                                            <th>Service</th>
-                                            <th>Total USD</th>
-                                            <th>Total CDF</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for s in services_stats %}
-                                        <tr>
-                                            <td class="fw-bold text-secondary">{{ s.nom }}</td>
-                                            <td class="text-success fw-bold">{{ s.usd|floatformat:2 }} $</td>
-                                            <td class="text-info fw-bold">{{ s.cdf|floatformat:2 }} FC</td>
-                                        </tr>
-                                        {% empty %}
-                                        <tr>
-                                            <td colspan="3" class="text-center text-muted py-4">Aucune statistique disponible.</td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-12 col-lg-8">
-                    <div class="card shadow-sm h-100 mb-0">
-                        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                            <h5 class="card-title mb-0 fs-6"><i class="fa fa-list"></i> Historique des paiements encaissés</h5>
-                            {% if paiements.paginator.num_pages > 1 %}
-                                <small class="text-white-50">Page {{ paiements.number }} sur {{ paiements.paginator.num_pages }}</small>
-                            {% endif %}
-                        </div>
-                        <div class="card-body p-0">
-                            <div class="table-wrap">
-                                <table class="table table-hover mb-0 align-middle text-nowrap">
-                                    <thead>
-                                        <tr>
-                                            <th>Réf / Date</th>
-                                            <th>Patient</th>
-                                            <th>Service</th>
-                                            <th>Montant Versé</th>
-                                            <th>Dette / Reste</th>
-                                            <th>Caissier</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for p in paiements %}
-                                        <tr>
-                                            <td>
-                                                <span class="fw-bold text-primary">#{{ p.id }}</span><br>
-                                                <small class="text-muted">{{ p.date_paiement|date:"d/m/Y à H:i" }}</small>
-                                            </td>
-                                            <td class="fw-bold text-dark">{{ p.patient.noms }}</td>
-                                            <td>
-                                                {% if p.service == 'FICHE' %}
-                                                    <span class="badge-soft badge-fiche">Fiche</span>
-                                                {% elif p.service == 'LABO' %}
-                                                    <span class="badge-soft badge-labo">Labo</span>
-                                                {% elif p.service == 'ECHOGRAPHIE' %}
-                                                    <span class="badge-soft badge-echo">Échographie</span>
-                                                {% elif p.service == 'RADIO' %}
-                                                    <span class="badge-soft badge-radio">Radio</span>
-                                                {% else %}
-                                                    <span class="badge-soft bg-light text-dark">{{ p.get_service_display }}</span>
-                                                {% endif %}
-                                            </td>
-                                            <td class="fw-bold {% if p.devise == 'USD' %}text-success{% else %}text-info{% endif %}">
-                                                {{ p.montant_verse|floatformat:2 }} {{ p.devise }}
-                                            </td>
-                                            <td>
-                                                {% if p.reste_a_payer > 0 %}
-                                                    <span class="text-danger fw-bold">{{ p.reste_a_payer|floatformat:2 }} {{ p.devise }}</span>
-                                                {% else %}
-                                                    <span class="text-muted fst-italic">Soldé</span>
-                                                {% endif %}
-                                            </td>
-                                            <td>
-                                                <span class="badge bg-light text-dark border">
-                                                    <i class="fa fa-user"></i> {{ p.caissier.username }}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                        {% empty %}
-                                        <tr>
-                                            <td colspan="6" class="text-center text-muted p-4">Aucune transaction enregistrée dans le journal.</td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                            
-                            <!-- Pagination -->
-                            {% if paiements.paginator.num_pages > 1 %}
-                            <div class="pagination-container">
-                                <div class="pagination-info">
-                                    Affichage de {{ paiements.start_index }} à {{ paiements.end_index }} sur {{ paiements.paginator.count }} paiements
-                                </div>
-                                <nav>
-                                    <ul class="pagination pagination-sm mb-0">
-                                        {% if paiements.has_previous %}
-                                            <li class="page-item">
-                                                <a class="page-link" href="?page=1"><i class="fa fa-angle-double-left"></i></a>
-                                            </li>
-                                            <li class="page-item">
-                                                <a class="page-link" href="?page={{ paiements.previous_page_number }}"><i class="fa fa-angle-left"></i></a>
-                                            </li>
-                                        {% else %}
-                                            <li class="page-item disabled">
-                                                <span class="page-link"><i class="fa fa-angle-double-left"></i></span>
-                                            </li>
-                                            <li class="page-item disabled">
-                                                <span class="page-link"><i class="fa fa-angle-left"></i></span>
-                                            </li>
-                                        {% endif %}
-
-
-                                        {% for num in paiements.paginator.page_range %}
-                                            {% if paiements.number == num %}
-                                                <li class="page-item active">
-                                                    <span class="page-link">{{ num }}</span>
-                                                </li>
-                                            {% elif num > paiements.number|add:'-3' and num < paiements.number|add:'3' %}
-                                                <li class="page-item">
-                                                    <a class="page-link" href="?page={{ num }}">{{ num }}</a>
-                                                </li>
-                                            {% endif %}
-                                        {% endfor %}
-
-
-                                        {% if paiements.has_next %}
-                                            <li class="page-item">
-                                                <a class="page-link" href="?page={{ paiements.next_page_number }}"><i class="fa fa-angle-right"></i></a>
-                                            </li>
-                                            <li class="page-item">
-                                                <a class="page-link" href="?page={{ paiements.paginator.num_pages }}"><i class="fa fa-angle-double-right"></i></a>
-                                            </li>
-                                        {% else %}
-                                            <li class="page-item disabled">
-                                                <span class="page-link"><i class="fa fa-angle-right"></i></span>
-                                            </li>
-                                            <li class="page-item disabled">
-                                                <span class="page-link"><i class="fa fa-angle-double-right"></i></span>
-                                            </li>
-                                        {% endif %}
-                                    </ul>
-                                </nav>
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-
-            <!-- Recettes et dépenses par mois (année en cours) -->
-            <div class="row g-4 mt-2">
-                <div class="col-12 col-lg-6">
-                    <div class="card shadow-sm mb-0">
-                        <div class="card-header bg-success text-white">
-                            <h5 class="card-title mb-0 fs-6"><i class="fa fa-calendar-check"></i> Recettes par mois (année en cours)</h5>
-                        </div>
-                        <div class="card-body p-0">
-                            <div class="table-wrap">
-                                <table class="table table-striped table-hover mb-0 text-nowrap">
-                                    <thead>
-                                        <tr>
-                                            <th>Mois</th>
-                                            <th class="text-end">Total USD</th>
-                                            <th class="text-end">Total CDF</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for m in mois_stats %}
-                                        <tr>
-                                            <td class="fw-bold text-secondary">{{ m.nom }}</td>
-                                            <td class="text-success fw-bold text-end">{{ m.usd|floatformat:2 }} $</td>
-                                            <td class="text-info fw-bold text-end">{{ m.cdf|floatformat:2 }} FC</td>
-                                        </tr>
-                                        {% empty %}
-                                        <tr>
-                                            <td colspan="3" class="text-center text-muted py-4">Aucune donnée disponible.</td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-12 col-lg-6">
-                    <div class="card shadow-sm mb-0">
-                        <div class="card-header bg-danger text-white">
-                            <h5 class="card-title mb-0 fs-6"><i class="fa fa-calendar-times"></i> Dépenses par mois (année en cours)</h5>
-                        </div>
-                        <div class="card-body p-0">
-                            <div class="table-wrap">
-                                <table class="table table-striped table-hover mb-0 text-nowrap">
-                                    <thead>
-                                        <tr>
-                                            <th>Mois</th>
-                                            <th class="text-end">Total USD</th>
-                                            <th class="text-end">Total CDF</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for d in depenses_mois_stats %}
-                                        <tr>
-                                            <td class="fw-bold text-secondary">{{ d.nom }}</td>
-                                            <td class="text-danger fw-bold text-end">{{ d.usd|floatformat:2 }} $</td>
-                                            <td class="text-danger fw-bold text-end">{{ d.cdf|floatformat:2 }} FC</td>
-                                        </tr>
-                                        {% empty %}
-                                        <tr>
-                                            <td colspan="3" class="text-center text-muted py-4">Aucune donnée disponible.</td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-
+          </div>
         </div>
+
+        <!-- ================= MESSAGES ================= -->
+        {% if messages %}
+          {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show shadow-sm" role="alert">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+          {% endfor %}
+        {% endif %}
+
+        <!-- ================= STATISTIQUES DES RECETTES ================= -->
+        <div class="section-title">Statistiques des recettes</div>
+        <div class="row stats-row mb-2">
+          <div class="col-6 col-lg-3 mb-4">
+            <div class="card dash-widget">
+              <div class="card-body">
+                <span class="dash-widget-icon" style="background: rgba(16,185,129,0.10); color: var(--hospital-green);">
+                  <i class="fa fa-calendar-day"></i>
+                </span>
+                <div class="dash-widget-info">
+                  <h3>{{ aujourdhui_usd|floatformat:2 }} USD</h3>
+                  <small class="amount-sub">{{ aujourdhui_cdf|floatformat:2 }} CDF</small>
+                  <span class="label-card">Aujourd'hui</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-6 col-lg-3 mb-4">
+            <div class="card dash-widget">
+              <div class="card-body">
+                <span class="dash-widget-icon" style="background: rgba(6,182,212,0.10); color: var(--hospital-cyan);">
+                  <i class="fa fa-calendar-week"></i>
+                </span>
+                <div class="dash-widget-info">
+                  <h3>{{ semaine_usd|floatformat:2 }} USD</h3>
+                  <small class="amount-sub">{{ semaine_cdf|floatformat:2 }} CDF</small>
+                  <span class="label-card">7 derniers jours</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-6 col-lg-3 mb-4">
+            <div class="card dash-widget">
+              <div class="card-body">
+                <span class="dash-widget-icon" style="background: rgba(37,99,235,0.10); color: var(--hospital-blue);">
+                  <i class="fa fa-calendar-alt"></i>
+                </span>
+                <div class="dash-widget-info">
+                  <h3>{{ mois_usd|floatformat:2 }} USD</h3>
+                  <small class="amount-sub">{{ mois_cdf|floatformat:2 }} CDF</small>
+                  <span class="label-card">Mois en cours</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-6 col-lg-3 mb-4">
+            <div class="card dash-widget">
+              <div class="card-body">
+                <span class="dash-widget-icon" style="background: rgba(245,158,11,0.10); color: var(--hospital-orange);">
+                  <i class="fa fa-calendar"></i>
+                </span>
+                <div class="dash-widget-info">
+                  <h3>{{ annee_usd|floatformat:2 }} USD</h3>
+                  <small class="amount-sub">{{ annee_cdf|floatformat:2 }} CDF</small>
+                  <span class="label-card">Année en cours</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= NOUVEAU : RECETTES PAR SOURCE ================= -->
+        <div class="section-title mt-2">Recettes par source (examens externes + autres)</div>
+        <div class="card panel-card mb-4">
+          <div class="panel-head">
+            <h5>Examens externes, autres paiements et total</h5>
+            <small>Le total est égal aux recettes ci-dessus</small>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-wrap">
+              <table class="table table-hover mb-0 text-center align-middle">
+                <thead>
+                  <tr>
+                    <th class="text-start">Période</th>
+                    <th style="color:#7c3aed;">Examens externes USD</th>
+                    <th style="color:#7c3aed;">Examens externes CDF</th>
+                    <th class="text-success">Autres USD</th>
+                    <th class="text-success">Autres CDF</th>
+                    <th class="text-primary">Total USD</th>
+                    <th class="text-primary">Total CDF</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="text-start fw-bold">Aujourd'hui</td>
+                    <td>{{ recettes_par_source.auj.examens_usd|floatformat:2 }} $</td>
+                    <td>{{ recettes_par_source.auj.examens_cdf|floatformat:2 }} FC</td>
+                    <td>{{ recettes_par_source.auj.autres_usd|floatformat:2 }} $</td>
+                    <td>{{ recettes_par_source.auj.autres_cdf|floatformat:2 }} FC</td>
+                    <td class="fw-bold">{{ recettes_par_source.auj.total_usd|floatformat:2 }} $</td>
+                    <td class="fw-bold">{{ recettes_par_source.auj.total_cdf|floatformat:2 }} FC</td>
+                  </tr>
+                  <tr>
+                    <td class="text-start fw-bold">7 derniers jours</td>
+                    <td>{{ recettes_par_source.sem.examens_usd|floatformat:2 }} $</td>
+                    <td>{{ recettes_par_source.sem.examens_cdf|floatformat:2 }} FC</td>
+                    <td>{{ recettes_par_source.sem.autres_usd|floatformat:2 }} $</td>
+                    <td>{{ recettes_par_source.sem.autres_cdf|floatformat:2 }} FC</td>
+                    <td class="fw-bold">{{ recettes_par_source.sem.total_usd|floatformat:2 }} $</td>
+                    <td class="fw-bold">{{ recettes_par_source.sem.total_cdf|floatformat:2 }} FC</td>
+                  </tr>
+                  <tr>
+                    <td class="text-start fw-bold">Mois en cours</td>
+                    <td>{{ recettes_par_source.mois.examens_usd|floatformat:2 }} $</td>
+                    <td>{{ recettes_par_source.mois.examens_cdf|floatformat:2 }} FC</td>
+                    <td>{{ recettes_par_source.mois.autres_usd|floatformat:2 }} $</td>
+                    <td>{{ recettes_par_source.mois.autres_cdf|floatformat:2 }} FC</td>
+                    <td class="fw-bold">{{ recettes_par_source.mois.total_usd|floatformat:2 }} $</td>
+                    <td class="fw-bold">{{ recettes_par_source.mois.total_cdf|floatformat:2 }} FC</td>
+                  </tr>
+                  <tr>
+                    <td class="text-start fw-bold">Année en cours</td>
+                    <td>{{ recettes_par_source.annee.examens_usd|floatformat:2 }} $</td>
+                    <td>{{ recettes_par_source.annee.examens_cdf|floatformat:2 }} FC</td>
+                    <td>{{ recettes_par_source.annee.autres_usd|floatformat:2 }} $</td>
+                    <td>{{ recettes_par_source.annee.autres_cdf|floatformat:2 }} FC</td>
+                    <td class="fw-bold">{{ recettes_par_source.annee.total_usd|floatformat:2 }} $</td>
+                    <td class="fw-bold">{{ recettes_par_source.annee.total_cdf|floatformat:2 }} FC</td>
+                  </tr>
+                  <tr class="ligne-total">
+                    <td class="text-start">Cumul global</td>
+                    <td>{{ recettes_par_source.global.examens_usd|floatformat:2 }} $</td>
+                    <td>{{ recettes_par_source.global.examens_cdf|floatformat:2 }} FC</td>
+                    <td>{{ recettes_par_source.global.autres_usd|floatformat:2 }} $</td>
+                    <td>{{ recettes_par_source.global.autres_cdf|floatformat:2 }} FC</td>
+                    <td>{{ recettes_par_source.global.total_usd|floatformat:2 }} $</td>
+                    <td>{{ recettes_par_source.global.total_cdf|floatformat:2 }} FC</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= NOUVEAU : DEMANDES D'EXAMENS EXTERNES ================= -->
+        <div class="section-title mt-2">Demandes d'examens externes (montants demandés)</div>
+        <div class="row stats-row mb-2">
+          <div class="col-6 col-lg-3 mb-4">
+            <div class="card dash-widget">
+              <div class="card-body">
+                <span class="dash-widget-icon" style="background: rgba(245,158,11,0.10); color: var(--hospital-orange);">
+                  <i class="fa fa-clock"></i>
+                </span>
+                <div class="dash-widget-info">
+                  <h3>{{ examens_par_statut.en_attente|floatformat:2 }} FC</h3>
+                  <span class="label-card">En attente (cumul)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-6 col-lg-3 mb-4">
+            <div class="card dash-widget">
+              <div class="card-body">
+                <span class="dash-widget-icon" style="background: rgba(16,185,129,0.10); color: var(--hospital-green);">
+                  <i class="fa fa-check-circle"></i>
+                </span>
+                <div class="dash-widget-info">
+                  <h3>{{ examens_par_statut.payes|floatformat:2 }} FC</h3>
+                  <span class="label-card">Payés (cumul)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-6 col-lg-3 mb-4">
+            <div class="card dash-widget">
+              <div class="card-body">
+                <span class="dash-widget-icon" style="background: rgba(139,92,246,0.10); color: var(--hospital-purple);">
+                  <i class="fa fa-flag-checkered"></i>
+                </span>
+                <div class="dash-widget-info">
+                  <h3>{{ examens_par_statut.termines|floatformat:2 }} FC</h3>
+                  <span class="label-card">Terminés (cumul)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-6 col-lg-3 mb-4">
+            <div class="card dash-widget">
+              <div class="card-body">
+                <span class="dash-widget-icon" style="background: rgba(239,68,68,0.10); color: var(--hospital-red);">
+                  <i class="fa fa-hourglass-half"></i>
+                </span>
+                <div class="dash-widget-info">
+                  <h3>{{ examens_reste_a_payer|floatformat:2 }} FC</h3>
+                  <small class="amount-sub">sur {{ examens_total_du|floatformat:2 }} FC dus</small>
+                  <span class="label-card">Reste à encaisser</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card panel-card mb-4">
+          <div class="panel-head">
+            <h5>Demandes créées par période</h5>
+            <small>Montant demandé, pas l'argent reçu</small>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-wrap">
+              <table class="table table-hover mb-0 align-middle">
+                <thead>
+                  <tr>
+                    <th>Période</th>
+                    <th class="text-end">Nombre de demandes</th>
+                    <th class="text-end">Montant demandé (CDF)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="fw-bold">Aujourd'hui</td>
+                    <td class="text-end">{{ demandes_stats.auj_nombre }}</td>
+                    <td class="text-end">{{ demandes_stats.auj_montant|floatformat:2 }} FC</td>
+                  </tr>
+                  <tr>
+                    <td class="fw-bold">7 derniers jours</td>
+                    <td class="text-end">{{ demandes_stats.sem_nombre }}</td>
+                    <td class="text-end">{{ demandes_stats.sem_montant|floatformat:2 }} FC</td>
+                  </tr>
+                  <tr>
+                    <td class="fw-bold">Mois en cours</td>
+                    <td class="text-end">{{ demandes_stats.mois_nombre }}</td>
+                    <td class="text-end">{{ demandes_stats.mois_montant|floatformat:2 }} FC</td>
+                  </tr>
+                  <tr>
+                    <td class="fw-bold">Année en cours</td>
+                    <td class="text-end">{{ demandes_stats.annee_nombre }}</td>
+                    <td class="text-end">{{ demandes_stats.annee_montant|floatformat:2 }} FC</td>
+                  </tr>
+                  <tr class="ligne-total">
+                    <td>Total</td>
+                    <td class="text-end">{{ demandes_stats.total_nombre }}</td>
+                    <td class="text-end">{{ demandes_stats.total_montant|floatformat:2 }} FC</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= COFFRE-FORT ================= -->
+        <div class="section-title mt-2">Coffre-fort : bilan global de la caisse</div>
+        <div class="card panel-card mb-4">
+          <div class="card-body p-0">
+            <div class="table-wrap">
+              <table class="table table-hover mb-0 text-center align-middle">
+                <thead>
+                  <tr>
+                    <th class="text-start">Devise</th>
+                    <th class="text-success">Total des entrées (+)</th>
+                    <th class="text-danger">Total des dépenses (-)</th>
+                    <th>Net physique restant (=)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="text-start fw-bold text-dark">Dollar Américain (USD)</td>
+                    <td class="text-success fw-bold">{{ total_usd|floatformat:2 }} USD</td>
+                    <td class="text-danger fw-bold">{{ depense_totale_usd|floatformat:2 }} USD</td>
+                    <td class="fw-bold text-success h6 mb-0" style="background:#f0fdf4;">{{ restant_usd|floatformat:2 }} USD</td>
+                  </tr>
+                  <tr>
+                    <td class="text-start fw-bold text-dark">Franc Congolais (CDF)</td>
+                    <td class="text-info fw-bold">{{ total_cdf|floatformat:2 }} CDF</td>
+                    <td class="text-danger fw-bold">{{ depense_totale_cdf|floatformat:2 }} CDF</td>
+                    <td class="fw-bold text-info h6 mb-0" style="background:#ecfeff;">{{ restant_cdf|floatformat:2 }} CDF</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= SERVICES + HISTORIQUE ================= -->
+        <div class="section-title mt-2">Services et historique</div>
+        <div class="row g-4 mb-4">
+          <div class="col-12 col-lg-4">
+            <div class="card panel-card h-100">
+              <div class="panel-head">
+                <h5>Recettes par service</h5>
+                <small>Top 5</small>
+              </div>
+              <div class="card-body p-0">
+                <div class="table-wrap">
+                  <table class="table table-hover mb-0">
+                    <thead>
+                      <tr>
+                        <th>Service</th>
+                        <th>Total USD</th>
+                        <th>Total CDF</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for s in services_stats %}
+                      <tr>
+                        <td class="fw-bold text-secondary">{{ s.nom }}</td>
+                        <td class="text-success fw-bold">{{ s.usd|floatformat:2 }} $</td>
+                        <td class="text-info fw-bold">{{ s.cdf|floatformat:2 }} FC</td>
+                      </tr>
+                      {% empty %}
+                      <tr>
+                        <td colspan="3" class="text-center text-muted py-4">Aucune statistique disponible.</td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 col-lg-8">
+            <div class="card panel-card h-100">
+              <div class="panel-head">
+                <h5>Historique des paiements encaissés</h5>
+                {% if paiements.paginator.num_pages > 1 %}
+                  <small>Page {{ paiements.number }} sur {{ paiements.paginator.num_pages }}</small>
+                {% endif %}
+              </div>
+              <div class="card-body p-0">
+                <div class="table-wrap">
+                  <table class="table table-hover mb-0 align-middle">
+                    <thead>
+                      <tr>
+                        <th>Réf / Date</th>
+                        <th>Patient</th>
+                        <th>Service</th>
+                        <th>Montant versé</th>
+                        <th>Dette / Reste</th>
+                        <th>Caissier</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for p in paiements %}
+                      <tr>
+                        <td>
+                          <span class="fw-bold text-primary">#{{ p.id }}</span><br>
+                          <small class="text-muted">{{ p.date_paiement|date:"d/m/Y à H:i" }}</small>
+                        </td>
+                        <td class="fw-bold text-dark">
+                          {% if p.patient %}{{ p.patient.noms }}{% elif p.clientEx %}{{ p.clientEx.noms }}{% elif p.passage %}{{ p.passage.nom_complet }}{% else %}-{% endif %}
+                        </td>
+                        <td>
+                          {% if p.service == 'FICHE' %}
+                            <span class="badge-soft badge-fiche">Fiche</span>
+                          {% elif p.service == 'LABO' %}
+                            <span class="badge-soft badge-labo">Labo</span>
+                          {% elif p.service == 'ECHOGRAPHIE' %}
+                            <span class="badge-soft badge-echo">Échographie</span>
+                          {% elif p.service == 'RADIO' %}
+                            <span class="badge-soft badge-radio">Radio</span>
+                          {% else %}
+                            <span class="badge-soft bg-light text-dark">{{ p.get_service_display }}</span>
+                          {% endif %}
+                        </td>
+                        <td class="fw-bold {% if p.devise == 'USD' %}text-success{% else %}text-info{% endif %}">
+                          {{ p.montant_verse|floatformat:2 }} {{ p.devise }}
+                        </td>
+                        <td>
+                          {% if p.reste_a_payer > 0 %}
+                            <span class="text-danger fw-bold">{{ p.reste_a_payer|floatformat:2 }} {{ p.devise }}</span>
+                          {% else %}
+                            <span class="text-muted fst-italic">Soldé</span>
+                          {% endif %}
+                        </td>
+                        <td>
+                          <span class="badge bg-light text-dark border">
+                            <i class="fa fa-user"></i> {{ p.caissier.username }}
+                          </span>
+                        </td>
+                      </tr>
+                      {% empty %}
+                      <tr>
+                        <td colspan="6" class="text-center text-muted p-4">Aucune transaction enregistrée dans le journal.</td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- Pagination -->
+                {% if paiements.paginator.num_pages > 1 %}
+                <div class="pagination-container">
+                  <div class="pagination-info">
+                    Affichage de {{ paiements.start_index }} à {{ paiements.end_index }} sur {{ paiements.paginator.count }} paiements
+                  </div>
+                  <nav>
+                    <ul class="pagination pagination-sm mb-0">
+                      {% if paiements.has_previous %}
+                        <li class="page-item">
+                          <a class="page-link" href="?page=1"><i class="fa fa-angle-double-left"></i></a>
+                        </li>
+                        <li class="page-item">
+                          <a class="page-link" href="?page={{ paiements.previous_page_number }}"><i class="fa fa-angle-left"></i></a>
+                        </li>
+                      {% else %}
+                        <li class="page-item disabled">
+                          <span class="page-link"><i class="fa fa-angle-double-left"></i></span>
+                        </li>
+                        <li class="page-item disabled">
+                          <span class="page-link"><i class="fa fa-angle-left"></i></span>
+                        </li>
+                      {% endif %}
+
+                      {% for num in paiements.paginator.page_range %}
+                        {% if paiements.number == num %}
+                          <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                          </li>
+                        {% elif num > paiements.number|add:'-3' and num < paiements.number|add:'3' %}
+                          <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                          </li>
+                        {% endif %}
+                      {% endfor %}
+
+                      {% if paiements.has_next %}
+                        <li class="page-item">
+                          <a class="page-link" href="?page={{ paiements.next_page_number }}"><i class="fa fa-angle-right"></i></a>
+                        </li>
+                        <li class="page-item">
+                          <a class="page-link" href="?page={{ paiements.paginator.num_pages }}"><i class="fa fa-angle-double-right"></i></a>
+                        </li>
+                      {% else %}
+                        <li class="page-item disabled">
+                          <span class="page-link"><i class="fa fa-angle-right"></i></span>
+                        </li>
+                        <li class="page-item disabled">
+                          <span class="page-link"><i class="fa fa-angle-double-right"></i></span>
+                        </li>
+                      {% endif %}
+                    </ul>
+                  </nav>
+                </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= RECETTES ET DEPENSES PAR MOIS ================= -->
+        <div class="section-title mt-2">Recettes et dépenses par mois (année en cours)</div>
+        <div class="row g-4">
+          <div class="col-12 col-lg-6">
+            <div class="card panel-card">
+              <div class="panel-head">
+                <h5>Recettes par mois</h5>
+              </div>
+              <div class="card-body p-0">
+                <div class="table-wrap">
+                  <table class="table table-hover mb-0">
+                    <thead>
+                      <tr>
+                        <th>Mois</th>
+                        <th class="text-end">Total USD</th>
+                        <th class="text-end">Total CDF</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for m in mois_stats %}
+                      <tr>
+                        <td class="fw-bold text-secondary">{{ m.nom }}</td>
+                        <td class="text-success fw-bold text-end">{{ m.usd|floatformat:2 }} $</td>
+                        <td class="text-info fw-bold text-end">{{ m.cdf|floatformat:2 }} FC</td>
+                      </tr>
+                      {% empty %}
+                      <tr>
+                        <td colspan="3" class="text-center text-muted py-4">Aucune donnée disponible.</td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 col-lg-6">
+            <div class="card panel-card">
+              <div class="panel-head">
+                <h5>Dépenses par mois</h5>
+              </div>
+              <div class="card-body p-0">
+                <div class="table-wrap">
+                  <table class="table table-hover mb-0">
+                    <thead>
+                      <tr>
+                        <th>Mois</th>
+                        <th class="text-end">Total USD</th>
+                        <th class="text-end">Total CDF</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for d in depenses_mois_stats %}
+                      <tr>
+                        <td class="fw-bold text-secondary">{{ d.nom }}</td>
+                        <td class="text-danger fw-bold text-end">{{ d.usd|floatformat:2 }} $</td>
+                        <td class="text-danger fw-bold text-end">{{ d.cdf|floatformat:2 }} FC</td>
+                      </tr>
+                      {% empty %}
+                      <tr>
+                        <td colspan="3" class="text-center text-muted py-4">Aucune donnée disponible.</td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
     </div>
-</div>
+  </div>
 
-
-{% include 'back-end/includes/js.html' %}
+  {% include 'back-end/includes/js.html' %}
 </body>
 </html>
