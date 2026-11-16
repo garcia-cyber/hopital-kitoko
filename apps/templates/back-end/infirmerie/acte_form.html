@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+  <title>CHK - Actes du patient</title>
+
+  {% include 'back-end/includes/css.html' %}
+
+  <style>
+    :root {
+      --hospital-blue: #2563eb;
+      --hospital-green: #10b981;
+      --hospital-red: #ef4444;
+      --hospital-orange: #f59e0b;
+      --hospital-purple: #8b5cf6;
+      --hospital-cyan: #06b6d4;
+      --bg-soft: #f1f5f9;
+      --card-radius: 18px;
+    }
+
+    body {
+      background: var(--bg-soft);
+      overflow-x: hidden;
+    }
+
+    .main-wrapper {
+      min-height: 100vh;
+      background: var(--bg-soft);
+    }
+
+    .page-wrapper {
+      background-color: transparent;
+      padding-top: 68px;
+    }
+
+    .content {
+      padding-top: 24px;
+      padding-bottom: 28px;
+    }
+
+    /* =========================
+       BANNIÈRE
+    ========================= */
+
+    .medical-welcome {
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 55%, #2563eb 100%);
+      color: #fff;
+      padding: 30px 32px;
+      border-radius: 22px;
+      margin-bottom: 30px;
+      box-shadow: 0 14px 34px rgba(15, 23, 42, 0.25);
+    }
+
+    .medical-welcome::before,
+    .medical-welcome::after {
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.07);
+      pointer-events: none;
+    }
+
+    .medical-welcome::before {
+      width: 220px;
+      height: 220px;
+      right: -50px;
+      top: -80px;
+    }
+
+    .medical-welcome::after {
+      width: 140px;
+      height: 140px;
+      right: 120px;
+      bottom: -70px;
+    }
+
+    .medical-welcome > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .medical-welcome h3 {
+      margin-bottom: 6px;
+      font-weight: 800;
+      font-size: 1.6rem;
+      letter-spacing: -0.3px;
+      color: #fff;
+    }
+
+    .medical-welcome p {
+      opacity: 0.9;
+      font-size: 0.98rem;
+    }
+
+    .welcome-date {
+      display: inline-block;
+      margin-top: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      color: #bfdbfe;
+    }
+
+    .badge-role {
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 16px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      backdrop-filter: blur(4px);
+      font-size: 0.88rem;
+      font-weight: 700;
+      margin-top: 14px;
+    }
+
+    .badge-role::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      margin-right: 8px;
+      border-radius: 50%;
+      background: #4ade80;
+      box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.25);
+    }
+
+    /* =========================
+       TITRES ET CARTES
+    ========================= */
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      font-size: 0.82rem;
+      font-weight: 800;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: #475569;
+      margin-bottom: 18px;
+    }
+
+    .section-title::before {
+      content: "";
+      width: 4px;
+      height: 18px;
+      margin-right: 10px;
+      border-radius: 4px;
+      background: linear-gradient(180deg, #2563eb, #06b6d4);
+    }
+
+    .dash-widget {
+      position: relative;
+      border: 1px solid #e2e8f0;
+      border-radius: var(--card-radius);
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+      transition: all 0.25s ease;
+      overflow: hidden;
+      background: #fff;
+      height: 100%;
+      margin-bottom: 0;
+    }
+
+    .dash-widget::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(90deg, #2563eb, #06b6d4);
+      opacity: 0.85;
+    }
+
+    .dash-widget:hover {
+      transform: translateY(-5px);
+      border-color: #bfdbfe;
+      box-shadow: 0 16px 34px rgba(37, 99, 235, 0.14);
+    }
+
+    .dash-widget .card-body {
+      padding: 22px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .dash-widget-icon {
+      width: 60px;
+      height: 60px;
+      min-width: 60px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    }
+
+    .dash-widget-info {
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+
+    .dash-widget-info h3 {
+      font-size: 1.35rem;
+      line-height: 1.2;
+      margin-bottom: 2px;
+      font-weight: 800;
+      color: #0f172a;
+      word-break: break-word;
+    }
+
+    .dash-widget-info span.label-card {
+      display: block;
+      color: #64748b;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+
+    .panel-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 22px;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+      background: #fff;
+      margin-bottom: 24px;
+    }
+
+    .panel-card .card-body {
+      padding: 26px;
+    }
+
+    .panel-card .card-title {
+      display: flex;
+      align-items: center;
+      font-weight: 800;
+      font-size: 1.05rem;
+      color: #0f172a;
+    }
+
+    .panel-card .card-title::before {
+      content: "";
+      flex: 0 0 4px;
+      height: 20px;
+      margin-right: 10px;
+      border-radius: 4px;
+      background: linear-gradient(180deg, #2563eb, #06b6d4);
+    }
+
+    /* -- Formulaire -- */
+    .champ-acte {
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      padding: 10px 14px;
+      background: #f8fafc;
+      font-size: 0.92rem;
+    }
+
+    .champ-acte:focus {
+      border-color: #93c5fd;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+      background: #fff;
+    }
+
+    .label-acte {
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      color: #475569;
+    }
+
+    .btn-enregistrer {
+      border-radius: 12px;
+      font-weight: 700;
+      padding: 11px 14px;
+      background: var(--hospital-green);
+      border-color: var(--hospital-green);
+      color: #fff;
+    }
+
+    .btn-enregistrer:hover {
+      background: #059669;
+      border-color: #059669;
+      color: #fff;
+    }
+
+    .btn-retour {
+      border-radius: 12px;
+      font-weight: 700;
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      color: #fff;
+    }
+
+    .btn-retour:hover {
+      background: rgba(255, 255, 255, 0.28);
+      color: #fff;
+    }
+
+    /* -- Pastilles -- */
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .pill-blue  { background: rgba(37, 99, 235, 0.10);  color: var(--hospital-blue); }
+    .pill-green { background: rgba(16, 185, 129, 0.12); color: #047857; }
+    .pill-red   { background: rgba(239, 68, 68, 0.12);  color: #b91c1c; }
+
+    /* -- Carte d'un acte déjà fait -- */
+    .carte-acte {
+      border: 1px solid #e2e8f0;
+      border-left: 4px solid var(--hospital-green);
+      background: #f8fafc;
+      border-radius: 14px;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+    }
+
+    .carte-acte .entete-acte {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #64748b;
+      margin-bottom: 8px;
+    }
+
+    .carte-acte .titre-acte {
+      font-size: 0.74rem;
+      font-weight: 800;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      color: #475569;
+      margin-bottom: 2px;
+    }
+
+    /* -- Prix de l'acte -- */
+    .prix-acte {
+      display: inline-block;
+      margin-bottom: 8px;
+      padding: 4px 12px;
+      border-radius: 999px;
+      background: rgba(16, 185, 129, 0.12);
+      color: #047857;
+      font-size: 0.82rem;
+      font-weight: 800;
+    }
+
+    /* =========================
+       TABLETTE ET MOBILE
+    ========================= */
+
+    @media (max-width: 992px) {
+      .page-wrapper {
+        margin-left: 0 !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+      }
+
+      .content.container-fluid {
+        padding-left: 14px;
+        padding-right: 14px;
+      }
+    }
+
+    @media (max-width: 576px) {
+      .page-wrapper {
+        padding-top: 66px;
+      }
+
+      .content {
+        padding-top: 14px;
+        padding-bottom: 20px;
+      }
+
+      .medical-welcome {
+        padding: 18px;
+        border-radius: 18px;
+        margin-bottom: 20px;
+      }
+
+      .medical-welcome::after {
+        display: none;
+      }
+
+      .medical-welcome h3 {
+        font-size: 1.15rem;
+      }
+
+      .medical-welcome p {
+        font-size: 0.85rem;
+      }
+
+      .stats-row {
+        margin-left: -6px;
+        margin-right: -6px;
+      }
+
+      .stats-row > [class*="col-"] {
+        padding-left: 6px;
+        padding-right: 6px;
+        margin-bottom: 12px !important;
+      }
+
+      .dash-widget:hover {
+        transform: none;
+      }
+
+      .dash-widget .card-body {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 16px 14px 14px;
+      }
+
+      .dash-widget-icon {
+        width: 42px;
+        height: 42px;
+        min-width: 42px;
+        border-radius: 12px;
+        font-size: 18px;
+      }
+
+      .panel-card {
+        border-radius: 18px;
+      }
+
+      .panel-card .card-body {
+        padding: 16px 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="main-wrapper">
+    {% include 'back-end/includes/header.html' %}
+    {% include 'back-end/includes/sidebar.html' %}
+
+    <div class="page-wrapper">
+      <div class="content container-fluid">
+
+        <!-- Bannière -->
+        <div class="medical-welcome">
+          <h3>Actes - {{ patient.noms }}</h3>
+          <p class="mb-0">ID : {{ patient.code_patient }} - {{ patient.get_type_patient_display }}</p>
+          <span class="welcome-date">{% now "l d F Y" %}</span>
+          <div class="d-flex flex-wrap align-items-center">
+            <div class="badge-role mr-3">Infirmerie</div>
+            <a href="{% url 'liste_attente_triage' %}" class="btn btn-retour btn-sm mt-3">
+              <i class="fa fa-arrow-left"></i> Retour à la liste
+            </a>
+          </div>
+        </div>
+
+        {# -- Messages (succès / erreur) -- #}
+        {% if messages %}
+          {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %}">
+              {{ message }}
+            </div>
+          {% endfor %}
+        {% endif %}
+
+        <!-- Cartes d'information -->
+        <div class="section-title">Résumé</div>
+        <div class="row stats-row">
+          <div class="col-6 col-md-3 mb-4">
+            <div class="card dash-widget">
+              <div class="card-body">
+                <span class="dash-widget-icon" style="background: rgba(16,185,129,0.10); color: var(--hospital-green);">
+                  <i class="fa fa-medkit"></i>
+                </span>
+                <div class="dash-widget-info">
+                  <h3>{{ actes|length }}</h3>
+                  <span class="label-card">Actes faits</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-6 col-md-3 mb-4">
+            <div class="card dash-widget">
+              <div class="card-body">
+                <span class="dash-widget-icon" style="background: rgba(245,158,11,0.10); color: var(--hospital-orange);">
+                  <i class="fa fa-heartbeat"></i>
+                </span>
+                <div class="dash-widget-info">
+                  <h3>
+                    {% if dernier_signe %}
+                      <span class="pill pill-green"><i class="fa fa-check-circle"></i> Pris</span>
+                    {% else %}
+                      <span class="pill pill-red"><i class="fa fa-clock-o"></i> Non pris</span>
+                    {% endif %}
+                  </h3>
+                  <span class="label-card">Signes vitaux</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+
+          <!-- Formulaire d'un nouvel acte -->
+          <div class="col-lg-5">
+            <div class="card panel-card">
+              <div class="card-body">
+                <h4 class="card-title mb-3">Nouvel acte</h4>
+
+                <form method="post">
+                  {% csrf_token %}
+
+                  {# -- NOUVEAU : prix de l'acte -- #}
+                  <div class="form-group">
+                    <label class="label-acte">Prix de l'acte (FC) <span class="text-danger">*</span></label>
+                    <input type="number" name="prix" min="1" step="0.01" class="form-control champ-acte" placeholder="Ex: 5000" value="{{ form.prix.value|default_if_none:'' }}" required>
+                    {% for erreur in form.prix.errors %}
+                      <small class="text-danger">{{ erreur }}</small>
+                    {% endfor %}
+                  </div>
+
+                  <div class="form-group">
+                    <label class="label-acte">Rapport sur l'acte <span class="text-danger">*</span></label>
+                    <textarea name="rapport" rows="4" class="form-control champ-acte" placeholder="Ce qui a été fait au patient..." required>{{ form.rapport.value|default_if_none:'' }}</textarea>
+                    {% for erreur in form.rapport.errors %}
+                      <small class="text-danger">{{ erreur }}</small>
+                    {% endfor %}
+                  </div>
+
+                  <div class="form-group">
+                    <label class="label-acte">Schéma donné</label>
+                    <textarea name="schema" rows="4" class="form-control champ-acte" placeholder="Soins ou médicaments donnés...">{{ form.schema.value|default_if_none:'' }}</textarea>
+                    {% for erreur in form.schema.errors %}
+                      <small class="text-danger">{{ erreur }}</small>
+                    {% endfor %}
+                  </div>
+
+                  <button type="submit" class="btn btn-enregistrer btn-block">
+                    <i class="fa fa-save"></i> Enregistrer l'acte
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <!-- Actes déjà faits -->
+          <div class="col-lg-7">
+            <div class="card panel-card">
+              <div class="card-body">
+                <h4 class="card-title mb-3">Actes déjà faits</h4>
+
+                {% for acte in actes %}
+                  <div class="carte-acte">
+                    <div class="entete-acte">
+                      <i class="fa fa-clock-o"></i> {{ acte.date_acte|date:"d/m/Y H:i" }}
+                      {% if acte.fait_par %}
+                        | par {{ acte.fait_par }}
+                      {% endif %}
+                    </div>
+
+                    {# -- NOUVEAU : prix de l'acte -- #}
+                    <div class="prix-acte">
+                      <i class="fa fa-money"></i> {{ acte.prix|floatformat:0 }} FC
+                    </div>
+
+                    <div class="titre-acte">Rapport</div>
+                    <p class="mb-2">{{ acte.rapport|linebreaksbr }}</p>
+
+                    {% if acte.schema %}
+                      <div class="titre-acte">Schéma donné</div>
+                      <p class="mb-0">{{ acte.schema|linebreaksbr }}</p>
+                    {% endif %}
+                  </div>
+                {% empty %}
+                  <p class="text-center text-muted py-4 mb-0">Aucun acte pour le moment.</p>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% include 'back-end/includes/js.html' %}
+</body>
+</html>

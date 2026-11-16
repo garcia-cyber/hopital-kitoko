@@ -1681,6 +1681,9 @@ def liste_attente_triage(request):
     # Signes vitaux
     patient.a_signes_vitaux_deja_pris = SigneVital.objects.filter(patient=patient).exists()
 
+    # --- NOUVEAU : nombre d'actes déjà faits pour ce patient ---
+    patient.nombre_actes = Acte.objects.filter(patient=patient, hopital=hopital_user).count()
+
   fonctionKey = role.fonctionKey.roleName if (role and role.fonctionKey) else None
 
   return render(request, 'back-end/infirmerie/liste_attente.html', {
@@ -1692,6 +1695,87 @@ def liste_attente_triage(request):
     'libelle_cible': libelle_cible,
     'est_nuit': est_nuit,
     'heure_actuelle': heure_actuelle,
+  })
+
+
+
+# -------------------------------------------------------------------------------------------------
+# le 16/11/2026
+
+# =================================================================================================
+# ENREGISTREMENT DE L'ACTE 
+# =================================================================================================
+@login_required
+def enregistrer_acte(request, patient_id):
+
+  # --- l'hôpital et la fonction de l'utilisateur ---
+  role = Fonction.objects.select_related('hopital', 'fonctionKey').filter(userKey=request.user).first()
+  hopital_user = role.hopital if role else None
+
+  if not hopital_user:
+    messages.error(request, "Votre compte n'est rattaché à aucun hôpital.")
+    return redirect('enregistrement_patient')
+
+  fonctionKey = role.fonctionKey.roleName if (role and role.fonctionKey) else None
+
+  # --- le patient doit être dans le même hôpital ---
+  patient = get_object_or_404(Patient, pk=patient_id, hopital=hopital_user)
+
+  # --- les derniers signes vitaux du patient ---
+  dernier_signe = SigneVital.objects.filter(patient=patient).order_by('-id').first()
+
+  # --- pas d'acte sans signes vitaux ---
+  if not dernier_signe:
+    messages.error(request, "Les signes vitaux doivent être pris avant l'acte.")
+    return redirect('liste_attente_triage')
+
+  # --- quand on envoie le formulaire ---
+  if request.method == 'POST':
+    form = ActeForm(request.POST)
+
+    if form.is_valid():
+      try:
+        # --- tout ou rien : si le paiement échoue, l'acte n'est pas gardé ---
+        with transaction.atomic():
+
+          # --- on prépare l'acte ---
+          acte = form.save(commit=False)
+          acte.patient = patient
+          acte.signe_vital = dernier_signe
+          acte.fait_par = request.user
+          acte.hopital = hopital_user
+          acte.save()
+
+          # --- NOUVEAU : le prix est compté directement dans Paiement ---
+          Paiement.objects.create(
+            service='ACTE',
+            acte=acte,
+            patient=patient,
+            montant_verse=acte.prix,
+            devise='CDF',
+            caissier=request.user,
+            hopital=hopital_user,
+          )
+
+        messages.success(request, "Acte enregistré et prix compté dans les paiements.")
+        return redirect('enregistrer_acte', patient_id=patient.pk)
+
+      except ValidationError as e:
+        messages.error(request, " ".join(e.messages))
+
+  else:
+    form = ActeForm()
+
+  # --- tous les actes de ce patient ---
+  actes = Acte.objects.filter(patient=patient, hopital=hopital_user).order_by('-date_acte')
+
+  return render(request, 'back-end/infirmerie/acte_form.html', {
+    'patient': patient,
+    'dernier_signe': dernier_signe,
+    'actes': actes,
+    'form': form,
+    'fonctionKey': fonctionKey,
+    'hopital_user': hopital_user,
   })
 
 

@@ -1,201 +1,768 @@
 <!DOCTYPE html>
 {% load static %}
 <html lang="fr">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
-        <title>CHK - File d'attente Triage</title>
-        {% include 'back-end/includes/css.html' %}
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+  <title>CHK - File d'attente Triage</title>
 
-        <style>
-            /* -- Badge pour les patients de campagne -- */
-            .badge-campagne {
-                background: linear-gradient(135deg, #11998e, #38ef7d);
-                color: #fff;
-                border-radius: 20px;
-                padding: 4px 10px;
-                font-size: 11px;
-                font-weight: 600;
-                margin-left: 6px;
-            }
+  {% include 'back-end/includes/css.html' %}
 
-            /* -- Ligne légèrement colorée pour les patients de campagne -- */
-            tr.ligne-campagne {
-                background: #f0faf7;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="main-wrapper">
-            {% include 'back-end/includes/header.html' %}
-            {% include 'back-end/includes/sidebar.html' %}
-            
-            <div class="page-wrapper">
-                <div class="content container-fluid">
-                    
-                    <div class="page-header">
-                        <div class="row align-items-center">
-                            <div class="col">
-                                <h3 class="page-title">File d'Attente - Triage</h3>
-                                <ul class="breadcrumb">
-                                    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
-                                    <li class="breadcrumb-item active">Infirmerie</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
+  <style>
+    :root {
+      --hospital-blue: #2563eb;
+      --hospital-green: #10b981;
+      --hospital-red: #ef4444;
+      --hospital-orange: #f59e0b;
+      --hospital-purple: #8b5cf6;
+      --hospital-cyan: #06b6d4;
+      --bg-soft: #f1f5f9;
+      --card-radius: 18px;
+    }
 
-                    <div class="row filter-row">
-                        <div class="col-sm-9 col-md-9">  
-                            <div class="form-group form-focus">
-                                <input type="text" id="searchPatient" class="form-control floating" onkeyup="filterTable()">
-                                <label class="focus-label">Rechercher un patient par nom...</label>
-                            </div>
-                        </div>
-                        <div class="col-sm-3 col-md-3">  
-                            <button class="btn btn-success btn-block" onclick="window.location.reload();"> <i class="fa fa-sync"></i> Actualiser </button>   
-                        </div>   
-                    </div>
+    body {
+      background: var(--bg-soft);
+      overflow-x: hidden;
+    }
 
-                    <div class="card card-table mt-3">
-                        <div class="card-header">
-                            <h4 class="card-title mb-0">
-                                Patients en attente
-                                <small class="text-muted d-block mt-1" style="font-size: 0.85rem;">
-                                    Taux : 1 USD = {{ taux|floatformat:0 }} FC |
-                                    Fiche : {{ libelle_cible }} ({{ heure_actuelle }}h) |
-                                    Prix : {{ prix_fiche_cdf|floatformat:0 }} FC (~ {{ prix_fiche|floatformat:2 }} USD)
-                                </small>
-                            </h4>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-hover table-center mb-0" id="patientTable">
-                                    <thead>
-                                        <tr>
-                                            <th>Patient</th>
-                                            <th>Type</th>
-                                            <th>Heure arrivée</th>
-                                            <th class="text-center">Total payé (Fiche)</th>
-                                            <th class="text-center">Statut fiche</th>
-                                            <th class="text-right">Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for patient in patients %}
-                                        <tr {% if patient.est_en_campagne %}class="ligne-campagne"{% endif %}>
+    .main-wrapper {
+      min-height: 100vh;
+      background: var(--bg-soft);
+    }
 
-                                            {# -- Nom du patient + badge campagne -- #}
-                                            <td>
-                                                <h2 class="table-avatar">
-                                                    <a href="#" class="avatar avatar-sm mr-2">
-                                                        <img class="avatar-img rounded-circle" src="{% static 'back-end/assets/img/user.jpg' %}" alt="User">
-                                                    </a>
-                                                    <a href="#">
-                                                        {{ patient.noms }}
-                                                        {% if patient.est_en_campagne %}
-                                                            <span class="badge-campagne">
-                                                                <i class="fa fa-bullhorn"></i> Campagne
-                                                            </span>
-                                                        {% endif %}
-                                                        <span>ID: {{ patient.code_patient }}</span>
-                                                    </a>
-                                                </h2>
-                                            </td>
+    .page-wrapper {
+      background-color: transparent;
+      padding-top: 68px;
+    }
 
-                                            {# -- Type -- #}
-                                            <td><span class="badge badge-primary">{{ patient.get_type_patient_display }}</span></td>
+    .content {
+      padding-top: 24px;
+      padding-bottom: 28px;
+    }
 
-                                            {# -- Heure d'arrivée -- #}
-                                            <td>{{ patient.date_creation|date:"H:i" }}</td>
+    /* =========================
+       BANNIÈRE DE BIENVENUE
+    ========================= */
 
-                                            {# -- Total payé (fiche) -- #}
-                                            <td class="text-center">
-                                                {% if patient.est_en_campagne %}
-                                                    <span class="badge badge-success">Campagne</span>
-                                                {% elif patient.type_patient != 'SIMPLE' %}
-                                                    <span class="badge badge-secondary">Exonéré</span>
-                                                {% else %}
-                                                    <span class="badge {% if patient.a_solde_fiche %}badge-success{% else %}badge-warning{% endif %}">
-                                                        {{ patient.total_fiche_cdf|floatformat:0 }} FC
-                                                    </span>
-                                                {% endif %}
-                                            </td>
+    .medical-welcome {
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 55%, #2563eb 100%);
+      color: #fff;
+      padding: 30px 32px;
+      border-radius: 22px;
+      margin-bottom: 30px;
+      box-shadow: 0 14px 34px rgba(15, 23, 42, 0.25);
+    }
 
-                                            {# -- Statut de la fiche -- #}
-                                            <td class="text-center">
-                                                {% if patient.est_en_campagne %}
-                                                    <span class="badge badge-success-border"><i class="fa fa-check-circle"></i> Campagne (fiche gratuite)</span>
-                                                {% elif patient.type_patient != 'SIMPLE' %}
-                                                    <span class="badge badge-success-border"><i class="fa fa-check-circle"></i> Exonéré</span>
-                                                {% elif patient.a_solde_fiche %}
-                                                    <span class="badge badge-success-border"><i class="fa fa-check-circle"></i> Prêt</span>
-                                                {% else %}
-                                                    <span class="badge badge-danger-border"><i class="fa fa-clock"></i> Paiement requis</span>
-                                                {% endif %}
-                                            </td>
+    .medical-welcome::before,
+    .medical-welcome::after {
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.07);
+      pointer-events: none;
+    }
 
-                                            {# -- Action -- #}
-                                            <td class="text-right">
-                                                {% if patient.est_en_campagne or patient.type_patient != 'SIMPLE' %}
-                                                    {# Patients de campagne ou exonérés : toujours accessibles #}
-                                                    {% if patient.a_signes_vitaux_deja_pris %}
-                                                        <button class="btn btn-warning btn-sm" disabled>
-                                                            <i class="fa fa-check-square"></i> Déjà prélevé
-                                                        </button>
-                                                    {% else %}
-                                                        <a href="{% url 'saisir_signes' patient.id %}" class="btn btn-primary btn-sm">
-                                                            <i class="fa fa-stethoscope"></i> Signes Vitaux
-                                                        </a>
-                                                    {% endif %}
+    .medical-welcome::before {
+      width: 220px;
+      height: 220px;
+      right: -50px;
+      top: -80px;
+    }
 
-                                                {% elif not patient.a_solde_fiche and patient.doit_payer_fiche %}
-                                                    <button class="btn btn-secondary btn-sm" disabled title="Le patient doit solder la fiche">
-                                                        <i class="fa fa-lock"></i> Bloqué
-                                                    </button>
+    .medical-welcome::after {
+      width: 140px;
+      height: 140px;
+      right: 120px;
+      bottom: -70px;
+    }
 
-                                                {% elif patient.a_signes_vitaux_deja_pris %}
-                                                    <button class="btn btn-warning btn-sm" disabled>
-                                                        <i class="fa fa-check-square"></i> Déjà prélevé
-                                                    </button>
+    .medical-welcome > * {
+      position: relative;
+      z-index: 1;
+    }
 
-                                                {% else %}
-                                                    <a href="{% url 'saisir_signes' patient.id %}" class="btn btn-primary btn-sm">
-                                                        <i class="fa fa-stethoscope"></i> Signes Vitaux
-                                                    </a>
-                                                {% endif %}
-                                            </td>
-                                        </tr>
-                                        {% empty %}
-                                        <tr>
-                                            <td colspan="6" class="text-center py-4">Aucun patient en attente.</td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    .medical-welcome h3 {
+      margin-bottom: 6px;
+      font-weight: 800;
+      font-size: 1.6rem;
+      letter-spacing: -0.3px;
+      color: #fff;
+    }
+
+    .medical-welcome p {
+      opacity: 0.9;
+      font-size: 0.98rem;
+    }
+
+    .welcome-date {
+      display: inline-block;
+      margin-top: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      color: #bfdbfe;
+    }
+
+    .badge-role {
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 16px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      backdrop-filter: blur(4px);
+      font-size: 0.88rem;
+      font-weight: 700;
+      margin-top: 14px;
+    }
+
+    .badge-role::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      margin-right: 8px;
+      border-radius: 50%;
+      background: #4ade80;
+      box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.25);
+    }
+
+    /* =========================
+       TITRES DE SECTION
+    ========================= */
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      font-size: 0.82rem;
+      font-weight: 800;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: #475569;
+      margin-bottom: 18px;
+    }
+
+    .section-title::before {
+      content: "";
+      width: 4px;
+      height: 18px;
+      margin-right: 10px;
+      border-radius: 4px;
+      background: linear-gradient(180deg, #2563eb, #06b6d4);
+    }
+
+    /* =========================
+       CARTES DE STATISTIQUES
+    ========================= */
+
+    .dash-widget {
+      position: relative;
+      border: 1px solid #e2e8f0;
+      border-radius: var(--card-radius);
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+      transition: all 0.25s ease;
+      overflow: hidden;
+      background: #fff;
+      height: 100%;
+      margin-bottom: 0;
+    }
+
+    .dash-widget::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(90deg, #2563eb, #06b6d4);
+      opacity: 0.85;
+    }
+
+    .dash-widget:hover {
+      transform: translateY(-5px);
+      border-color: #bfdbfe;
+      box-shadow: 0 16px 34px rgba(37, 99, 235, 0.14);
+    }
+
+    .dash-widget .card-body {
+      padding: 22px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .dash-widget-icon {
+      width: 60px;
+      height: 60px;
+      min-width: 60px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    }
+
+    .dash-widget-info {
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+
+    .dash-widget-info h3 {
+      font-size: 1.35rem;
+      line-height: 1.2;
+      margin-bottom: 2px;
+      font-weight: 800;
+      color: #0f172a;
+      word-break: break-word;
+    }
+
+    .dash-widget-info .amount-sub {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #475569;
+      margin-bottom: 4px;
+      word-break: break-word;
+    }
+
+    .dash-widget-info span.label-card {
+      display: block;
+      color: #64748b;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+
+    /* =========================
+       CARTE DU TABLEAU
+    ========================= */
+
+    .panel-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 22px;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+      background: #fff;
+    }
+
+    .panel-card .card-body {
+      padding: 26px;
+    }
+
+    .panel-card .card-title {
+      display: flex;
+      align-items: center;
+      font-weight: 800;
+      font-size: 1.05rem;
+      color: #0f172a;
+    }
+
+    .panel-card .card-title::before {
+      content: "";
+      flex: 0 0 4px;
+      height: 20px;
+      margin-right: 10px;
+      border-radius: 4px;
+      background: linear-gradient(180deg, #2563eb, #06b6d4);
+    }
+
+    /* -- Barre de recherche -- */
+    .search-box {
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      padding: 10px 14px;
+      background: #f8fafc;
+      font-size: 0.92rem;
+    }
+
+    .search-box:focus {
+      border-color: #93c5fd;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+      background: #fff;
+    }
+
+    .btn-refresh {
+      border-radius: 12px;
+      font-weight: 700;
+      padding: 10px 14px;
+      background: var(--hospital-blue);
+      border-color: var(--hospital-blue);
+      color: #fff;
+    }
+
+    .btn-refresh:hover {
+      background: #1d4ed8;
+      border-color: #1d4ed8;
+      color: #fff;
+    }
+
+    /* -- Tableau -- */
+    .table-triage thead th {
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      color: #64748b;
+      background: #f8fafc;
+      border-top: none;
+      border-bottom: 1px solid #e2e8f0;
+      white-space: nowrap;
+    }
+
+    .table-triage tbody td {
+      vertical-align: middle;
+      border-top: 1px solid #f1f5f9;
+      font-size: 0.9rem;
+    }
+
+    .table-triage tbody tr:hover {
+      background: #f8fafc;
+    }
+
+    /* -- Pastilles de statut -- */
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .pill-blue   { background: rgba(37, 99, 235, 0.10);  color: var(--hospital-blue); }
+    .pill-green  { background: rgba(16, 185, 129, 0.12); color: #047857; }
+    .pill-orange { background: rgba(245, 158, 11, 0.14); color: #b45309; }
+    .pill-red    { background: rgba(239, 68, 68, 0.12);  color: #b91c1c; }
+    .pill-grey   { background: #e2e8f0;                  color: #475569; }
+
+    /* -- Badge pour les patients de campagne -- */
+    .badge-campagne {
+      background: linear-gradient(135deg, #11998e, #38ef7d);
+      color: #fff;
+      border-radius: 20px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-left: 6px;
+    }
+
+    /* -- Ligne légèrement colorée pour les patients de campagne -- */
+    tr.ligne-campagne {
+      background: #f0faf7;
+    }
+
+    /* -- Boutons arrondis -- */
+    .btn-triage {
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 0.78rem;
+      padding: 7px 12px;
+    }
+
+    .btn-acte {
+      background: var(--hospital-green);
+      border-color: var(--hospital-green);
+      color: #fff;
+    }
+
+    .btn-acte:hover {
+      background: #059669;
+      border-color: #059669;
+      color: #fff;
+    }
+
+    .btn-acte .compteur {
+      display: inline-block;
+      min-width: 20px;
+      margin-left: 6px;
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: #fff;
+      color: #047857;
+      font-size: 0.72rem;
+      font-weight: 800;
+    }
+
+    /* =========================
+       TABLETTE ET MOBILE
+    ========================= */
+
+    @media (max-width: 992px) {
+      .page-wrapper {
+        margin-left: 0 !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+      }
+
+      .content.container-fluid {
+        padding-left: 14px;
+        padding-right: 14px;
+      }
+    }
+
+    @media (max-width: 576px) {
+      .page-wrapper {
+        padding-top: 66px;
+      }
+
+      .content {
+        padding-top: 14px;
+        padding-bottom: 20px;
+      }
+
+      .medical-welcome {
+        padding: 18px;
+        border-radius: 18px;
+        margin-bottom: 20px;
+      }
+
+      .medical-welcome::before {
+        width: 150px;
+        height: 150px;
+        right: -50px;
+        top: -60px;
+      }
+
+      .medical-welcome::after {
+        display: none;
+      }
+
+      .medical-welcome h3 {
+        font-size: 1.15rem;
+      }
+
+      .medical-welcome p {
+        font-size: 0.85rem;
+      }
+
+      .welcome-date {
+        font-size: 0.7rem;
+      }
+
+      .badge-role {
+        font-size: 0.78rem;
+        padding: 6px 12px;
+        margin-top: 10px;
+      }
+
+      .section-title {
+        font-size: 0.74rem;
+        margin-bottom: 12px;
+      }
+
+      .stats-row {
+        margin-left: -6px;
+        margin-right: -6px;
+      }
+
+      .stats-row > [class*="col-"] {
+        padding-left: 6px;
+        padding-right: 6px;
+        margin-bottom: 12px !important;
+      }
+
+      .dash-widget {
+        border-radius: 16px;
+      }
+
+      .dash-widget:hover {
+        transform: none;
+      }
+
+      .dash-widget .card-body {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 16px 14px 14px;
+      }
+
+      .dash-widget-icon {
+        width: 42px;
+        height: 42px;
+        min-width: 42px;
+        border-radius: 12px;
+        font-size: 18px;
+      }
+
+      .dash-widget-info {
+        width: 100%;
+      }
+
+      .dash-widget-info h3 {
+        font-size: 1.25rem;
+      }
+
+      .dash-widget-info .amount-sub {
+        font-size: 0.78rem;
+      }
+
+      .dash-widget-info span.label-card {
+        font-size: 0.68rem;
+        letter-spacing: 0.2px;
+      }
+
+      .panel-card {
+        border-radius: 18px;
+      }
+
+      .panel-card .card-body {
+        padding: 16px 12px;
+      }
+
+      .panel-card .card-title {
+        font-size: 0.92rem;
+        padding-left: 4px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="main-wrapper">
+    {% include 'back-end/includes/header.html' %}
+    {% include 'back-end/includes/sidebar.html' %}
+
+    <div class="page-wrapper">
+      <div class="content container-fluid">
+
+        <!-- Bannière -->
+        <div class="medical-welcome">
+          <h3>File d'attente - Triage</h3>
+          <p class="mb-0">Fiche : {{ libelle_cible }} ({{ heure_actuelle }}h) - CHK</p>
+          <span class="welcome-date">{% now "l d F Y" %}</span>
+          <div>
+            <div class="badge-role">Infirmerie</div>
+          </div>
         </div>
 
-        {% include 'back-end/includes/js.html' %}
+        <!-- Cartes d'information -->
+        <div class="section-title">Informations du jour</div>
+        <div class="row stats-row">
+          <div class="col-6 col-md-3 mb-4">
+            <div class="card dash-widget">
+              <div class="card-body">
+                <span class="dash-widget-icon" style="background: rgba(37,99,235,0.10); color: var(--hospital-blue);">
+                  <i class="fa fa-users"></i>
+                </span>
+                <div class="dash-widget-info">
+                  <h3>{{ patients|length }}</h3>
+                  <span class="label-card">Patients en attente</span>
+                </div>
+              </div>
+            </div>
+          </div>
 
-        <script>
-            function filterTable() {
-                let input = document.getElementById("searchPatient");
-                let filter = input.value.toUpperCase();
-                let table = document.getElementById("patientTable");
-                let tr = table.getElementsByTagName("tr");
-                for (let i = 1; i < tr.length; i++) {
-                    let td = tr[i].getElementsByTagName("td")[0];
-                    if (td) {
-                        let txtValue = td.textContent || td.innerText;
-                        tr[i].style.display = (txtValue.toUpperCase().indexOf(filter) > -1) ? "" : "none";
-                    }
-                }
-            }
-        </script>
-    </body>
+          <div class="col-6 col-md-3 mb-4">
+            <div class="card dash-widget">
+              <div class="card-body">
+                <span class="dash-widget-icon" style="background: rgba(16,185,129,0.10); color: var(--hospital-green);">
+                  <i class="fa fa-exchange"></i>
+                </span>
+                <div class="dash-widget-info">
+                  <h3>{{ taux|floatformat:0 }} FC</h3>
+                  <span class="label-card">Taux (1 USD)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-6 col-md-3 mb-4">
+            <div class="card dash-widget">
+              <div class="card-body">
+                <span class="dash-widget-icon" style="background: rgba(245,158,11,0.10); color: var(--hospital-orange);">
+                  <i class="fa fa-file-text-o"></i>
+                </span>
+                <div class="dash-widget-info">
+                  <h3>{{ prix_fiche_cdf|floatformat:0 }} FC</h3>
+                  <small class="amount-sub">~ {{ prix_fiche|floatformat:2 }} $</small>
+                  <span class="label-card">Prix de la fiche</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-6 col-md-3 mb-4">
+            <div class="card dash-widget">
+              <div class="card-body">
+                <span class="dash-widget-icon" style="background: rgba(139,92,246,0.10); color: var(--hospital-purple);">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                <div class="dash-widget-info">
+                  <h3>{{ libelle_cible }}</h3>
+                  <small class="amount-sub">{{ heure_actuelle }}h</small>
+                  <span class="label-card">Type de fiche</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tableau des patients -->
+        <div class="card panel-card">
+          <div class="card-body">
+
+            <h4 class="card-title mb-3">Patients en attente</h4>
+
+            <!-- Recherche + actualiser -->
+            <div class="row mb-3">
+              <div class="col-sm-9 col-md-9 mb-2">
+                <input type="text" id="searchPatient" class="form-control search-box" placeholder="Rechercher un patient par nom..." onkeyup="filterTable()">
+              </div>
+              <div class="col-sm-3 col-md-3 mb-2">
+                <button class="btn btn-refresh btn-block" onclick="window.location.reload();">
+                  <i class="fa fa-refresh"></i> Actualiser
+                </button>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table table-hover table-center mb-0 table-triage" id="patientTable">
+                <thead>
+                  <tr>
+                    <th>Patient</th>
+                    <th>Type</th>
+                    <th>Heure arrivée</th>
+                    <th class="text-center">Total payé (Fiche)</th>
+                    <th class="text-center">Statut fiche</th>
+                    <th class="text-center">Acte</th>
+                    <th class="text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for patient in patients %}
+                  <tr {% if patient.est_en_campagne %}class="ligne-campagne"{% endif %}>
+
+                    {# -- Nom du patient + badge campagne -- #}
+                    <td>
+                      <h2 class="table-avatar">
+                        <a href="#" class="avatar avatar-sm mr-2">
+                          <img class="avatar-img rounded-circle" src="{% static 'back-end/assets/img/user.jpg' %}" alt="User">
+                        </a>
+                        <a href="#">
+                          {{ patient.noms }}
+                          {% if patient.est_en_campagne %}
+                            <span class="badge-campagne">
+                              <i class="fa fa-bullhorn"></i> Campagne
+                            </span>
+                          {% endif %}
+                          <span>ID: {{ patient.code_patient }}</span>
+                        </a>
+                      </h2>
+                    </td>
+
+                    {# -- Type -- #}
+                    <td><span class="pill pill-blue">{{ patient.get_type_patient_display }}</span></td>
+
+                    {# -- Heure d'arrivée -- #}
+                    <td>{{ patient.date_creation|date:"H:i" }}</td>
+
+                    {# -- Total payé (fiche) -- #}
+                    <td class="text-center">
+                      {% if patient.est_en_campagne %}
+                        <span class="pill pill-green">Campagne</span>
+                      {% elif patient.type_patient != 'SIMPLE' %}
+                        <span class="pill pill-grey">Exonéré</span>
+                      {% else %}
+                        <span class="pill {% if patient.a_solde_fiche %}pill-green{% else %}pill-orange{% endif %}">
+                          {{ patient.total_fiche_cdf|floatformat:0 }} FC
+                        </span>
+                      {% endif %}
+                    </td>
+
+                    {# -- Statut de la fiche -- #}
+                    <td class="text-center">
+                      {% if patient.est_en_campagne %}
+                        <span class="pill pill-green"><i class="fa fa-check-circle"></i> Campagne (fiche gratuite)</span>
+                      {% elif patient.type_patient != 'SIMPLE' %}
+                        <span class="pill pill-green"><i class="fa fa-check-circle"></i> Exonéré</span>
+                      {% elif patient.a_solde_fiche %}
+                        <span class="pill pill-green"><i class="fa fa-check-circle"></i> Prêt</span>
+                      {% else %}
+                        <span class="pill pill-red"><i class="fa fa-clock-o"></i> Paiement requis</span>
+                      {% endif %}
+                    </td>
+
+                    {# -- Acte : fiche réglée + signes vitaux pris -- #}
+                    <td class="text-center">
+                      {% if patient.a_solde_fiche and patient.a_signes_vitaux_deja_pris %}
+                        <a href="{% url 'enregistrer_acte' patient.id %}" class="btn btn-triage btn-acte">
+                          <i class="fa fa-medkit"></i> Enregistrer un acte
+                          <span class="compteur">{{ patient.nombre_actes|default:0 }}</span>
+                        </a>
+                      {% else %}
+                        <button class="btn btn-triage btn-secondary" disabled title="La fiche doit être réglée et les signes vitaux pris avant l'acte">
+                          <i class="fa fa-lock"></i> Acte
+                        </button>
+                      {% endif %}
+                    </td>
+
+                    {# -- Action -- #}
+                    <td class="text-right">
+                      {% if patient.est_en_campagne or patient.type_patient != 'SIMPLE' %}
+                        {# Patients de campagne ou exonérés : toujours accessibles #}
+                        {% if patient.a_signes_vitaux_deja_pris %}
+                          <button class="btn btn-triage btn-warning" disabled>
+                            <i class="fa fa-check-square"></i> Déjà prélevé
+                          </button>
+                        {% else %}
+                          <a href="{% url 'saisir_signes' patient.id %}" class="btn btn-triage btn-primary">
+                            <i class="fa fa-stethoscope"></i> Signes Vitaux
+                          </a>
+                        {% endif %}
+
+                      {% elif not patient.a_solde_fiche and patient.doit_payer_fiche %}
+                        <button class="btn btn-triage btn-secondary" disabled title="Le patient doit solder la fiche">
+                          <i class="fa fa-lock"></i> Bloqué
+                        </button>
+
+                      {% elif patient.a_signes_vitaux_deja_pris %}
+                        <button class="btn btn-triage btn-warning" disabled>
+                          <i class="fa fa-check-square"></i> Déjà prélevé
+                        </button>
+
+                      {% else %}
+                        <a href="{% url 'saisir_signes' patient.id %}" class="btn btn-triage btn-primary">
+                          <i class="fa fa-stethoscope"></i> Signes Vitaux
+                        </a>
+                      {% endif %}
+                    </td>
+                  </tr>
+                  {% empty %}
+                  <tr>
+                    <td colspan="7" class="text-center py-4">Aucun patient en attente.</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  {% include 'back-end/includes/js.html' %}
+
+  <script>
+    function filterTable() {
+      let input = document.getElementById("searchPatient");
+      let filter = input.value.toUpperCase();
+      let table = document.getElementById("patientTable");
+      let tr = table.getElementsByTagName("tr");
+      for (let i = 1; i < tr.length; i++) {
+        let td = tr[i].getElementsByTagName("td")[0];
+        if (td) {
+          let txtValue = td.textContent || td.innerText;
+          tr[i].style.display = (txtValue.toUpperCase().indexOf(filter) > -1) ? "" : "none";
+        }
+      }
+    }
+  </script>
+</body>
 </html>

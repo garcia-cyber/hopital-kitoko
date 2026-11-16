@@ -1,158 +1,463 @@
 <!DOCTYPE html>
 {% load static %}
 <html lang="fr">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
-        <title>chk - Saisie des Signes Vitaux</title>
-        
-        <!-- Favicon et CSS -->
-        {% include 'back-end/includes/css.html' %}
-    </head>
-    <body>
-        <div class="main-wrapper">
-            <!-- Header & Sidebar -->
-            {% include 'back-end/includes/header.html' %}
-            {% include 'back-end/includes/sidebar.html' %}
-            
-            <div class="page-wrapper">
-                <div class="content container-fluid">
-                    
-                    <!-- Page Header -->
-                    <div class="page-header">
-                        <div class="row align-items-center">
-                            <div class="col">
-                                <h3 class="page-title">Triage : {{ patient.noms }}</h3>
-                                <ul class="breadcrumb">
-                                    <li class="breadcrumb-item"><a href="{% url 'liste_attente_triage' %}">Liste d'attente</a></li>
-                                    <li class="breadcrumb-item active">Saisie des signes vitaux</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+  <title>CHK - Saisie des Signes Vitaux</title>
 
-                    <!-- Affichage des messages d'alertes (Info / Succès / Erreur) -->
-                    {% if messages %}
-                        <div class="row">
-                            <div class="col-md-8 offset-md-2">
-                                {% for message in messages %}
-                                    <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show" role="alert">
-                                        {{ message }}
-                                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                                            <span aria-hidden="true">&times;</span>
-                                        </button>
-                                    </div>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    {% endif %}
+  {% include 'back-end/includes/css.html' %}
 
-                    <div class="row">
-                        <div class="col-md-8 offset-md-2">
-                            <div class="card">
-                                <div class="card-header" style="background-color: #f8f9fa;">
-                                    <h4 class="card-title mb-0">
-                                        <i class="fa fa-heartbeat text-danger"></i> 
-                                        {% if triage_existant %}
-                                            Mise à jour des Paramètres Cliniques
-                                        {% else %}
-                                            Paramètres Cliniques Initiaux
-                                        {% endif %}
-                                    </h4>
-                                </div>
-                                <div class="card-body">
-                                    <form method="POST">
-                                        {% csrf_token %}
-                                        
-                                        <div class="row">
-                                            <!-- Température -->
-                                            <div class="col-sm-6">
-                                                <div class="form-group">
-                                                    <label>Température (°C) <span class="text-danger">*</span></label>
-                                                    <div class="input-group">
-                                                        <input class="form-control" type="number" step="0.1" name="temp" value="{{ triage_existant.temperature|default:'' }}" placeholder="Ex: 37.5" required>
-                                                        <div class="input-group-append">
-                                                            <span class="input-group-text"><i class="fa fa-thermometer-half"></i></span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
+  <style>
+    :root {
+      --hospital-blue: #2563eb;
+      --hospital-green: #10b981;
+      --hospital-red: #ef4444;
+      --hospital-orange: #f59e0b;
+      --hospital-purple: #8b5cf6;
+      --hospital-cyan: #06b6d4;
+      --bg-soft: #f1f5f9;
+      --card-radius: 18px;
+    }
 
-                                            <!-- Poids -->
-                                            <div class="col-sm-6">
-                                                <div class="form-group">
-                                                    <label>Poids (Kg) <span class="text-danger">*</span></label>
-                                                    <div class="input-group">
-                                                        <input class="form-control" type="number" step="0.1" name="poids" value="{{ triage_existant.poids|default:'' }}" placeholder="Ex: 70" required>
-                                                        <div class="input-group-append">
-                                                            <span class="input-group-text"><i class="fa fa-balance-scale"></i></span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
+    body {
+      background: var(--bg-soft);
+      overflow-x: hidden;
+    }
 
-                                            <!-- Tension Artérielle -->
-                                            <div class="col-sm-6">
-                                                <div class="form-group">
-                                                    <label>Tension Artérielle (mmHg)</label>
-                                                    <input class="form-control" type="text" name="tension" value="{{ triage_existant.tension_arterielle|default:'' }}" placeholder="Ex: 120/80">
-                                                </div>
-                                            </div>
+    .main-wrapper {
+      min-height: 100vh;
+      background: var(--bg-soft);
+    }
 
-                                            <!-- Fréquence Cardiaque (Pouls) -->
-                                            <div class="col-sm-6">
-                                                <div class="form-group">
-                                                    <label>Pouls (bpm)</label>
-                                                    <div class="input-group">
-                                                        <input class="form-control" type="number" name="pouls" value="{{ triage_existant.frequence_cardiaque|default:'' }}" placeholder="Ex: 80">
-                                                        <div class="input-group-append">
-                                                            <span class="input-group-text"><i class="fa fa-heartbeat"></i></span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
+    .page-wrapper {
+      background-color: transparent;
+      padding-top: 68px;
+    }
 
-                                            <!-- Fréquence Respiratoire -->
-                                            <div class="col-sm-6">
-                                                <div class="form-group">
-                                                    <label>Fréq. Respiratoire (cpm)</label>
-                                                    <input class="form-control" type="number" name="f_resp" value="{{ triage_existant.frequence_respiratoire|default:'' }}" placeholder="Ex: 18">
-                                                </div>
-                                            </div>
+    .content {
+      padding-top: 24px;
+      padding-bottom: 28px;
+    }
 
-                                            <!-- Saturation Oxygène (SpO2) -->
-                                            <div class="col-sm-6">
-                                                <div class="form-group">
-                                                    <label>SpO2 (%)</label>
-                                                    <div class="input-group">
-                                                        <input class="form-control" type="number" name="spo2" value="{{ triage_existant.saturation_oxygene|default:'' }}" placeholder="Ex: 98">
-                                                        <div class="input-group-append">
-                                                            <span class="input-group-text"><strong>%</strong></span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
+    /* =========================
+       BANNIÈRE
+    ========================= */
 
-                                        <div class="submit-section">
-                                            <button type="submit" class="btn btn-primary submit-btn">
-                                                {% if triage_existant %}
-                                                    Actualiser les constantes
-                                                {% else %}
-                                                    Enregistrer les constantes
-                                                {% endif %}
-                                            </button>
-                                            <a href="{% url 'liste_attente_triage' %}" class="btn btn-secondary submit-btn" style="background: #6c757d;">Annuler</a>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    .medical-welcome {
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 55%, #2563eb 100%);
+      color: #fff;
+      padding: 30px 32px;
+      border-radius: 22px;
+      margin-bottom: 30px;
+      box-shadow: 0 14px 34px rgba(15, 23, 42, 0.25);
+    }
+
+    .medical-welcome::before,
+    .medical-welcome::after {
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.07);
+      pointer-events: none;
+    }
+
+    .medical-welcome::before {
+      width: 220px;
+      height: 220px;
+      right: -50px;
+      top: -80px;
+    }
+
+    .medical-welcome::after {
+      width: 140px;
+      height: 140px;
+      right: 120px;
+      bottom: -70px;
+    }
+
+    .medical-welcome > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .medical-welcome h3 {
+      margin-bottom: 6px;
+      font-weight: 800;
+      font-size: 1.6rem;
+      letter-spacing: -0.3px;
+      color: #fff;
+    }
+
+    .medical-welcome p {
+      opacity: 0.9;
+      font-size: 0.98rem;
+    }
+
+    .welcome-date {
+      display: inline-block;
+      margin-top: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      color: #bfdbfe;
+    }
+
+    .badge-role {
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 16px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      backdrop-filter: blur(4px);
+      font-size: 0.88rem;
+      font-weight: 700;
+      margin-top: 14px;
+    }
+
+    .badge-role::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      margin-right: 8px;
+      border-radius: 50%;
+      background: #4ade80;
+      box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.25);
+    }
+
+    .btn-retour {
+      border-radius: 12px;
+      font-weight: 700;
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      color: #fff;
+    }
+
+    .btn-retour:hover {
+      background: rgba(255, 255, 255, 0.28);
+      color: #fff;
+    }
+
+    /* =========================
+       CARTE DU FORMULAIRE
+    ========================= */
+
+    .panel-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 22px;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+      background: #fff;
+      margin-bottom: 24px;
+    }
+
+    .panel-card .card-body {
+      padding: 26px;
+    }
+
+    .panel-card .card-title {
+      display: flex;
+      align-items: center;
+      font-weight: 800;
+      font-size: 1.05rem;
+      color: #0f172a;
+    }
+
+    .panel-card .card-title::before {
+      content: "";
+      flex: 0 0 4px;
+      height: 20px;
+      margin-right: 10px;
+      border-radius: 4px;
+      background: linear-gradient(180deg, #2563eb, #06b6d4);
+    }
+
+    /* -- Champs du formulaire -- */
+    .label-signe {
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      color: #475569;
+    }
+
+    .champ-signe {
+      border-radius: 12px 0 0 12px;
+      border: 1px solid #e2e8f0;
+      padding: 10px 14px;
+      background: #f8fafc;
+      font-size: 0.92rem;
+      height: auto;
+    }
+
+    /* Champ seul (sans icône à droite) */
+    input.champ-signe:only-child {
+      border-radius: 12px;
+    }
+
+    .champ-signe:focus {
+      border-color: #93c5fd;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+      background: #fff;
+    }
+
+    .input-group-text.icone-signe {
+      border-radius: 0 12px 12px 0;
+      border: 1px solid #e2e8f0;
+      border-left: none;
+      background: rgba(37, 99, 235, 0.08);
+      color: var(--hospital-blue);
+      font-weight: 700;
+    }
+
+    /* -- Boutons -- */
+    .btn-enregistrer {
+      border-radius: 12px;
+      font-weight: 700;
+      padding: 11px 22px;
+      background: var(--hospital-blue);
+      border-color: var(--hospital-blue);
+      color: #fff;
+    }
+
+    .btn-enregistrer:hover {
+      background: #1d4ed8;
+      border-color: #1d4ed8;
+      color: #fff;
+    }
+
+    .btn-annuler {
+      border-radius: 12px;
+      font-weight: 700;
+      padding: 11px 22px;
+      background: #e2e8f0;
+      border-color: #e2e8f0;
+      color: #475569;
+    }
+
+    .btn-annuler:hover {
+      background: #cbd5e1;
+      border-color: #cbd5e1;
+      color: #334155;
+    }
+
+    /* -- Messages -- */
+    .alert {
+      border-radius: 14px;
+    }
+
+    /* =========================
+       TABLETTE ET MOBILE
+    ========================= */
+
+    @media (max-width: 992px) {
+      .page-wrapper {
+        margin-left: 0 !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+      }
+
+      .content.container-fluid {
+        padding-left: 14px;
+        padding-right: 14px;
+      }
+    }
+
+    @media (max-width: 576px) {
+      .page-wrapper {
+        padding-top: 66px;
+      }
+
+      .content {
+        padding-top: 14px;
+        padding-bottom: 20px;
+      }
+
+      .medical-welcome {
+        padding: 18px;
+        border-radius: 18px;
+        margin-bottom: 20px;
+      }
+
+      .medical-welcome::after {
+        display: none;
+      }
+
+      .medical-welcome h3 {
+        font-size: 1.15rem;
+      }
+
+      .medical-welcome p {
+        font-size: 0.85rem;
+      }
+
+      .panel-card {
+        border-radius: 18px;
+      }
+
+      .panel-card .card-body {
+        padding: 16px 12px;
+      }
+
+      .btn-enregistrer,
+      .btn-annuler {
+        width: 100%;
+        margin-bottom: 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="main-wrapper">
+    {% include 'back-end/includes/header.html' %}
+    {% include 'back-end/includes/sidebar.html' %}
+
+    <div class="page-wrapper">
+      <div class="content container-fluid">
+
+        <!-- Bannière -->
+        <div class="medical-welcome">
+          <h3>Triage : {{ patient.noms }}</h3>
+          <p class="mb-0">Saisie des signes vitaux - CHK</p>
+          <span class="welcome-date">{% now "l d F Y" %}</span>
+          <div class="d-flex flex-wrap align-items-center">
+            <div class="badge-role mr-3">Infirmerie</div>
+            <a href="{% url 'liste_attente_triage' %}" class="btn btn-retour btn-sm mt-3">
+              <i class="fa fa-arrow-left"></i> Liste d'attente
+            </a>
+          </div>
         </div>
 
-        {% include 'back-end/includes/js.html' %}
-    </body>
+        <!-- Messages d'alerte (Info / Succès / Erreur) -->
+        {% if messages %}
+          <div class="row">
+            <div class="col-md-8 offset-md-2">
+              {% for message in messages %}
+                <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show" role="alert">
+                  {{ message }}
+                  <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                  </button>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+
+        <div class="row">
+          <div class="col-md-8 offset-md-2">
+            <div class="card panel-card">
+              <div class="card-body">
+
+                <h4 class="card-title mb-4">
+                  <i class="fa fa-heartbeat text-danger mr-2"></i>
+                  {% if triage_existant %}
+                    Mise à jour des Paramètres Cliniques
+                  {% else %}
+                    Paramètres Cliniques Initiaux
+                  {% endif %}
+                </h4>
+
+                <form method="POST">
+                  {% csrf_token %}
+
+                  <div class="row">
+
+                    <!-- Température -->
+                    <div class="col-sm-6">
+                      <div class="form-group">
+                        <label class="label-signe">Température (°C) <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                          <input class="form-control champ-signe" type="number" step="0.1" name="temp" value="{{ triage_existant.temperature|default:'' }}" placeholder="Ex: 37.5" required>
+                          <div class="input-group-append">
+                            <span class="input-group-text icone-signe"><i class="fa fa-thermometer-half"></i></span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Poids -->
+                    <div class="col-sm-6">
+                      <div class="form-group">
+                        <label class="label-signe">Poids (Kg) <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                          <input class="form-control champ-signe" type="number" step="0.1" name="poids" value="{{ triage_existant.poids|default:'' }}" placeholder="Ex: 70" required>
+                          <div class="input-group-append">
+                            <span class="input-group-text icone-signe"><i class="fa fa-balance-scale"></i></span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Tension Artérielle -->
+                    <div class="col-sm-6">
+                      <div class="form-group">
+                        <label class="label-signe">Tension Artérielle (mmHg)</label>
+                        <input class="form-control champ-signe" type="text" name="tension" value="{{ triage_existant.tension_arterielle|default:'' }}" placeholder="Ex: 120/80">
+                      </div>
+                    </div>
+
+                    <!-- Fréquence Cardiaque (Pouls) -->
+                    <div class="col-sm-6">
+                      <div class="form-group">
+                        <label class="label-signe">Pouls (bpm)</label>
+                        <div class="input-group">
+                          <input class="form-control champ-signe" type="number" name="pouls" value="{{ triage_existant.frequence_cardiaque|default:'' }}" placeholder="Ex: 80">
+                          <div class="input-group-append">
+                            <span class="input-group-text icone-signe"><i class="fa fa-heartbeat"></i></span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Fréquence Respiratoire -->
+                    <div class="col-sm-6">
+                      <div class="form-group">
+                        <label class="label-signe">Fréq. Respiratoire (cpm)</label>
+                        <input class="form-control champ-signe" type="number" name="f_resp" value="{{ triage_existant.frequence_respiratoire|default:'' }}" placeholder="Ex: 18">
+                      </div>
+                    </div>
+
+                    <!-- Saturation Oxygène (SpO2) -->
+                    <div class="col-sm-6">
+                      <div class="form-group">
+                        <label class="label-signe">SpO2 (%)</label>
+                        <div class="input-group">
+                          <input class="form-control champ-signe" type="number" name="spo2" value="{{ triage_existant.saturation_oxygene|default:'' }}" placeholder="Ex: 98">
+                          <div class="input-group-append">
+                            <span class="input-group-text icone-signe"><strong>%</strong></span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+
+                  <div class="mt-3">
+                    <button type="submit" class="btn btn-enregistrer">
+                      <i class="fa fa-save"></i>
+                      {% if triage_existant %}
+                        Actualiser les constantes
+                      {% else %}
+                        Enregistrer les constantes
+                      {% endif %}
+                    </button>
+                    <a href="{% url 'liste_attente_triage' %}" class="btn btn-annuler">Annuler</a>
+                  </div>
+                </form>
+
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  {% include 'back-end/includes/js.html' %}
+</body>
 </html>

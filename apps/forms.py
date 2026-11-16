@@ -1848,3 +1848,46 @@ class PaiementPassageForm(forms.Form):
     initial='CDF',
     label="Devise"
   )
+# ------------------------------------
+#
+# ------------------------------------
+#
+# le 17/11/2026
+class ActeForm(forms.ModelForm):
+
+  class Meta:
+    model = Acte
+
+    # ---- le prix, le rapport et le schéma sont remplis par l'utilisateur
+    fields = ['prix', 'rapport', 'schema']
+
+    # ---- les noms affichés
+    labels = {
+      'prix': "Prix de l'acte (FC)",
+      'rapport': "Rapport sur l'acte",
+      'schema': "Schéma donné",
+    }
+
+    # ---- l'aspect des champs
+    widgets = {
+      'prix': forms.NumberInput(attrs={
+        'min': 1,
+        'step': '0.01',
+        'placeholder': "Ex: 5000",
+      }),
+      'rapport': forms.Textarea(attrs={
+        'rows': 4,
+        'placeholder': "Ce qui a été fait au patient...",
+      }),
+      'schema': forms.Textarea(attrs={
+        'rows': 4,
+        'placeholder': "Soins ou médicaments donnés...",
+      }),
+    }
+
+  # ---- le prix doit être plus grand que 0
+  def clean_prix(self):
+    prix = self.cleaned_data.get('prix')
+    if prix is None or prix <= 0:
+      raise forms.ValidationError("Le prix de l'acte doit être supérieur à 0.")
+    return prix

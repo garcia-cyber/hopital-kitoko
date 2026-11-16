@@ -787,6 +787,9 @@ class Acte(models.Model):
     related_name="actes"
   )
 
+  # ---- le prix de l'acte (en CDF)
+  prix = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
   # ---- le rapport sur l'acte (ce qui a été fait)
   rapport = models.TextField()
 
@@ -801,7 +804,7 @@ class Acte(models.Model):
     related_name="actes_faits"
   )
 
-  # ---- l'hôpital (comme dans ton modèle Paiement)
+  # ---- l'hôpital
   hopital = models.ForeignKey(
     "Hopital",
     on_delete=models.SET_NULL,

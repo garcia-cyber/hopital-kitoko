@@ -105,6 +105,7 @@ urlpatterns =[
     path('infirmerie/registre-global/', views.liste_globale_triage, name='liste_globale_triage'),
     path('infirmerie/historique/<int:patient_id>/', views.historique_signes_vitaux, name='historique_signes_vitaux'),
     path('modifier-signes-vitaux/<int:signe_id>/', views.modifier_signes_vitaux, name='modifier_signes_vitaux'),
+    path('acte/<int:patient_id>/', views.enregistrer_acte, name='enregistrer_acte'),
 
     # ==================================
     # MEDECIN
