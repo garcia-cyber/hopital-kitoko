@@ -768,6 +768,56 @@ class CampagneParticipant(models.Model):
             f"{self.nombre_personnes} personne(s)"
         ) 
 
+class Acte(models.Model):
+
+  # ---- le patient qui reçoit l'acte
+  # ---- un même patient peut avoir plusieurs actes
+  patient = models.ForeignKey(
+    "Patient",
+    on_delete=models.CASCADE,
+    related_name="actes"
+  )
+
+  # ---- les signes vitaux du patient
+  signe_vital = models.ForeignKey(
+    "SigneVital",
+    on_delete=models.SET_NULL,
+    null=True,
+    blank=True,
+    related_name="actes"
+  )
+
+  # ---- le rapport sur l'acte (ce qui a été fait)
+  rapport = models.TextField()
+
+  # ---- le schéma donné (les soins ou médicaments donnés)
+  schema = models.TextField(blank=True)
+
+  # ---- celui qui a fait l'acte
+  fait_par = models.ForeignKey(
+    settings.AUTH_USER_MODEL,
+    on_delete=models.SET_NULL,
+    null=True,
+    related_name="actes_faits"
+  )
+
+  # ---- l'hôpital (comme dans ton modèle Paiement)
+  hopital = models.ForeignKey(
+    "Hopital",
+    on_delete=models.SET_NULL,
+    null=True,
+    blank=True,
+    related_name="actes"
+  )
+
+  # ---- date et heure automatiques
+  date_acte = models.DateTimeField(auto_now_add=True)
+
+  class Meta:
+    ordering = ["-date_acte"]
+
+  def __str__(self):
+    return f"Acte {self.id} - {self.patient}"
 
 
 # 6. PAIEMENT =======================================================
@@ -799,6 +849,9 @@ class Paiement(models.Model):
         ('HOSPITALISATION', 'Hospitalisation'),
         ('ACTE_MEDICAL', 'Acte médical'),
 
+        # ---- NOUVEAU : paiement du nouvel Acte (premiers soins)
+        ('ACTE', 'Acte'),
+
         ('CAMPAGNE', 'Campagne médicale'),
         ('SUPPLEMENT_CAMPAGNE', 'Supplément campagne médicale'),
 
@@ -824,6 +877,16 @@ class Paiement(models.Model):
         blank=True,
         related_name='paiements',
         verbose_name='Acte médical'
+    )
+
+    # ---- NOUVEAU : lien vers le nouvel Acte (différent de acte_medical)
+    acte = models.ForeignKey(
+        'Acte',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='paiements',
+        verbose_name='Acte'
     )
 
     patient = models.ForeignKey(
@@ -1529,6 +1592,23 @@ class Paiement(models.Model):
             )
 
             self.entreprise.save()
+
+        # --------------------------------------------------------
+        # NOUVEAU : LOGIQUE ACTE
+        # --------------------------------------------------------
+        if self.service == 'ACTE':
+
+            # ---- on doit choisir l'acte
+            if not self.acte:
+                raise ValidationError(
+                    "Vous devez sélectionner l'acte."
+                )
+
+            # ---- le patient vient de l'acte
+            self.patient = self.acte.patient
+
+            # ---- le montant est donné par le caissier, donc pas de dette
+            self.reste_a_payer = Decimal('0.00')
 
         # --------------------------------------------------------
         # SAUVEGARDE DU PAIEMENT

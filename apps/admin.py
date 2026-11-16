@@ -851,3 +851,34 @@ class PatientPassageAdmin(admin.ModelAdmin):
     return f"{obj.total_a_payer()} CDF"
 
   total.short_description = "Total à payer"
+
+# -----------------------------
+# le 16/11/2026
+@admin.register(Acte)
+class ActeAdmin(admin.ModelAdmin):
+
+  # ---- les colonnes affichées dans la liste
+  list_display = (
+    "id",
+    "patient",
+    "signe_vital",
+    "fait_par",
+    "hopital",
+    "date_acte",
+  )
+
+  # ---- les filtres à droite
+  list_filter = ("hopital", "date_acte")
+
+  # ---- la recherche par nom du patient
+  search_fields = (
+    "patient__nom",
+    "rapport",
+    "schema",
+  )
+
+  # ---- la date ne se modifie pas
+  readonly_fields = ("date_acte",)
+
+  # ---- les plus récents en premier
+  ordering = ("-date_acte",)
