@@ -1699,7 +1699,7 @@ class Consultation(models.Model):
     verbose_name="Motif"
   )
 
-  antecedent = models.CharField(
+  antecedent = models.TextField(
     max_length=255,
     null=True,
     blank=True
@@ -1713,7 +1713,7 @@ class Consultation(models.Model):
     verbose_name="Examen physique"
   )
 
-  complement_d_anamnese = models.CharField(
+  complement_d_anamnese = models.TextField(
     max_length=200,
     null=True
   )
